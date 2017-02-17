@@ -68,7 +68,7 @@
       ! --- Compute the liquid water content 
       actLWC=pseudoLWC(Time)
       !
-      print*, 'debug:: chi,lwc', chi, actLWC
+      !print*, 'debug:: chi,lwc', chi, actLWC
       ! --- Update temperature array
       IF ( combustion ) THEN
         CALL UpdateTempArray(T,y_conc(nDIM))
@@ -117,7 +117,7 @@
         END DO
         ! Last step
         Rate(iReac) = Meff * k
-        print*, 'debugg:: i,rate(i) = ', ireac, Rate(ireac)
+       ! print*, 'debugg:: i,rate(i) = ', ireac, Rate(ireac)
         IF (combustion) DRatedT(iReac) = DkdT
       END DO
       !stop
@@ -351,7 +351,13 @@
       REAL(RealKind), INTENT(OUT) :: M
       REAL(RealKind), INTENT(IN)    :: y_conc(:)
       INTEGER, INTENT(IN) :: iReac
+      INTEGER :: i
       !
+      !print*, 'debugg ro2=',SUM(y_conc(RO2))
+      !DO i=1,1201
+      !  WRITE(334,*) RO2(i)
+      !END DO
+      !stop
       IF (ReactionSystem(iReac)%Factor(1:1)=='$') THEN
         SELECT CASE (ReactionSystem(iReac)%Factor)
           CASE ('$H2')
@@ -368,20 +374,12 @@
             M=(mH2O**fac_exp)*fac_A
           CASE ('$RO2')
             M=SUM(y_conc(RO2))
-            print*, 'debugg ro2=',M
-            print*, RO2
-            print*, SIZE(RO2aq), SIZE(RO2)
-            stop
           CASE ('$O2O2')
             M=(((mO2*mair)**2)**fac_exp)*fac_A
           CASE ('$aH2O')
             !k=k*aH2OmolperL*actLWC*mol2part
           CASE ('$RO2aq')
             M=SUM(y_conc(RO2aq))
-            !print*, 'debugg ro2aq=',M
-            !print*, RO2aq
-            !print*, SIZE(RO2aq), SIZE(RO2)
-            !stop
           CASE ('$+M')
             CALL ThirdBodyCompute(M,iReac,y_conc)
           CASE ('$(+M)')

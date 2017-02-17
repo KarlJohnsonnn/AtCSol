@@ -1687,6 +1687,19 @@ MODULE Sparse_Mod
       END DO
       Rhs(i)=Tmp+Vec2(i)
     END DO
+    !write(343,*) '-----------'
+    !do i=1,SIZE(A%val)
+    ! write(343,*) A%val(i)
+    !end do 
+    !write(343,*) '-----------'
+    !do i=1,SIZE(vec1)
+    ! write(343,*) vec1(i)
+    !end do 
+    ! write(343,*) '-----------'
+    !do i=1,SIZE(vec2)
+    ! write(343,*) vec2(i)
+    !end do
+    !write(343,*) '-----------'
   END SUBROUTINE MatVecMult
   !
   !

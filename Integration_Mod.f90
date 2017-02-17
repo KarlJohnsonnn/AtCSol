@@ -189,8 +189,9 @@ MODULE Integration_Mod
     t=Tspan(1)
     CALL Rates(Tspan(1),y0,Rate,DRatedT)      ! Calculate first reaction rates
     dummyrate(:)=Rate(:)
-    print*, 'debug:: SUM(rate)=',SUM(rate), SUM(y0)
-    stop
+
+    print*, 'debug :: roargs srate,sy  ', SUM(Rate), SUM(y0)
+    !stop
     
     Rate(:)=MAX(ABS(Rate(:)),eps)*SIGN(ONE,Rate(:))
     y(1:nspc)=MAX(ABS(y(1:nspc)),eps)*SIGN(ONE,y(1:nspc))

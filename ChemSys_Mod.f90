@@ -1374,6 +1374,7 @@ MODULE Chemsys_Mod
     REAL(RealKind) :: nue
     CHARACTER(10) :: ro2d
     CHARACTER(10) :: c2
+    INTEGER :: slash
    
     CALL OpenIniFile(FileName)
     !
@@ -1462,6 +1463,11 @@ MODULE Chemsys_Mod
           &              End='END_DATARO2',             &
           &              Name1=SpeciesName)
           IF (Back) EXIT
+          slash=INDEX(SpeciesName,'_')
+          IF ( slash>0 ) THEN
+            SpeciesName(slash:slash)='/'
+          END IF
+          print*, 'debug :: spc pos=', PositionSpeciesAll(SpeciesName), TRIM(SpeciesName)
           IF (PositionSpeciesAll(SpeciesName)>0) THEN
             i=i+1
             RO2spcG(i)=SpeciesName
@@ -1518,6 +1524,15 @@ MODULE Chemsys_Mod
       END IF
     END IF
     CALL CloseIniFile
+      
+      WRITE(333,*) ' nRO2=',SIZE(RO2)
+    DO i=1,SIZE(RO2)
+      WRITE(333,*) i, RO2(i)
+    END DO 
+      WRITE(333,*) ' nRO2aq=',SIZE(RO2aq)
+    DO i=1,SIZE(RO2aq)
+      WRITE(333,*) i, RO2aq(i)
+    END DO 
   END SUBROUTINE Read_SpeciesData
   !
   SUBROUTINE Read_EMISS(FileName,Emi)

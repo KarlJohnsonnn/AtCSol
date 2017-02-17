@@ -13,6 +13,1230 @@
  ====================================================================================
    Initialize run-file .......... done
    Read sys-file ................ done  ---->  Fix Temperature
+ debug :: spc pos=           4 BRC(BR)(BR)O[O]
+ debug :: spc pos=           7 BRC(BR)O[O]
+ debug :: spc pos=          12 BRCC(=O)O[O]
+ debug :: spc pos=          14 BRCC(BR)O[O]
+ debug :: spc pos=          19 BRCCO[O]
+ debug :: spc pos=          24 BRCO[O]
+ debug :: spc pos=          39 C(CC(C=O)C(C)(CO[N+](=O)[O-])O[O])O
+ debug :: spc pos=          41 C(CC(C=O)[C](C)O[O])O
+ debug :: spc pos=          54 C(CC(CC=O)C(C)(CO[N+](=O)[O-])O[O])=O
+ debug :: spc pos=          55 C(CC(CC=O)C(C)(CO[N+](=O)[O-])O[O])C(C)=O
+ debug :: spc pos=          60 C(CC(CC=O)C(C)=C)[C](C)O[O]
+ debug :: spc pos=          63 C(CC(CC=O)C(C)=O)[C](C)O[O]
+ debug :: spc pos=          64 C(CC(CC=O)[C](C)O[O])=O
+ debug :: spc pos=          65 C(CC(CC=O)[C](C)O[O])C(C)=O
+ debug :: spc pos=          69 C(CC(CO)C(C)(CO[N+](=O)[O-])O[O])=O
+ debug :: spc pos=          73 C(CC(CO)[C](C)O[O])=O
+ debug :: spc pos=          80 C(CC(C[CH]O[O])C(C)=C)C(C)=O
+ debug :: spc pos=          81 C(CC(C[CH]O[O])C(C)=C)C(C)=O*b
+ debug :: spc pos=          82 C(CC(C[CH]O[O])C(C)=O)C(C)=O
+ debug :: spc pos=          83 C(CC(C[CH]O[O])C(C)=O)C(C)=O*b
+ debug :: spc pos=          95 C12CC(C1(C)C)CC(O)C2(O[O])C
+ debug :: spc pos=          99 C12CC(C1(C)C)CC(ON(=O)=O)C2(O[O])C
+ debug :: spc pos=         103 C12CC(C1(C)C)CC(O[O])C2(O)C
+ debug :: spc pos=         104 C12CC(C1(C)C)CC(O[O])C2(ON(=O)=O)C
+ debug :: spc pos=         109 C12CC(O[O])(C1(C)C)CC(=O)C2(ON(=O)=O)C
+ debug :: spc pos=         113 C1C(=O)C(=O)CC(O[O])C1
+ debug :: spc pos=         117 C1C(=O)C(O[O])C(C)(C)C(=O)C1
+ debug :: spc pos=         126 C1C(=O)CC(O[O])C(=O)C1
+ debug :: spc pos=         127 C1C(=O)CC(O[O])CC1
+ debug :: spc pos=         128 C1C(=O)CC(O[O])CC1=O
+ debug :: spc pos=         135 C1C(=O)CCC(=O)C1C(O[O])(C)C
+ debug :: spc pos=         140 C1C(O)C(C)=CCC1C(O[O])(C)C
+ debug :: spc pos=         143 C1C(O[O])O1
+ debug :: spc pos=         150 C1CC(C)=CCC1C(O[O])(C)CO
+ debug :: spc pos=         158 C1CC(CC(C1(C)O[O])O[N+](=O)[O-])C(C)=C
+ debug :: spc pos=         159 C1CC(CC(C1(C)O[O])O[N+](=O)[O-])C(C)=O
+ debug :: spc pos=         169 C1CC(O)(C)C(O[O])CC1C(=O)C
+ debug :: spc pos=         170 C1CC(O)(C)C(O[O])CC1C(C)=C
+ debug :: spc pos=         177 C1CC(O)C(O[O])CC1
+ debug :: spc pos=         181 C1CC(O[O])(C)C(O)CC1C(=O)C
+ debug :: spc pos=         182 C1CC(O[O])(C)C(O)CC1C(C)=C
+ debug :: spc pos=         189 C1CCC(O[O])CC1
+ debug :: spc pos=         194 C1OC(=O)C(O[O])C1O
+ debug :: spc pos=         198 C1OC1(C)C(O)C(=O)O[O]
+ debug :: spc pos=         202 C1OC1C(O)(C)C(=O)O[O]
+ debug :: spc pos=         206 C=C(C)C(=O)O[O]
+ debug :: spc pos=         207 C=C(C)C(C(=O)O[O])CCO
+ debug :: spc pos=         208 C=C(C)C(CC=O)CC(=O)O[O]
+ debug :: spc pos=         209 C=C(C)C(CC=O)CCC(=O)CO[O]
+ debug :: spc pos=         211 C=C(C)C(CC=O)CCC(=O)O[O]
+ debug :: spc pos=         213 C=C(C)C(CC=O)CCO[O]
+ debug :: spc pos=         215 C=C(C)C(CO)C(=O)O[O]
+ debug :: spc pos=         216 C=C(C)C(CO)CC(=O)O[O]
+ debug :: spc pos=         217 C=C(C)C(CO)CO[O]
+ debug :: spc pos=         219 C=C(C)C(CO[O])CC=O
+ debug :: spc pos=         221 C=C(CCC=O)C(CC1(C)C)C1CCC(=O)CO[O]
+ debug :: spc pos=         223 C=C(CCC=O)C(CC1(C)C)C1CCC(=O)O[O]
+ debug :: spc pos=         225 C=C(CCC=O)C(CC1(C)C)C1CCO[O]
+ debug :: spc pos=         227 C=C(CCO)C(=O)CO[O]
+ debug :: spc pos=         229 C=C(CO)C(=O)O[O]
+ debug :: spc pos=         235 C=CC(=O)CO[O]
+ debug :: spc pos=         237 C=CC(=O)O[O]
+ debug :: spc pos=         239 C=CC(O)C(=O)O[O]
+ debug :: spc pos=         240 C=CC(O)CO[O]
+ debug :: spc pos=         251 CC(=O)C(=O)C(=O)C(O[O])C
+ debug :: spc pos=         255 CC(=O)C(=O)C(=O)CO[O]
+ debug :: spc pos=         263 CC(=O)C(=O)C(C)C(=O)O[O]
+ debug :: spc pos=         269 CC(=O)C(=O)C(CC)=CC(=O)O[O]
+ debug :: spc pos=         272 CC(=O)C(=O)C(O)(C)C(=O)O[O]
+ debug :: spc pos=         275 CC(=O)C(=O)C(O)(C)CO[O]
+ debug :: spc pos=         285 CC(=O)C(=O)C(O[O])(C)C
+ debug :: spc pos=         286 CC(=O)C(=O)C(O[O])(C)C(=O)C
+ debug :: spc pos=         287 CC(=O)C(=O)C(O[O])C
+ debug :: spc pos=         288 CC(=O)C(=O)C(O[O])C(=O)C
+ debug :: spc pos=         295 CC(=O)C(=O)C=C(C(=O)O[O])CC
+ debug :: spc pos=         301 CC(=O)C(=O)CC(=O)C(O[O])C
+ debug :: spc pos=         306 CC(=O)C(=O)CC(=O)CC(=O)O[O]
+ debug :: spc pos=         310 CC(=O)C(=O)CC(=O)CO[O]
+ debug :: spc pos=         313 CC(=O)C(=O)CC(=O)O[O]
+ debug :: spc pos=         318 CC(=O)C(=O)CC(C(O[O])(C)C)CC=O
+ debug :: spc pos=         324 CC(=O)C(=O)CC(CO)C(O[O])(C)CO
+ debug :: spc pos=         335 CC(=O)C(=O)CC(O[O])(CO)C(=O)C
+ debug :: spc pos=         336 CC(=O)C(=O)CC(O[O])C
+ debug :: spc pos=         337 CC(=O)C(=O)CC(O[O])CC=O
+ debug :: spc pos=         338 CC(=O)C(=O)CC(O[O])CO
+ debug :: spc pos=         351 CC(=O)C(=O)CO[O]
+ debug :: spc pos=         358 CC(=O)C(=O)OC(=O)C(=O)CO[O]
+ debug :: spc pos=         360 CC(=O)C(=O)OC(=O)C(O[O])C
+ debug :: spc pos=         365 CC(=O)C(=O)OC(C(=O)O[O])CC
+ debug :: spc pos=         369 CC(=O)C(=O)OC(C)C(=O)O[O]
+ debug :: spc pos=         374 CC(=O)C(=O)OC(O[O])(C)C(=O)C
+ debug :: spc pos=         375 CC(=O)C(=O)OC(O[O])C
+ debug :: spc pos=         376 CC(=O)C(=O)OC(O[O])C(=O)C
+ debug :: spc pos=         377 CC(=O)C(=O)OC(O[O])CC
+ debug :: spc pos=         378 CC(=O)C(=O)OC(O[O])CCC
+ debug :: spc pos=         388 CC(=O)C(=O)OCC(=O)O[O]
+ debug :: spc pos=         391 CC(=O)C(=O)OCO[O]
+ debug :: spc pos=         395 CC(=O)C(=O)O[O]
+ debug :: spc pos=         396 CC(=O)C(BR)O[O]
+ debug :: spc pos=         402 CC(=O)C(C(O[O])(C)C)CC(=O)CC=O
+ debug :: spc pos=         403 CC(=O)C(C(O[O])(C)C)CC=O
+ debug :: spc pos=         409 CC(=O)C(C)(C)C(=O)O[O]
+ debug :: spc pos=         414 CC(=O)C(C)(C)CO[O]
+ debug :: spc pos=         418 CC(=O)C(C)=C(C)C(=O)O[O]
+ debug :: spc pos=         423 CC(=O)C(C)=CC(=O)O[O]
+ debug :: spc pos=         432 CC(=O)C(C)C(=O)O[O]
+ debug :: spc pos=         436 CC(=O)C(C)C(O[O])CO
+ debug :: spc pos=         441 CC(=O)C(C)CC(=O)O[O]
+ debug :: spc pos=         447 CC(=O)C(C)CO[O]
+ debug :: spc pos=         452 CC(=O)C(C1(C)C)CC1CC(=O)O[O]
+ debug :: spc pos=         458 CC(=O)C(CC=O)CC(=O)O[O]
+ debug :: spc pos=         461 CC(=O)C(CC=O)CCC(=O)CO[O]
+ debug :: spc pos=         463 CC(=O)C(CC=O)CCC(=O)O[O]
+ debug :: spc pos=         465 CC(=O)C(CC=O)CCO[O]
+ debug :: spc pos=         470 CC(=O)C(CCO)C(O[O])C=O
+ debug :: spc pos=         475 CC(=O)C(CL)O[O]
+ debug :: spc pos=         479 CC(=O)C(CO)C(=O)O[O]
+ debug :: spc pos=         484 CC(=O)C(CO)CC(=O)O[O]
+ debug :: spc pos=         487 CC(=O)C(CO)CC(O[O])C(=O)O
+ debug :: spc pos=         493 CC(=O)C(CO)CO[O]
+ debug :: spc pos=         500 CC(=O)C(O)(C)C(=O)O[O]
+ debug :: spc pos=         504 CC(=O)C(O)(C)C(O[O])CO
+ debug :: spc pos=         518 CC(=O)C(O)C(=O)C(C)=C(C)C(=O)O[O]
+ debug :: spc pos=         520 CC(=O)C(O)C(=O)C(C)=CC(=O)O[O]
+ debug :: spc pos=         525 CC(=O)C(O)C(=O)C=C(C(=O)O[O])CC
+ debug :: spc pos=         527 CC(=O)C(O)C(=O)C=C(C)C(=O)O[O]
+ debug :: spc pos=         531 CC(=O)C(O)C(=O)O[O]
+ debug :: spc pos=         556 CC(=O)C(O)C(O[O])(C)C(=O)C
+ debug :: spc pos=         557 CC(=O)C(O)C(O[O])(C)C1OC1(C)C=O
+ debug :: spc pos=         558 CC(=O)C(O)C(O[O])(C)C=O
+ debug :: spc pos=         559 CC(=O)C(O)C(O[O])C(=O)C
+ debug :: spc pos=         560 CC(=O)C(O)C(O[O])C1(C)OC1(C)C=O
+ debug :: spc pos=         561 CC(=O)C(O)C(O[O])C1OC1(C)C(=O)C
+ debug :: spc pos=         575 CC(=O)C(O)CC(=O)CC(=O)O[O]
+ debug :: spc pos=         579 CC(=O)C(O)CC(=O)CO[O]
+ debug :: spc pos=         583 CC(=O)C(O)CC(=O)O[O]
+ debug :: spc pos=         596 CC(=O)C(O)CO[O]
+ debug :: spc pos=         605 CC(=O)C(ON(=O)=O)(C)CO[O]
+ debug :: spc pos=         610 CC(=O)C(ON(=O)=O)C(=O)O[O]
+ debug :: spc pos=         616 CC(=O)C(ON(=O)=O)C(O[O])C
+ debug :: spc pos=         617 CC(=O)C(ON(=O)=O)C(O[O])CC
+ debug :: spc pos=         662 CC(=O)C(O[O])(C)C
+ debug :: spc pos=         663 CC(=O)C(O[O])(C)C(=O)C
+ debug :: spc pos=         664 CC(=O)C(O[O])(C)C(O)(C)C=O
+ debug :: spc pos=         665 CC(=O)C(O[O])(C)C(O)C=O
+ debug :: spc pos=         666 CC(=O)C(O[O])(C)C=CC=O
+ debug :: spc pos=         667 CC(=O)C(O[O])(C)C=O
+ debug :: spc pos=         668 CC(=O)C(O[O])(C1(C)C)CC1CC=O
+ debug :: spc pos=         669 CC(=O)C(O[O])(C1(C)C)CC1CO
+ debug :: spc pos=         670 CC(=O)C(O[O])(CC=O)CC=O
+ debug :: spc pos=         671 CC(=O)C(O[O])(CO)C=O
+ debug :: spc pos=         672 CC(=O)C(O[O])(CO)CC=O
+ debug :: spc pos=         673 CC(=O)C(O[O])C
+ debug :: spc pos=         674 CC(=O)C(O[O])C(=O)C
+ debug :: spc pos=         675 CC(=O)C(O[O])C(C)=CC(=O)C
+ debug :: spc pos=         676 CC(=O)C(O[O])C(C)=CC(=O)CC
+ debug :: spc pos=         677 CC(=O)C(O[O])C(C)C
+ debug :: spc pos=         678 CC(=O)C(O[O])C(C)C(=O)C
+ debug :: spc pos=         679 CC(=O)C(O[O])C(O)(C)C
+ debug :: spc pos=         680 CC(=O)C(O[O])C(O)C1(C)OC1C=O
+ debug :: spc pos=         681 CC(=O)C(O[O])C(O)C1OC1(C)C=O
+ debug :: spc pos=         682 CC(=O)C(O[O])C(O)C1OC1C=O
+ debug :: spc pos=         683 CC(=O)C(O[O])C(O)C=O
+ debug :: spc pos=         684 CC(=O)C(O[O])C=O
+ debug :: spc pos=         685 CC(=O)C(O[O])CC(=O)CC=O
+ debug :: spc pos=         686 CC(=O)C(O[O])CC(C(=O)C)CC=O
+ debug :: spc pos=         687 CC(=O)C(O[O])CC(CC=O)C(C)=C
+ debug :: spc pos=         688 CC(=O)C(O[O])CC(CO)C(=O)C
+ debug :: spc pos=         689 CC(=O)C(O[O])CC(CO)C(C)=C
+ debug :: spc pos=         690 CC(=O)C(O[O])CC(O)(C)C
+ debug :: spc pos=         691 CC(=O)C(O[O])CC1C(CC1(C)C)C(=O)CCC=O
+ debug :: spc pos=         692 CC(=O)C(O[O])CC1C(CC1(C)C)C(CCC=O)=C
+ debug :: spc pos=         693 CC(=O)C(O[O])CC=O
+ debug :: spc pos=         694 CC(=O)C(O[O])CCO
+ debug :: spc pos=         695 CC(=O)C(O[O])CO
+ debug :: spc pos=         696 CC(=O)C(O[O])OC=O
+ debug :: spc pos=         733 CC(=O)C1(C)OC1C(=O)O[O]
+ debug :: spc pos=         736 CC(=O)C1CC(C(=O)O[O])C1(C)C
+ debug :: spc pos=         741 CC(=O)C1CC(CO[O])C1(C)C
+ debug :: spc pos=         747 CC(=O)C1CC(O[O])(C1(C)C)CC=O
+ debug :: spc pos=         748 CC(=O)C1CC(O[O])C1(C)C
+ debug :: spc pos=         754 CC(=O)C1OC1(C(=O)O[O])CC
+ debug :: spc pos=         757 CC(=O)C1OC1(C)C(=O)O[O]
+ debug :: spc pos=         765 CC(=O)C=C(C)C(=O)O[O]
+ debug :: spc pos=         769 CC(=O)C=C(C)C1OC1(C)C(=O)O[O]
+ debug :: spc pos=         776 CC(=O)C=CC(=O)O[O]
+ debug :: spc pos=         784 CC(=O)C=CC(O[O])(C)C(=O)C
+ debug :: spc pos=         785 CC(=O)C=CC(O[O])(C)C=O
+ debug :: spc pos=         786 CC(=O)C=CC(O[O])C(=O)C
+ debug :: spc pos=         787 CC(=O)C=CC(O[O])C=O
+ debug :: spc pos=         794 CC(=O)C=CC1(C)OC1(C)C(=O)O[O]
+ debug :: spc pos=         798 CC(=O)C=CC1(C)OC1C(=O)O[O]
+ debug :: spc pos=         803 CC(=O)C=CC1OC1(C)C(=O)O[O]
+ debug :: spc pos=         807 CC(=O)C=CC1OC1C(=O)O[O]
+ debug :: spc pos=         815 CC(=O)CC(=O)C(=O)C(C)(C)C(=O)O[O]
+ debug :: spc pos=         820 CC(=O)CC(=O)C(=O)C(O[O])(C)C
+ debug :: spc pos=         821 CC(=O)CC(=O)C(=O)C(O[O])C
+ debug :: spc pos=         826 CC(=O)CC(=O)C(O)(C)CO[O]
+ debug :: spc pos=         830 CC(=O)CC(=O)C(O[O])C
+ debug :: spc pos=         840 CC(=O)CC(=O)O[O]
+ debug :: spc pos=         845 CC(=O)CC(C)C(=O)O[O]
+ debug :: spc pos=         855 CC(=O)CC(O)(C)CO[O]
+ debug :: spc pos=         883 CC(=O)CC(O[O])(C)C
+ debug :: spc pos=         884 CC(=O)CC(O[O])(C)C(=O)C
+ debug :: spc pos=         885 CC(=O)CC(O[O])(C)C=O
+ debug :: spc pos=         886 CC(=O)CC(O[O])(C)CC
+ debug :: spc pos=         887 CC(=O)CC(O[O])(C)CO
+ debug :: spc pos=         888 CC(=O)CC(O[O])C
+ debug :: spc pos=         889 CC(=O)CC(O[O])C(=O)C
+ debug :: spc pos=         890 CC(=O)CC(O[O])C(=O)C(=O)C
+ debug :: spc pos=         891 CC(=O)CC(O[O])C(=O)C(C)(C)CO
+ debug :: spc pos=         892 CC(=O)CC(O[O])C(C)C
+ debug :: spc pos=         893 CC(=O)CC(O[O])C(O)(C)C
+ debug :: spc pos=         894 CC(=O)CC(O[O])CC
+ debug :: spc pos=         895 CC(=O)CC(O[O])CO
+ debug :: spc pos=         896 CC(=O)CC(O[O])OC(=O)C
+ debug :: spc pos=         915 CC(=O)CCC(=O)C(C)(C)C(=O)C(=O)C(=O)C(O[O])CO
+ debug :: spc pos=         921 CC(=O)CCC(=O)C(C)(C)C(=O)O[O]
+ debug :: spc pos=         924 CC(=O)CCC(=O)C(C)(C)C(O[O])C(=O)C(=O)CCO
+ debug :: spc pos=         931 CC(=O)CCC(=O)C(C)(C)CC(=O)C(O[O])(CO)CCO
+ debug :: spc pos=         936 CC(=O)CCC(=O)C(C)(C)CC(=O)O[O]
+ debug :: spc pos=         941 CC(=O)CCC(=O)C(C)(C)CO[O]
+ debug :: spc pos=         947 CC(=O)CCC(=O)C(O[O])(C)CO
+ debug :: spc pos=         953 CC(=O)CCC(=O)CC(=O)O[O]
+ debug :: spc pos=         961 CC(=O)CCC(=O)O[O]
+ debug :: spc pos=         964 CC(=O)CCC(C(=O)C)CC(=O)O[O]
+ debug :: spc pos=         968 CC(=O)CCC(C(=O)O[O])C(=O)C
+ debug :: spc pos=         969 CC(=O)CCC(C(=O)O[O])C(C)=C
+ debug :: spc pos=         972 CC(=O)CCC(C(O[O])(C)CO)CC=O
+ debug :: spc pos=         979 CC(=O)CCC(CC(=O)O[O])C(C)=C
+ debug :: spc pos=         985 CC(=O)CCC(CO[O])C(=O)C
+ debug :: spc pos=         986 CC(=O)CCC(CO[O])C(C)=C
+ debug :: spc pos=        1002 CC(=O)CCC(O[O])(C(=O)C)CC=O
+ debug :: spc pos=        1003 CC(=O)CCC(O[O])C
+ debug :: spc pos=        1004 CC(=O)CCC(O[O])C(=O)C
+ debug :: spc pos=        1005 CC(=O)CCC(O[O])C(C)(C)CC(=O)C(=O)CCO
+ debug :: spc pos=        1006 CC(=O)CCC(O[O])C(C)(C)CC(=O)C(CCO)=C
+ debug :: spc pos=        1007 CC(=O)CCC(O[O])C(C)(C)CC=O
+ debug :: spc pos=        1008 CC(=O)CCC(O[O])C(C)=C
+ debug :: spc pos=        1019 CC(=O)CCC1C(C(=O)O[O])CC1(C)C
+ debug :: spc pos=        1028 CC(=O)CCC1C(CC1(C)C)C(=O)C(O[O])CC(=O)O
+ debug :: spc pos=        1029 CC(=O)CCC1C(CC1(C)C)C(=O)C(O[O])CC=O
+ debug :: spc pos=        1035 CC(=O)CCC1C(CC1(C)C)C(=O)CC(O[O])C=O
+ debug :: spc pos=        1041 CC(=O)CCC1C(CC1(C)C)C(=O)CCC(=O)O[O]
+ debug :: spc pos=        1046 CC(=O)CCC1C(CC1(C)C)C(=O)CCO[O]
+ debug :: spc pos=        1052 CC(=O)CCC1C(CC1(C)C)C(CC(O[O])C=O)=C
+ debug :: spc pos=        1057 CC(=O)CCC1C(CC1(C)C)C(CCC(=O)O[O])=C
+ debug :: spc pos=        1061 CC(=O)CCC1C(CC1(C)C)C(CCO[O])=C
+ debug :: spc pos=        1068 CC(=O)CCC1C(CC1(C)C)C(O[O])(CO)CC=O
+ debug :: spc pos=        1069 CC(=O)CCC1C(CC1(C)C)C(O[O])(CO)CCC(=O)O
+ debug :: spc pos=        1070 CC(=O)CCC1C(CC1(C)C)C(O[O])(CO)CCC=O
+ debug :: spc pos=        1081 CC(=O)CCC1C(O[O])(CC1(C)C)C(=O)CCO
+ debug :: spc pos=        1082 CC(=O)CCC1C(O[O])(CC1(C)C)C(CCO)=C
+ debug :: spc pos=        1083 CC(=O)CCC1C(O[O])CC1(C)C
+ debug :: spc pos=        1094 CC(=O)CCO[O]
+ debug :: spc pos=        1101 CC(=O)COC(=O)CC(O[O])C
+ debug :: spc pos=        1104 CC(=O)COC(=O)CO[O]
+ debug :: spc pos=        1106 CC(=O)COC(O[O])CCC
+ debug :: spc pos=        1111 CC(=O)CO[O]
+ debug :: spc pos=        1117 CC(=O)OC(=O)C(=O)C(O[O])C
+ debug :: spc pos=        1120 CC(=O)OC(=O)C(=O)CO[O]
+ debug :: spc pos=        1123 CC(=O)OC(=O)CC(=O)CO[O]
+ debug :: spc pos=        1128 CC(=O)OC(=O)CC(=O)O[O]
+ debug :: spc pos=        1129 CC(=O)OC(=O)CC(O[O])C
+ debug :: spc pos=        1133 CC(=O)OC(=O)CCO[O]
+ debug :: spc pos=        1136 CC(=O)OC(=O)CO[O]
+ debug :: spc pos=        1140 CC(=O)OC(C)(C)C(=O)O[O]
+ debug :: spc pos=        1145 CC(=O)OC(C)(C)CO[O]
+ debug :: spc pos=        1151 CC(=O)OC(C)C(=O)O[O]
+ debug :: spc pos=        1157 CC(=O)OC(C)CO[O]
+ debug :: spc pos=        1163 CC(=O)OC(O)CO[O]
+ debug :: spc pos=        1170 CC(=O)OC(O[O])(C)C
+ debug :: spc pos=        1171 CC(=O)OC(O[O])(C)C(=O)C
+ debug :: spc pos=        1172 CC(=O)OC(O[O])(C)CC
+ debug :: spc pos=        1173 CC(=O)OC(O[O])C
+ debug :: spc pos=        1174 CC(=O)OC(O[O])C(=O)C
+ debug :: spc pos=        1175 CC(=O)OC(O[O])CC
+ debug :: spc pos=        1185 CC(=O)OCC(=O)O[O]
+ debug :: spc pos=        1186 CC(=O)OCC(O[O])C
+ debug :: spc pos=        1187 CC(=O)OCC(O[O])CC
+ debug :: spc pos=        1194 CC(=O)OCCC(=O)O[O]
+ debug :: spc pos=        1195 CC(=O)OCCC(O[O])C
+ debug :: spc pos=        1201 CC(=O)OCCCO[O]
+ debug :: spc pos=        1206 CC(=O)OCCO[O]
+ debug :: spc pos=        1211 CC(=O)OCO[O]
+ debug :: spc pos=        1215 CC(=O)O[O]
+ debug :: spc pos=        1249 CC(C)(C)C(=O)O[O]
+ debug :: spc pos=        1252 CC(C)(C)CC(=O)O[O]
+ debug :: spc pos=        1257 CC(C)(C)CCO[O]
+ debug :: spc pos=        1262 CC(C)(C)CO[O]
+ debug :: spc pos=        1267 CC(C)(C)OC(=O)CO[O]
+ debug :: spc pos=        1272 CC(C)(C)OCC(=O)O[O]
+ debug :: spc pos=        1277 CC(C)(C)OCCO[O]
+ debug :: spc pos=        1282 CC(C)(C)OCO[O]
+ debug :: spc pos=        1299 CC(C)C(=O)C(=O)C(O)C(=O)O[O]
+ debug :: spc pos=        1305 CC(C)C(=O)C(O)C(=O)O[O]
+ debug :: spc pos=        1313 CC(C)C(=O)C(O[O])C(O)C(=O)C=O
+ debug :: spc pos=        1314 CC(C)C(=O)C(O[O])C(O)C1OC1C=O
+ debug :: spc pos=        1315 CC(C)C(=O)C(O[O])C(O)C=O
+ debug :: spc pos=        1323 CC(C)C(=O)C=CC(=O)O[O]
+ debug :: spc pos=        1327 CC(C)C(=O)C=CC(O[O])C=O
+ debug :: spc pos=        1331 CC(C)C(=O)C=CC1OC1C(=O)O[O]
+ debug :: spc pos=        1340 CC(C)C(=O)O[O]
+ debug :: spc pos=        1346 CC(C)C(C(=O)O[O])=CC(=O)C=O
+ debug :: spc pos=        1351 CC(C)C(C)C(=O)O[O]
+ debug :: spc pos=        1356 CC(C)C(C)CO[O]
+ debug :: spc pos=        1360 CC(C)C(O)C(=O)O[O]
+ debug :: spc pos=        1363 CC(C)C(O)CC(=O)CO[O]
+ debug :: spc pos=        1366 CC(C)C(O)CC(=O)O[O]
+ debug :: spc pos=        1370 CC(C)C(O)CO[O]
+ debug :: spc pos=        1374 CC(C)C(ON(=O)=O)C(=O)O[O]
+ debug :: spc pos=        1378 CC(C)C(ON(=O)=O)CO[O]
+ debug :: spc pos=        1383 CC(C)C(O[O])C=O
+ debug :: spc pos=        1384 CC(C)C(O[O])CO
+ debug :: spc pos=           0 CC(C)C(O[O])CON(=O)(=O)
+ debug :: spc pos=        1396 CC(C)CC(=O)O[O]
+ debug :: spc pos=        1402 CC(C)CO[O]
+ debug :: spc pos=        1406 CC(C)OC(C)C(=O)O[O]
+ debug :: spc pos=        1411 CC(C)OC(C)CO[O]
+ debug :: spc pos=        1415 CC(C=O)(C)C(=O)CC(=O)O[O]
+ debug :: spc pos=        1417 CC(C=O)(C)C(=O)CCC(=O)O[O]
+ debug :: spc pos=        1418 CC(C=O)(C)C(=O)CCO[O]
+ debug :: spc pos=        1420 CC(C=O)(C)C(=O)CO[O]
+ debug :: spc pos=        1422 CC(C=O)(C)C(=O)O[O]
+ debug :: spc pos=        1424 CC(C=O)(C)C(C=O)C(=O)CC(=O)O[O]
+ debug :: spc pos=        1425 CC(C=O)(C)C(C=O)C(=O)CO[O]
+ debug :: spc pos=        1427 CC(C=O)(C)C(C=O)C(=O)O[O]
+ debug :: spc pos=        1430 CC(C=O)(C)C(O[O])C=O
+ debug :: spc pos=        1434 CC(C=O)=CC(=O)O[O]
+ debug :: spc pos=        1437 CC(C=O)C(=O)O[O]
+ debug :: spc pos=        1439 CC(C=O)CO[O]
+ debug :: spc pos=        1445 CC(CL)(CL)O[O]
+ debug :: spc pos=        1449 CC(CL)(O[O])C(=O)CL
+ debug :: spc pos=        1450 CC(CL)(O[O])CCL
+ debug :: spc pos=        1455 CC(CL)C(CL)O[O]
+ debug :: spc pos=        1461 CC(CL)O[O]
+ debug :: spc pos=        1466 CC(CO)(C)C(=O)CO[O]
+ debug :: spc pos=        1469 CC(CO)(C)C(=O)O[O]
+ debug :: spc pos=        1471 CC(CO)(C)CC(=O)O[O]
+ debug :: spc pos=        1475 CC(CO)(C)CCO[O]
+ debug :: spc pos=        1478 CC(CO)(C)CO[O]
+ debug :: spc pos=        1482 CC(CO)=CC(=O)O[O]
+ debug :: spc pos=        1487 CC(CO)=CCO[O]
+ debug :: spc pos=        1492 CC(CO)C(=O)CO[O]
+ debug :: spc pos=        1497 CC(CO)C(=O)O[O]
+ debug :: spc pos=        1501 CC(CO)C(C)C(=O)O[O]
+ debug :: spc pos=        1506 CC(CO)C(C)CO[O]
+ debug :: spc pos=        1510 CC(CO)C(O)C(=O)O[O]
+ debug :: spc pos=        1514 CC(CO)C(O)CO[O]
+ debug :: spc pos=        1520 CC(CO)CC(=O)O[O]
+ debug :: spc pos=        1525 CC(CO)CCO[O]
+ debug :: spc pos=        1530 CC(CO)CO[O]
+ debug :: spc pos=        1535 CC(CON(=O)=O)=CC(=O)O[O]
+ debug :: spc pos=        1539 CC(CON(=O)=O)=CCO[O]
+ debug :: spc pos=        1552 CC(O)(C)C(=O)CC(=O)O[O]
+ debug :: spc pos=        1557 CC(O)(C)C(=O)CO[O]
+ debug :: spc pos=        1561 CC(O)(C)C(=O)O[O]
+ debug :: spc pos=        1570 CC(O)(C)C(O)C(=O)O[O]
+ debug :: spc pos=        1576 CC(O)(C)C(O)CO[O]
+ debug :: spc pos=        1579 CC(O)(C)C(ON(=O)=O)C(=O)O[O]
+ debug :: spc pos=        1584 CC(O)(C)C(ON(=O)=O)CO[O]
+ debug :: spc pos=        1589 CC(O)(C)C(O[O])CC=O
+ debug :: spc pos=        1590 CC(O)(C)C(O[O])CO
+ debug :: spc pos=           0 CC(O)(C)C(O[O])CON(=O)(=O)
+ debug :: spc pos=        1606 CC(O)(C)CC(=O)CO[O]
+ debug :: spc pos=        1609 CC(O)(C)CC(=O)O[O]
+ debug :: spc pos=        1614 CC(O)(C)CCC(=O)O[O]
+ debug :: spc pos=        1619 CC(O)(C)CCCO[O]
+ debug :: spc pos=        1624 CC(O)(C)CCO[O]
+ debug :: spc pos=        1629 CC(O)(C)CO[O]
+ debug :: spc pos=        1633 CC(O)(C=O)C(=O)O[O]
+ debug :: spc pos=        1636 CC(O)(C=O)CO[O]
+ debug :: spc pos=        1650 CC(O)(CO)C(O[O])C=O
+ debug :: spc pos=        1657 CC(O)(CON(=O)=O)C(=O)O[O]
+ debug :: spc pos=        1660 CC(O)(CON(=O)=O)C(ON(=O)=O)C(=O)O[O]
+ debug :: spc pos=        1678 CC(O)C(=O)OC(O[O])CCC
+ debug :: spc pos=        1681 CC(O)C(=O)O[O]
+ debug :: spc pos=        1688 CC(O)C(C)C(=O)CO[O]
+ debug :: spc pos=        1692 CC(O)C(C)C(=O)O[O]
+ debug :: spc pos=        1699 CC(O)C(C)CC(=O)O[O]
+ debug :: spc pos=        1704 CC(O)C(C)CCO[O]
+ debug :: spc pos=        1709 CC(O)C(C)CO[O]
+ debug :: spc pos=        1743 CC(O)C(O[O])(C)C
+ debug :: spc pos=        1744 CC(O)C(O[O])(C)CC(=O)C
+ debug :: spc pos=        1745 CC(O)C(O[O])(C)CC=O
+ debug :: spc pos=        1746 CC(O)C(O[O])C
+ debug :: spc pos=        1747 CC(O)C(O[O])C=O
+ debug :: spc pos=        1748 CC(O)C(O[O])CC
+ debug :: spc pos=        1749 CC(O)C(O[O])CC(=O)C
+ debug :: spc pos=        1750 CC(O)C(O[O])OC
+ debug :: spc pos=        1766 CC(O)CC(=O)C(O[O])C
+ debug :: spc pos=        1773 CC(O)CC(=O)CO[O]
+ debug :: spc pos=        1778 CC(O)CC(=O)O[O]
+ debug :: spc pos=        1784 CC(O)CC(C)C(=O)O[O]
+ debug :: spc pos=        1788 CC(O)CC(C)C(O[O])C
+ debug :: spc pos=        1795 CC(O)CC(C)CO[O]
+ debug :: spc pos=        1800 CC(O)CC(O)C(=O)O[O]
+ debug :: spc pos=        1805 CC(O)CC(O)CO[O]
+ debug :: spc pos=        1809 CC(O)CC(O[O])C
+ debug :: spc pos=        1817 CC(O)CCC(=O)O[O]
+ debug :: spc pos=        1825 CC(O)CCC(O[O])(C)C
+ debug :: spc pos=        1826 CC(O)CCC(O[O])C
+ debug :: spc pos=        1833 CC(O)CCCO[O]
+ debug :: spc pos=        1840 CC(O)CCO[O]
+ debug :: spc pos=        1847 CC(O)COC(O[O])CCC
+ debug :: spc pos=        1853 CC(O)COCO[O]
+ debug :: spc pos=        1857 CC(O)CO[O]
+ debug :: spc pos=        1882 CC(ON(=O)=O)(C)C(=O)O[O]
+ debug :: spc pos=        1891 CC(ON(=O)=O)(C)C(O[O])(C)C
+ debug :: spc pos=        1899 CC(ON(=O)=O)(C)CO[O]
+ debug :: spc pos=        1903 CC(ON(=O)=O)(C=O)C(=O)O[O]
+ debug :: spc pos=        1904 CC(ON(=O)=O)(C=O)C(O)C(=O)O[O]
+ debug :: spc pos=        1913 CC(ON(=O)=O)(CO)C(=O)O[O]
+ debug :: spc pos=        1917 CC(ON(=O)=O)(CO)C(O)C(=O)O[O]
+ debug :: spc pos=        1922 CC(ON(=O)=O)(CO)C(O)CO[O]
+ debug :: spc pos=        1927 CC(ON(=O)=O)(CO)C(ON(=O)=O)C(=O)O[O]
+ debug :: spc pos=        1933 CC(ON(=O)=O)(CO)C(OO)C(=O)O[O]
+ debug :: spc pos=        1936 CC(ON(=O)=O)(CO)C(O[O])CO
+ debug :: spc pos=        1942 CC(ON(=O)=O)C(=O)C(O[O])C
+ debug :: spc pos=        1945 CC(ON(=O)=O)C(=O)CC(O[O])C
+ debug :: spc pos=        1949 CC(ON(=O)=O)C(=O)O[O]
+ debug :: spc pos=        1966 CC(ON(=O)=O)C(O[O])(C)C
+ debug :: spc pos=        1967 CC(ON(=O)=O)C(O[O])C
+ debug :: spc pos=        1968 CC(ON(=O)=O)C(O[O])C=O
+ debug :: spc pos=        1969 CC(ON(=O)=O)C(O[O])CC
+ debug :: spc pos=        1970 CC(ON(=O)=O)C(O[O])CCC
+ debug :: spc pos=        1989 CC(ON(=O)=O)CO[O]
+ debug :: spc pos=        2084 CC(O[O])(C)C
+ debug :: spc pos=        2085 CC(O[O])(C)C(=O)CC=O
+ debug :: spc pos=           0 CC(O[O])(C)C(=O)CON(=O)(=O)
+ debug :: spc pos=        2087 CC(O[O])(C)C(C(=O)O)CC=O
+ debug :: spc pos=        2088 CC(O[O])(C)C(C)C
+ debug :: spc pos=        2089 CC(O[O])(C)C(C=O)C(=O)CCC=O
+ debug :: spc pos=        2090 CC(O[O])(C)C(CC=O)C(=O)CC=O
+ debug :: spc pos=        2091 CC(O[O])(C)C(CC=O)CC=O
+ debug :: spc pos=        2092 CC(O[O])(C)C(CO)CC(=O)C(=O)C
+ debug :: spc pos=        2093 CC(O[O])(C)C(CO)CC(=O)C(=O)CO
+ debug :: spc pos=        2094 CC(O[O])(C)C(CO)CC(=O)C(=O)O
+ debug :: spc pos=        2095 CC(O[O])(C)C(O)(C)C
+ debug :: spc pos=        2096 CC(O[O])(C)C1CC=C(CO)CC1
+ debug :: spc pos=        2097 CC(O[O])(C)C=O
+ debug :: spc pos=        2098 CC(O[O])(C)CC(=O)C(=O)CCC=O
+ debug :: spc pos=        2099 CC(O[O])(C)CC(=O)C(=O)CCO
+ debug :: spc pos=        2100 CC(O[O])(C)CC(=O)C(CCC=O)=C
+ debug :: spc pos=        2101 CC(O[O])(C)CC(=O)C(CCO)=C
+ debug :: spc pos=        2102 CC(O[O])(C)CC=O
+ debug :: spc pos=        2103 CC(O[O])(C)CCO
+ debug :: spc pos=        2104 CC(O[O])(C)CO
+ debug :: spc pos=           0 CC(O[O])(C)CON(=O)(=O)
+ debug :: spc pos=        2106 CC(O[O])(C)OC(C)C
+ debug :: spc pos=        2107 CC(O[O])(C)OC=O
+ debug :: spc pos=        2108 CC(O[O])(C=O)C(O)C=O
+ debug :: spc pos=        2109 CC(O[O])(C=O)C=O
+ debug :: spc pos=        2110 CC(O[O])(CO)C(=O)CCO
+ debug :: spc pos=        2111 CC(O[O])(CO)C(=O)CO
+ debug :: spc pos=        2112 CC(O[O])(CO)C(C=O)CCC(=O)C
+ debug :: spc pos=        2113 CC(O[O])(CO)C(C=O)CCO
+ debug :: spc pos=        2114 CC(O[O])(CO)C(CC=O)CC=O
+ debug :: spc pos=        2115 CC(O[O])(CO)C(CO)C=O
+ debug :: spc pos=        2116 CC(O[O])(CO)C(CO)CC=O
+ debug :: spc pos=        2117 CC(O[O])(CO)C(O)C=O
+ debug :: spc pos=           0 CC(O[O])(CO)C(O)CON(=O)(=O)
+ debug :: spc pos=        2119 CC(O[O])(CO)C(ON(=O)=O)CO
+ debug :: spc pos=        2120 CC(O[O])(CO)C=C
+ debug :: spc pos=        2121 CC(O[O])(CO)C=O
+ debug :: spc pos=        2122 CC(O[O])(CON(=O)=O)C(O)C=O
+ debug :: spc pos=        2123 CC(O[O])(I)C
+ debug :: spc pos=        2124 CC(O[O])=C
+ debug :: spc pos=        2125 CC(O[O])C
+ debug :: spc pos=        2126 CC(O[O])C(=O)C(C)CO
+ debug :: spc pos=        2127 CC(O[O])C(=O)CCO
+ debug :: spc pos=           0 CC(O[O])C(=O)CON(=O)(=O)
+ debug :: spc pos=        2129 CC(O[O])C(C)(C)C
+ debug :: spc pos=        2130 CC(O[O])C(C)C
+ debug :: spc pos=        2131 CC(O[O])C(C)C(=O)C
+ debug :: spc pos=        2132 CC(O[O])C(C)CC
+ debug :: spc pos=        2133 CC(O[O])C(C)CCO
+ debug :: spc pos=        2134 CC(O[O])C(C)CO
+ debug :: spc pos=        2135 CC(O[O])C(C)OC(=O)C
+ debug :: spc pos=        2136 CC(O[O])C(O)(C)C
+ debug :: spc pos=        2137 CC(O[O])C(O)(C)CCO
+ debug :: spc pos=        2138 CC(O[O])C(O)C=O
+ debug :: spc pos=        2139 CC(O[O])C(O)CCO
+ debug :: spc pos=        2140 CC(O[O])C(ON(=O)=O)(C)C
+ debug :: spc pos=        2141 CC(O[O])C(ON(=O)=O)C=O
+ debug :: spc pos=        2142 CC(O[O])C=O
+ debug :: spc pos=        2143 CC(O[O])CBR
+ debug :: spc pos=        2144 CC(O[O])CC(=O)CO
+ debug :: spc pos=           0 CC(O[O])CC(=O)CON(=O)(=O)
+ debug :: spc pos=        2146 CC(O[O])CC(=O)OC=O
+ debug :: spc pos=        2147 CC(O[O])CC(C)C
+ debug :: spc pos=        2148 CC(O[O])CC(C)CC
+ debug :: spc pos=        2149 CC(O[O])CC(C)CO
+ debug :: spc pos=        2150 CC(O[O])CC=O
+ debug :: spc pos=        2151 CC(O[O])CCC(C)C
+ debug :: spc pos=        2152 CC(O[O])CCC(O)(C)C
+ debug :: spc pos=        2153 CC(O[O])CCCO
+ debug :: spc pos=        2154 CC(O[O])CCL
+ debug :: spc pos=        2155 CC(O[O])CCO
+ debug :: spc pos=        2156 CC(O[O])CO
+ debug :: spc pos=           0 CC(O[O])CON(=O)(=O)
+ debug :: spc pos=        2158 CC(O[O])I
+ debug :: spc pos=        2159 CC(O[O])OC(=O)CO
+ debug :: spc pos=        2160 CC(O[O])OC(C)(C)C
+ debug :: spc pos=        2161 CC(O[O])OC(C)C
+ debug :: spc pos=        2162 CC(O[O])OC=O
+ debug :: spc pos=        2163 CC(O[O])OCCO
+ debug :: spc pos=        2164 CC(O[O])c(c1)cc(C)cc1CC
+ debug :: spc pos=        2256 CC1(C)C(=O)CCC(=O)C1C(=O)O[O]
+ debug :: spc pos=        2263 CC1(C)C(C(=O)CO)CC1CC(=O)O[O]
+ debug :: spc pos=        2269 CC1(C)C(C(=O)O)CC1CC(=O)O[O]
+ debug :: spc pos=        2278 CC1(C)C(C(O[O])C12)C(=O)CC2
+ debug :: spc pos=        2279 CC1(C)C(C(O[O])C12)C(=O)CC2=O
+ debug :: spc pos=        2285 CC1(C)C(C2)C(=O)C(O[O])CC12
+ debug :: spc pos=        2296 CC1(C)C(C2)C(O[O])CC(=O)C12
+ debug :: spc pos=        2297 CC1(C)C(C2)C(O[O])CC12
+ debug :: spc pos=        2304 CC1(C)C(CC12)CCC2(O)C(=O)O[O]
+ debug :: spc pos=        2309 CC1(C)C(CC12)CCC2(O)CO[O]
+ debug :: spc pos=        2312 CC1(C)C(CC12)CCC2(ON(=O)=O)C(=O)O[O]
+ debug :: spc pos=        2316 CC1(C)C(CC12)CCC2(ON(=O)=O)CO[O]
+ debug :: spc pos=        2320 CC1(C)C(CC12)CCC2(O[O])CO
+ debug :: spc pos=           0 CC1(C)C(CC12)CCC2(O[O])CON(=O)(=O)
+ debug :: spc pos=        2341 CC1(C)C(O[O])(C(=O)CO)CC1CO
+ debug :: spc pos=        2342 CC1(C)C(O[O])(C2)CCC(=O)C12
+ debug :: spc pos=        2343 CC1(C)C(O[O])C(=O)CC(=O)C1C=O
+ debug :: spc pos=        2344 CC1(C)C(O[O])CC1C(=O)CC=O
+ debug :: spc pos=        2345 CC1(C)C(O[O])CC1C(=O)O
+ debug :: spc pos=        2346 CC1(C)C(O[O])CC1CC=O
+ debug :: spc pos=        2347 CC1(C)C(O[O])CCC(=O)C1C=O
+ debug :: spc pos=        2361 CC1(C)CC(C(=O)O[O])C1CC=O
+ debug :: spc pos=        2365 CC1(C)CC(C1CC=O)C(=O)C(O[O])CC=O
+ debug :: spc pos=        2368 CC1(C)CC(C1CC=O)C(=O)CCC(=O)O[O]
+ debug :: spc pos=        2370 CC1(C)CC(C1CC=O)C(=O)CCO[O]
+ debug :: spc pos=        2375 CC1(C)CC(C1CC=O)C(CCC(=O)O[O])=C
+ debug :: spc pos=        2379 CC1(C)CC(C1CC=O)C(CCO[O])=C
+ debug :: spc pos=        2383 CC1(C)CC(C1CC=O)C(O[O])(CO)CCC=O
+ debug :: spc pos=        2401 CC1(C)CC(O[O])(C(=O)CCO)C1CC=O
+ debug :: spc pos=        2402 CC1(C)CC(O[O])(C(=O)CCO)C1CCC(=O)O
+ debug :: spc pos=        2403 CC1(C)CC(O[O])(C1CC=O)C(CCO)=C
+ debug :: spc pos=        2404 CC1(C)CC(O[O])(C1CCO)C(=O)CCC=O
+ debug :: spc pos=        2405 CC1(C)CC(O[O])(C1CCO)C(CCC=O)=C
+ debug :: spc pos=        2406 CC1(C)CC(O[O])C1CC=O
+ debug :: spc pos=        2414 CC1(C)CC2C(=O)CCC(O)C(O[O])(C)CCC12
+ debug :: spc pos=        2416 CC1(C)CC2C(=O)CCC(O[O])C(O)(C)CCC12
+ debug :: spc pos=        2417 CC1(C=O)OC1(C)C(=O)O[O]
+ debug :: spc pos=        2422 CC1(C=O)OC1(C)C(O)C(O[O])C=O
+ debug :: spc pos=        2426 CC1(C=O)OC1C(=O)O[O]
+ debug :: spc pos=        2436 CC1(O)COC(=O)C1(O[O])C
+ debug :: spc pos=        2439 CC1(ON(=O)=O)C(=O)CC(=O)CC1C(O[O])(C)C
+ debug :: spc pos=        2442 CC1(ON(=O)=O)C(=O)OC(=O)C1(O[O])C
+ debug :: spc pos=        2445 CC1(ON(=O)=O)C(O[O])(C)C(=O)OC1C
+ debug :: spc pos=        2448 CC1(ON(=O)=O)COC(=O)C1(O[O])C
+ debug :: spc pos=        2454 CC1(O[O])C(=O)OC(=O)C1(O)C
+ debug :: spc pos=        2455 CC1(O[O])C(O)C(=O)OC1C
+ debug :: spc pos=        2456 CC1(O[O])C(ON(=O)=O)C(=O)OC1C
+ debug :: spc pos=        2477 CC1OC(=O)C(O[O])(C)C1(O)C
+ debug :: spc pos=        2485 CC=CC(=O)O[O]
+ debug :: spc pos=        2496 CCC(=O)C(=O)C(=O)C(=O)O[O]
+ debug :: spc pos=        2504 CCC(=O)C(=O)C(O[O])C
+ debug :: spc pos=        2505 CCC(=O)C(=O)C(O[O])C(=O)CC
+ debug :: spc pos=        2513 CCC(=O)C(=O)CC(=O)O[O]
+ debug :: spc pos=        2517 CCC(=O)C(=O)CO[O]
+ debug :: spc pos=        2525 CCC(=O)C(C)C(=O)O[O]
+ debug :: spc pos=        2530 CCC(=O)C(C)CO[O]
+ debug :: spc pos=        2538 CCC(=O)C(O)C(=O)C(C)=CC(=O)O[O]
+ debug :: spc pos=        2541 CCC(=O)C(O)C(=O)O[O]
+ debug :: spc pos=        2557 CCC(=O)C(O)C(O[O])(C)C1OC1(C)C=O
+ debug :: spc pos=        2558 CCC(=O)C(O)C(O[O])(C)C1OC1(C=O)CC
+ debug :: spc pos=        2559 CCC(=O)C(O)C(O[O])(C)C=O
+ debug :: spc pos=        2560 CCC(=O)C(O)C(O[O])C(=O)C
+ debug :: spc pos=        2586 CCC(=O)C(O[O])(C)C
+ debug :: spc pos=        2587 CCC(=O)C(O[O])(C)C=CC=O
+ debug :: spc pos=        2588 CCC(=O)C(O[O])C
+ debug :: spc pos=        2589 CCC(=O)C(O[O])C(=O)C
+ debug :: spc pos=        2590 CCC(=O)C(O[O])C(C)=CC(=O)CC
+ debug :: spc pos=        2591 CCC(=O)C(O[O])C(O)C(=O)C=O
+ debug :: spc pos=        2592 CCC(=O)C(O[O])C(O)C1(C)OC1C=O
+ debug :: spc pos=        2593 CCC(=O)C(O[O])C(O)C1OC1(C)C=O
+ debug :: spc pos=        2594 CCC(=O)C(O[O])C(O)C1OC1C=O
+ debug :: spc pos=        2595 CCC(=O)C(O[O])C(O)C=O
+ debug :: spc pos=        2596 CCC(=O)C(O[O])CC
+ debug :: spc pos=        2597 CCC(=O)C(O[O])CC(=O)C
+ debug :: spc pos=        2598 CCC(=O)C(O[O])OC(=O)C
+ debug :: spc pos=        2614 CCC(=O)C=C(C(=O)O[O])CC
+ debug :: spc pos=        2620 CCC(=O)C=C(C)C(=O)O[O]
+ debug :: spc pos=        2626 CCC(=O)C=C(C)C1OC1(C(=O)O[O])CC
+ debug :: spc pos=        2630 CCC(=O)C=C(C)C1OC1(C)C(=O)O[O]
+ debug :: spc pos=        2640 CCC(=O)C=CC(=O)O[O]
+ debug :: spc pos=        2646 CCC(=O)C=CC(O[O])(C)C=O
+ debug :: spc pos=        2647 CCC(=O)C=CC(O[O])C(=O)C
+ debug :: spc pos=        2648 CCC(=O)C=CC(O[O])C=O
+ debug :: spc pos=        2655 CCC(=O)C=CC1(C)OC1C(=O)O[O]
+ debug :: spc pos=        2660 CCC(=O)C=CC1OC1(C)C(=O)O[O]
+ debug :: spc pos=        2665 CCC(=O)C=CC1OC1C(=O)O[O]
+ debug :: spc pos=        2679 CCC(=O)CC(=O)O[O]
+ debug :: spc pos=        2693 CCC(=O)CC(O[O])C
+ debug :: spc pos=        2694 CCC(=O)CC(O[O])C(=O)C
+ debug :: spc pos=        2695 CCC(=O)CC(O[O])C(=O)CC
+ debug :: spc pos=        2696 CCC(=O)CC(O[O])C(O)C
+ debug :: spc pos=        2697 CCC(=O)CC(O[O])CC
+ debug :: spc pos=        2698 CCC(=O)CC(O[O])CCC
+ debug :: spc pos=        2699 CCC(=O)CC(O[O])CO
+ debug :: spc pos=        2713 CCC(=O)CCC(=O)O[O]
+ debug :: spc pos=        2720 CCC(=O)CCO[O]
+ debug :: spc pos=        2726 CCC(=O)CO[O]
+ debug :: spc pos=        2733 CCC(=O)O[O]
+ debug :: spc pos=        2735 CCC(C(=O)C=O)=C(C)C(=O)O[O]
+ debug :: spc pos=        2745 CCC(C)(C)C(=O)O[O]
+ debug :: spc pos=        2750 CCC(C)(C)CO[O]
+ debug :: spc pos=        2758 CCC(C)C(=O)O[O]
+ debug :: spc pos=        2763 CCC(C)CC(=O)O[O]
+ debug :: spc pos=        2768 CCC(C)CCO[O]
+ debug :: spc pos=        2773 CCC(C)CO[O]
+ debug :: spc pos=        2780 CCC(O)(C)C(=O)O[O]
+ debug :: spc pos=        2784 CCC(O)(C)CC(=O)CO[O]
+ debug :: spc pos=        2788 CCC(O)(C)CC(=O)O[O]
+ debug :: spc pos=        2793 CCC(O)(C)CCC(=O)O[O]
+ debug :: spc pos=        2798 CCC(O)(C)CCCO[O]
+ debug :: spc pos=        2803 CCC(O)(C)CCO[O]
+ debug :: spc pos=        2808 CCC(O)(C)CO[O]
+ debug :: spc pos=        2818 CCC(O)C(=O)O[O]
+ debug :: spc pos=        2827 CCC(O)C(O[O])C
+ debug :: spc pos=        2828 CCC(O)C(O[O])CC(=O)CC
+ debug :: spc pos=        2835 CCC(O)CC(=O)C(O[O])C
+ debug :: spc pos=        2841 CCC(O)CC(=O)CO[O]
+ debug :: spc pos=        2845 CCC(O)CC(=O)O[O]
+ debug :: spc pos=        2852 CCC(O)CCC(=O)O[O]
+ debug :: spc pos=        2865 CCC(O)CCC(O[O])C
+ debug :: spc pos=        2866 CCC(O)CCC(O[O])CC
+ debug :: spc pos=        2867 CCC(O)CCC(O[O])CCC
+ debug :: spc pos=        2868 CCC(O)CCC(O[O])CCCC
+ debug :: spc pos=        2869 CCC(O)CCC(O[O])CCCCC
+ debug :: spc pos=        2879 CCC(O)CCCO[O]
+ debug :: spc pos=        2884 CCC(O)CCO[O]
+ debug :: spc pos=        2890 CCC(O)CO[O]
+ debug :: spc pos=        2898 CCC(ON(=O)=O)(C)C(=O)O[O]
+ debug :: spc pos=        2903 CCC(ON(=O)=O)(C)CO[O]
+ debug :: spc pos=        2909 CCC(ON(=O)=O)C(O[O])C
+ debug :: spc pos=        2918 CCC(ON(=O)=O)CO[O]
+ debug :: spc pos=        2943 CCC(O[O])(C)C
+ debug :: spc pos=        2944 CCC(O[O])(C)C(=O)C
+ debug :: spc pos=        2945 CCC(O[O])(C)CC
+ debug :: spc pos=        2946 CCC(O[O])(C)CO
+ debug :: spc pos=           0 CCC(O[O])(C)CON(=O)(=O)
+ debug :: spc pos=        2948 CCC(O[O])(C=O)C(=O)C
+ debug :: spc pos=        2949 CCC(O[O])(C=O)C=O
+ debug :: spc pos=        2950 CCC(O[O])C
+ debug :: spc pos=        2951 CCC(O[O])C(=O)C
+ debug :: spc pos=        2952 CCC(O[O])C(=O)CCO
+ debug :: spc pos=        2953 CCC(O[O])C(C)C
+ debug :: spc pos=        2954 CCC(O[O])C=O
+ debug :: spc pos=        2955 CCC(O[O])CC
+ debug :: spc pos=        2956 CCC(O[O])CC(=O)CO
+ debug :: spc pos=           0 CCC(O[O])CC(=O)CON(=O)(=O)
+ debug :: spc pos=        2958 CCC(O[O])CC=O
+ debug :: spc pos=        2959 CCC(O[O])CCCO
+ debug :: spc pos=        2960 CCC(O[O])CO
+ debug :: spc pos=           0 CCC(O[O])CON(=O)(=O)
+ debug :: spc pos=        2987 CCC1(C=O)OC1(C)C(=O)O[O]
+ debug :: spc pos=        2992 CCC1(C=O)OC1(C)C(O)C(O[O])C=O
+ debug :: spc pos=        2998 CCC1(O[O])C=CC2OOC1(C)C2O
+ debug :: spc pos=        3003 CCC12C=CC(O)(O[O])C(C)(OO1)C2O
+ debug :: spc pos=        3008 CCC12OOC(C(=C(O)C2(O)O[O])N(=O)=O)C1ON(=O)=O
+ debug :: spc pos=        3014 CCC12OOC(C(=CC2(O)O[O])C)C1ON(=O)=O
+ debug :: spc pos=        3022 CCC12OOC(C)(C(=C(O)C2(O)O[O])N(=O)=O)C1O
+ debug :: spc pos=        3023 CCC12OOC(C)(C(=C(O)C2(O)O[O])N(=O)=O)C1ON(=O)=O
+ debug :: spc pos=        3031 CCC12OOC(C)(C2ON(=O)=O)C(O)(O[O])C=C1
+ debug :: spc pos=        3036 CCC12OOC(C)(C=C(C)C2(O)O[O])C1O
+ debug :: spc pos=        3037 CCC12OOC(C)(C=C(C)C2(O)O[O])C1ON(=O)=O
+ debug :: spc pos=        3050 CCC12OOC(C2O)C(O)(O[O])C=C1C
+ debug :: spc pos=        3055 CCC12OOC(C2ON(=O)=O)C(O)(O[O])C=C1
+ debug :: spc pos=        3058 CCC12OOC(C=C(N(=O)=O)C2(O)O[O])(N(=O)=O)C1O
+ debug :: spc pos=        3065 CCC12OOC(CC)(C2ON(=O)=O)C(O)(O[O])C(=C1)C
+ debug :: spc pos=        3068 CCC12OOC(CC)(C=C(C)C2(O)O[O])C1O
+ debug :: spc pos=        3071 CCC12OOC(N(=O)=O)(C(=C(N(=O)=O)C2(O)O[O])C)C1O
+ debug :: spc pos=        3072 CCC12OOC(N(=O)=O)(C(=C(N(=O)=O)C2(O)O[O])C)C1ON(=O)=O
+ debug :: spc pos=        3076 CCC12OOC(N(=O)=O)(C(=C(O)C2(O)O[O])C)C1O
+ debug :: spc pos=        3080 CCC12OOC(N(=O)=O)(C2O)C(O)(O[O])C(=C1C)N(=O)=O
+ debug :: spc pos=        3083 CCC12OOC(N(=O)=O)(C2ON(=O)=O)C(O)(O[O])C(=C1C)N(=O)=O
+ debug :: spc pos=        3087 CCC1=C(C)C2OOC(C2ON(=O)=O)C1(O)O[O]
+ debug :: spc pos=        3090 CCC1=C(N(=O)=O)C2(OOC(C)(C2O)C1(O)O[O])N(=O)=O
+ debug :: spc pos=        3093 CCC1=C(N(=O)=O)C2(OOC(C)(C2ON(=O)=O)C1(O)O[O])N(=O)=O
+ debug :: spc pos=        3097 CCC1=C(O)C(O)(O[O])C2(OOC1(C)C2O)N(=O)=O
+ debug :: spc pos=        3098 CCC1=C(O)C(O)(O[O])C2(OOC1(C)C2ON(=O)=O)N(=O)=O
+ debug :: spc pos=        3102 CCC1=CC(O)(O[O])C2(OOC1C2(C)O)N(=O)=O
+ debug :: spc pos=        3115 CCCC(=CC(=O)CO[O])C(=O)CO.O=C1CCC(=O)C(=C1)C
+ debug :: spc pos=        3121 CCCC(=O)C(=O)C(O)C(=O)O[O]
+ debug :: spc pos=        3125 CCCC(=O)C(=O)C(O[O])C(=O)CC
+ debug :: spc pos=        3133 CCCC(=O)C(O)C(=O)O[O]
+ debug :: spc pos=        3145 CCCC(=O)C(O[O])C
+ debug :: spc pos=        3146 CCCC(=O)C(O[O])C(O)C(=O)C=O
+ debug :: spc pos=        3147 CCCC(=O)C(O[O])C(O)C1OC1C=O
+ debug :: spc pos=        3148 CCCC(=O)C(O[O])C(O)C=O
+ debug :: spc pos=        3149 CCCC(=O)C(O[O])CC(=O)CC
+ debug :: spc pos=        3159 CCCC(=O)C=CC(=O)O[O]
+ debug :: spc pos=        3163 CCCC(=O)C=CC(O[O])C=O
+ debug :: spc pos=        3168 CCCC(=O)C=CC1OC1C(=O)O[O]
+ debug :: spc pos=        3175 CCCC(=O)CC(=O)O[O]
+ debug :: spc pos=        3180 CCCC(=O)CCO[O]
+ debug :: spc pos=        3185 CCCC(=O)CO[O]
+ debug :: spc pos=        3193 CCCC(=O)OCC(=O)O[O]
+ debug :: spc pos=        3197 CCCC(=O)OCO[O]
+ debug :: spc pos=        3201 CCCC(=O)O[O]
+ debug :: spc pos=        3202 CCCC(C(=O)C(O)C=O)=CC(=O)O[O]
+ debug :: spc pos=        3208 CCCC(C(=O)O[O])=CC(=O)C=O
+ debug :: spc pos=        3212 CCCC(C)C(=O)O[O]
+ debug :: spc pos=        3218 CCCC(C)CO[O]
+ debug :: spc pos=        3228 CCCC(O)C(=O)O[O]
+ debug :: spc pos=        3235 CCCC(O)C(O[O])C
+ debug :: spc pos=        3236 CCCC(O)C(O[O])CC(=O)CC
+ debug :: spc pos=        3242 CCCC(O)CC(=O)C(O[O])C
+ debug :: spc pos=        3246 CCCC(O)CC(=O)O[O]
+ debug :: spc pos=        3252 CCCC(O)CO[O]
+ debug :: spc pos=        3266 CCCC(ON(=O)=O)C(=O)O[O]
+ debug :: spc pos=        3269 CCCC(ON(=O)=O)C(O[O])C
+ debug :: spc pos=        3275 CCCC(ON(=O)=O)CO[O]
+ debug :: spc pos=        3298 CCCC(O[O])(C)C
+ debug :: spc pos=        3299 CCCC(O[O])(C)CC
+ debug :: spc pos=        3300 CCCC(O[O])C
+ debug :: spc pos=        3301 CCCC(O[O])C(=O)C
+ debug :: spc pos=        3302 CCCC(O[O])C(O)C
+ debug :: spc pos=        3303 CCCC(O[O])C=O
+ debug :: spc pos=        3304 CCCC(O[O])CC
+ debug :: spc pos=        3305 CCCC(O[O])CO
+ debug :: spc pos=           0 CCCC(O[O])CON(=O)(=O)
+ debug :: spc pos=        3307 CCCC(O[O])OC(=O)C
+ debug :: spc pos=        3308 CCCC(O[O])OC(=O)C=O
+ debug :: spc pos=        3309 CCCC(O[O])OC=O
+ debug :: spc pos=        3310 CCCC(O[O])OCCO
+ debug :: spc pos=        3327 CCCC12OOC(C(=C(O)C2(O)O[O])N(=O)=O)C1O
+ debug :: spc pos=        3328 CCCC12OOC(C(=C(O)C2(O)O[O])N(=O)=O)C1ON(=O)=O
+ debug :: spc pos=        3332 CCCC12OOC(C(O[O])C=C1)C2O
+ debug :: spc pos=        3336 CCCC12OOC(C2O)C(O)(O[O])C=C1
+ debug :: spc pos=        3342 CCCC12OOC(C2ON(=O)=O)C(O)(O[O])C=C1
+ debug :: spc pos=        3346 CCCC12OOC(C=C(N(=O)=O)C2(O)O[O])(N(=O)=O)C1O
+ debug :: spc pos=        3347 CCCC12OOC(C=C(N(=O)=O)C2(O)O[O])(N(=O)=O)C1ON(=O)=O
+ debug :: spc pos=        3355 CCCCC(=O)C(=O)C(O[O])C(=O)CC
+ debug :: spc pos=        3360 CCCCC(=O)C(O[O])CC(=O)CC
+ debug :: spc pos=        3369 CCCCC(=O)O[O]
+ debug :: spc pos=        3376 CCCCC(O)C(=O)O[O]
+ debug :: spc pos=        3380 CCCCC(O)C(O[O])CC(=O)CC
+ debug :: spc pos=        3385 CCCCC(O)CC(=O)C(O[O])C
+ debug :: spc pos=        3389 CCCCC(O)CC(=O)O[O]
+ debug :: spc pos=        3395 CCCCC(O)CO[O]
+ debug :: spc pos=        3402 CCCCC(ON(=O)=O)C(=O)O[O]
+ debug :: spc pos=        3407 CCCCC(ON(=O)=O)CO[O]
+ debug :: spc pos=        3415 CCCCC(O[O])(C)C
+ debug :: spc pos=        3416 CCCCC(O[O])C
+ debug :: spc pos=        3417 CCCCC(O[O])CC
+ debug :: spc pos=        3418 CCCCC(O[O])CC(=O)CC
+ debug :: spc pos=        3419 CCCCC(O[O])CO
+ debug :: spc pos=           0 CCCCC(O[O])CON(=O)(=O)
+ debug :: spc pos=        3431 CCCCCC(=O)C(=O)C(O[O])C(=O)CC
+ debug :: spc pos=        3436 CCCCCC(=O)C(O[O])CC(=O)CC
+ debug :: spc pos=        3442 CCCCCC(=O)O[O]
+ debug :: spc pos=        3447 CCCCCC(O)C(O[O])CC(=O)CC
+ debug :: spc pos=        3451 CCCCCC(O)CC(=O)C(O[O])C
+ debug :: spc pos=        3455 CCCCCC(O)CC(=O)O[O]
+ debug :: spc pos=        3459 CCCCCC(O)CO[O]
+ debug :: spc pos=        3464 CCCCCC(O[O])CC
+ debug :: spc pos=        3465 CCCCCC(O[O])CC(=O)CC
+ debug :: spc pos=        3471 CCCCCCC(=O)C(=O)C(O[O])C(=O)CC
+ debug :: spc pos=        3476 CCCCCCC(=O)C(O[O])CC(=O)CC
+ debug :: spc pos=        3483 CCCCCCC(=O)O[O]
+ debug :: spc pos=        3488 CCCCCCC(O)C(O[O])CC(=O)CC
+ debug :: spc pos=        3492 CCCCCCC(O)CC(=O)C(O[O])C
+ debug :: spc pos=        3496 CCCCCCC(O)CC(=O)O[O]
+ debug :: spc pos=        3500 CCCCCCC(O)CO[O]
+ debug :: spc pos=        3507 CCCCCCC(O[O])CC
+ debug :: spc pos=        3508 CCCCCCC(O[O])CC(=O)CC
+ debug :: spc pos=        3509 CCCCCCC(O[O])CCC(O)CC
+ debug :: spc pos=        3518 CCCCCCCC(O)CC(=O)C(O[O])C
+ debug :: spc pos=        3522 CCCCCCCC(O)CC(=O)O[O]
+ debug :: spc pos=        3524 CCCCCCCC(O)CO[O]
+ debug :: spc pos=        3529 CCCCCCCC(O[O])CC
+ debug :: spc pos=        3530 CCCCCCCC(O[O])CC(=O)CC
+ debug :: spc pos=        3538 CCCCCCCCC(O[O])CC
+ debug :: spc pos=        3545 CCCCCCCCCC(O[O])CC
+ debug :: spc pos=        3552 CCCCCCO[O]
+ debug :: spc pos=        3557 CCCCCO[O]
+ debug :: spc pos=        3570 CCCCOC(O[O])C(=O)C
+ debug :: spc pos=        3571 CCCCOC(O[O])C(O)C
+ debug :: spc pos=        3572 CCCCOC(O[O])CO
+ debug :: spc pos=        3581 CCCCOCC(=O)O[O]
+ debug :: spc pos=        3587 CCCCOCO[O]
+ debug :: spc pos=        3591 CCCCO[O]
+ debug :: spc pos=        3598 CCCO[O]
+ debug :: spc pos=        3607 CCOC(=O)CO[O]
+ debug :: spc pos=        3612 CCOC(C)(C)C(=O)O[O]
+ debug :: spc pos=        3617 CCOC(C)(C)CO[O]
+ debug :: spc pos=        3624 CCOC(O[O])(C)C
+ debug :: spc pos=        3625 CCOC(O[O])C
+ debug :: spc pos=        3626 CCOC(O[O])CO
+ debug :: spc pos=        3635 CCOCC(=O)O[O]
+ debug :: spc pos=        3640 CCOCCO[O]
+ debug :: spc pos=        3645 CCOCO[O]
+ debug :: spc pos=        3649 CCO[O]
+ debug :: spc pos=        3654 CCc(c1)c(O[O])c(O)cc1C
+ debug :: spc pos=        3664 CCc1cc(C)cc(c1)C(=O)CO[O]
+ debug :: spc pos=        3674 CLC(CL)(CL)C(=O)O[O]
+ debug :: spc pos=        3677 CLC(CL)(CL)CO[O]
+ debug :: spc pos=        3686 CLC(CL)C(=O)O[O]
+ debug :: spc pos=        3688 CLC(CL)C(CL)(CL)O[O]
+ debug :: spc pos=        3692 CLC(CL)C(CL)O[O]
+ debug :: spc pos=        3700 CLC(CL)CO[O]
+ debug :: spc pos=        3704 CLC(ON(=O)=O)CO[O]
+ debug :: spc pos=        3711 CLCC(=O)O[O]
+ debug :: spc pos=        3713 CLCC(CL)(CL)O[O]
+ debug :: spc pos=        3718 CLCC(CL)C(=O)O[O]
+ debug :: spc pos=        3721 CLCC(CL)CO[O]
+ debug :: spc pos=        3724 CLCC(CL)O[O]
+ debug :: spc pos=        3732 CLCCO[O]
+ debug :: spc pos=        3736 CLCO[O]
+ debug :: spc pos=        3748 COC(=O)CC(=O)O[O]
+ debug :: spc pos=        3752 COC(=O)CCC(=O)O[O]
+ debug :: spc pos=        3755 COC(=O)CCC(O[O])C(C)(C)CC=O
+ debug :: spc pos=        3760 COC(=O)CCC1C(C(=O)O[O])CC1(C)C
+ debug :: spc pos=        3764 COC(=O)CCC1C(CC1(C)C)C(=O)C(O[O])CC=O
+ debug :: spc pos=        3771 COC(=O)CCC1C(CC1(C)C)C(O[O])(CO)CCC=O
+ debug :: spc pos=        3776 COC(=O)CCC1C(O[O])CC1(C)C
+ debug :: spc pos=        3780 COC(=O)CCO[O]
+ debug :: spc pos=        3784 COC(=O)CO[O]
+ debug :: spc pos=        3791 COC(=O)OCO[O]
+ debug :: spc pos=        3797 COC(C)(C)C(=O)O[O]
+ debug :: spc pos=        3802 COC(C)(C)CO[O]
+ debug :: spc pos=        3815 COC(O[O])(C)C
+ debug :: spc pos=        3816 COC(O[O])C(=O)C
+ debug :: spc pos=        3817 COC(O[O])CO
+ debug :: spc pos=        3818 COC(O[O])OC
+ debug :: spc pos=        3819 COC(O[O])OC=O
+ debug :: spc pos=        3829 COCC(=O)O[O]
+ debug :: spc pos=        3838 COCOCO[O]
+ debug :: spc pos=        3842 COCO[O]
+ debug :: spc pos=        3847 CO[O]
+ debug :: spc pos=        3853 CS(=O)CO[O]
+ debug :: spc pos=        3856 CS(=O)O[O]
+ debug :: spc pos=        3862 CSCO[O]
+ debug :: spc pos=        3866 CSO[O]
+ debug :: spc pos=        3875 Cc1c(N(=O)=O)cc(C)c(O[O])c1C
+ debug :: spc pos=        3887 Cc1c(O[O])c(O)c(C)cc1C
+ debug :: spc pos=        3888 Cc1c(O[O])cc(C)cc1C
+ debug :: spc pos=        3894 Cc1cc(N(=O)=O)c(O[O])c(C)c1C
+ debug :: spc pos=        3895 Cc1cc(N(=O)=O)c(O[O])c(c1)CC
+ debug :: spc pos=        3901 Cc1cc(O)c(O[O])c(C)c1C
+ debug :: spc pos=        3908 Cc1ccc(C(=O)O[O])cc1
+ debug :: spc pos=        3909 Cc1ccc(C(=O)O[O])cc1C
+ debug :: spc pos=        3919 Cc1ccc(CO[O])cc1
+ debug :: spc pos=        3920 Cc1ccc(CO[O])cc1C
+ debug :: spc pos=        3925 Cc1ccc(N(=O)=O)c(O[O])c1C
+ debug :: spc pos=        3926 Cc1ccc(N(=O)=O)c(O[O])c1CC
+ debug :: spc pos=        3934 Cc1ccc(O)c(O[O])c1C
+ debug :: spc pos=        3935 Cc1ccc(O)c(O[O])c1CC
+ debug :: spc pos=        3940 Cc1ccc(O[O])c(C)c1C
+ debug :: spc pos=        3941 Cc1ccc(O[O])cc1C
+ debug :: spc pos=        3946 Cc1cccc(C(=O)O[O])c1C
+ debug :: spc pos=        3952 Cc1cccc(CO[O])c1C
+ debug :: spc pos=        3958 Cc1cccc(O[O])c1C
+ debug :: spc pos=        3959 Cc1cccc(O[O])c1CC
+ debug :: spc pos=        3964 Cc1cccc(c1)C(=O)O[O]
+ debug :: spc pos=        3969 Cc1cccc(c1)CO[O]
+ debug :: spc pos=        3976 Cc1ccccc1C(=O)CO[O]
+ debug :: spc pos=        3980 Cc1ccccc1C(=O)O[O]
+ debug :: spc pos=        3984 Cc1ccccc1C(O[O])C
+ debug :: spc pos=        3991 Cc1ccccc1CO[O]
+ debug :: spc pos=        4012 IC(I)O[O]
+ debug :: spc pos=        4017 ICC(=O)O[O]
+ debug :: spc pos=        4021 ICCO[O]
+ debug :: spc pos=        4051 O=C(CL)C(CL)(CL)O[O]
+ debug :: spc pos=        4054 O=C(CL)C(CL)O[O]
+ debug :: spc pos=        4060 O=C(CL)CO[O]
+ debug :: spc pos=        4062 O=C(I)CO[O]
+ debug :: spc pos=        4110 O=C(O)C(O[O])CC(CO)C(C)=C
+ debug :: spc pos=        4111 O=C(O)C(O[O])CC=O
+ debug :: spc pos=        4115 O=C(O)C1CC(C(=O)O[O])C1(C)C
+ debug :: spc pos=        4119 O=C(O)C1CC(CO[O])C1(C)C
+ debug :: spc pos=        4151 O=C(O)CCC(C(=O)C)CC(=O)O[O]
+ debug :: spc pos=        4157 O=C(O)CCC(CC(=O)O[O])C(C)=C
+ debug :: spc pos=        4162 O=C(O)CCC(CO[O])C(=O)C
+ debug :: spc pos=        4163 O=C(O)CCC(CO[O])C(C)=C
+ debug :: spc pos=        4168 O=C(O)CCC(O[O])C(C)(C)CC(=O)C(CCO)=C
+ debug :: spc pos=        4175 O=C(O)CCC1C(CC1(C)C)C(=O)CCO[O]
+ debug :: spc pos=        4180 O=C(O)CCC1C(CC1(C)C)C(CCC(=O)O[O])=C
+ debug :: spc pos=        4184 O=C(O)CCC1C(CC1(C)C)C(CCO[O])=C
+ debug :: spc pos=        4188 O=C(O)CCC1C(O[O])(CC1(C)C)C(CCO)=C
+ debug :: spc pos=        4237 O=C(OON(=O)(=O))C(O[O])I
+ debug :: spc pos=        4284 O=C1C(O)C(O[O])(CC)C(=O)C=C1C
+ debug :: spc pos=        4285 O=C1C(O)C(O[O])C(=O)C(C)=C1C
+ debug :: spc pos=        4286 O=C1C(O)C(O[O])C(=O)C(C)=C1CC
+ debug :: spc pos=        4287 O=C1C(O)C(O[O])C(=O)C=C1C
+ debug :: spc pos=        4288 O=C1C(O)C(O[O])C(=O)C=C1C(C)C
+ debug :: spc pos=        4305 O=C1C(ON(=O)=O)C(O[O])(C)C(=O)C=C1C
+ debug :: spc pos=        4306 O=C1C(ON(=O)=O)C(O[O])(C)C(=O)C=C1CC
+ debug :: spc pos=        4307 O=C1C(ON(=O)=O)C(O[O])C(=O)C(C)=C1C
+ debug :: spc pos=        4308 O=C1C(ON(=O)=O)C(O[O])C(=O)C(C)=C1CC
+ debug :: spc pos=        4309 O=C1C(ON(=O)=O)C(O[O])C(=O)C=C1C
+ debug :: spc pos=        4310 O=C1C(ON(=O)=O)C(O[O])C(=O)C=C1C(C)C
+ debug :: spc pos=        4311 O=C1C(ON(=O)=O)C(O[O])C(=O)C=C1CC
+ debug :: spc pos=        4312 O=C1C(ON(=O)=O)C(O[O])C(=O)C=C1CCC
+ debug :: spc pos=        4321 O=C1C(O[O])(C)C(O)C(=O)C(C)=C1C
+ debug :: spc pos=        4322 O=C1C(O[O])(C)C(O)C(=O)C=C1CC
+ debug :: spc pos=        4323 O=C1C(O[O])(C)C(ON(=O)=O)C(=O)C(C)=C1C
+ debug :: spc pos=        4324 O=C1C(O[O])(C)C(ON(=O)=O)C(=O)C=C1C
+ debug :: spc pos=        4325 O=C1C(O[O])(C)C(ON(=O)=O)C(=O)C=C1CC
+ debug :: spc pos=        4336 O=C1C=CC(=O)C(O[O])C1O
+ debug :: spc pos=           0 O=C1C=CC(=O)C(O[O])C1ON(=O)(=O)
+ debug :: spc pos=        4352 O=C1CC(=O)C(O[O])C(=O)C1
+ debug :: spc pos=        4353 O=C1CC(=O)C(O[O])C(=O)C1(ON(=O)=O)C
+ debug :: spc pos=        4358 O=C1CC(=O)CC(O[O])C1(ON(=O)=O)C
+ debug :: spc pos=        4366 O=C1OC(=O)C(O[O])C1O
+ debug :: spc pos=        4373 O=C1OC(C)C(ON(=O)=O)C1(O[O])C
+ debug :: spc pos=        4376 O=C1OC(CC)C(ON(=O)=O)C1(O[O])C
+ debug :: spc pos=        4380 O=C1OCC(ON(=O)=O)C1(O[O])C
+ debug :: spc pos=        4386 O=CC(=O)C(C)=C(C)C(=O)O[O]
+ debug :: spc pos=        4387 O=CC(=O)C(C)=CC(=O)O[O]
+ debug :: spc pos=        4389 O=CC(=O)C=C(C(=O)O[O])CC
+ debug :: spc pos=        4391 O=CC(=O)C=C(C)C(=O)O[O]
+ debug :: spc pos=        4394 O=CC(=O)C=CC(=O)O[O]
+ debug :: spc pos=        4397 O=CC(=O)CC(=O)C(ON(=O)=O)(C)C(=O)O[O]
+ debug :: spc pos=        4398 O=CC(=O)CC(=O)CC(=O)O[O]
+ debug :: spc pos=        4399 O=CC(=O)CC(=O)CO[O]
+ debug :: spc pos=        4401 O=CC(=O)CC(=O)O[O]
+ debug :: spc pos=        4405 O=CC(=O)CO[O]
+ debug :: spc pos=        4407 O=CC(=O)OCO[O]
+ debug :: spc pos=        4409 O=CC(=O)O[O]
+ debug :: spc pos=        4416 O=CC(CO)C(C)(CO[N+](=O)[O-])O[O]
+ debug :: spc pos=        4418 O=CC(CO)[C](C)O[O]
+ debug :: spc pos=        4423 O=CC(O)C(=O)C(C(C)C)=CC(=O)O[O]
+ debug :: spc pos=        4424 O=CC(O)C(=O)C(C)=C(C)C(=O)O[O]
+ debug :: spc pos=        4425 O=CC(O)C(=O)C(C)=CC(=O)O[O]
+ debug :: spc pos=        4426 O=CC(O)C(=O)C(CC)=C(C)C(=O)O[O]
+ debug :: spc pos=        4427 O=CC(O)C(=O)C(CC)=CC(=O)O[O]
+ debug :: spc pos=        4429 O=CC(O)C(=O)C=CC(=O)O[O]
+ debug :: spc pos=        4431 O=CC(O)C(=O)O[O]
+ debug :: spc pos=        4434 O=CC(O)C(ON(=O)=O)(C)C(=O)O[O]
+ debug :: spc pos=        4439 O=CC(O)C(O[O])C=O
+ debug :: spc pos=        4444 O=CC(O)CO[O]
+ debug :: spc pos=        4449 O=CC(O[O])C=O
+ debug :: spc pos=        4451 O=CC1OC1C(=O)O[O]
+ debug :: spc pos=        4452 O=CC1OC1C(O[O])C(O)C=O
+ debug :: spc pos=        4457 O=CC=C(C)C(=O)O[O]
+ debug :: spc pos=        4459 O=CC=CC(=O)O[O]
+ debug :: spc pos=        4461 O=CC=CC(O[O])C=O
+ debug :: spc pos=        4463 O=CC=CC1(C)OC1(C(=O)O[O])CC
+ debug :: spc pos=        4464 O=CC=CC1(C)OC1(C)C(=O)O[O]
+ debug :: spc pos=        4465 O=CC=CC1OC1C(=O)O[O]
+ debug :: spc pos=        4469 O=CCC(=O)C(=O)CC(=O)O[O]
+ debug :: spc pos=        4471 O=CCC(=O)C(=O)CO[O]
+ debug :: spc pos=        4473 O=CCC(=O)C(C)(C)C(=O)O[O]
+ debug :: spc pos=        4477 O=CCC(=O)C(O[O])CC=O
+ debug :: spc pos=        4480 O=CCC(=O)CC(=O)CO[O]
+ debug :: spc pos=        4482 O=CCC(=O)CC(=O)O[O]
+ debug :: spc pos=        4484 O=CCC(=O)CCC(=O)O[O]
+ debug :: spc pos=        4485 O=CCC(=O)CCCO[O]
+ debug :: spc pos=        4487 O=CCC(=O)CCO[O]
+ debug :: spc pos=        4489 O=CCC(=O)CO[O]
+ debug :: spc pos=        4491 O=CCC(=O)O[O]
+ debug :: spc pos=        4492 O=CCC(C(=O)O[O])C(=O)C
+ debug :: spc pos=        4498 O=CCC(CO[O])C(=O)C
+ debug :: spc pos=        4510 O=CCC(O[O])C(C)(C)CC(=O)C(CCO)=C
+ debug :: spc pos=        4511 O=CCC(O[O])C(C)(C)CC=O
+ debug :: spc pos=        4512 O=CCC(O[O])CC=O
+ debug :: spc pos=        4522 O=CCC1CC(C(=O)O[O])C1(C)C
+ debug :: spc pos=        4525 O=CCC1CC(C1(C)C)C(=O)CO[O]
+ debug :: spc pos=        4539 O=CCCC(=O)C(=O)CO[O]
+ debug :: spc pos=        4541 O=CCCC(=O)C(CC1(C)C)C1CCC(=O)CO[O]
+ debug :: spc pos=        4543 O=CCCC(=O)C(CC1(C)C)C1CCC(=O)O[O]
+ debug :: spc pos=        4545 O=CCCC(=O)C(CC1(C)C)C1CCO[O]
+ debug :: spc pos=        4549 O=CCCC(=O)C(O[O])C=O
+ debug :: spc pos=        4556 O=CCCC(=O)CC(=O)O[O]
+ debug :: spc pos=        4558 O=CCCC(=O)CO[O]
+ debug :: spc pos=        4560 O=CCCC(=O)O[O]
+ debug :: spc pos=        4570 O=CCCC(C(=O)CO[O])=C
+ debug :: spc pos=        4574 O=CCCC(C(=O)O[O])=C
+ debug :: spc pos=        4580 O=CCCC(O)CC(=O)O[O]
+ debug :: spc pos=        4582 O=CCCC(O)CO[O]
+ debug :: spc pos=        4587 O=CCCC(O[O])(CO[N+](=O)[O-])C1CC(C)(C)C1CC=O
+ debug :: spc pos=        4588 O=CCCC(O[O])(CO[N+](=O)[O-])C1CC(C)(C)C1CCC(=O)C
+ debug :: spc pos=        4589 O=CCCC(O[O])CC=O
+ debug :: spc pos=        4594 O=CCCCCC(=O)O[O]
+ debug :: spc pos=        4597 O=CCCCCCO[O]
+ debug :: spc pos=        4599 O=CCCCCO[O]
+ debug :: spc pos=        4601 O=CCCO[O]
+ debug :: spc pos=        4606 O=CCO[O]
+ debug :: spc pos=        4610 O=COC(=O)CO[O]
+ debug :: spc pos=        4613 O=COC(=O)OCO[O]
+ debug :: spc pos=        4615 O=COC(C)(C)C(=O)O[O]
+ debug :: spc pos=        4616 O=COC(C)(C)CO[O]
+ debug :: spc pos=        4619 O=COCC(=O)O[O]
+ debug :: spc pos=        4620 O=COCO[O]
+ debug :: spc pos=        4653 O=N(=O)OC1C(O[O])C(=O)OC1
+ debug :: spc pos=        4654 O=N(=O)OC1C(O[O])C(=O)OC1C
+ debug :: spc pos=        4655 O=N(=O)OC1C(O[O])C(=O)OC1C(C)C
+ debug :: spc pos=        4656 O=N(=O)OC1C(O[O])C(=O)OC1CC
+ debug :: spc pos=        4657 O=N(=O)OC1C(O[O])C(=O)OC1CCC
+ debug :: spc pos=        4702 O=N(=O)OCC(=O)CO[O]
+ debug :: spc pos=        4706 O=N(=O)OCC(=O)O[O]
+ debug :: spc pos=        4715 O=N(=O)OCC(O[O])C(O)C=O
+ debug :: spc pos=        4716 O=N(=O)OCC(O[O])C=C
+ debug :: spc pos=        4721 O=N(=O)OCC=CC(=O)O[O]
+ debug :: spc pos=        4725 O=N(=O)OCC=CCO[O]
+ debug :: spc pos=        4731 O=N(=O)OCCO[O]
+ debug :: spc pos=        4820 OC(CL)(CL)C(=O)O[O]
+ debug :: spc pos=        4822 OC(CL)(CL)C(CL)(CL)O[O]
+ debug :: spc pos=        4825 OC(CL)(CL)C(CL)O[O]
+ debug :: spc pos=        4832 OC(CL)(CL)CO[O]
+ debug :: spc pos=        4837 OC(CL)C(=O)O[O]
+ debug :: spc pos=        4839 OC(CL)C(CL)(CL)O[O]
+ debug :: spc pos=        4842 OC(CL)C(CL)O[O]
+ debug :: spc pos=        4849 OC(CL)CO[O]
+ debug :: spc pos=        4871 OC1C(=O)C(C)=CC(=O)C1(O[O])C
+ debug :: spc pos=        4876 OC1C(=O)C=C(C)C(=O)C1(O[O])C
+ debug :: spc pos=        4892 OC1C(=O)OC(=O)C1(O[O])C
+ debug :: spc pos=        4893 OC1C(=O)OC(=O)C1(O[O])C(C)C
+ debug :: spc pos=        4894 OC1C(=O)OC(=O)C1(O[O])CC
+ debug :: spc pos=        4895 OC1C(=O)OC(=O)C1(O[O])CCC
+ debug :: spc pos=        4918 OC1C(O[O])(C)C(=O)OC1C
+ debug :: spc pos=        4919 OC1C(O[O])(C)C(=O)OC1CC
+ debug :: spc pos=        4920 OC1C(O[O])C(=O)OC1C
+ debug :: spc pos=        4921 OC1C(O[O])C(=O)OC1C(C)C
+ debug :: spc pos=        4922 OC1C(O[O])C(=O)OC1CC
+ debug :: spc pos=        4923 OC1C(O[O])C(=O)OC1CCC
+ debug :: spc pos=        4947 OC1CC(=O)CC(O)C1(O[O])C
+ debug :: spc pos=        4953 OC1CC(O[O])CC=C1C
+ debug :: spc pos=        4957 OC1COC(=O)C1(O[O])C
+ debug :: spc pos=        4966 OCC(=O)C(=O)C(O[O])CC=O
+ debug :: spc pos=        4971 OCC(=O)C(=O)CC(=O)O[O]
+ debug :: spc pos=        4973 OCC(=O)C(=O)CC(O[O])CO
+ debug :: spc pos=        4979 OCC(=O)C(=O)CO[O]
+ debug :: spc pos=        4992 OCC(=O)C(O)C(=O)O[O]
+ debug :: spc pos=        4997 OCC(=O)C(O)CO[O]
+ debug :: spc pos=        5006 OCC(=O)C(O[O])(CO)CO
+ debug :: spc pos=        5007 OCC(=O)C(O[O])CO
+ debug :: spc pos=        5011 OCC(=O)C1CC(CO[O])C1(C)C
+ debug :: spc pos=        5029 OCC(=O)O[O]
+ debug :: spc pos=        5042 OCC(CL)(CL)O[O]
+ debug :: spc pos=        5048 OCC(CL)O[O]
+ debug :: spc pos=        5061 OCC(O)(CO)C(O[O])C=O
+ debug :: spc pos=        5075 OCC(O)C(=O)O[O]
+ debug :: spc pos=        5089 OCC(O)C(ON(=O)=O)(C)C(=O)O[O]
+ debug :: spc pos=        5096 OCC(O)C(O[O])(C)C=O
+ debug :: spc pos=        5097 OCC(O)C(O[O])(CO)C=O
+ debug :: spc pos=        5104 OCC(O)CC(O[O])C=O
+ debug :: spc pos=        5111 OCC(O)CO[O]
+ debug :: spc pos=        5125 OCC(ON(=O)=O)C(O)(C)C(=O)O[O]
+ debug :: spc pos=        5135 OCC(ON(=O)=O)C(ON(=O)=O)(C)C(=O)O[O]
+ debug :: spc pos=        5141 OCC(ON(=O)=O)C(OO)(C)C(=O)O[O]
+ debug :: spc pos=        5145 OCC(ON(=O)=O)C(O[O])(CO)CO
+ debug :: spc pos=        5158 OCC(O[O])(CO)C=O
+ debug :: spc pos=           0 OCC(O[O])C(=O)CON(=O)(=O)
+ debug :: spc pos=        5160 OCC(O[O])C(C)=C
+ debug :: spc pos=        5161 OCC(O[O])C(CO)=C
+ debug :: spc pos=           0 OCC(O[O])C(O)(C)CON(=O)(=O)
+ debug :: spc pos=        5163 OCC(O[O])C(O)C=O
+ debug :: spc pos=        5164 OCC(O[O])C=C
+ debug :: spc pos=        5165 OCC(O[O])C=O
+ debug :: spc pos=        5166 OCC(O[O])CC(=O)C(=O)O
+ debug :: spc pos=        5182 OCC1(O[O])CCC2OOC(C)(CCC3C1CC3(C)C)O2
+ debug :: spc pos=        5183 OCC1(O[O])CC\C=C(\C)/CCC2C1CC2(C)C
+ debug :: spc pos=        5189 OCC1CC(O[O])(C(=O)O)C1(C)C
+ debug :: spc pos=        5196 OCC=C(C)C(=O)O[O]
+ debug :: spc pos=        5200 OCC=C(C)CO[O]
+ debug :: spc pos=        5205 OCC=CC(=O)O[O]
+ debug :: spc pos=        5210 OCC=CCO[O]
+ debug :: spc pos=        5231 OCCC(=O)C(=O)CC(C)(C)C(O[O])CC=O
+ debug :: spc pos=        5232 OCCC(=O)C(=O)CC(C)(C)C(O[O])CCC(=O)O
+ debug :: spc pos=        5238 OCCC(=O)C(=O)CO[O]
+ debug :: spc pos=        5247 OCCC(=O)C(O[O])C=O
+ debug :: spc pos=        5255 OCCC(=O)CO[O]
+ debug :: spc pos=        5260 OCCC(=O)O[O]
+ debug :: spc pos=        5271 OCCC(C(=O)O[O])=C
+ debug :: spc pos=        5272 OCCC(C(=O)O[O])C(=O)C
+ debug :: spc pos=        5275 OCCC(C(O[O])C=O)C(C)=C
+ debug :: spc pos=        5280 OCCC(C)(C)C(=O)O[O]
+ debug :: spc pos=        5284 OCCC(C)(C)CO[O]
+ debug :: spc pos=        5289 OCCC(C)C(=O)O[O]
+ debug :: spc pos=        5296 OCCC(O)(C)C(=O)O[O]
+ debug :: spc pos=        5300 OCCC(O)(C)CO[O]
+ debug :: spc pos=        5306 OCCC(O)C(=O)O[O]
+ debug :: spc pos=        5314 OCCC(O)CO[O]
+ debug :: spc pos=        5320 OCCC(O[O])(C=O)C(=O)C
+ debug :: spc pos=        5321 OCCC(O[O])C(C)(C)CC(=O)C(=O)CCC=O
+ debug :: spc pos=        5322 OCCC(O[O])C(C)(C)CC(=O)C(CCC=O)=C
+ debug :: spc pos=        5323 OCCC(O[O])C(C)=C
+ debug :: spc pos=        5333 OCCCC(=O)O[O]
+ debug :: spc pos=        5338 OCCCC(O[O])C=O
+ debug :: spc pos=        5339 OCCCC(O[O])CC=O
+ debug :: spc pos=        5347 OCCCCO[O]
+ debug :: spc pos=        5353 OCCCO[O]
+ debug :: spc pos=        5361 OCCOCO[O]
+ debug :: spc pos=        5365 OCCO[O]
+ debug :: spc pos=        5494 O[O]CI
+ debug :: spc pos=           0 [O]OC(=O)C(C)(O)C(O)CON(=O)(=O)
+ debug :: spc pos=           0 [O]OC(=O)C(C)(ON(=O)=O)C(=O)CON(=O)(=O)
+ debug :: spc pos=           0 [O]OC(=O)C(C)(ON(=O)=O)C(O)CON(=O)(=O)
+ debug :: spc pos=           0 [O]OC(=O)C(C)(OO)C(O)CON(=O)(=O)
+ debug :: spc pos=        5630 [O]OC(CL)(CL)CL
+ debug :: spc pos=        5631 [O]OC(CL)CL
+ debug :: spc pos=           0 [O]OC(CL)CON(=O)(=O)
+ debug :: spc pos=        5633 [O]OC1(C)C=CC2(C)OOC1(C)C2O
+ debug :: spc pos=        5634 [O]OC1(C)C=CC2(C)OOC1C2O
+ debug :: spc pos=        5635 [O]OC1(C)C=CC2(CC)OOC1C2O
+ debug :: spc pos=        5636 [O]OC1(C)C=CC2OOC1(C)C2O
+ debug :: spc pos=        5637 [O]OC1(C)CCC2C(CC2(C)C)C(=C)CCC1O
+ debug :: spc pos=        5640 [O]OC1(O)C(=C(C)C2(C)OOC1(N(=O)=O)C2(C)O)N(=O)=O
+ debug :: spc pos=        5641 [O]OC1(O)C(=C(C)C2(C)OOC1(N(=O)=O)C2(C)ON(=O)=O)N(=O)=O
+ debug :: spc pos=        5642 [O]OC1(O)C(=C(C)C2(C)OOC1(N(=O)=O)C2O)N(=O)=O
+ debug :: spc pos=        5643 [O]OC1(O)C(=C(C)C2(C)OOC1(N(=O)=O)C2O)O
+ debug :: spc pos=        5644 [O]OC1(O)C(=C(C)C2(C)OOC1(N(=O)=O)C2ON(=O)=O)N(=O)=O
+ debug :: spc pos=        5645 [O]OC1(O)C(=C(C)C2(C)OOC1(N(=O)=O)C2ON(=O)=O)O
+ debug :: spc pos=        5646 [O]OC1(O)C(=C(C)C2(OOC1(C)C2(C)O)N(=O)=O)N(=O)=O
+ debug :: spc pos=        5647 [O]OC1(O)C(=C(C)C2(OOC1(C)C2(C)O)N(=O)=O)O
+ debug :: spc pos=        5648 [O]OC1(O)C(=C(C)C2(OOC1(C)C2(C)ON(=O)=O)N(=O)=O)N(=O)=O
+ debug :: spc pos=        5649 [O]OC1(O)C(=C(C)C2(OOC1(C)C2(C)ON(=O)=O)N(=O)=O)O
+ debug :: spc pos=        5650 [O]OC1(O)C(=C(C)C2(OOC1(C)C2O)N(=O)=O)N(=O)=O
+ debug :: spc pos=        5651 [O]OC1(O)C(=C(C)C2(OOC1(C)C2O)N(=O)=O)O
+ debug :: spc pos=        5652 [O]OC1(O)C(=C(C)C2(OOC1(C)C2ON(=O)=O)N(=O)=O)N(=O)=O
+ debug :: spc pos=        5653 [O]OC1(O)C(=C(C)C2(OOC1(C)C2ON(=O)=O)N(=O)=O)O
+ debug :: spc pos=        5654 [O]OC1(O)C(=C(C)C2(OOC1(CC)C2ON(=O)=O)N(=O)=O)O
+ debug :: spc pos=        5655 [O]OC1(O)C(=C(C)C2OOC1(C)C2O)C
+ debug :: spc pos=        5656 [O]OC1(O)C(=C(C)C2OOC1(C)C2ON(=O)=O)C
+ debug :: spc pos=        5657 [O]OC1(O)C(=C(N(=O)=O)C2(C)OOC1(C)C2(C)O)O
+ debug :: spc pos=        5658 [O]OC1(O)C(=C(N(=O)=O)C2(C)OOC1(C)C2(C)ON(=O)=O)O
+ debug :: spc pos=        5659 [O]OC1(O)C(=C(N(=O)=O)C2(C)OOC1(C)C2O)O
+ debug :: spc pos=        5660 [O]OC1(O)C(=C(N(=O)=O)C2(C)OOC1(C)C2ON(=O)=O)O
+ debug :: spc pos=        5661 [O]OC1(O)C(=C(N(=O)=O)C2(OOC1(C)C2O)N(=O)=O)C
+ debug :: spc pos=        5662 [O]OC1(O)C(=C(N(=O)=O)C2(OOC1(C)C2ON(=O)=O)N(=O)=O)C
+ debug :: spc pos=        5663 [O]OC1(O)C(=C(N(=O)=O)C2OOC1(C(C)C)C2O)O
+ debug :: spc pos=        5664 [O]OC1(O)C(=C(N(=O)=O)C2OOC1(C(C)C)C2ON(=O)=O)O
+ debug :: spc pos=        5665 [O]OC1(O)C(=C(N(=O)=O)C2OOC1(C)C2O)O
+ debug :: spc pos=        5666 [O]OC1(O)C(=C(N(=O)=O)C2OOC1(C)C2ON(=O)=O)O
+ debug :: spc pos=        5667 [O]OC1(O)C(=C(N(=O)=O)C2OOC1(CC)C2O)O
+ debug :: spc pos=        5668 [O]OC1(O)C(=CC2(C)OOC1(C)C2O)C
+ debug :: spc pos=        5669 [O]OC1(O)C(=CC2(C)OOC1(C)C2ON(=O)=O)C
+ debug :: spc pos=        5670 [O]OC1(O)C(=CC2(C)OOC1(N(=O)=O)C2O)C
+ debug :: spc pos=        5671 [O]OC1(O)C(=CC2(C)OOC1C2O)N(=O)=O
+ debug :: spc pos=        5672 [O]OC1(O)C(=CC2(OOC1(C(C)C)C2O)N(=O)=O)N(=O)=O
+ debug :: spc pos=        5673 [O]OC1(O)C(=CC2(OOC1(C(C)C)C2ON(=O)=O)N(=O)=O)N(=O)=O
+ debug :: spc pos=        5674 [O]OC1(O)C(=CC2(OOC1(C)C2O)N(=O)=O)N(=O)=O
+ debug :: spc pos=        5675 [O]OC1(O)C(=CC2(OOC1(C)C2ON(=O)=O)N(=O)=O)N(=O)=O
+ debug :: spc pos=        5676 [O]OC1(O)C(=CC2(OOC1(CC)C2ON(=O)=O)N(=O)=O)N(=O)=O
+ debug :: spc pos=        5677 [O]OC1(O)C(=CC2(OOC1C2O)N(=O)=O)N(=O)=O
+ debug :: spc pos=        5678 [O]OC1(O)C(=CC2(OOC1C2O)N(=O)=O)O
+ debug :: spc pos=        5679 [O]OC1(O)C(=CC2(OOC1C2ON(=O)=O)N(=O)=O)N(=O)=O
+ debug :: spc pos=        5680 [O]OC1(O)C(=CC2(OOC1C2ON(=O)=O)N(=O)=O)O
+ debug :: spc pos=        5681 [O]OC1(O)C2OOC(C)(C2O)C(=C1C)C
+ debug :: spc pos=        5682 [O]OC1(O)C2OOC(C)(C2ON(=O)=O)C(=C1C)C
+ debug :: spc pos=        5683 [O]OC1(O)C=C(C)C2(C)OOC1(N(=O)=O)C2O
+ debug :: spc pos=        5684 [O]OC1(O)C=C(C)C2(C)OOC1C2O
+ debug :: spc pos=        5685 [O]OC1(O)C=C(C)C2(C)OOC1C2ON(=O)=O
+ debug :: spc pos=        5686 [O]OC1(O)C=C(C)C2OOC1(C)C2O
+ debug :: spc pos=        5687 [O]OC1(O)C=C(C)C2OOC1(C)C2ON(=O)=O
+ debug :: spc pos=        5688 [O]OC1(O)C=C(C)C2OOC1(CC)C2O
+ debug :: spc pos=        5689 [O]OC1(O)C=CC2(C)OOC1(C)C2O
+ debug :: spc pos=        5690 [O]OC1(O)C=CC2(C)OOC1(C)C2ON(=O)=O
+ debug :: spc pos=        5691 [O]OC1(O)C=CC2(C)OOC1C2O
+ debug :: spc pos=        5692 [O]OC1(O)C=CC2(C)OOC1C2ON(=O)=O
+ debug :: spc pos=        5693 [O]OC1(O)C=CC2(CC)OOC1C2O
+ debug :: spc pos=        5694 [O]OC1(O)C=CC2(OOC1C2O)C(C)C
+ debug :: spc pos=        5695 [O]OC1(O)C=CC2(OOC1C2ON(=O)=O)C(C)C
+ debug :: spc pos=        5696 [O]OC1(O)C=CC2OOC1C2O
+ debug :: spc pos=        5697 [O]OC1(O)C=CC2OOC1C2ON(=O)=O
+ debug :: spc pos=        5698 [O]OC1C(=CC2(C)OOC1(C)C2O)C
+ debug :: spc pos=        5699 [O]OC1C(=CC2(CC)OOC1(C)C2O)C
+ debug :: spc pos=        5700 [O]OC1C(=CC2(CC)OOC1(C)C2O)CC
+ debug :: spc pos=        5701 [O]OC1C=CC2(C)OOC1(C)C2(C)O
+ debug :: spc pos=        5702 [O]OC1C=CC2(C)OOC1(C)C2O
+ debug :: spc pos=        5703 [O]OC1C=CC2(C)OOC1(CC)C2O
+ debug :: spc pos=        5704 [O]OC1C=CC2(C)OOC1C2O
+ debug :: spc pos=        5705 [O]OC1C=CC2(CC)OOC1C2O
+ debug :: spc pos=        5706 [O]OC1C=CC2(OOC1C2O)C(C)C
+ debug :: spc pos=        5707 [O]OC1C=CC2OOC1C2O
+ debug :: spc pos=        5708 [O]OC1CCC(=C)C2CC(C)(C)C2CCC1(C)O
+ debug :: spc pos=        5709 [O]OCC(=O)C=C(CC)C(=O)CO.O=C1CCC(=O)C(=C1)C
+ debug :: spc pos=        5710 [O]OCI
+ debug :: spc pos=        5711 [O]OCS(=O)(=O)C
+ debug :: spc pos=        5712 [O]OS(=O)(=O)C
+ debug :: spc pos=        5713 [O]OS(C)(C)O
+ debug :: spc pos=        5728 c1c(C)c(O[O])c(N(=O)=O)cc1C
+ debug :: spc pos=        5729 c1c(C)c(O[O])c(O)cc1C
+ debug :: spc pos=        5730 c1c(C)c(O[O])ccc1C
+ debug :: spc pos=        5739 c1c(C)cc(C(=O)O[O])cc1C
+ debug :: spc pos=        5740 c1c(C)cc(C(=O)O[O])cc1CC
+ debug :: spc pos=        5748 c1c(C)cc(C)cc1C(=O)CO[O]
+ debug :: spc pos=        5753 c1c(C)cc(C)cc1C(O[O])C
+ debug :: spc pos=        5760 c1c(C)cc(CO[O])cc1C
+ debug :: spc pos=        5766 c1c(C)cc(O[O])cc1C
+ debug :: spc pos=        5767 c1c(C)cc(O[O])cc1CC
+ debug :: spc pos=        5771 c1c(C)ccc(O[O])c1CC
+ debug :: spc pos=        5789 c1cc(C)c(N(=O)=O)c(O[O])c1CC
+ debug :: spc pos=        5794 c1cc(C)c(O)c(O[O])c1CC
+ debug :: spc pos=        5800 c1cc(C)c(O[O])c(N(=O)=O)c1C
+ debug :: spc pos=        5801 c1cc(C)c(O[O])c(O)c1C
+ debug :: spc pos=        5802 c1cc(C)c(O[O])cc1C
+ debug :: spc pos=        5808 c1cc(C)cc(O[O])c1CC
+ debug :: spc pos=        5817 c1cc(N(=O)=O)c(O[O])cc1
+ debug :: spc pos=        5823 c1cc(O)c(O[O])cc1
+ debug :: spc pos=        5826 c1cc(O[O])ccc1C
+ debug :: spc pos=        5838 c1ccc(N(=O)=O)c(O[O])c1C
+ debug :: spc pos=        5839 c1ccc(N(=O)=O)c(O[O])c1C(C)C
+ debug :: spc pos=        5840 c1ccc(N(=O)=O)c(O[O])c1CC
+ debug :: spc pos=        5841 c1ccc(N(=O)=O)c(O[O])c1CCC
+ debug :: spc pos=        5854 c1ccc(O)c(O[O])c1C
+ debug :: spc pos=        5855 c1ccc(O)c(O[O])c1C(C)C
+ debug :: spc pos=        5856 c1ccc(O)c(O[O])c1CC
+ debug :: spc pos=        5857 c1ccc(O)c(O[O])c1CCC
+ debug :: spc pos=        5865 c1ccc(O[O])cc1
+ debug :: spc pos=        5866 c1ccc(O[O])cc1C
+ debug :: spc pos=        5877 c1cccc(O[O])c1C
+ debug :: spc pos=        5878 c1cccc(O[O])c1C(C)C
+ debug :: spc pos=        5879 c1cccc(O[O])c1CC
+ debug :: spc pos=        5880 c1cccc(O[O])c1CCC
+ debug :: spc pos=        5890 c1ccccc1C(=O)C(=O)CO[O]
+ debug :: spc pos=        5894 c1ccccc1C(=O)C(O[O])C
+ debug :: spc pos=        5900 c1ccccc1C(=O)CO[O]
+ debug :: spc pos=        5904 c1ccccc1C(=O)O[O]
+ debug :: spc pos=        5909 c1ccccc1C(O)CO[O]
+ debug :: spc pos=        5916 c1ccccc1C(O[O])(C)C
+ debug :: spc pos=        5917 c1ccccc1C(O[O])CC
+ debug :: spc pos=           0 c1ccccc1C(O[O])CON(=O)(=O)
+ debug :: spc pos=        5928 c1ccccc1CC(=O)O[O]
+ debug :: spc pos=        5934 c1ccccc1CCO[O]
+ debug :: spc pos=        5939 c1ccccc1CO[O]
+ debug :: spc pos=        5638 [O]OC1(C)CCC2C(CC2(C)C)C(=C)CCC1O[N+](=O)[O-]
+ debug :: spc pos=        5639 [O]OC1(C)CCC2C(CC2(C)C)C(=O)CCC1O[N+](=O)[O-]
    Read ini-file ................ done
    Print chem-file .............. done
  
@@ -39,336 +1263,8 @@
        sum emissions (gaseous)  =      0.10630000000000E+09  [molec/cm3]
 
    SYMBOLIC PHASE................ done
- debug:: chi,lwc   1.9473715067020529        2.9999999999999997E-004
- debugg:: i,rate(i) =            1   5.2929801271408335E-016
- debugg:: i,rate(i) =            2   1.5214304053509750E-016
- debugg:: i,rate(i) =            3   1.1688503841231065E-022
- debugg:: i,rate(i) =            4   2.1102086852357611E-052
- debugg:: i,rate(i) =            5   1.2378221601913503E-020
- debugg:: i,rate(i) =            6   2.3445161426963747E-021
- debugg:: i,rate(i) =            7   1.8714088272870939E-012
- debugg:: i,rate(i) =            8   5.4597951069455143E-012
- debugg:: i,rate(i) =            9   2.9791046775623675E-022
- debugg:: i,rate(i) =           10   5439557.9431198500     
- debugg:: i,rate(i) =           11   1.0084853230266384E-059
- debugg:: i,rate(i) =           12   2.6661721918438491E-051
- debugg:: i,rate(i) =           13   5.7489057085403920E-025
- debugg:: i,rate(i) =           14   1.4375818299830133E-021
- debugg:: i,rate(i) =           15   0.0000000000000000     
- debugg:: i,rate(i) =           16   1.3561127085713470E-021
- debugg:: i,rate(i) =           17   5.4299058039263569E-022
- debugg:: i,rate(i) =           18   1.6779533736159156E-020
- debugg:: i,rate(i) =           19   4.1760905122473799E-022
- debugg:: i,rate(i) =           20   4.0297530450234151E-023
- debugg:: i,rate(i) =           21   1.1722066144112368E-050
- debugg:: i,rate(i) =           22   5.3351436684776100E-052
- debugg:: i,rate(i) =           23   3.9336063448100961E-052
- debugg:: i,rate(i) =           24   1.0082961375228929E-051
- debugg:: i,rate(i) =           25   1.3616500690361684E-020
- debugg:: i,rate(i) =           26   1.9999999999999997E-051
- debugg:: i,rate(i) =           27   9.0490514976434531E-052
- debugg:: i,rate(i) =           28   1.6434016644384735E-021
- debugg:: i,rate(i) =           29   3.7616264527689241E-052
- debugg:: i,rate(i) =           30   3.9999999999999993E-052
- debugg:: i,rate(i) =           31   6.3272275880600283E-052
- debugg:: i,rate(i) =           32   4.8734512301482673E-023
- debugg:: i,rate(i) =           33   3.1508857620639076E-023
- debugg:: i,rate(i) =           34   1.0853118927289231E-021
- debugg:: i,rate(i) =           35   1.8415966420383932E-014
- debugg:: i,rate(i) =           36   0.0000000000000000     
- debugg:: i,rate(i) =           37   0.0000000000000000     
- debugg:: i,rate(i) =           38   0.0000000000000000     
- debugg:: i,rate(i) =           39   0.0000000000000000     
- debugg:: i,rate(i) =           40   0.0000000000000000     
- debugg:: i,rate(i) =           41   0.0000000000000000     
- debugg:: i,rate(i) =           42   0.0000000000000000     
- debugg:: i,rate(i) =           43   0.0000000000000000     
- debugg:: i,rate(i) =           44   4.1257126055634008E-023
- debugg:: i,rate(i) =           45   7.4576660893222555E-023
- debugg:: i,rate(i) =           46   8.3125068507478274E-053
- debugg:: i,rate(i) =           47   3.2221242921488870E-052
- debugg:: i,rate(i) =           48   5.9065169167636100E-052
- debugg:: i,rate(i) =           49   5.3110903826919680E-052
- debugg:: i,rate(i) =           50   8.7382227347106775E-052
- debugg:: i,rate(i) =           51   8.6999999999999983E-052
- debugg:: i,rate(i) =           52   9.5969416187881155E-052
- debugg:: i,rate(i) =           53   1.0385866225803969E-052
- debugg:: i,rate(i) =           54   1.2199999999999998E-051
- debugg:: i,rate(i) =           55   1.1199999999999998E-051
- debugg:: i,rate(i) =           56   1.3099999999999999E-051
- debugg:: i,rate(i) =           57   3.8499999999999999E-052
- debugg:: i,rate(i) =           58   1.2400000000000000E-051
- debugg:: i,rate(i) =           59   1.7700000000000000E-051
- debugg:: i,rate(i) =           60   2.8799999999999995E-052
- debugg:: i,rate(i) =           61   0.0000000000000000     
- debugg:: i,rate(i) =           62   1.4499999999999999E-051
- debugg:: i,rate(i) =           63   1.2000000000000000E-051
- debugg:: i,rate(i) =           64   1.1023947676321686E-054
- debugg:: i,rate(i) =           65   2.2899999999999999E-025
- debugg:: i,rate(i) =           66   7.1552789377269254E-051
- debugg:: i,rate(i) =           67   0.0000000000000000     
- debugg:: i,rate(i) =           68   0.0000000000000000     
- debugg:: i,rate(i) =           69   5.4999999999999990E-056
- debugg:: i,rate(i) =           70   8.7455221116963041E-052
- debugg:: i,rate(i) =           71   0.0000000000000000     
- debugg:: i,rate(i) =           72   1.8246174940147077E-055
- debugg:: i,rate(i) =           73   1.6114272433706235E-051
- debugg:: i,rate(i) =           74   4.2226862004340383E-055
- debugg:: i,rate(i) =           75   2.0814789684183839E-051
- debugg:: i,rate(i) =           76   0.0000000000000000     
- debugg:: i,rate(i) =           77   8.0144060050337673E-055
- debugg:: i,rate(i) =           78   2.5946719450131495E-051
- debugg:: i,rate(i) =           79   0.0000000000000000     
- debugg:: i,rate(i) =           80   9.0819887242437856E-055
- debugg:: i,rate(i) =           81   2.9406282043482359E-051
- debugg:: i,rate(i) =           82   0.0000000000000000     
- debugg:: i,rate(i) =           83   1.0035396217080891E-054
- debugg:: i,rate(i) =           84   3.1402225570665027E-051
- debugg:: i,rate(i) =           85   0.0000000000000000     
- debugg:: i,rate(i) =           86   2.4534482323478717E-055
- debugg:: i,rate(i) =           87   1.9999999999999997E-051
- debugg:: i,rate(i) =           88   0.0000000000000000     
- debugg:: i,rate(i) =           89   6.6409999999999994E-027
- debugg:: i,rate(i) =           90   0.0000000000000000     
- debugg:: i,rate(i) =           91   3.3999999999999997E-055
- debugg:: i,rate(i) =           92   1.7731884906939544E-026
- debugg:: i,rate(i) =           93   3.1080617669024042E-051
- debugg:: i,rate(i) =           94   5.9999999999999996E-055
- debugg:: i,rate(i) =           95   3.6181999999999997E-026
- debugg:: i,rate(i) =           96   3.3999999999999994E-051
- debugg:: i,rate(i) =           97   0.0000000000000000     
- debugg:: i,rate(i) =           98   7.8748048735990531E-054
- debugg:: i,rate(i) =           99   4.4248068702142111E-055
- debugg:: i,rate(i) =          100   5.8072820602135815E-051
- debugg:: i,rate(i) =          101   1.9399805226790700E-053
- debugg:: i,rate(i) =          102   7.8691055446541438E-051
- debugg:: i,rate(i) =          103   5.9894286050768100E-051
- debugg:: i,rate(i) =          104   9.4069391652293264E-053
- debugg:: i,rate(i) =          105   5.8759802989301210E-051
- debugg:: i,rate(i) =          106   1.4726285467524802E-050
- debugg:: i,rate(i) =          107   2.1479743662920537E-052
- debugg:: i,rate(i) =          108   1.4299999999999997E-050
- debugg:: i,rate(i) =          109   2.0312374224618786E-052
- debugg:: i,rate(i) =          110   2.7999999999999998E-050
- debugg:: i,rate(i) =          111   3.6774633566581672E-052
- debugg:: i,rate(i) =          112   2.1999999999999999E-050
- debugg:: i,rate(i) =          113   3.6999999999999997E-052
- debugg:: i,rate(i) =          114   1.1100000000000000E-050
- debugg:: i,rate(i) =          115   7.1852154076137326E-053
- debugg:: i,rate(i) =          116   3.4000000000000001E-050
- debugg:: i,rate(i) =          117   5.2619038258628128E-052
- debugg:: i,rate(i) =          118   2.8999999999999996E-050
- debugg:: i,rate(i) =          119   5.2999999999999989E-052
- debugg:: i,rate(i) =          120   2.7999999999999998E-050
- debugg:: i,rate(i) =          121   5.3999999999999994E-052
- debugg:: i,rate(i) =          122   1.7099999999999999E-050
- debugg:: i,rate(i) =          123   1.9791762806345973E-052
- debugg:: i,rate(i) =          124   2.2999999999999997E-050
- debugg:: i,rate(i) =          125   5.6748880441564991E-052
- debugg:: i,rate(i) =          126   3.8999999999999993E-050
- debugg:: i,rate(i) =          127   6.8725183749316282E-052
- debugg:: i,rate(i) =          128   3.4999999999999995E-050
- debugg:: i,rate(i) =          129   6.8599999999999989E-052
- debugg:: i,rate(i) =          130   3.1099999999999995E-050
- debugg:: i,rate(i) =          131   7.1499999999999987E-052
- debugg:: i,rate(i) =          132   4.5999999999999994E-050
- debugg:: i,rate(i) =          133   8.3468516603433410E-052
- debugg:: i,rate(i) =          134   4.7999999999999991E-050
- debugg:: i,rate(i) =          135   9.7120275007653205E-052
- debugg:: i,rate(i) =          136   5.5500000000000001E-050
- debugg:: i,rate(i) =          137   1.0841713241527632E-051
- debugg:: i,rate(i) =          138   6.1699999999999996E-050
- debugg:: i,rate(i) =          139   1.2899999999999998E-051
- debugg:: i,rate(i) =          140   6.7399999999999996E-050
- debugg:: i,rate(i) =          141   1.3899999999999998E-051
- debugg:: i,rate(i) =          142   3.4999999999999995E-050
- debugg:: i,rate(i) =          143   6.8074354551429844E-052
- debugg:: i,rate(i) =          144   1.1258615386827664E-056
- debugg:: i,rate(i) =          145   2.0756944985608810E-026
- debugg:: i,rate(i) =          146   8.1947574191811744E-052
- debugg:: i,rate(i) =          147   7.4352075105562992E-055
- debugg:: i,rate(i) =          148   1.5283433660594322E-025
- debugg:: i,rate(i) =          149   3.0198390554251654E-051
- debugg:: i,rate(i) =          150   1.0756001231884869E-054
- debugg:: i,rate(i) =          151   1.5976387371241355E-025
- debugg:: i,rate(i) =          152   3.4736254324401330E-051
- debugg:: i,rate(i) =          153   3.4999999999999995E-053
- debugg:: i,rate(i) =          154   2.3241988824482499E-024
- debugg:: i,rate(i) =          155   6.2626028791851177E-051
- debugg:: i,rate(i) =          156   3.8999999999999997E-053
- debugg:: i,rate(i) =          157   3.4628987138751619E-024
- debugg:: i,rate(i) =          158   7.2011162241572875E-051
- debugg:: i,rate(i) =          159   3.4000000000000000E-053
- debugg:: i,rate(i) =          160   1.8322508892133648E-025
- debugg:: i,rate(i) =          161   5.7070144575543926E-051
- debugg:: i,rate(i) =          162   1.1999999999999999E-054
- debugg:: i,rate(i) =          163   2.2899999999999999E-025
- debugg:: i,rate(i) =          164   3.4948092502842875E-051
- debugg:: i,rate(i) =          165   3.6999999999999994E-053
- debugg:: i,rate(i) =          166   3.6639999999999999E-024
- debugg:: i,rate(i) =          167   6.5400000000000000E-051
- debugg:: i,rate(i) =          168   3.6999999999999994E-053
- debugg:: i,rate(i) =          169   3.6639999999999999E-024
- debugg:: i,rate(i) =          170   6.6899999999999981E-051
- debugg:: i,rate(i) =          171   3.2999999999999996E-053
- debugg:: i,rate(i) =          172   3.6639999999999997E-025
- debugg:: i,rate(i) =          173   6.0699999999999988E-051
- debugg:: i,rate(i) =          174   1.1999999999999999E-054
- debugg:: i,rate(i) =          175   2.5190000000000002E-025
- debugg:: i,rate(i) =          176   3.5696217540468458E-051
- debugg:: i,rate(i) =          177   9.3699999999999994E-052
- debugg:: i,rate(i) =          178   7.7195963860204521E-024
- debugg:: i,rate(i) =          179   9.5779927328114353E-051
- debugg:: i,rate(i) =          180   1.1999999999999999E-054
- debugg:: i,rate(i) =          181   2.5190000000000002E-025
- debugg:: i,rate(i) =          182   3.6999999999999997E-051
- debugg:: i,rate(i) =          183   3.6999999999999994E-053
- debugg:: i,rate(i) =          184   3.6639999999999999E-024
- debugg:: i,rate(i) =          185   5.9999999999999989E-051
- debugg:: i,rate(i) =          186   3.6999999999999994E-053
- debugg:: i,rate(i) =          187   3.6639999999999999E-024
- debugg:: i,rate(i) =          188   5.9999999999999989E-051
- debugg:: i,rate(i) =          189   5.7199999999999990E-051
- debugg:: i,rate(i) =          190   2.4281130597575735E-023
- debugg:: i,rate(i) =          191   1.0999999999999999E-050
- debugg:: i,rate(i) =          192   7.7270555681694748E-053
- debugg:: i,rate(i) =          193   1.1668848706955131E-052
- debugg:: i,rate(i) =          194   6.0621976277689374E-052
- debugg:: i,rate(i) =          195   4.1000000000000001E-056
- debugg:: i,rate(i) =          196   1.3599999999999998E-051
- debugg:: i,rate(i) =          197   2.5999999999999995E-056
- debugg:: i,rate(i) =          198   2.3099999999999996E-051
- debugg:: i,rate(i) =          199   5.0000000000000000E-056
- debugg:: i,rate(i) =          200   1.4299999999999997E-051
- debugg:: i,rate(i) =          201   1.2000000000000000E-056
- debugg:: i,rate(i) =          202   7.0000000000000001E-052
- debugg:: i,rate(i) =          203   1.4000000000000000E-056
- debugg:: i,rate(i) =          204   5.7999999999999996E-052
- debugg:: i,rate(i) =          205   1.4000000000000000E-056
- debugg:: i,rate(i) =          206   6.2999999999999996E-052
- debugg:: i,rate(i) =          207   1.8999999999999998E-055
- debugg:: i,rate(i) =          208   3.2700000000000000E-051
- debugg:: i,rate(i) =          209   1.8000000000000000E-055
- debugg:: i,rate(i) =          210   3.2499999999999990E-051
- debugg:: i,rate(i) =          211   8.8000000000000002E-056
- debugg:: i,rate(i) =          212   5.6700000000000000E-051
- debugg:: i,rate(i) =          213   7.0999999999999996E-056
- debugg:: i,rate(i) =          214   1.1899999999999999E-051
- debugg:: i,rate(i) =          215   4.5000000000000001E-056
- debugg:: i,rate(i) =          216   1.8599999999999998E-051
- debugg:: i,rate(i) =          217   8.5999999999999984E-056
- debugg:: i,rate(i) =          218   1.1799999999999999E-051
- debugg:: i,rate(i) =          219   1.4999999999999999E-055
- debugg:: i,rate(i) =          220   5.6700000000000000E-051
- debugg:: i,rate(i) =          221   2.5999999999999999E-055
- debugg:: i,rate(i) =          222   5.6700000000000000E-051
- debugg:: i,rate(i) =          223   1.5000000000000000E-052
- debugg:: i,rate(i) =          224   3.8929999999999991E-025
- debugg:: i,rate(i) =          225   5.7999999999999995E-051
- debugg:: i,rate(i) =          226   0.0000000000000000     
- debugg:: i,rate(i) =          227   2.3999999999999996E-055
- debugg:: i,rate(i) =          228   1.3177670646249432E-051
- debugg:: i,rate(i) =          229   3.1960914327031945E-054
- debugg:: i,rate(i) =          230   1.1998454648884965E-053
- debugg:: i,rate(i) =          231   8.9023137383271502E-054
- debugg:: i,rate(i) =          232   6.8397702615157606E-055
- debugg:: i,rate(i) =          233   1.3094847978532806E-053
- debugg:: i,rate(i) =          234   2.2566566025766577E-052
- debugg:: i,rate(i) =          235   2.6754472014938560E-052
- debugg:: i,rate(i) =          236   2.4665180844903099E-052
- debugg:: i,rate(i) =          237   1.9028056613460608E-053
- debugg:: i,rate(i) =          238   1.2186027855722862E-051
- debugg:: i,rate(i) =          239   4.4199999999999990E-053
- debugg:: i,rate(i) =          240   2.3801436547073078E-053
- debugg:: i,rate(i) =          241   3.5443434442695417E-053
- debugg:: i,rate(i) =          242   5.1299999999999997E-053
- debugg:: i,rate(i) =          243   1.6560760435969819E-053
- debugg:: i,rate(i) =          244   2.2999999999999996E-056
- debugg:: i,rate(i) =          245   5.6104999999999994E-027
- debugg:: i,rate(i) =          246   8.4899999999999996E-052
- debugg:: i,rate(i) =          247   1.0299999999999999E-053
- debugg:: i,rate(i) =          248   8.8285463512740640E-026
- debugg:: i,rate(i) =          249   7.3304879881047688E-051
- debugg:: i,rate(i) =          250   6.3144754529634364E-053
- debugg:: i,rate(i) =          251   1.8981237509809250E-025
- debugg:: i,rate(i) =          252   1.0871111130947937E-050
- debugg:: i,rate(i) =          253   1.8098006874647939E-053
- debugg:: i,rate(i) =          254   3.4001843684774029E-053
- debugg:: i,rate(i) =          255   1.8355201401040987E-052
- debugg:: i,rate(i) =          256   3.7533850387053138E-052
- debugg:: i,rate(i) =          257   4.1296548174256761E-052
- debugg:: i,rate(i) =          258   5.3093534430033448E-052
- debugg:: i,rate(i) =          259   6.5485829142608505E-052
- debugg:: i,rate(i) =          260   4.5866163983805062E-053
- debugg:: i,rate(i) =          261   2.5999999999999995E-056
- debugg:: i,rate(i) =          262   2.6448359269393978E-052
- debugg:: i,rate(i) =          263   2.7999999999999998E-055
- debugg:: i,rate(i) =          264   1.3881105573036647E-051
- debugg:: i,rate(i) =          265   6.3999999999999997E-056
- debugg:: i,rate(i) =          266   2.8777415826807502E-052
- debugg:: i,rate(i) =          267   6.4999999999999993E-055
- debugg:: i,rate(i) =          268   1.1252611302653255E-051
- debugg:: i,rate(i) =          269   1.9099999999999997E-055
- debugg:: i,rate(i) =          270   9.3098313609645350E-052
- debugg:: i,rate(i) =          271   1.5299999999999998E-055
- debugg:: i,rate(i) =          272   1.3088071716732169E-051
- debugg:: i,rate(i) =          273   2.7999999999999998E-055
- debugg:: i,rate(i) =          274   1.7999999999999997E-051
- debugg:: i,rate(i) =          275   3.7600000000000000E-055
- debugg:: i,rate(i) =          276   1.5899999999999998E-051
- debugg:: i,rate(i) =          277   4.6499999999999998E-055
- debugg:: i,rate(i) =          278   2.3099999999999996E-051
- debugg:: i,rate(i) =          279   6.4999999999999993E-055
- debugg:: i,rate(i) =          280   2.7799999999999996E-051
- debugg:: i,rate(i) =          281   3.2513330881321488E-054
- debugg:: i,rate(i) =          282   1.7889963771613486E-053
- debugg:: i,rate(i) =          283   7.8903160665443827E-054
- debugg:: i,rate(i) =          284   7.7009410584607241E-054
- debugg:: i,rate(i) =          285   0.0000000000000000     
- debugg:: i,rate(i) =          286   1.0876686328831976E-052
- debugg:: i,rate(i) =          287   0.0000000000000000     
- debugg:: i,rate(i) =          288   4.8999999999999987E-052
- debugg:: i,rate(i) =          289   0.0000000000000000     
- debugg:: i,rate(i) =          290   1.9999999999999996E-052
- debugg:: i,rate(i) =          291   0.0000000000000000     
- debugg:: i,rate(i) =          292   0.0000000000000000     
- debugg:: i,rate(i) =          293   2.7699999999999995E-052
- debugg:: i,rate(i) =          294   9.0999999999999992E-052
- debugg:: i,rate(i) =          295   0.0000000000000000     
- debugg:: i,rate(i) =          296   6.8999999999999995E-052
- debugg:: i,rate(i) =          297   0.0000000000000000     
- debugg:: i,rate(i) =          298   1.4099999999999999E-051
- debugg:: i,rate(i) =          299   0.0000000000000000     
- debugg:: i,rate(i) =          300   0.0000000000000000     
- debugg:: i,rate(i) =          301   1.2100000000000000E-052
- debugg:: i,rate(i) =          302   5.3999999999999994E-052
- debugg:: i,rate(i) =          303   0.0000000000000000     
- debugg:: i,rate(i) =          304   6.9055232112068745E-052
- debugg:: i,rate(i) =          305   1.8178834404483524E-024
- debugg:: i,rate(i) =          306   5.7762236893577765E-051
- debugg:: i,rate(i) =          307   2.5099999999999998E-052
- debugg:: i,rate(i) =          308   3.4349999999999999E-025
- debugg:: i,rate(i) =          309   8.5173093560417582E-051
- debugg:: i,rate(i) =          310   1.2199999999999998E-051
- debugg:: i,rate(i) =          311   4.1227215244974726E-024
- debugg:: i,rate(i) =          312   1.7923198274053033E-050
- debugg:: i,rate(i) =          313   1.8999999999999997E-051
- debugg:: i,rate(i) =          314   2.6564000000000001E-022
- debugg:: i,rate(i) =          315   1.9699999999999995E-050
- debugg:: i,rate(i) =          316   4.4999999999999998E-053
- debugg:: i,rate(i) =          317   8.0000000000000002E-053
- debugg:: i,rate(i) =          318   1.1999999999999999E-052
- debugg:: i,rate(i) =          319   2.5999999999999995E-056
- debugg:: i,rate(i) =          320   4.9299999999999995E-052
- debugg:: i,rate(i) =          321   3.1999999999999996E-053
- debugg:: i,rate(i) =          322   1.2170277921136815E-052
- debugg:: i,rate(i) =          323   4.5862222017064791E-052
- debugg:: i,rate(i) =          324   5.4059260372282165E-052
- debugg:: i,rate(i) =          325   9.4999999999999994E-054
- debugg:: i,rate(i) =          326   3.4611280132688959E-016
- debugg:: i,rate(i) =          327   1.5887613576201283E-051
- debugg:: i,rate(i) =          328   9.7665771201208291E-052
- debugg:: i,rate(i) =          329   2.2999999999999996E-052
- debugg ro2=   1.2000000000000334E-017
-           4           7          12          14          19          24          39          41          54          55          60          63          64          65          69          73          80          81          82          83          95          99         103         104         109         113         117         126         127         128         135         140         143         150         158         159         169         170         177         181         182         189         194         198         202         206         207         208         209         211         213         215         216         217         219         221         223         225         227         229         235         237         239         240         251         255         263         269         272         275         285         286         287         288         295         301         306         310         313         318         324         335         336         337         338         351         358         360         365         369         374         375         376         377         378         388         391         395         396         402         403         409         414         418         423         432         436         441         447         452         458         461         463         465         470         475         479         484         487         493         500         504         518         520         525         527         531         556         557         558         559         560         561         575         579         583         596         605         610         616         617         662         663         664         665         666         667         668         669         670         671         672         673         674         675         676         677         678         679         680         681         682         683         684         685         686         687         688         689         690         691         692         693         694         695         696         733         736         741         747         748         754         757         765         769         776         784         785         786         787         794         798         803         807         815         820         821         826         830         840         845         855         883         884         885         886         887         888         889         890         891         892         893         894         895         896         915         921         924         931         936         941         947         953         961         964         968         969         972         979         985         986        1002        1003        1004        1005        1006        1007        1008        1019        1028        1029        1035        1041        1046        1052        1057        1061        1068        1069        1070        1081        1082        1083        1094        1101        1104        1106        1111        1117        1120        1123        1128        1129        1133        1136        1140        1145        1151        1157        1163        1170        1171        1172        1173        1174        1175        1185        1186        1187        1194        1195        1201        1206        1211        1215        1249        1252        1257        1262        1267        1272        1277        1282        1299        1305        1313        1314        1315        1323        1327        1331        1340        1346        1351        1356        1360        1363        1366        1370        1374        1378        1383        1384        1396        1402        1406        1411        1415        1417        1418        1420        1422        1424        1425        1427        1430        1434        1437        1439        1445        1449        1450        1455        1461        1466        1469        1471        1475        1478        1482        1487        1492        1497        1501        1506        1510        1514        1520        1525        1530        1535        1539        1552        1557        1561        1570        1576        1579        1584        1589        1590        1606        1609        1614        1619        1624        1629        1633        1636        1650        1657        1660        1678        1681        1688        1692        1699        1704        1709        1743        1744        1745        1746        1747        1748        1749        1750        1766        1773        1778        1784        1788        1795        1800        1805        1809        1817        1825        1826        1833        1840        1847        1853        1857        1882        1891        1899        1903        1904        1913        1917        1922        1927        1933        1936        1942        1945        1949        1966        1967        1968        1969        1970        1989        2084        2085        2087        2088        2089        2090        2091        2092        2093        2094        2095        2096        2097        2098        2099        2100        2101        2102        2103        2104        2106        2107        2108        2109        2110        2111        2112        2113        2114        2115        2116        2117        2119        2120        2121        2122        2123        2124        2125        2126        2127        2129        2130        2131        2132        2133        2134        2135        2136        2137        2138        2139        2140        2141        2142        2143        2144        2146        2147        2148        2149        2150        2151        2152        2153        2154        2155        2156        2158        2159        2160        2161        2162        2163        2164        2256        2263        2269        2278        2279        2285        2296        2297        2304        2309        2312        2316        2320        2341        2342        2343        2344        2345        2346        2347        2361        2365        2368        2370        2375        2379        2383        2401        2402        2403        2404        2405        2406        2414        2416        2417        2422        2426        2436        2439        2442        2445        2448        2454        2455        2456        2477        2485        2496        2504        2505        2513        2517        2525        2530        2538        2541        2557        2558        2559        2560        2586        2587        2588        2589        2590        2591        2592        2593        2594        2595        2596        2597        2598        2614        2620        2626        2630        2640        2646        2647        2648        2655        2660        2665        2679        2693        2694        2695        2696        2697        2698        2699        2713        2720        2726        2733        2735        2745        2750        2758        2763        2768        2773        2780        2784        2788        2793        2798        2803        2808        2818        2827        2828        2835        2841        2845        2852        2865        2866        2867        2868        2869        2879        2884        2890        2898        2903        2909        2918        2943        2944        2945        2946        2948        2949        2950        2951        2952        2953        2954        2955        2956        2958        2959        2960        2987        2992        2998        3003        3008        3014        3022        3023        3031        3036        3037        3050        3055        3058        3065        3068        3071        3072        3076        3080        3083        3087        3090        3093        3097        3098        3102        3115        3121        3125        3133        3145        3146        3147        3148        3149        3159        3163        3168        3175        3180        3185        3193        3197        3201        3202        3208        3212        3218        3228        3235        3236        3242        3246        3252        3266        3269        3275        3298        3299        3300        3301        3302        3303        3304        3305        3307        3308        3309        3310        3327        3328        3332        3336        3342        3346        3347        3355        3360        3369        3376        3380        3385        3389        3395        3402        3407        3415        3416        3417        3418        3419        3431        3436        3442        3447        3451        3455        3459        3464        3465        3471        3476        3483        3488        3492        3496        3500        3507        3508        3509        3518        3522        3524        3529        3530        3538        3545        3552        3557        3570        3571        3572        3581        3587        3591        3598        3607        3612        3617        3624        3625        3626        3635        3640        3645        3649        3654        3664        3674        3677        3686        3688        3692        3700        3704        3711        3713        3718        3721        3724        3732        3736        3748        3752        3755        3760        3764        3771        3776        3780        3784        3791        3797        3802        3815        3816        3817        3818        3819        3829        3838        3842        3847        3853        3856        3862        3866        3875        3887        3888        3894        3895        3901        3908        3909        3919        3920        3925        3926        3934        3935        3940        3941        3946        3952        3958        3959        3964        3969        3976        3980        3984        3991        4012        4017        4021        4051        4054        4060        4062        4110        4111        4115        4119        4151        4157        4162        4163        4168        4175        4180        4184        4188        4237        4284        4285        4286        4287        4288        4305        4306        4307        4308        4309        4310        4311        4312        4321        4322        4323        4324        4325        4336        4352        4353        4358        4366        4373        4376        4380        4386        4387        4389        4391        4394        4397        4398        4399        4401        4405        4407        4409        4416        4418        4423        4424        4425        4426        4427        4429        4431        4434        4439        4444        4449        4451        4452        4457        4459        4461        4463        4464        4465        4469        4471        4473        4477        4480        4482        4484        4485        4487        4489        4491        4492        4498        4510        4511        4512        4522        4525        4539        4541        4543        4545        4549        4556        4558        4560        4570        4574        4580        4582        4587        4588        4589        4594        4597        4599        4601        4606        4610        4613        4615        4616        4619        4620        4653        4654        4655        4656        4657        4702        4706        4715        4716        4721        4725        4731        4820        4822        4825        4832        4837        4839        4842        4849        4871        4876        4892        4893        4894        4895        4918        4919        4920        4921        4922        4923        4947        4953        4957        4966        4971        4973        4979        4992        4997        5006        5007        5011        5029        5042        5048        5061        5075        5089        5096        5097        5104        5111        5125        5135        5141        5145        5158        5160        5161        5163        5164        5165        5166        5182        5189        5196        5200        5205        5210        5231        5232        5238        5247        5255        5260        5271        5272        5275        5280        5284        5289        5296        5300        5306        5314        5320        5321        5322        5323        5333        5338        5339        5347        5353        5361        5365        5494        5630        5631        5633        5634        5635        5636        5637        5640        5641        5642        5643        5644        5645        5646        5647        5648        5649        5650        5651        5652        5653        5654        5655        5656        5657        5658        5659        5660        5661        5662        5663        5664        5665        5666        5667        5668        5669        5670        5671        5672        5673        5674        5675        5676        5677        5678        5679        5680        5681        5682        5683        5684        5685        5686        5687        5688        5689        5690        5691        5692        5693        5694        5695        5696        5697        5698        5699        5700        5701        5702        5703        5704        5705        5706        5707        5708        5709        5710        5711        5712        5713        5728        5729        5730        5739        5740        5748        5753        5760        5766        5767        5771        5789        5794        5800        5801        5802        5808        5817        5823        5826        5838        5839        5840        5841        5854        5855        5856        5857        5865        5866        5877        5878        5879        5880        5890        5894        5900        5904        5909        5916        5917        5928        5934        5939        5638        5639
-        1597        1200
+ debug :: roargs srate,sy     32249159682730448.        9123116100062956.0     
+ debug:: SUM(wt),rh,sum(f0)   9123116100063330.0        1.0729537220947739E+018   15821371395890.455     
+ debug:: tdel=        1.3887981267966968E-026
+ debug:: sumzzz(bat,rate,yem,f1)=        9624.3439999997663        32249159682730448.        106300000.00000000     
+ debug:: sum(f1)=        15821371395890.455            89115       23098       10196

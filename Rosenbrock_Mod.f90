@@ -299,8 +299,10 @@ MODULE Rosenbrock_Mod
     CALL Rates((t+tdel),y,Rate,DRatedT)
     Output%nRateEvals=Output%nRateEvals+1
     !
+    print*, 'debug:: sumzzz(bat,rate,yem,f1)=     ', SUM(BAT%Val),SUM(Rate),SUM(y_e)
     CALL MatVecMult(BAT,Rate,y_e,f1)
-     print*, 'debug:: sum(f1)=     ', SUM(f1)
+     print*, 'debug:: sum(f1)=     ', SUM(f1), SIZE(BAT%VAL),SIZE(rate),SIZE(y_e)
+     stop 'stop'
     !
     DfDt=(f1-f0)/tdel
     CALL MatVecMult(Jac,f0,zeros,Tmp)
@@ -314,7 +316,7 @@ MODULE Rosenbrock_Mod
     END IF
     absh=MAX(absh,hmin)
      print*, 'debug:: h, absh', h, absh
-     stop
+     !stop
   END SUBROUTINE InitialStepSize
   !
   !
@@ -451,13 +453,13 @@ MODULE Rosenbrock_Mod
     !
 
     !call printsparse(LU_miter,'*')
-    WRITE(*,*) '----------------------------'
-    WRITE(*,*) 'debug h, t      :: ', h , t
-    WRITE(*,*) '      rate(1:3) :: ', rate(1:3), SUM(rate)
-    WRITE(*,*) '      conc(1:3) :: ', y(1:3), SUM(y)
-    WRITE(*,*) '      sum(Miter):: ', SUM(Miter%val)
-    WRITE(*,*) '      sum(LU)   :: ', SUM(LU_Miter%val)
-    WRITE(*,*) 
+    !WRITE(*,*) '----------------------------'
+    !WRITE(*,*) 'debug h, t      :: ', h , t
+    !WRITE(*,*) '      rate(1:3) :: ', rate(1:3), SUM(rate)
+    !WRITE(*,*) '      conc(1:3) :: ', y(1:3), SUM(y)
+    !WRITE(*,*) '      sum(Miter):: ', SUM(Miter%val)
+    !WRITE(*,*) '      sum(LU)   :: ', SUM(LU_Miter%val)
+    !WRITE(*,*) 
     !
     !****************************************************************************************
     !   ____    ___ __        __          _____  _                    ____   _               
@@ -525,7 +527,7 @@ MODULE Rosenbrock_Mod
           k(:,iStage)=y0(:)*bb(neq+1:)
         END IF
         TimeSolve=TimeSolve+(MPI_WTIME()-timerStart)
-        print*, 'debug:: ', 'istage=',iStage,SUM(ABS(fRhs(:)))
+        !print*, 'debug:: ', 'istage=',iStage,SUM(ABS(fRhs(:)))
       ELSE
         timerStart=MPI_WTIME()
         IF ( solveLA=='cl') THEN

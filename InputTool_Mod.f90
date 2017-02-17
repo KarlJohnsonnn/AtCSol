@@ -49,6 +49,7 @@ SUBROUTINE LineFile(Back,Start1,Start2,End,Name1,Name2 &
   INTEGER :: i,is
   INTEGER, PARAMETER :: LenWork=20
   REAL(RealKind) :: Work(LenWork)
+  INTEGER :: slash
 
   Back=.FALSE.
 
@@ -91,6 +92,10 @@ SUBROUTINE LineFile(Back,Start1,Start2,End,Name1,Name2 &
   IF (iS1*iS2>0) THEN
     E:DO
       READ(InputUnit_Initials,'(a300)') Line
+      slash=INDEX(Line,'/')
+      IF ( slash>0 ) THEN
+        Line(slash:slash)='_'
+      END IF
       Line=ADJUSTL(Line)
       IF (Line(1:1)=='#') CYCLE E
       IF (LEN(TRIM(Line))==0  ) CYCLE E
