@@ -1,5 +1,4 @@
-#IN1=M_DEF_$(MACH)
-IN1=M_DEF_Linux
+IN1=M_DEF_Mac2
 
 include $(IN1) 
 
