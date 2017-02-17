@@ -20,8 +20,8 @@ CL=-Wl,--end-group
 
 KINCL_O =   -I./LIB -I/data/schimmel/SparseLinearSolver/MUMPS_5.0.0/include 
 KINCL_D =   -I./LIB_D -I/data/schimmel/SparseLinearSolver/MUMPS_5.0.0/include
-LIB_O = /data/schimmel/CHEMIE/parallel_2017/LIB
-LIB_D = /data/schimmel/CHEMIE/parallel_2017/LIB_D
+LIB_O = ./LIB
+LIB_D = ./LIB_D
 MUMPS=-L/data/schimmel/SparseLinearSolver/MUMPS_5.0.0/lib -ldmumps  -lmumps_common  -lpord
 
 SCALAP  = /data/schimmel/SparseLinearSolver/scalapack-2.0.2/libscalapack.a \
