@@ -32,20 +32,19 @@
     !======================================================================!
     !      Calculate the Rates for current concentraions and time
     !======================================================================!
-    SUBROUTINE Rates(Time,y_conc,Rate,actTemp,DRatedT)
+    SUBROUTINE Rates(Time,y_conc,Rate,DRatedT)
       !--------------------------------------------------------------------!
       ! Input: 
       !   - Time
       !   - y_conc
-!     REAL(RealKind), INTENT(IN) :: Time2
+!     REAL(RealKind), INTENT(IN) :: Time
       REAL(RealKind) :: Time
-      REAL(RealKind), INTENT(IN), OPTIONAL:: actTemp
-      REAL(RealKind) :: y_conc(nspc)
+      REAL(RealKind), INTENT(IN) :: y_conc(nDIM)
       !--------------------------------------------------------------------!
       ! Output:
       !   - Rate vector
-      REAL(RealKind), INTENT(OUT) :: Rate(neq)
-      REAL(RealKind), INTENT(OUT), OPTIONAL:: DRatedT(neq)
+      REAL(RealKind) :: Rate(neq)
+      REAL(RealKind) :: DRatedT(neq)
       !--------------------------------------------------------------------!
       ! Temporary variables:
       REAL(RealKind) :: chi, actLWC
@@ -58,45 +57,37 @@
       !
       !==================================================================!
       !===============calc rate for ReactionSystem=======================!
-      CALL MPI_BARRIER(MPI_COMM_WORLD,MPIErr)
       !
       TimeRateA=MPI_WTIME()
       !
-      !
       Rate=ZERO
-      IF (ckTEMP) DRatedT=ZERO
-      !
+      DRatedT=ZERO
       ! --- Compute zenith for photo reactions
       chi=Zenith(Time)
       ! 
       ! --- Compute the liquid water content 
       actLWC=pseudoLWC(Time)
-      !t
+      !
       print*, 'debug:: chi,lwc', chi, actLWC
       ! --- Update temperature array
-      IF(ckTEMP) THEN
-        CALL UpdateTempArray(T,actTemp)
+      IF ( combustion ) THEN
+        CALL UpdateTempArray(T,y_conc(nDIM))
       ELSE
-        T(1)=Temp
+        T(1)=Temp    ! = 280 [K]
       END IF
       !
       ! --- compute rate of all reactions (gas,henry,aqua,diss)
-      !print*, Lowerratelim, upperratelim
-      !call dropout
-      DO ii=LowerRateLim,UpperRateLim
+      !print*, MPI_ID, '--loc_rateCnt= ',loc_rateCnt
+      !print*, MPI_ID, '--loc_ratePtr= ',loc_ratePtr(:)
+      DO ii=1,loc_rateCnt
         IF (MPI_np>1.AND.ParOrdering>=0) THEN
-          iReac=loc_ratePtr(ii)
+          iReac=loc_RatePtr(ii)
         ELSE
           iReac=ii
         END IF
-      !DO iReac=MyParties(MPI_ID+1,1)+1,MyParties(MPI_ID+1,2)
         !
         ! ====== Compute the rate constant for specific reaction type ===
-        !IF ( INDEX(ReactionSystem(iReac)%TypeConstant,'PHOT')>0 ) THEN
-          CALL ComputeRateConstant(k,DkdT,T,Time,chi,mAir,iReac,y_conc,Meff)
-        !ELSE
-        !  k=ReactionRateConst(iReac)
-        !END IF
+        CALL ComputeRateConstant(k,DkdT,T,Time,chi,mAir,iReac,y_conc,Meff)
         !
         ! ================ Multiplication with FACTOR====================
         CALL CheckThirdBodys(Meff,y_conc,iReac)
@@ -126,17 +117,19 @@
         END DO
         ! Last step
         Rate(iReac) = Meff * k
-        IF (ckTEMP) DRatedT(iReac) = DkdT
         print*, 'debugg:: i,rate(i) = ', ireac, Rate(ireac)
+        IF (combustion) DRatedT(iReac) = DkdT
+      if (ireac==21368) print*, ReactionSystem(iReac)%line1
       END DO
       !stop
       TimeRateE=MPI_WTIME()
       TimeRates=TimeRates+(TimeRateE-TimeRateA)
-      !,
+      !
+      
       ! gather the values of the other processes
-      CALL GatherAllPartitions(Rate,MyParties)
+      !CALL GatherAllPartitions(Rate,MyParties)
        !print*, 'MPI_ID=',MPI_ID, 'time=',Time
-      IF (ckTEMP) CALL GatherAllPartitions(DRatedT,MyParties)
+      !IF (combustion) CALL GatherAllPartitions(DRatedT,MyParties)
     END SUBROUTINE Rates
    !
     !
@@ -159,8 +152,6 @@
       term_accom=y_c2(ReactionSystem(iReac)%HenrySpc)/SQRT(Temp)            ! accom term
       !--------------------------------------------------------------------------!
       !
-      !print*, 'debug :: y_c1=',y_c1(1:5)
-      !print*, 'debug :: y_c2=',y_c2(1:5)
       ! Compute new wet radius for droplett class iFrac
       SPEK(1)%wetRadius=(3.0d0/4.0d0/PI*actLWC/SPEK(1)%Number)**(drittel)
       !
@@ -194,40 +185,6 @@
       !
     END SUBROUTINE AquaDimLWC
     !
-    !
-    SUBROUTINE GetConstReactionRates(RRConst,y_conc,Time,refT)
-      INTEGER :: i
-
-!     REAL(RealKind), INTENT(IN) :: Time2
-      REAL(RealKind) :: Time, mAir
-      REAL(RealKind) :: y_conc(nspc)
-      REAL(RealKind) :: refT
-      !--------------------------------------------------------------------!
-      ! Output:
-      !   - Rate vector
-      REAL(RealKind), INTENT(OUT) :: RRConst(neq)
-      !--------------------------------------------------------------------!
-      ! Temporary variables:
-      REAL(RealKind) :: chi,k
-      REAL(RealKind) :: T(7)
-      REAL(RealKind) :: DkdT    ! tmp buffer for reaction const
-      ! 
-      ! --- Compute zenith for photo reactions
-      chi=Zenith(Time)
-      ! 
-      ! --- Update temperature array
-      CALL UpdateTempArray(T,refT)
-      !
-      !==================================================================!
-      ALLOCATE(ReactionRateConst(neq))
-      ReactionRateConst=0.0d0
-      DO i=1,neq
-        print*, 'debug:: ',i, t, time, chi,mair
-        CALL ComputeRateConstant(k,DkdT,T,Time,chi,mAir,i,y_conc)
-        RRConst(i)=k
-      END DO
-
-    END SUBROUTINE GetConstReactionRates
     !=======================================================================!
     ! ===  Select the Type of the Constant and calculate the value
     !=======================================================================!
@@ -244,7 +201,7 @@
       ! calc reaction constant
       ! Skip photochemical reactions at night
       BaRate=ZERO
-      DkdT=1.0d0
+      DkdT=ZERO
       !
       SELECT CASE (ReactionSystem(iReac)%TypeConstant)
         CASE ('PHOTABC')
@@ -342,7 +299,7 @@
         CASE ('PHOTO3')   ! kpp
           CALL PHOTO3(k,ReactionSystem(iReac)%Constants,Time)
         CASE DEFAULT
-          WRITE(*,*) 'Reaction: ',iReac
+          WRITE(*,*) 'Reaction  ',iReac,':   ',TRIM(ReactionSystem(iReac)%Line1)
           WRITE(*,*) 'Unknown ReactionType: ',ADJUSTL(ReactionSystem(iReac)%TypeConstant)
           CALL FinishMPI()
           STOP 'STOP Rates_Mod'
@@ -414,7 +371,7 @@
             M=SUM(y_conc(RO2))
             print*, 'debugg ro2=',M
             print*, RO2
-            print*, SIZE(RO2aq),SIZE(RO2)
+            print*, SIZE(RO2aq), SIZE(RO2)
             stop
           CASE ('$O2O2')
             M=(((mO2*mair)**2)**fac_exp)*fac_A
@@ -701,25 +658,26 @@
     END SUBROUTINE Temp4Compute
     !
     !
-    SUBROUTINE TempXComputeCK(ReacConst,EquiRate,ForwRate,Constants,T,i)
+    SUBROUTINE TempXComputeCK(ReacConst,EquiRate,ForwRate,Constants,T,iReac)
       REAL(RealKind) :: ReacConst
-      REAL(RealKind) :: ForwRate, EquiRate, BackRate
+      REAL(RealKind) :: ForwRate, EquiRate!, BackRate
       REAL(RealKind) :: Constants(:)
       REAL(RealKind) :: T(7)
-      INTEGER :: i
+      INTEGER :: iReac
       !
       REAL(RealKind) :: g0(nspc)   
       REAL(RealKind) :: delg0
       INTEGER :: jj,j
       !
-      IF (ReactionSystem(i)%Factor/='rev') THEN
+      IF (ReactionSystem(iReac)%Factor/='rev') THEN
         !
-        IF (ReactionSystem(i)%Line3=='rev'.OR.ReactionSystem(i)%Line3=='REV') THEN
+        IF (ReactionSystem(iReac)%Line3=='rev'.OR.ReactionSystem(iReac)%Line3=='REV') THEN
           ! backward with backwardcoeffs reaction
           ReacConst=Constants(1)*T(1)**Constants(2)*EXP(-Constants(3)*T(6))
         ELSE
           ! backward calculated with eq. constant
           ! Standard non-dimensional Gibbs free energy
+          !print*, 'debug:: switchtemp = ', SwitchTemp
           WHERE (SwitchTemp>T(1))
             g0=-(lowA*(LOG(T(1))-1) + 0.5d0*lowB*T(1) + lowC*T(2)/6.0d0 + &
             &        lowD*T(3)/12.0d0 + 0.05d0*lowE*T(4) + lowF*T(6) + lowG )           ! [-] dim.less
@@ -728,13 +686,13 @@
             &        highD*T(3)/12.0d0 + 0.05d0*highE*T(4) + highF*T(6) + highG )           ! [-] dim.less
           END WHERE
           !
-          delg0=0.0d0
-          DO jj=BAT%RowPtr(i),BAT%RowPtr(i+1)-1
-            j=BAT%ColInd(jj)
-            delg0=delg0+BAT%Val(jj)*g0(j)      
+          delg0=ZERO
+          DO jj=BA%RowPtr(iReac),BA%RowPtr(iReac+1)-1
+            j=BA%ColInd(jj)
+            delg0=delg0+BA%Val(jj)*g0(j)      
           END DO
           !
-          EquiRate=EXP(-delg0)*(PressR*T(1))**sumBAT(i)
+          EquiRate=EXP(-delg0)*(PressR*T(6))**sumBAT(iReac)
           ! backward reaction
           ReacConst=Constants(1)*T(1)**Constants(2)*EXP(-Constants(3)*T(6))/EquiRate
         END IF
@@ -744,6 +702,56 @@
       END IF
     END SUBROUTINE TempXComputeCK
     !
+    !
+    SUBROUTINE DiffTempXComputeCK(DkdT,EquiRate,ForwRate,Constants,T,iReac)
+      REAL(RealKind) :: DkDT
+      REAL(RealKind) :: DfRdT, DbRdT, DeRdT
+      REAL(RealKind) :: ForwRate, EquiRAte
+      REAL(RealKind) :: Constants(:)
+      REAL(RealKind) :: T(7)              ! temperatur array
+      INTEGER :: iReac
+      !
+      REAL(RealKind) :: Dg0dT(nspc)       ! in [1/K]
+      REAL(RealKind) :: Ddelg0dT
+      INTEGER :: jj, i
+      REAL(RealKind) :: Tmp
+      !
+      !hier ?????????????
+      !???????
+      !
+      WHERE (SwitchTemp>T(1))
+        Dg0dT=-(lowA*T(6) + 0.5d0*lowB + lowC*T(1)/3.0d0 +     &
+        &              0.25d0*lowD*T(2) + 0.2d0*lowE*T(3) + lowF*T(7) )
+      ELSEWHERE
+        Dg0dT=-(highA*T(6) + 0.5d0*highB + highC*T(1)/3.0d0 +     &
+        &              0.25d0*highD*T(2) + 0.2d0*highE*T(3) + highF*T(7) )
+      END WHERE  
+      !
+      Tmp=0.0d0
+      DO jj=A%RowPtr(iReac),A%RowPtr(iReac+1)-1
+        Tmp=Tmp-Dg0dT(A%ColInd(jj))*A%Val(jj)
+      END DO
+      Ddelg0dT=Tmp
+      Tmp=0.0d0
+      DO jj=B%RowPtr(iReac),B%RowPtr(iReac+1)-1
+        Tmp=Tmp+Dg0dT(B%ColInd(jj))*B%Val(jj)
+      END DO
+      Ddelg0dT=Ddelg0dT+Tmp
+      !
+      DfRdT=ForwRate*T(6)*(Constants(2)+Constants(3)*T(6))
+      !
+      DeRdT=-EquiRate*(sumBAT(iReac)*T(6)+Ddelg0dT)
+      !
+      DbRdT=(DfRdT-ForwRate*DeRdT/EquiRate)/EquiRate
+      !
+      IF (ReactionSystem(iReac)%Line3=='rev') THEN
+        DkDT=DbRdT
+      ELSE   
+        DkDT=DfRdT
+      END IF
+      !
+    END SUBROUTINE DiffTempXComputeCK
+    ! 
     !
     SUBROUTINE ThirdBodyCompute(M,i,y_conc)
       REAL(RealKind) :: M
@@ -760,89 +768,6 @@
       END DO
     END SUBROUTINE ThirdBodyCompute
     !
-    !
-    SUBROUTINE TempXComputePerini(Equirate,Backrate,Constants,T,i)
-      REAL(RealKind) :: EquiRate
-      REAL(RealKind) :: BackRate
-      REAL(RealKind) :: Constants(:)
-      REAL(RealKind) :: T(7)
-      INTEGER :: i
-      !
-      REAL(RealKind) :: g0(nspc)   
-      REAL(RealKind) :: delg0
-      INTEGER :: jj,j
-      !
-      !
-      ! Standard non-dimensional Gibbs free energy
-      WHERE (SwitchTemp>T(1))
-        g0=-(lowA*(LOG(T(1))-1) + 0.5d0*lowB*T(1) + lowC*T(2)/6.0d0 + &
-        &        lowD*T(3)/12.0d0 + 0.05d0*lowE*T(4) + lowF*T(6) + lowG )           ! [-] dim.less
-      ELSEWHERE
-        g0=-(highA*(LOG(T(1))-1) + 0.5d0*highB*T(1) + highC*T(2)/6.0d0 + &
-        &        highD*T(3)/12.0d0 + 0.05d0*highE*T(4) + highF*T(6) + highG )           ! [-] dim.less
-      END WHERE
-      !
-      delg0=0.0d0
-      DO jj=BAT%RowPtr(i),BAT%RowPtr(i+1)-1
-        j=BAT%ColInd(jj)
-        delg0=delg0+BAT%Val(jj)*g0(j)      
-      END DO
-      !
-      EquiRate=EXP(-delg0)*(PressR*T(1))**sumBAT(i)
-      BackRate=Constants(1)*T(1)**Constants(2)*EXP(-Constants(3)*T(6))/EquiRate
-      !
-    END SUBROUTINE TempXComputePerini
-    !
-    !
-    SUBROUTINE DiffTempXComputeCK(DkdT,EquiRate,ForwRate,Constants,T,iReac)
-      REAL(RealKind) :: DkDT
-      REAL(RealKind) :: DfRdT, DbRdT, DeRdT
-      REAL(RealKind) :: ForwRate, EquiRAte
-      REAL(RealKind) :: Constants(:)
-      REAL(RealKind) :: T(7)              ! temperatur array
-      INTEGER :: iReac
-      !
-      REAL(RealKind) :: Dg0dT(nspc)       ! in [1/K]
-      REAL(RealKind) :: Ddelg0dT(neq)
-      INTEGER :: jj, i
-      REAL(RealKind) :: Tmp
-      !
-      !hier ?????????????
-      !???????
-      !
-      WHERE (SwitchTemp>T(1))
-        Dg0dT=-(lowA*T(6) + 0.5d0*lowB + lowC*T(1)/3.0d0 +     &
-        &              0.25d0*lowD*T(2) + 0.2d0*lowE*T(3) + lowF*T(7) )
-      ELSEWHERE
-        Dg0dT=-(highA*T(6) + 0.5d0*highB + highC*T(1)/3.0d0 +     &
-        &              0.25d0*highD*T(2) + 0.2d0*highE*T(3) + highF*T(7) )
-      END WHERE  
-      !
-      Tmp=0.0d0
-      DO jj=A%RowPtr(i),A%RowPtr(i+1)-1
-        Tmp=Tmp-Dg0dT(A%ColInd(jj))*A%Val(jj)
-      END DO
-      Dg0dT(iReac)=Tmp
-      Tmp=0.0d0
-      DO jj=B%RowPtr(i),B%RowPtr(i+1)-1
-        Tmp=Tmp+Dg0dT(B%ColInd(jj))*B%Val(jj)
-      END DO
-      Ddelg0dT(iReac)=Dg0dT(iReac)+Tmp
-      !
-      DfRdT=ForwRate*T(6)*(Constants(2)+Constants(3)*T(6))
-      !
-      DeRdT=-EquiRate*(sumBAT(iReac)*T(6)+Ddelg0dT(iReac))
-      !
-      DbRdT=(DfRdT-ForwRate*DeRdT/EquiRate)/EquiRate
-      !
-      IF (ReactionSystem(iReac)%Line3=='rev') THEN
-        DkDT=DbRdT
-      ELSE   
-        DkDT=DfRdT
-      END IF
-      !
-    END SUBROUTINE DiffTempXComputeCK
-    ! 
     !
     SUBROUTINE UpdateTempArray(TempArr,Temp)
       REAL(RealKind) :: Temp
@@ -943,7 +868,7 @@
       !
       REAL(RealKind) :: g0(nspc)
       REAL(RealKind) :: delg0,  k
-      REAL(RealKind) :: k0 ,kinf, Pr, logF, F, c, n, Fcent
+      REAL(RealKind) :: k0 ,kinf, Pr, logF, c, n, Fcent
       REAL(RealKind) :: TroeConst(4)
       !
       IF (ReactionSystem(i)%Line3=='low') THEN
@@ -981,17 +906,17 @@
           &        highD*T(3)/12.0d0 + 0.05d0*highE*T(4) + highF*T(6) + highG )           ! [-] dim.less
         END WHERE
         !
-        delg0=0.0d0
-        DO jj=BAT%RowPtr(i),BAT%RowPtr(i+1)-1
-          j=BAT%ColInd(jj)
-          delg0=delg0+BAT%Val(jj)*g0(j)      
+        delg0=ZERO
+        DO jj=BA%RowPtr(i),BA%RowPtr(i+1)-1
+          j=BA%ColInd(jj)
+          delg0=delg0+BA%Val(jj)*g0(j)      
         END DO
         !
         EquiRate=EXP(-delg0)*(PressR*T(1))**sumBAT(i)
         ! backward reaction
         ReacConst=k/EquiRate
       ELSE
-        EquiRate=1.0d0
+        EquiRate=ONE
         ReacConst=k
       END IF
     END SUBROUTINE PressXCompute
@@ -1443,10 +1368,10 @@
       REAL(RealKind) :: Temp
       REAL(RealKind) :: y_conc(:)
       !
-      IF (y_conc(idxHp)>ZERO) THEN
-        ReacConst=y_conc(idxHp)*(Constants(1)*               &
+      IF (y_conc(Hp_ind)>ZERO) THEN
+        ReacConst=y_conc(Hp_ind)*(Constants(1)*               &
         &              EXP(Constants(2)*(ONE/Temp-InvRefTemp)))/  &
-        &              (ONE+13.0d0*y_conc(idxHp))
+        &              (ONE+13.0d0*y_conc(Hp_ind))
      END IF
     END SUBROUTINE Aspec1Compute
     !
@@ -1457,8 +1382,8 @@
       REAL(RealKind) :: Temp
       REAL(RealKind) :: y_conc(:)
       !
-      IF (y_conc(idxHp)>ZERO) THEN
-        ReacConst=y_conc(idxHp)**Constants(2) *                       &
+      IF (y_conc(Hp_ind)>ZERO) THEN
+        ReacConst=y_conc(Hp_ind)**Constants(2) *                       &
         &         (Constants(1)*EXP(Constants(3)*(ONE/Temp-InvRefTemp)))
      END IF
     END SUBROUTINE Aspec2Compute
@@ -1470,8 +1395,8 @@
       REAL(RealKind) :: Temp
       REAL(RealKind) :: y_conc(:)
       !
-      IF (y_conc(idxHp)>ZERO) THEN
-        ReacConst=Constants(1)*EXP(Constants(2)*(-LOG10(y_conc(idxHp))))
+      IF (y_conc(Hp_ind)>ZERO) THEN
+        ReacConst=Constants(1)*EXP(Constants(2)*(-LOG10(y_conc(Hp_ind))))
       END IF
     END SUBROUTINE Aspec3Compute
     !

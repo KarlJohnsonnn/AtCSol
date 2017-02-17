@@ -2,6 +2,7 @@ MODULE mo_MPI
   !
   USE MPI
   USE Kind_Mod
+  USE mo_control
   USE mo_reac, ONLY: LowerRateLim, UpperRateLim
   IMPLICIT NONE
   INTEGER :: MPI_RealKind

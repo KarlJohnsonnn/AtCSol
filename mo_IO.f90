@@ -2,7 +2,7 @@ MODULE mo_IO
   USE Kind_Mod
   USE mo_MPI
   USE mo_control
-  USE RosenBrock_Mod
+  USE Rosenbrock_Mod
   USE Factorisation_Mod
   !
   !
@@ -33,7 +33,11 @@ MODULE mo_IO
       WRITE(*,*)   '  Run - Paramter:'
       WRITE(*,*)   ''
       WRITE(*,*)   '      Mechanism:         ', TRIM(ChemFile)//'.sys'
-      WRITE(*,*)   '      NetCDF-File        ', 'NetCDF/'//TRIM(BSP)//'.nc'
+      IF (NetCdfPrint) THEN
+        WRITE(*,*)   '      NetCDF-File:       ', 'NetCDF/'//TRIM(BSP)//'.nc'
+      ELSE
+        WRITE(*,*)   '      NetCDF-File:       ', '*** no NetCDF output ***'
+      END IF
       WRITE(*,*)   '      Initials:          ', InitFile
       IF (solveLA=='cl') THEN 
         WRITE(*,*)   '      Version:           classic'
@@ -55,9 +59,9 @@ MODULE mo_IO
       IF(ImpEuler/=1) THEN
         WRITE(*,*)   '  Tolerance:   '
         WRITE(*,*)   ''
-        WRITE(*,*)   '      rel. tol Rosenbrock      = ',RtolROW
-        WRITE(*,*)   '      abs. tol gaseous species = ',AtolGas
-        WRITE(*,*)   '      abs. tol aqueous species = ',AtolAqua
+        WRITE(*,'(A34,2X,E23.14)')   '      rel. tol Rosenbrock      = ',RtolROW
+        WRITE(*,'(A34,2X,E23.14)')   '      abs. tol gaseous species = ',AtolGas
+        WRITE(*,'(A34,2X,E23.14)')   '      abs. tol aqueous species = ',AtolAqua
       END IF
       WRITE(*,*)   ''
     END IF
@@ -165,7 +169,7 @@ MODULE mo_IO
     !
     ! local stuff
     INTEGER, ALLOCATABLE :: InvPermu(:)
-    INTEGER              :: mUnit
+    INTEGER              :: mUnit, i
     CHARACTER(50)        :: mName
     !
     !
@@ -232,7 +236,7 @@ MODULE mo_IO
     WRITE(*,*) '      rate(1:3) :: ', rvec(1:3)
     WRITE(*,*) '      conc(1:3) :: ', yvec(1:3)
     WRITE(*,*) 
-  END SUBROUTINE DebugPrint1
+  END SUBROUTINE
   !
   !
 END MODULE mo_IO

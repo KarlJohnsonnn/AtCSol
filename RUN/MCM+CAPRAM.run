@@ -16,8 +16,8 @@
   MetFile  = 'MET/Urban.met'
  /END
  &TIMES
-  tAnf=0.0d0
-  tEnd=86400.0d0
+  tAnf    = 0.0d0
+  tEnd    = 84600.0d0
   Dust    = 0.5d0
   idate   = 010621     
   rlat    = 45.d0     
@@ -35,7 +35,7 @@
   Error_Est = 2
   PI_StepSize = .FALSE.
   solveLA = 'cl'  
-  RosenbrockMethod =  'METHODS/TSRosWRodas3.fort'
+  RosenbrockMethod = 'METHODS/TSRosWRodas3.fort'
   ImpEuler = 0
  /END
  &ORDERING

@@ -17,8 +17,7 @@
 
    REAL(8), POINTER :: u(:),ww(:),kz(:),temp(:),pres(:),densi(:)
    REAL(8), POINTER :: rhum(:),ch2o(:),centrain(:)
-   REAL(8), ALLOCATABLE ::  mH2O(:)
-   !REAL(8), ALLOCATABLE :: mair(:), mH2O(:)
+   REAL(8), ALLOCATABLE :: mair(:), mH2O(:)
    REAL(8), PARAMETER :: mO2  = 0.2095e0 ,& ! proportion of O2
 &                        mN2  = 0.7809e0 ,& ! proportion of N2
 &                        mH2  = 0.e0        ! proportion of H2 (not used as passive specie, yet)

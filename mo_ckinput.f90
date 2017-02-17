@@ -11,7 +11,7 @@ MODULE mo_ckinput
   !
   USE mo_reac, ONLY: ntGas, ntAqua, ntSolid, ntPart, ntKat, neq, nspc, nReak&
   &                    , nreakgas,  nreakgconst, nreakgphoto, nreakgspec    &
-  &                    , nreakgtemp, nreakgtroe                             &
+  &                    , nreakgtemp, nreakgtroe, nDIM                       &
   &                    , lowA,lowB,lowC,lowD,lowE,lowF,lowG                 &
   &                    , highA,highB,highC,highD,highE,highF,highG
   USE NetCDF_Mod
@@ -57,7 +57,7 @@ CONTAINS
   END SUBROUTINE CloseFile
   !
   !
-  SUBROUTINE Read_Thermodata(DatThermo,UnitThermo,nSpc)
+  SUBROUTINE Read_Thermodata(ThermSwitchTemp,DatThermo,UnitThermo,nSpc)
     CHARACTER(*) :: DatThermo
     INTEGER :: UnitThermo, nSpc
     
@@ -72,7 +72,7 @@ CONTAINS
     CHARACTER(1)  :: Phase(nSpc)
     REAL(8)       :: ta,tb,tc,td,te,tf,tg
     REAL(8)       :: H0_29815R(nspc)
-    REAL(8)       :: ThermSwitchTemp(nspc)
+    REAL(8),ALLOCATABLE :: ThermSwitchTemp(:)
     !
     INTEGER :: i,j,n
     INTEGER :: idxWhiteSpace
@@ -88,6 +88,7 @@ CONTAINS
     CALL OpenFile(UnitThermo,DatThermo(1:INDEX(DatThermo,'.')-1),'dat')
     ALLOCATE(lowA(nspc),lowB(nspc),lowC(nspc),lowD(nspc),lowE(nspc),lowF(nspc),lowG(nspc),STAT=ALLOC_ERR)
     ALLOCATE(highA(nspc),highB(nspc),highC(nspc),highD(nspc),highE(nspc),highF(nspc),highG(nspc),STAT=ALLOC_ERR)
+    ALLOCATE(ThermSwitchTemp(nspc))
     !
     i=0
     DO
@@ -229,9 +230,10 @@ CONTAINS
     END DO
     CALL CloseFile(UnitReac,TRIM(DataReac),'sys')
     !
-    nSpc=ntGas+ntAqua+ntSolid+ntPart+ntkat
+    nspc=ntGas+ntAqua+ntSolid+ntPart+ntkat
+
     !
-    print*, 'Total number of species = ', nSpc
+    !print*, 'Total number of species = ', nSpc
   END SUBROUTINE Read_Species
   !
   SUBROUTINE Read_Reaction(DataReac,UnitReac)
@@ -254,11 +256,11 @@ CONTAINS
     !
     INTEGER :: nduct, nEducts, nProducts
     INTEGER :: fPosPlus , fPosEq, fPosFw
-    INTEGER :: idxDucts(6),idxDuctsP(6)
-    REAL(RealKind), ALLOCATABLE :: valDucts(:)
+    INTEGER :: idxDucts(6)!,idxDuctsP(6)
+    !REAL(RealKind), ALLOCATABLE :: valDucts(:)
     INTEGER, ALLOCATABLE :: SPCind(:,:)
     !
-    INTEGEr :: TableNspc
+    !INTEGEr :: TableNspc
     CHARACTER(15) :: units
     REAL(RealKind) :: tmpReal
     !
@@ -388,7 +390,6 @@ CONTAINS
         ! count educts and products
         CALL CountDooku(nEducts,nProducts,LocString)
 !----------------------------------------------------------------------------------------------
-!       matritze allocoieren!!!!!
 !----------------------------------------------------------------------------------------------
         ALLOCATE(ReactionSystem(iReac)%Educt(nEducts))
         IF (bR) ALLOCATE(ReactionSystem(iReac+1)%Educt(nProducts))
@@ -725,7 +726,7 @@ CONTAINS
       !
       IF (idxM>0) THEN
         IF (idxM2>0) THEN 
-          ConstType='TROEX'
+          ConstType='PRESSX'
           Factor='$(+M)'
           String(idxM2:idxM2+3)='    '
           nreakgtroe=nreakgtroe+1
@@ -870,6 +871,29 @@ CONTAINS
       Type='Gas'
     END IF
   END SUBROUTINE InsertSpecies
+  !
+  !
+  SUBROUTINE GetSpeciesNames(FileName,Species)
+    CHARACTER(60), ALLOCATABLE :: Species(:)
+    CHARACTER(*)               :: FileName
+    !
+    INTEGER :: i
+    !
+    !-- Open .chem-file and skip the first 24 lines (head)
+    OPEN(UNIT=89,FILE=ADJUSTL(TRIM(FileName))//'.chem',STATUS='UNKNOWN')
+    REWIND(89)
+    DO i=1,24
+      READ(89,*)
+    END DO
+    !--- allocate space for a list of all species (incl. kat spc)
+    ALLOCATE(Species(nspc))
+    !
+    DO i=1,ntGas
+      READ(89,*)  Species(i)
+    END DO
+    CLOSE(89)
+    !
+  END SUBROUTINE GetSpeciesNames
   !
   !
   SUBROUTINE PrintReactionSystem(ReacSys)

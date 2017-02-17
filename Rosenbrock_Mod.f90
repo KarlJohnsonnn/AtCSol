@@ -74,7 +74,7 @@ MODULE Rosenbrock_Mod
   TYPE(IntArgs), PUBLIC :: Args                     ! Initial arguments  
   
   REAL(RealKind), PRIVATE :: timerEnd,timerStart
-  REAL(RealKind), ALLOCATABLE :: ValCopy(:)
+  REAL(RealKind), ALLOCATABLE :: LUvalsFix(:)
 
   INTEGER, ALLOCATABLE :: LU_Perm(:)
 
@@ -162,6 +162,7 @@ MODULE Rosenbrock_Mod
     &            RCo%nStage,     &        ! leading dimension of RHS
     &            INFO)                    ! INFO (integer) if INFO=0 succsessfull	
     !
+    IF (INFO/=0.AND.MPI_ID==0) WRITE(*,*) 'Error while calc row-method parameter'
     !       
     ALLOCATE(RCo%a(RCo%nStage,RCo%nStage))
     RCo%a=0.0d0
@@ -188,115 +189,90 @@ MODULE Rosenbrock_Mod
   !=================================================================
   !         Check some values and set few parameters
   !=================================================================
-  SUBROUTINE SetRosenbrockArgs(Rate,y0,Tspan,Atol,RtolROW,pow)
+  SUBROUTINE CheckInputParameters(Tspan,aTol,rTolROW)
     !--------------------------------------------------------------------
     ! Input:
-    !   - y0
     !   - Tspan
-    !   - AtolGas, RtolROW
-    !   - pow
-    REAL(RealKind), INTENT(IN) :: y0(:)       
+    !   - aTol, rTolROW
     REAL(RealKind) :: Tspan(2)               
-    REAL(RealKind) :: Atol(2)
-    Real(RealKind) :: RtolROW
-    Real(RealKind) :: pow
-    !--------------------------------------------------------------------
-    ! Output:
-    !   -  public TYPE(IntArgs)
-    REAL(RealKind) :: Rate(neq)                    ! rate vector
-    !--------------------------------------------------------------------
-    ! Temorary variables:
+    REAL(RealKind) :: aTol(2)
+    REAL(RealKind) :: rTolROW
     !
-    REAL(RealKind) :: Tstart,Tend                 ! start-, end-time
-    REAL(RealKind) :: checkdir
-    REAL(RealKind) :: one=1.0d0                  ! for Tdir check
-    !
-    Args%hTspan=ABS(Tspan(2)-Tspan(1))
-    Args%Tend=Tspan(2)
-    Args%nep=nspc
-    ALLOCATE(Args%ATol(nspc))
-    Args%ATol(1:ntgas)=Atol(1)
-    Args%ATol(ntGas+1:nspc)=Atol(2)
-    Args%RTol=RtolROW
-    Args%RTolpow=RtolRow**pow
-    !
-    Tstart=Tspan(1)
-    Tend=Tspan(2)
-    !
+    ALLOCATE(ThresholdStepSizeControl(nDIM))
+    ThresholdStepSizeControl(:ntGas)=AtolGas/RTolROW
+    ThresholdStepSizeControl(ntGas+1:)=AtolAqua/RTolROW
+    ALLOCATE(ATolAll(nDIM))
+    ATolAll(:ntGas)=ATolGas
+    ATolAll(ntGas+1:)=ATolAqua
+    IF ( combustion ) THEN
+      ThresholdStepSizeControl(nDIM)=ATolTemp/RTolROW
+      ATolAll(nDIM)=ATolTemp
+    END IF
     ! Test that Tspan is internally consistent.
-    IF (Tstart>=Tend) THEN
+    IF ( Tspan(1)>=Tspan(2) ) THEN
+      WRITE(*,*) ' '
+      WRITE(*,*) ' '
       WRITE(*,*) 'start time >= end time'
       CALL FinishMPI()
-      STOP 'STOP'
+      STOP '  STOP  '
     END IF
-    checkdir=Tend-Tstart
-    Args%Tdir=SIGN(one,checkdir)
     !
-    ! calc first rate 
-    CALL Rates(Tstart,y0,Rate)
-    !print*, 'debug:: sum(R)=',sum(Rate),sum(y0)
-    ALLOCATE(Args%f0(nspc))
-    Args%f0=0.0d0
-    !
-    print*, 'debug :: roargs   ', SUM(Rate), SUM(y0)
-    stop
-    ! =====================
-    ! Neu
-    !============
-    !CALL FcnRhs(Args%f0,BAT,Rate,y0,ReactionSystem)
-    CALL MatVecMult(BAT,Rate,y_emi,Args%f0)
-    IF (Args%RTol<=0.0D0) THEN
+    ! Test that Rosenbrock tolerance > 0
+    IF ( rTolROW<=ZERO ) THEN
+      WRITE(*,*) ' '
+      WRITE(*,*) ' '
       WRITE(*,*) 'RTol must be positiv scalar'
       CALL FinishMPI()
-      STOP 'STOP'
+      STOP '  STOP  '
     END IF
     !
-    IF (.NOT.(ALL(Args%ATol>=0.0D0))) THEN
+    ! Test that absolute tolerance for gas and aqua species is > 0
+    IF ( .NOT.(ALL(aTol>=ZERO)) ) THEN
+      WRITE(*,*) ' '
+      WRITE(*,*) ' '
       WRITE(*,*) 'ATols must be positive'
       CALL FinishMPI()
-      STOP 'STOP'
+      STOP '  STOP  '
     END IF
-    ALLOCATE(Args%threshold(nspc))
-    Args%threshold=0.0d0
-    Args%threshold=Args%ATol/Args%RTol
-    ! By default, hmax is 10% of the interval.
-    ! less may be better?
-    !Args%hmax=0.1D0*Args%hTspan
-    Args%hmax=maxStp
-    IF (Args%hmax<=0.0D0) THEN
-      WRITE(*,*) 'Max step size <= 0'
+    !
+    ! Test if maximum stepsize is not to small/big
+    IF ( (maxStp<=ZERO).OR.(maxStp>Tspan(2)-Tspan(1)) ) THEN
+      WRITE(*,*) ' '
+      WRITE(*,*) ' '
+      WRITE(*,*) 'Maximum stepsize = ',maxStp, ' to low or to high'
       CALL FinishMPI()
       STOP 'STOP'
     END IF
-  END SUBROUTINE SetRosenbrockArgs
+  END SUBROUTINE CheckInputParameters
   !
   !
   !==========================================================
   !   Calculates an initial stepsize based on 2. deriv.
   !==========================================================
-  SUBROUTINE InitialStepSize(h,hmin,absh,Jac,t,y)
+  SUBROUTINE InitialStepSize(h,hmin,absh,Jac,Rate,t,y,pow)
     !------------------------------------------------- 
     ! Input:
     !        - public variables
     !        - Tspan 
     !        - y0  ( initial vector )
     !        - Jacobian matrix
-    REAL(RealKind), INTENT(IN) :: t
-    REAL(RealKind), INTENT(IN) :: y(:)
+    REAL(RealKind), INTENT(IN) :: t, pow
+    REAL(RealKind), INTENT(IN) :: y(nspc)
     TYPE(CSR_Matrix_T), INTENT(IN) :: Jac
+    REAL(RealKind) :: Rate(neq)
+    REAL(RealKind) :: DRatedT(neq)     ! part. derv. rate over temperatur vector
     !-------------------------------------------------
     ! Output:
     !        - initial step size
     REAL(RealKind)  , INTENT(OUT) :: absh
     REAL(RealKind) :: h, hmin 
+    REAL(RealKind) :: f0(nspc)
     !-------------------------------------------------
     !
     ! Temp vars:
     REAL(RealKind) :: tdel, rh
-    REAL(RealKind), DIMENSION(nspc) ::  wt, DfDt, Tmp, f1
-    REAL(RealKind), DIMENSION(neq) :: Rate
+    REAL(RealKind), DIMENSION(nspc) ::  wt, DfDt, Tmp, f1, zeros
     REAL(RealKind) :: sqrteps=SQRT(eps)
-    REAL(RealKind) :: zeros(nspc)
     !
     zeros=ZERO    
     !
@@ -305,110 +281,166 @@ MODULE Rosenbrock_Mod
     hmin=minStp
     !
     !---- Compute an initial step size h using yp=y'(t) 
-    wt=MAX(ABS(y),Args%threshold)
-    rh=(1.25D0*MAXVAL(ABS(Args%f0/wt)))/(Args%RTolpow)
-    print*, 'debug:: SUM(wt),rh,sum(f0)', sum(wt) , rh, SUM(Args%f0)
+    CALL MatVecMult(BAT,Rate,y_e,f0)
+    wt=MAX(ABS(y),ThresholdStepSizeControl(1:nspc))
+    rh=(1.25D0*MAXVAL(ABS(f0(:)/wt(:))))/(RTolRow**pow)
     !
-    absh=MIN(Args%hmax,Args%hTspan)
+    print*, 'debug:: SUM(wt),rh,sum(f0)', sum(wt) , rh, SUM(f0)
+    absh=MIN(maxStp,Tspan(2)-Tspan(1))
     IF (absh*rh>1.0D0) THEN
       absh=1.0D0/rh
     END IF
     !
     !---- Compute y''(t) and a better initial step size
-    h=Args%Tdir*absh
-    tdel=(t+Args%Tdir*MIN(sqrteps*MAX(ABS(t),ABS(t+h)),absh))-t
+    h=absh
+    tdel=(t+MIN(sqrteps*MAX(ABS(t),ABS(t+h)),absh))-t
+     print*, 'debug:: tdel=     ', tdel
     !
-    print*, 'debug:: tdel=     ', tdel
-    CALL Rates((t+tdel),y,Rate)
+    CALL Rates((t+tdel),y,Rate,DRatedT)
     Output%nRateEvals=Output%nRateEvals+1
-    !------NEU
     !
-    !CALL FcnRhs(f1,BAT,Rate,y,ReactionSystem)
-    CALL MatVecMult(BAT,Rate,y_emi,f1)
+    CALL MatVecMult(BAT,Rate,y_e,f1)
      print*, 'debug:: sum(f1)=     ', SUM(f1)
     !
-    DfDt=(f1-Args%f0)/tdel
-    CALL MatVecMult(Jac,Args%f0,zeros,Tmp)
-    !print*, 'ID=',MPI_ID, 'sumDfDT=',SUM(ABS(DfDt)),'tdel=',tdel, 'SUMtmp=',SUM(ABS(tmp)), 'sumf0=',SUM(ABS(Args%f0)), 'sumf1=',SUM(ABS(f1))
-    !print*, 'ID=', MPI_ID, 'SumJacvals=',SUM(Jac%Val)
-    !print*, 'ID=',MPI_ID,  'SUMtmp=',SUM(ABS(tmp))
+    DfDt=(f1-f0)/tdel
+    CALL MatVecMult(Jac,f0,zeros,Tmp)
     DfDt=DfDt+Tmp
     !
-    rh=1.25D0*SQRT(0.5d0*MAXVAL(ABS(DfDt/wt)))/(Args%RTolpow)
-    !print*, 'ID=', MPI_ID,'rh=', rh,'rtolpow=',Args%RTolpow, 'sumWT=',SUM(ABS(wt)), 'sumdfdt=',SUM(DfDt)
-    !call dropout
+    rh=1.25D0*SQRT(0.5d0*MAXVAL(ABS(DfDt/wt)))/(RTolRow**pow)
     !
-    absh=MIN(Args%hmax,Args%hTspan)
+    absh=MIN(maxStp,Tspan(2)-Tspan(1))
     IF (absh*rh>1.0d0) THEN
       absh=1.0D0/rh
     END IF
     absh=MAX(absh,hmin)
-    print*, 'debug:: h, absh', h, absh
-    stop
+     print*, 'debug:: h, absh', h, absh
+     stop
   END SUBROUTINE InitialStepSize
   !
   !
-  !=======================================================
-  !    Subroutine Rosenbrock-Method classic Coef-Matrix
-  !=======================================================
-  SUBROUTINE ros_classic(ynew,err,errind,y0,t,h,RCo,errVals)
+  !=========================================================================
+  !    Subroutine Rosenbrock-Method universal for classic and extended case
+  !=========================================================================
+  SUBROUTINE Rosenbrock(y0,t,h,RCo,err,errind,yNew)
     !--------------------------------------------------------
     ! Input:
     !   - y0............. actual concentrations y 
     !   - t.............. time
     !   - h.............. step size
     !   - RCo............ Rosenbrock method
+    !   - Temp........... actual Temperatur (optional for combustion)
+    !
     REAL(RealKind), INTENT(IN) :: y0(:)
-    !REAL(RealKind) :: y0(:)
     REAL(RealKind), INTENT(IN) :: t, h
     TYPE(RosenbrockMethod_T)   :: RCo
     !--------------------------------------------------------
     ! Output:
     !   - ynew........... new concentratinos 
     !   - err............ error calc with embedded formula.
-    REAL(RealKind), INTENT(OUT) :: ynew(nspc)
+    !   - TempNew........ new temperature (optional for combustion)
+    !
+    REAL(RealKind), INTENT(INOUT) :: yNew(:)
     REAL(RealKind), INTENT(OUT) :: err
-    INTEGER,  INTENT(OUT) :: errind(1,1)
-    REAL(RealKind), OPTIONAL, INTENT(OUT) :: errVals(nspc)
+    INTEGER       , INTENT(OUT) :: errind(1,1)
     !-------------------------------------------------------
     ! Temporary variables:
-    REAL(RealKind), DIMENSION(nspc,RCo%nStage) :: k     
-    REAL(RealKind), DIMENSION(nspc) :: y,yhat
-    REAL(RealKind), DIMENSION(nspc) :: fRhs
     !
+    REAL(RealKind), DIMENSION(nDIM,RCo%nStage) :: k     
+    REAL(RealKind), DIMENSION(nDIM)    :: y, yhat, fRhs
+    REAL(RealKind), DIMENSION(nspc)    :: hy
+    REAL(RealKind), DIMENSION(nspc)    :: Umol, DUmoldT, DcDt
+    REAL(RealKind), DIMENSION(nDIMex)    :: bb
+    !
+    REAL(RealKind) :: Tarr(7)
     REAL(RealKind) :: Rate(neq)
+    REAL(RealKind) :: DRatedT(neq)        
+    REAL(RealKind) :: invRate(neq)
     REAL(RealKind) :: tt
-    !
-    REAL(RealKind) :: mpiTEst(SIZE(Miter%Val))
-    LOGICAL :: testLOG=.FALSE.
-    !
-    INTEGER :: iStage, jStage, i, rPtr
-    !
-    k=ZERO
-    fRhs=ZERO
-    Rate=ZERO
+    REAL(RealKind) :: c_v ! mass average mixture specific heat at constant volume
+    REAL(RealKind) :: X
     !
     !
-    y=MAX(ABS(y0(:)),eps)*SIGN(1.0d0,y0(:))
-    ynew=y0
-    yhat=y0
+    INTEGER :: iStage, jStage, i, rPtr          ! increments
     !
-    ! ---   miter = ( Id - h*gamma*BATransp*Diag(rate)*A*Diag(yVec)^(-1) )
+    ! Initial settings
+    k(:,:)=ZERO
+    fRhs(:)=ZERO
+    Rate(:)=ZERO
     !
-    CALL Rates(t,y,Rate)
+    y(:nspc)=MAX(ABS(y0(:nspc)),eps)*SIGN(ONE,y0(:nspc))                   ! concentrations =/= 0
+    yNew(:)=y0(:)
+    yHat(:)=y0(:)
+    !
+    !IF (PRESENT(Temp)) yNew(Temp_ind)=y0(Temp_ind)
+    !
+    !
+    !********************************************************************************
+    !    _   _             _         _          __  __         _          _       
+    !   | | | | _ __    __| |  __ _ | |_  ___  |  \/  |  __ _ | |_  _ __ (_)__ __
+    !   | | | || '_ \  / _` | / _` || __|/ _ \ | |\/| | / _` || __|| '__|| |\ \/ /
+    !   | |_| || |_) || (_| || (_| || |_|  __/ | |  | || (_| || |_ | |   | | >  < 
+    !    \___/ | .__/  \__,_| \__,_| \__|\___| |_|  |_| \__,_| \__||_|   |_|/_/\_\
+    !          |_|                                                                
+    !
+    !********************************************************************************
+    !
+    ! --- Nessesary for combustion systems
+    CALL Rates(t,y,Rate,DRatedT)
+    Rate(:)=MAX(ABS(Rate(:)),eps)*SIGN(ONE,Rate(:))         ! reaction rates =/= 0
+    hy=y(:nspc)/h
 
-    Rate(:)=MAX(ABS(Rate(:)),eps)*SIGN(1.0d0,Rate(:))
- 
 
-    TimeJacobianA=MPI_WTIME()
-    CALL Miter_Classic(BAT,A,Rate,y,h,RCo%ga,Miter)
-    TimeJacobianE=MPI_WTIME()
-    TimeJac=TimeJac+(TimeJacobianE-TimeJacobianA)
+    !print*, 'debug:: ', h , t ,Rate(1:3)
+    !print*, 'debug::2',y(1:3)
+    !
+    IF ( combustion ) THEN
+      CALL UpdateTempArray(Tarr,y0(nDIM))
+      CALL SpcInternalEnergy(Umol,Tarr)
+      CALL DiffSpcInternalEnergy(DUmoldT,Tarr)
+      CALL MassAveMixSpecHeat(c_v,Tarr,y0(:nspc),DUmoldT)
+      CALL DiffConcDt(BAT,Rate,DcDt)
+      DUmoldT=DUmoldT*RCo%ga
+      c_v=c_v/h
+      Umol(:)=-Umol(:)*hy(:)
+      X=c_v+SUM(DUmoldT(:)*DcDt(:))
+    END IF
+    ! 
+    ! --- Update matrix procedure
+    IF ( solveLA=='cl') THEN
+      !
+      ! classic case needs to calculate the Jacobian first
+      TimeJacobianA=MPI_WTIME()
+      CALL Miter_Classic(BAT,A,Rate,y,h,RCo%ga,Miter)
+      TimeJac=TimeJac+(MPI_WTIME()-TimeJacobianA)
+      Output%npds=Output%npds+1
+      !
+      IF (OrderingStrategie==8) THEN
+        CALL SetLUvaluesCL(LU_Miter,Miter,LU_Perm)
+      END IF
+    ELSE !IF ( solveLA=='ex') THEN
+      !
+      invRate(:)=ONE/Rate(:)
+      IF (OrderingStrategie==8) THEN
+        CALL SetLUvaluesEX(LU_Miter,nspc,neq,invRate,hy,DRatedT,Umol,X,LUvalsFix)
+      ELSE
+        CALL Miter_Extended(Miter,nspc,neq,invRate,hy)
+      END IF
+    END IF
+    !
+
+    !
+    !****************************************************************************************
+    !   _____             _                _             __  __         _ _       
+    !  |  ___|__ _   ___ | |_  ___   _ __ (_) ____ ___  |  \/  |  __ _ | |_  _ __ (_)__  __
+    !  | |_  / _` | / __|| __|/ _ \ | '__|| ||_  // _ \ | |\/| | / _` || __|| '__|| |\ \/ /
+    !  |  _|| (_| || (__ | |_| (_) || |   | | / /|  __/ | |  | || (_| || |_ | |   | | >  < 
+    !  |_|   \__,_| \___| \__|\___/ |_|   |_|/___|\___| |_|  |_| \__,_| \__||_|   |_|/_/\_\
+    !
+    !****************************************************************************************
     !
     ! --- LU - Decomposition ---
     IF (OrderingStrategie==8) THEN
       !
-      CALL SetLUvaluesCL(LU_Miter,Miter,LU_Perm)
       timerStart=MPI_WTIME()
       CALL SparseLU(LU_Miter)
       timerEnd=MPI_WTIME()
@@ -427,8 +459,23 @@ MODULE Rosenbrock_Mod
     WRITE(*,*) '      sum(LU)   :: ', SUM(LU_Miter%val)
     WRITE(*,*) 
     !
+    !****************************************************************************************
+    !   ____    ___ __        __          _____  _                    ____   _               
+    !  |  _ \  / _ \\ \      / /         |_   _|(_) _ __ ___    ___  / ___| | |_  ___  _ __  
+    !  | |_) || | | |\ \ /\ / /   _____    | |  | || '_ ` _ \  / _ \ \___ \ | __|/ _ \| '_ \ 
+    !  |  _ < | |_| | \ V  V /   |_____|   | |  | || | | | | ||  __/  ___) || |_|  __/| |_) |
+    !  |_| \_\ \___/   \_/\_/              |_|  |_||_| |_| |_| \___| |____/  \__|\___|| .__/ 
+    !                                                                                |_|    
+    !****************************************************************************************
+    !
     DO iStage=1,RCo%nStage
-      IF (iStage/=1) THEN
+      IF ( iStage==1 ) THEN
+        IF ( solveLA=='ex' ) THEN
+          bb(:neq)=mONE
+          bb(neq+1:NSactNR)=y_e(:)
+        END IF
+        IF (combustion) bb(nDIMex)=ZERO
+      ELSE
         tt=t+RCo%Asum(iStage)*h
         y=y0
         DO jStage=1,iStage
@@ -436,430 +483,77 @@ MODULE Rosenbrock_Mod
         END DO
         !
         ! Update Rates at  (t + SumA*h) , and  (y + A*)k
-        CALL Rates(tt,y,Rate)
-        !Rate(:)=MAX(ABS(Rate(:)),eps)*SIGN(1.0d0,Rate(:))
+        CALL Rates(tt,y,Rate,DRatedT)
+      END IF
+      !print*, 'debug :: stage, rates=',iStage,Rate(1:5)
+      !
+      !
+      IF ( solveLA=='cl') THEN
+        CALL MatVecMult(BAT,Rate,y_e,fRhs)           
+        fRhs=h*fRhs
+        DO jStage=1,iStage-1
+          fRhs=fRhs+RCo%C(iStage,jStage)*k(:,jStage)
+        END DO
+      ELSE 
+        IF (iStage/=1) THEN
+          bb(:neq)=-invRate(:)*Rate(:)
+          fRhs=ZERO
+          bb(nDIMex)=ZERO
+          DO jStage=1,iStage-1
+            fRhs(1:nspc)=fRhs(1:nspc)+RCo%C(iStage,jStage)*k(1:nspc,jStage)
+            IF (combustion) THEN
+              bb(nDIMex) = bb(nDIMex)  +  RCo%C(iStage,jStage)                  &
+              &          * ( c_v*k(nDIM,jStage) - SUM(Umol(:)*k(1:nspc,jStage)) )
+            END IF
+          END DO
+          bb(neq+1:NSactNR)=fRhs(1:nspc)/h+y_e(:)
+          IF (combustion) bb(nDIMex)=bb(nDIMex)/h
+        END IF
       END IF
       !
-      ! print*, 'debug :: stage, rates=',iStage,Rate(1:5)
-      !
-      CALL MatVecMult(BAT,Rate,y_emi,fRhs)           
-      fRhs=h*fRhs
-      !
-      DO jStage=1,iStage-1
-        fRhs=fRhs+RCo%C(iStage,jStage)*k(:,jStage)
-      END DO
-        !print*, 'ID=',MPI_ID,'sumfrhs=',SUM(ABS(frhs))
-        !print*, 'debug:: ', 'istage=',iStage,SUM(ABS(fRhs(:)))
+      !print*, 'debug:: ', 'istage=',iStage,SUM(ABS(fRhs(:)))
       !
       ! ---  Solve linear System  ---
       !
       IF (OrderingStrategie==8) THEN  
         timerStart=MPI_WTIME()
-        CALL SolveSparse(LU_Miter,fRhs)
-        timerEnd=MPI_WTIME()
-        TimeSolve=TimeSolve+(timerEnd-timerStart)
-        k(:,iStage)=fRhs(:)
+        IF ( solveLA=='cl') THEN
+          CALL SolveSparse(LU_Miter,fRhs)
+          k(:,iStage)=fRhs(:)
+        ELSE
+          CALL SolveSparse(LU_Miter,bb)
+          k(:,iStage)=y0(:)*bb(neq+1:)
+        END IF
+        TimeSolve=TimeSolve+(MPI_WTIME()-timerStart)
         print*, 'debug:: ', 'istage=',iStage,SUM(ABS(fRhs(:)))
-        !print*, 'ID=',MPI_ID, 'istage=',iStage,SUM(ABS(fRhs(:)))
       ELSE
         timerStart=MPI_WTIME()
-        !print*, 'vorID =',MPI_ID, 'istage=',iStage,'sum(x)=',SUM(ABS(mumps_par%rhs(:))),'sum(xfrhs=',SUM(ABS(frhs(:))), 'sum matVal=',SUM(ABS(Miter%Val))
-        CALL SolveLinAlg(fRhs)
-        timerEnd=MPI_WTIME()
-        TimeSolve=TimeSolve+(timerEnd-timerStart)
-        k(:,iStage)=Mumps_Par%RHS(:)    
-        !print*, 'nachID=',MPI_ID, 'istage=',iStage,'sum(x)=',SUM(ABS(mumps_par%rhs(:))),'sum(xfrhs=',SUM(ABS(frhs(:))), 'sum matVal=',SUM(ABS(Miter%Val))
+        IF ( solveLA=='cl') THEN
+          CALL SolveLinAlg(fRhs)
+          k(:,iStage)=Mumps_Par%RHS(:)    
+        ELSE
+          CALL SolveLinAlg(bb)
+          k(:nspc,iStage)=y0(:nspc)*Mumps_Par%RHS(neq+1:NSactNR)
+        END IF
+        TimeSolve=TimeSolve+(MPI_WTIME()-timerStart)
       END IF    
     END DO
       !call dropout
     !  
     DO jStage=1,RCo%nStage
-      ynew=ynew+RCo%m(jStage)*k(:,jStage)! new y vector
-      yhat=yhat+RCo%me(jStage)*k(:,jStage)! embedded formula for err calc ord-1
+      ynew(:)=ynew(:)+RCo%m(jStage)*k(:,jStage)! new y vector
+      yhat(:)=yhat(:)+RCo%me(jStage)*k(:,jStage)! embedded formula for err calc ord-1
     END DO
     !
-    ! ---   err calculation  ---
-    CALL ERROR(err,errind,ynew,yhat,y0,Args%ATol,Args%RTol,t,errVals)
-  END SUBROUTINE ros_classic
-  !
-  !
-  !
-  !=======================================================
-  !    Subroutine Rosenbrock-Method extended Coef-Matrix
-  !=======================================================
-  SUBROUTINE ros_extended(ynew,err,errind,y0,t,h,RCo,errVals)
-    !--------------------------------------------------------
-    ! Input:
-    !   - y0............. actual concentrations y 
-    !   - t.............. time
-    !   - h.............. step size
-    !   - RCo............ Rosenbrock method
-    REAL(RealKind), INTENT(IN) :: y0(:)
-    !REAL(RealKind) :: y0(:)
-    REAL(RealKind), INTENT(IN) :: t, h
-    TYPE(RosenbrockMethod_T)   :: RCo
-    !--------------------------------------------------------
-    ! Output:
-    !   - YNew........... new concentratinos 
-    !   - err............ error calc with embedded formula.
-    REAL(RealKind), INTENT(OUT) :: ynew(nspc)
-    REAL(RealKind), INTENT(OUT) :: err
-    INTEGER,  INTENT(OUT) :: errind(1,1)
-    REAL(RealKind), OPTIONAL, INTENT(OUT) :: errVals(nspc)
-    !-------------------------------------------------------
-    ! Temporary variables:
-    REAL(RealKind), DIMENSION(nspc,RCo%nStage) :: k   
-    REAL(RealKind), DIMENSION(nspc)   :: y, yhat, hy, kRhs
-    REAL(RealKind), DIMENSION(NSactNR) :: bb
+    !***********************************************************************************************
+    !   _____                           _____       _    _                    __               
+    !  | ____| _ __  _ __  ___   _ __  | ____| ___ | |_ (_) _ __ ___    __ _ | |_  (_)  ___   _ __  
+    !  |  _|  | '__|| '__|/ _ \ | '__| |  _|  / __|| __|| || '_ ` _ \  / _` ||  __|| | / _ \ | '_ \ 
+    !  | |___ | |   | |  | (_) || |    | |___ \__ \| |_ | || | | | | || (_| || |_  | || (_) || | | |
+    !  |_____||_|   |_|   \___/ |_|    |_____||___/ \__||_||_| |_| |_| \__,_| \__| |_| \___/ |_| |_|
+    !                                                                                              
+    !***********************************************************************************************
+    CALL ERROR(err,errind,ynew,yhat,y0,ATolAll,RTolROW,t)
     !
-    REAL(RealKind) :: Rate(neq)
-    REAL(RealKind) :: invRate(neq)
-    REAL(RealKind) :: tt
-    !
-    INTEGER :: iStage, jStage
-    INTEGER :: i
-    INTEGER :: rPtr
-    !
-    k=ZERO
-    kRhs=ZERO
-    Rate=ZERO
-    invRate=ZERO
-    bb=ZERO
-    !
-    y=y0
-    ynew=y0
-    yhat=y0
-    !
-    ! Update Rates
-    !    
-    CALL Rates(t,y,Rate)
-    !
-    IF ( (OrderingStrategie<8) .AND. (MPI_np>1) )THEN
-      DO i=1,loc_rateCnt
-        rPtr=loc_ratePtr(i)
-        invRate(rPtr)=1.0d0/(MAX(ABS(Rate(rPtr)),eps)*SIGN(1.0d0,Rate(rPtr)))
-      END DO
-      DO i=1,loc_concCnt
-        rPtr=loc_concPtr(i)
-        hy(rPtr)=MAX(ABS(y(rPtr)),eps)*SIGN(1.0d0,y(rPtr))/h
-      END DO
-    ELSE
-      invRate(:)=1.0d0/(MAX(ABS(Rate(:)),eps)*SIGN(1.0d0,Rate(:)))
-      hy(:)=MAX(ABS(y0(:)),eps)*SIGN(1.0d0,y0(:))/h
-    END IF
-
-    ! nur für matrix output
-    !CALL Miter_Extended(Miter,nspc,neq,invRate,hy)
-
-    !
-    !          _                           _ 
-    !         |   invRvec    |   g*A_Mat    |
-    ! miter = |--------------+--------------|
-    !         |_  BAT_Mat    |    Yvec/h   _|
-    !
-    !
-    ! --- LU - Decomposition ---
-    IF (OrderingStrategie==8) THEN
-      !
-      CALL SetLUvaluesEX(LU_Miter,nspc,neq,invRate,hy,ValCopy)  
-      timerStart=MPI_WTIME()
-      CALL SparseLU(LU_Miter)
-      timerEnd=MPI_WTIME()
-      TimeFac=TimeFac+(timerEnd-timerStart)
-    ELSE
-      CALL Miter_Extended(Miter,nspc,neq,invRate,hy)
-      CALL FactorizeCoefMat( Miter%Val )
-    END IF
-    !
-    !y=y0   
-    !
-    DO iStage=1,RCo%nStage
-      IF (iStage==1) THEN
-        bb(1:neq)=-One
-        bb(neq+1:NSactNR)=y_emi(1:nspc)
-      ELSE
-        tt=t+RCo%Asum(iStage)*h
-        y=y0
-        DO jStage=1,iStage
-          y=y+RCo%a(iStage,jStage)*k(:,jStage)
-        END DO
-        !
-        ! Update Rates at t + a*h
-        CALL Rates(tt,y,Rate)
-        !Rate(:)=MAX(ABS(Rate(:)),eps)*SIGN(1.0d0,Rate(:))
-        kRhs=Zero
-        DO jStage=1,iStage-1
-          kRhs=kRhs+RCo%C(iStage,jStage)*k(:,jStage)
-        END DO
-        bb(1:neq)=-invRate(:)*Rate(:)
-        bb(neq+1:NSactNR)=kRhs/h+y_emi(1:nspc)
-      END IF
-      !      
-      ! ---  Solve linear System  ---  
-      !
-      ! Sparse triangular solve LUx=b
-      IF (OrderingStrategie==8) THEN  
-        timerStart=MPI_WTIME()
-        CALL SolveSparse(LU_Miter,bb)
-        timerEnd=MPI_WTIME()
-        TimeSolve=TimeSolve+(timerEnd-timerStart)
-        k(:,iStage)=y0(:)*bb(neq+1:NSactNR)
-        !k(:,iStage)=MAX(ABS(y0(:)),eps)*SIGN(1.0d0,y0(:))*bb(neq+1:NSactNR)
-        !IF (iStage==1) THEN
-        !  DO jstage=1,nspc+neq
-        !    IF (t>43100.0d0) WRITE(112,*) jstage, bb(jstage) ! letzte lösung des großes systems speichern
-        !  END DO
-        !  REWIND(112)
-        !END IF
-      ELSE
-      ! Mumps version of solving LUx=b  
-        timerStart=MPI_WTIME()
-        CALL SolveLinAlg(bb)
-        timerEnd=MPI_WTIME()
-        TimeSolve=TimeSolve+(timerEnd-timerStart)
-        k(:,iStage)=y0(:)*Mumps_Par%RHS(neq+1:NSactNR)      
-        !IF (iStage==1) THEN
-        !  DO jstage=1,nspc+neq
-        !    IF (t>43100.0d0) WRITE(112,*) jstage, Mumps_Par%rhs(jstage) ! letzte lösung des großes systems speichern
-        !  END DO
-        !  REWIND(112)
-        !END IF
-      END IF 
-      !print*, '  --  k(1:3,',iStage,')',k(1:3,iStage)
-    END DO
-    !
-    DO jStage=1,RCo%nStage
-      ynew=ynew+RCo%m(jStage)*k(:,jStage)   
-      yhat=yhat+RCo%me(jStage)*k(:,jStage) 
-    END DO
-    !
-    ! --- error calculation
-    !
-    !CALL ERROR_MAXNORM(err,errSpc,ynew,yhat,y0,Args%ATol,Args%RTol,t,errVals)
-    CALL ERROR(err,errind,ynew,yhat,y0,Args%ATol,Args%RTol,t,errVals)
-  END SUBROUTINE ros_extended
-  !
-  !=======================================================
-  !    Subroutine Rosenbrock-Method extended Coef-Matrix
-  !=======================================================
-  SUBROUTINE ros_temp_extended(ynew,err,errind,y0,t,h,RCo,Temp,errVals)
-    !--------------------------------------------------------
-    ! Input:
-    !   - y0............. actual concentrations y 
-    !   - t.............. time
-    !   - h.............. step size
-    !   - RCo............ Rosenbrock method
-    REAL(RealKind), INTENT(IN) :: y0(:)
-    REAL(RealKind), INTENT(IN) :: t, h
-    REAL(RealKind), INTENT(IN) :: Temp
-    TYPE(RosenbrockMethod_T)   :: RCo
-    !--------------------------------------------------------
-    ! Output:
-    !   - YNew........... new concentratinos 
-    !   - err............ error calc with embedded formula.
-    REAL(RealKind), INTENT(OUT) :: ynew(nspc)
-    REAL(RealKind), INTENT(OUT) :: err
-    INTEGER,  INTENT(OUT) :: errind(1,1)
-    REAL(RealKind), OPTIONAL, INTENT(OUT) :: errVals(nspc)
-    !-------------------------------------------------------
-    ! Temporary variables:
-    REAL(RealKind), DIMENSION(nspc,RCo%nStage) :: k   
-    REAL(RealKind), DIMENSION(nspc)   :: y, yhat, hy, kRhs
-    REAL(RealKind), DIMENSION(nspc)   :: Umol,DUmoldT,DcDt
-    REAL(RealKind), DIMENSION(NSactNR) :: bb
-    !
-    REAL(RealKind) :: Tarr(7)
-    REAL(RealKind) :: Rate(neq)
-    REAL(RealKind) :: invRate(neq)
-    REAL(RealKind) :: tt
-    REAL(RealKind) :: c_v !is the mass average mixture specific heat at constant volume,
-    !
-    INTEGER :: iStage, jStage
-    INTEGER :: i
-    !
-    k=ZERO
-    kRhs=ZERO
-    Rate=ZERO
-    invRate=ZERO
-    bb=ZERO
-    !
-    y=y0
-    ynew=y0
-    yhat=y0
-    !
-    ! Update Rates
-    !          _                                  _ 
-    !         | invDiagrVec  |   g*A_Mat    | g*~K |
-    !         |--------------+--------------+------|
-    ! miter = |   BAT_Mat    |  DiagyAec/h  |   0  |
-    !         !--------------+--------------+------|
-    !         |_     0       |  -U^T*D_c    |   X _|
-    !    
-    !    X = c_v/h + W^-1 * (g*dU/dt)(dc/dt)
-    CALL UpdateTempArray(Tarr,Temp)
-   
-    CALL Rates(t,y,Rate,Tarr(1))
-    invRate(:)=1.0d0/(MAX(ABS(Rate(:)),eps)*SIGN(1.0d0,Rate(:)))
-    hy(:)=MAX(ABS(y(:)),eps)*SIGN(1.0d0,y(:))
-    !
-    CALL SpcInternalEnergy(Umol,Tarr)
-    !
-    CALL DiffSpcInternalEnergy(DUmoldT,Tarr)
-    !
-    CALL MassAveMixSpecHeat(c_v,Tarr,y0,DUmoldT)
-    !
-    CALL DiffConcDt(BAT,Rate,DcDt)
-    !
-    DUmoldT=DUmoldT*RCo%ga
-    c_v=c_v/h
-    Umol(:)=-Umol(i)*hy(i)
-    hy(:)=hy(:)/h
-    !
-    ! --- LU - Decomposition ---
-    IF (OrderingStrategie==8) THEN
-      !
-      CALL SetLUvaluesEX(LU_Miter,nspc,neq,invRate,hy,ValCopy)  
-      timerStart=MPI_WTIME()
-      CALL SparseLU(LU_Miter)
-      timerEnd=MPI_WTIME()
-      TimeFac=TimeFac+(timerEnd-timerStart)
-    ELSE
-      CALL Miter_ExtendedTemp(Miter,nspc,neq,invRate,hy,DUmoldT,Umol,c_v,DcDt)
-      CALL FactorizeCoefMat(Miter%Val)
-    END IF
-    !
-    y=y0   
-    !
-    DO iStage=1,RCo%nStage
-      IF (iStage==1) THEN
-        bb(1:neq)=-One
-        bb(neq+1:NSactNR)=y_emi(1:nspc)
-      ELSE
-        tt=t+RCo%Asum(iStage)*h
-        y=y0
-        DO jStage=1,iStage
-          y=y+RCo%a(iStage,jStage)*k(:,jStage)
-        END DO
-        !
-        ! Update Rates at t + a*h
-        CALL Rates(tt,y,Rate)
-        kRhs=Zero
-        DO jStage=1,iStage-1
-          kRhs=kRhs+RCo%C(iStage,jStage)*k(:,jStage)
-        END DO
-        bb(1:neq)=-invRate(:)*Rate(:)
-        bb(neq+1:NSactNR)=kRhs/h+y_emi(1:nspc)
-      END IF
-      !      
-      ! ---  Solve linear System  ---  
-      !
-      ! Sparse triangular solve LUx=b
-      IF (OrderingStrategie==8) THEN  
-        timerStart=MPI_WTIME()
-        CALL SolveSparse(LU_Miter,bb)
-        timerEnd=MPI_WTIME()
-        TimeSolve=TimeSolve+(timerEnd-timerStart)
-        k(:,iStage)=y0(:)*bb(neq+1:NSactNR)
-      ELSE
-      ! Mumps version of solving LUx=b  
-        timerStart=MPI_WTIME()
-        CALL SolveLinAlg(bb)
-        timerEnd=MPI_WTIME()
-        TimeSolve=TimeSolve+(timerEnd-timerStart)
-        k(:,iStage)=y0(:)*Mumps_Par%RHS(neq+1:NSactNR)      
-      END IF 
-      !print*, '  --  k(1:3,',iStage,')',k(1:3,iStage)
-    END DO
-    !
-    DO jStage=1,RCo%nStage
-      ynew=ynew+RCo%m(jStage)*k(:,jStage)   
-      yhat=yhat+RCo%me(jStage)*k(:,jStage) 
-    END DO
-    !
-    ! --- error calculation
-    !
-    CALL ERROR(err,errind,ynew,yhat,y0,Args%ATol,Args%RTol,t,errVals)
-  END SUBROUTINE ros_temp_extended
-  !
-  !
-  !=======================================================
-  !    Subroutine Rosenbrock-Method classic Coef-Matrix
-  !=======================================================
-  SUBROUTINE BackwardEuler(ynew,y0,t,h)
-    !--------------------------------------------------------
-    ! Input:
-    !   - y0............. actual concentrations y 
-    !   - t.............. time
-    !   - h.............. step size
-    !   - RCo............ Rosenbrock method
-    REAL(RealKind), INTENT(IN) :: y0(:)
-    REAL(RealKind), INTENT(IN) :: t, h
-    TYPE(RosenbrockMethod_T)   :: RCo
-    !--------------------------------------------------------
-    ! Output:
-    !   - ynew........... new concentratinos 
-    !   - err............ error calc with embedded formula.
-    REAL(RealKind), INTENT(OUT) :: ynew(nspc)
-    !-------------------------------------------------------
-    ! Temporary variables:
-    REAL(RealKind), DIMENSION(nspc) :: k     
-    REAL(RealKind), DIMENSION(nspc) :: y
-    REAL(RealKind), DIMENSION(nspc) :: fRhs
-    !
-    REAL(RealKind) :: Rate(neq)
-    !
-    !
-    k=ZERO
-    fRhs=ZERO
-    Rate=ZERO
-    !
-    y=y0
-    ynew=y0
-    !
-    ! ---   miter = ( Id - h*gamma*BATransp*Diag(rate)*A*Diag(yVec)^(-1) )
-    !
-    CALL Rates(t,y,Rate)
-    TimeJacobianA=MPI_WTIME()
-    CALL Miter_Classic(BAT,A,Rate,y,h,1.0d0,Miter)
-    TimeJacobianE=MPI_WTIME()
-    TimeJac=TimeJac+(TimeJacobianE-TimeJacobianA)
-    !
-    ! --- LU - Decomposition ---
-    IF (FactorisationStrategie==1) THEN
-      !
-      !WRITE(*,*) LU_Perm(1:10)
-      !STOP
-      CALL SetLUvaluesCL(LU_Miter,Miter,LU_Perm)
-      timerStart=MPI_WTIME()
-      CALL SparseLU(LU_Miter)
-      timerEnd=MPI_WTIME()
-      TimeFac=TimeFac+(timerEnd-timerStart)
-    ELSE
-      !CALL FactorizeCoefMat(Miter%Val)
-    END IF
-    !
-    !
-    CALL MatVecMult(BAT,Rate,y_emi,fRhs)           
-    fRhs=h*fRhs
-    !
-    !
-    ! ---  Solve linear System  ---
-    !
-    IF (SolLinSystemStrategie==1) THEN  
-      timerStart=MPI_WTIME()
-      CALL SolveSparse(LU_Miter,fRhs)
-      timerEnd=MPI_WTIME()
-      TimeSolve=TimeSolve+(timerEnd-timerStart)
-      k(:)=fRhs(:)
-    ELSE
-      timerStart=MPI_WTIME()
-      CALL SolveLinAlg(fRhs)
-      timerEnd=MPI_WTIME()
-      TimeSolve=TimeSolve+(timerEnd-timerStart)
-      k(:)=Mumps_Par%RHS(:)    
-    END IF    
-    !  
-    ynew = ynew + h*k(:)         ! new y vector
-    !
-  END SUBROUTINE BackwardEuler
+  END SUBROUTINE Rosenbrock
 END MODULE Rosenbrock_Mod

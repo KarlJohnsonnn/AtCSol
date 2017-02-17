@@ -90,7 +90,7 @@ MODULE Euler_Mod
     CALL SymbolicMult(BAT,A,Jac)
     !
     !---- calc rate vector
-    CALL Rates(t,y,Rate)
+    CALL Rates(t,y,loc_ratePtr,Rate)
     Output%nRateEvals=Output%nRateEvals+1
     !
     ! ----calc values of Jacobian

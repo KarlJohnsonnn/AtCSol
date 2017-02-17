@@ -8,10 +8,11 @@ F90_F  = mpif90 $(OPTFIX) $(CPPFLAGS) $(LDFLAGS)
 CC   = mpicc
 
 #OPT_O =  -O3  -Wunused 
-OPT_O =  -O3 -fdefault-real-8 -fdefault-double-8 -Wunused 
 #OPT_D =  -Warray-bounds -fbacktrace -fbounds-check
-OPT_D =  -g -Warray-bounds -fbacktrace -fbounds-check -ffpe-trap=zero 
-OPTL = -O3 -Wunused  
+#OPTL = -O3 -Wunused  
+
+OPT_O =  -O3 -fdefault-real-8 -fdefault-double-8 -Wunused 
+OPT_D =  -Og -Warray-bounds -Wextra -fbacktrace -ffpe-trap=zero -fimplicit-none  -fcheck=all
 
 OP=-Wl,--start-group
 CL=-Wl,--end-group

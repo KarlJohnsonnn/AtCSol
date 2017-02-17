@@ -4,25 +4,25 @@
 !***
 !**************************************************************************!
 !
-   REAL(8) FUNCTION pHValue(ya)
-      USE mo_reac
-      USE mo_control
+   FUNCTION pHValue(ya)
+     USE mo_reac
+     USE mo_control
+     USE Kind_Mod
 
-      IMPLICIT NONE
+     IMPLICIT NONE
 
-      REAL(8) :: ya(ntAqua)   ! molar density
-
-      INTEGER :: jt
+     REAL(RealKind) :: pHValue
+     REAL(RealKind) :: ya(ntAqua)   ! molar density
+     INTEGER :: jt
 
 !--------------------------------------------------------------------------!
 !
-      pHValue = 0.d0
-      DO jt=1,ntAqua!-1 
-        !print*, 'jt,name,charge', jt,y_name(ntGas+jt), Ladung(jt)
-        IF (jt==Hp_ind) CYCLE
-        pHValue = pHValue + ya(jt) * Ladung(jt)
-      END DO
-      pHValue = -pHValue
+     pHValue = 0.d0
+     DO jt=1,ntAqua!-1 
+       IF (jt==Hp_ind) CYCLE
+       pHValue = pHValue + ya(jt) * Charge(jt)
+     END DO
+     pHValue = -pHValue
 
 !--------------------------------------------------------------------------!
    END FUNCTION pHValue

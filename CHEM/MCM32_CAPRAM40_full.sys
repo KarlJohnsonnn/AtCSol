@@ -90518,7 +90518,7 @@ CLASS: AQUA  #aD22
 aCS(=O)(=O)[C] + aO2 = aCS(=O)(=O)CO[O]
 TEMP3:   A: 2.00E+09  B: 0.0
 
-CLASS: AQUA  #aD23
+CLASS: AQUA  #aD23  == Reaktion 21368
 aCS(=O)(=O)CO[O] = aC[S](=O)=O + aC=O + aO2
 TEMP3:   A: 7.00E+03  B: 0.0
 FACTOR: $RO2aq

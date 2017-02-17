@@ -12,12 +12,12 @@ MODULE NetCDF_Mod
   INTEGER, ALLOCATABLE :: Diag_varID(:), DiagERR_varID(:)
   INTEGER, ALLOCATABLE :: OutNetcdfSpc(:)
   CHARACTER(1),   ALLOCATABLE :: OutNetcdfPhase(:) !g=gas , a=aqua
-  INTEGER              :: OutNetcdfANZ
+  INTEGER              :: OutNetcdfANZ, OutNetcdfDIM
   REAL(RealKind)       :: altit               ! altitude
   !
   INTEGER :: x_varid,y_varid,z_varid,rec_varid, LWC_varid, traj_varid
   INTEGER :: StepSize_varid, Gassum_varid, Aquasum_varid, wetRadius_varid
-  INTEGER :: zenith_varid, schwefel_varid, error_varid
+  INTEGER :: zenith_varid, schwefel_varid, error_varid, Temperature_varid
   INTEGER :: MaxErrorSpc_varid
 
   CONTAINS
@@ -134,6 +134,7 @@ MODULE NetCDF_Mod
       DiagERR_Name_Netcdf(iDiagSpc)=TRIM(tmpName)//'_ERR'
     END IF
   END DO
+  !
   ! ============================================================
   !  MAIN loop for NetCDF init
   ! 
@@ -226,6 +227,9 @@ MODULE NetCDF_Mod
     CALL check ( NF90_DEF_VAR( ncid, 'SchwefelSumme' , NF90_DOUBLE, dimIDS, schwefel_varid ) )
     CALL check ( NF90_DEF_VAR( ncid, 'loc_error' , NF90_DOUBLE, dimIDS, error_varid ) )
     CALL check ( NF90_DEF_VAR( ncid, 'loc_error_spc' , NF90_DOUBLE, dimIDS, MaxErrorSpc_varid ) )
+    IF ( combustion ) THEN
+      CALL check ( NF90_DEF_VAR( ncid, 'Temperature' , NF90_DOUBLE, dimIDS, Temperature_varid ) )
+    END IF
     !
     ! ============================================================
     ! --  define attributes (name, unit...) of the variables
@@ -306,6 +310,12 @@ MODULE NetCDF_Mod
     CALL check( NF90_PUT_ATT(ncid, MaxErrorSpc_varid, NC_UNITS, '[-]' ) )  
     CALL check( NF90_PUT_ATT(ncid, MaxErrorSpc_varid, "long_name", 'species of max error val') ) 
     CALL check( NF90_PUT_ATT(ncid, MaxErrorSpc_varid, "_CoordinateAxes", "time") )
+    ! save temperature for combustion simulation
+    IF ( combustion ) THEN
+      CALL check( NF90_PUT_ATT(ncid, Temperature_varid, NC_UNITS, '[K]' ) )  
+      CALL check( NF90_PUT_ATT(ncid, Temperature_varid, "long_name", 'Temperature in Kelvin') ) 
+      CALL check( NF90_PUT_ATT(ncid, Temperature_varid, "_CoordinateAxes", "temp") )
+    END IF
     ! ============================================================
     ! --  End define mode
     ! ============================================================
@@ -384,8 +394,8 @@ END SUBROUTINE InitNetCDF
 !
 
 
-     REAL(RealKind), INTENT(IN) ::  y(nspc)         ! Concentrations of Species
-     REAL(RealKind) ::  yout(OutNetcdfANZ)      ! Output Array
+     REAL(RealKind), INTENT(IN)    ::  y(:)         ! Concentrations of Species
+     REAL(RealKind), INTENT(INOUT) ::  yout(:)      ! Output Array
      REAL(RealKind) ::  Time               ! Model Time
      REAL(RealKind) :: actLWC
 
@@ -397,6 +407,7 @@ END SUBROUTINE InitNetCDF
 !==================================================================
 !
      yout(:) = 0.d0
+     IF ( combustion ) yOut(OutNetcdfDIM)=y(nDIM)
      jt=0
 
 ! internal calculations all in molec/cm3
@@ -447,7 +458,7 @@ END SUBROUTINE InitNetCDF
   !
   REAL(RealKind) :: t                 ! Current time [in seconds]
   !
-  REAL(RealKind) :: yout(OutNetcdfANZ)               ! Output Array
+  REAL(RealKind) :: yOut(OutNetcdfDIM)               ! Output Array
   REAL(RealKind) :: timeLoc
   !
   !-- internal variable
@@ -505,6 +516,9 @@ END SUBROUTINE InitNetCDF
   CALL check( NF90_PUT_VAR( ncid, schwefel_varid,  Schwefel, start = (/time_ind/) ) )
   CALL check( NF90_PUT_VAR( ncid, error_varid,     error,    start = (/time_ind/) ) )
   CALL check( NF90_PUT_VAR( ncid, MaxErrorSpc_varid, ErrInd, start = (/time_ind/) ) )
+  IF ( combustion ) THEN
+    CALL check( NF90_PUT_VAR( ncid, Temperature_varid, yOut(OutNetcdfDIM), start = (/time_ind/) ) )
+  END IF
   ! ====================================================================================
   ! == Close netcdf-file ===============================================================
   ! ====================================================================================

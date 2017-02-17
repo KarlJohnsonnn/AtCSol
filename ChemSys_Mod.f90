@@ -172,12 +172,6 @@ MODULE Chemsys_Mod
   REAL(RealKind), PARAMETER :: RGas=8.3145d0
   REAL(RealKind), PARAMETER :: TRef=280.0d0 !298.15d0
   !
-  TYPE(CSR_Matrix_T) ::  A                & ! coef matrix of educts
-  &                    , B                & ! coef matrix of products
-  &                    , BA               & ! B-A
-  &                    , BAT                ! Transpose(B-A)
-  !
-  !
   TYPE(Reaction_T), POINTER :: Current
   TYPE(ReactionStruct_T), ALLOCATABLE :: ReactionSystem(:)
   TYPE(ListReaction_T), ALLOCATABLE :: CompleteReactionList(:)
@@ -188,8 +182,8 @@ MODULE Chemsys_Mod
   &                            , InitValInAct(:)    ! initial values inactiv spc
   !
   !
-  CHARACTER(LenName), ALLOCATABLE :: RO2spcG(:) 
-  INTEGER, ALLOCATABLE :: RO2idxG(:) 
+  CHARACTER(LenName), ALLOCATABLE :: RO2spcG(:) , RO2spcA(:)
+  INTEGER, ALLOCATABLE :: RO2idxG(:) , RO2idxA(:)
   !
   !
   REAL(RealKind) :: aH2O
@@ -1029,6 +1023,9 @@ MODULE Chemsys_Mod
       WRITE(Unit,*) SIZE(ReactionSystem(iLoop)%Constants),                      &
                     ReactionSystem(iLoop)%Constants
       WRITE(Unit,*) 'FACTOR:  ',ReactionSystem(iLoop)%Factor
+      IF (ReactionSystem(iLoop)%Factor=='$RO2') hasRO2=.TRUE.
+      IF (ReactionSystem(iLoop)%Factor=='$RO2aq') hasRO2aq=.TRUE.
+      !
       IF (PRESENT(CK)) WRITE(Unit,*) 'FACTOR:  ',ADJUSTL(TRIM(ReactionSystem(iLoop)%Line2))
       IF (PRESENT(CK)) WRITE(Unit,*) 'FACTOR:  ',ADJUSTL(TRIM(ReactionSystem(iLoop)%Line3))
     END DO
@@ -1155,145 +1152,431 @@ MODULE Chemsys_Mod
   !
   !
   ! Read Chemical Data (initial values and Emisions)
-  SUBROUTINE InputChemicalData(DataFileName,MeteoFileName)
-    CHARACTER(*) :: DataFileName,MeteoFileName
+  SUBROUTINE InputChemicalData(InitFileName,DataFileName,MeteoFileName)
+    CHARACTER(*) :: InitFileName, DataFileName, MeteoFileName
      !
-    REAL(RealKind), ALLOCATABLE :: GasAct(:), AqAct(:)
-    REAL(RealKind), ALLOCATABLE :: InitValAct(:)
     !REAL(RealKind), ALLOCATABLE :: GasInAct(:), AqInAct(:)
     !
     INTEGER, PARAMETER :: GasRateUnit=0 ! ???
-    INTEGER :: i, iPos
-    REAL(RealKind) :: pi43
+    INTEGER :: jt, i, iPos
+    REAL(RealKind) :: pi43, LWC
+    CHARACTER(60) :: string = ''
+    !
+    ! for pH Start
+    REAL(RealKind) :: kappa
+    REAL(RealKind), EXTERNAL :: pHValue
     !
     pi43=4.0d0/3.0d0*PI
     !
+    ! this is for mass transfer (accom , diffus term)
+    ALLOCATE( y_c1(nspc+ntkat), y_c2(nspc+ntkat) )
+    y_c1(1:ntGas)=5.0d-6
+    y_c2(1:ntGas)=5.0d-5
     !
-    CALL Read_EMISS(Emis,DataFileName)
-    CALL Read_GASini(GasAct,InitValInAct,DataFileName)
-    CALL Read_AQUAini(AqAct,InitValInAct,DataFileName)
-    CALL Read_AFRAC(InitAFrac,DataFileName)
     !
-    !CALL RewindFile
-    !CALL ClearIniFile
-    ! --- Read Microphysic
-    CALL Read_SPEK(SPEK,DataFileName)
+    !=========================================================================
+    !===  Read and save species names in lists
+    !=========================================================================
     !
-    !---------------------------------
-    ! Units for Chemistry
-    !---------------------------------
-    IF (UnitGas==0) THEN
-      GasFac=1.0d0
-    ELSE IF (UnitGas==1) THEN
-      GasFac=mol2part
-    ELSE
-      WRITE(*,*) 'Wrong GasUnit'
-      CALL FinishMPI()
-      STOP 'InputChemicalData'
+    !-- Open .chem-file and skip the first 24 lines (head)
+    OPEN(UNIT=89,FILE=ADJUSTL(TRIM(ChemFile))//'.chem',STATUS='UNKNOWN')
+    REWIND(89)
+    DO i=1,24
+      READ(89,*)
+    END DO
+    !---  set indices for pH and water dissociation 
+    Hp_ind =0
+    OHm_ind=0
+    aH2O_ind=0
+    Temp_ind=nspc+1
+    nDIM=nspc
+    !
+    !--- allocate space for a list of all species (incl. kat spc)
+    ALLOCATE(y_name(nspc+ntkat))
+    !
+    DO jt=1,ntGas
+      READ(89,*)  y_name(jt)
+    END DO
+    DO jt=1,ntAqua
+      READ(89,*)  y_name(ntGas+jt)
+      IF ( y_name(ntGas+jt)=='Hp' )   Hp_ind=jt+ntGas
+      IF ( y_name(ntGas+jt)=='OHm' ) OHm_ind=jt+ntGas
+    END DO
+    DO jt=1,ntkat
+      READ(89,*)  y_name(ntGas+ntAqua+jt)
+      IF ( y_name(ntGas+ntAqua+jt)=='[aH2O]' ) aH2O_ind=jt 
+    END DO
+    !
+    IF (MPI_ID==0.AND.ntAqua>=1) THEN
+      IF (hp_ind==0)   WRITE(*,*) 'ReadChem...Warning: Hp  not in mechanism!' 
+      IF (ohm_ind==0)  WRITE(*,*) 'ReadChem...Warning: OHm  not in mechanism!' 
+      IF (ah2o_ind==0) WRITE(*,*) 'ReadChem...Warning: aH2O  not in mechanism!' 
     END IF
+    CLOSE(89)
     !
-    ConvGas=1.d0/mol2part
-    IF (GasRateUnit==1)  THEN
-      ConvGas=1.d0 
-      ConvAir=1.d0/mol2part
-    ELSE
-      ConvGas=1.d0/mol2part
-      ConvAir=1.d0 
-    END IF
-    !
-    ALLOCATE(InitValAct(nspc))
-    !---------------------------------
-    ! initial values of gaseus species 
-    !---------------------------------
-    InitValAct(1:ntGAS)=(GasAct+1.0d-8)*GasFac
-    !
-    !---------------------------------
-    ! initial values of aqueus species 
-    !---------------------------------
-    InitValAct(ntGAS+1:nspc)=1.0d-10
-    DO i=1,SIZE(InitAFrac)
-      iPos=PositionSpeciesAll(InitAFrac(i)%Species)
-      IF (iPos>0) THEN
-        !
-        ! [#/m3] * [g/g] * [m3] * [kg/m3] * 1/[l/m3] * 1/[kg/mol] = [mol/l]
-        !
-        InitValAct(iPos) = SPEK(1)%Number*1.0d06           &  ! [#/m3]
-        &                * InitAFrac(i)%Frac1              &  ! [g/g]
-        &                * (pi43*(SPEK(1)%Radius)**3)      &  ! [m3]
-        &                * SPEK(1)%Density                 &  ! [kg/m3]
-        &                / ConstLWC                        &  ! 1/[l/m3] 
-        &                / (1.d-3*InitAFrac(i)%MolMass)       ! 1/[kg/mol] 
+    DO i=1,ntkat
+      IF ( y_name(nspc+i)/='[aH2O]' )  THEN
+        y_c1(nspc+i)=5.d-6
+        y_c2(nspc+i)=5.d-5
       END IF
     END DO
+    !
+    !=========================================================================
+    !===  Split Species Names
+    !=========================================================================
+    !
+    IF (ntGas >=1) ALLOCATE (GasName(ntGas))          ! gas phase species
+    IF (ntAqua>=1) ALLOCATE (AquaName(ntAqua))        ! aqueous phase species
+    IF (ntkat >=1) ALLOCATE (PassName(ntkat))         ! passive phase species
+    !
+    FORALL (jt=1:ntGas) GasName(jt)=ADJUSTL(y_name(jt))
+    FORALL (jt=1:ntAqua) AquaName(jt)=ADJUSTL(y_name(ntGas+jt))
+    FORALL (jt=1:ntKat) PassName(jt)=ADJUSTL(y_name(ntGas+ntAqua+jt))
+    !
+    !=========================================================================
+    !===  Set  Chemical DATA  
+    !===  (Molar Mass, Charges, Densities) 
+    !=========================================================================
+    !
+    IF ( ntAqua>=1 ) THEN
+      !---  Allocate arrays
+      ALLOCATE (Charge(ntAqua))             ! charge of ions
+      ALLOCATE (SolubInd(ntAqua))           ! solubility
+      ALLOCATE (MolMass(ntAqua))            ! molar mass of species
+      ALLOCATE (SpcDens(ntAqua))            ! density of species
+      ALLOCATE (OrgIndex(ntAqua))           ! carbon atoms
+      ALLOCATE (CC(ntAqua))                 ! compound class
+      ALLOCATE (ActIndex(ntAqua))           ! index for calculation of activity coefficient
+  
+      !---  Set default values
+      Charge(:)=0.d0
+      SolubInd(:)=0.d0
+      MolMass(:)=0.d0
+      SpcDens(:)=1.d0
+      OrgIndex(:)=0.d0
+      CC(:)='  '
+      ActIndex(:)=0.d0
+      !
+      !--------------------------------------------------------------
+      !---  Determine Charges of Ions
+      DO jt=1,ntAqua
+        string=AquaName(jt)
+        i=1
+        DO ! loop for cations
+          iPos=INDEX(string(i:),'p')
+          IF (iPos<=0)  EXIT 
+          Charge(jt)=Charge(jt) + 1
+          i=i+iPos
+        END DO
+        i=1
+        DO ! loop for anions
+          iPos=INDEX(string(i:),'m')
+          IF (iPos<=0)  EXIT 
+          Charge(jt)=Charge(jt) - 1
+          i=i+iPos
+        END DO
+      END DO
+    END IF
+    !
+    !=========================================================================
+    !===  Read Initial Values from file   
+    !=========================================================================
+    !---------------------------------
+    ! Units for Chemistry
+    ALLOCATE( InitValAct(nspc) , y_e(nspc) )
+    ALLOCATE( InitValKat(ntKat) )
+    InitValAct=1.0d-20
+    InitValKat=1.0d-20
+    y_e=ZERO
+    !
+    !---  Read gase phase inititals
+    !---------------------------------
+    CALL Read_EMISS( InitFileName , y_e(:) )
+    CALL Read_GASini( InitFileName , InitValAct(1:nspc), InitValKat(:) )
+    !
+    !--- Read thermodynamic data,....
+    CALL Read_SpeciesData(y_c1,y_c2,DataFileName)
+    !---------------------------------
+    !
+    !---  Read/Calculate aqua phase initials
+    !---------------------------------
+    IF ( ntAqua>=1 ) THEN
+      !
+      CALL Read_AQUAini( InitValAct(ntGas+1:), InitValKat(:), InitFileName )
+      CALL Read_AFRAC( InitAFrac, InitFileName )
+      CALL Read_SPEK( SPEK, InitFileName)
+      !
+      !
+      LWC=pseudoLWC(tAnf)
+      aH2O=aH2OmolperL*LWC*mol2part 
+      !
+      IF ( ntKat>=1 ) THEN
+        DO i=1,ntKat
+          IF (y_name(nspc+i)=='[aH2O]') THEN
+            InitValKat(i)=InitValKat(i)*LWC*mol2part    ! convert fluessigwasser to molec/cm3
+            aH2O = InitValKat(i)
+          END IF
+        END DO
+      END IF
+      !
+      !-----------------------------------------
+      ! calculate initial aqueus concentrations 
+      !-----------------------------------------
+      InitValAct(ntGAS+1:)=1.0d-16
+      DO i=1,SIZE(InitAFrac)
+        iPos=PositionSpeciesAll(InitAFrac(i)%Species)
+        IF (iPos>0) THEN
+          !
+          InitValAct(iPos) = SPEK(1)%Number*1.0d+03          &  ! [#/m3]
+          &                * InitAFrac(i)%Frac1              &  ! [g/g]
+          &                * (pi43*(SPEK(1)%Radius)**3)      &  ! [m3]
+          &                * SPEK(1)%Density                 &  ! [kg/m3]
+          &                / (InitAFrac(i)%MolMass)             ! 1/[kg/mol] 
+          InitValAct(iPos) = InitValAct(iPos) * mol2Part        ! *[molec/mol]
+        END IF
+      END DO
+    END IF
     !
     !----------------------------------
     ! initial values of passive species 
     !----------------------------------
-    DO i=1,SIZE(InitValInAct)
+    DO i=1,SIZE(InitValKat)
       IF (ListNonReac2(i)%Species/='[aH2O]') THEN
-        InitValInAct(i)=InitValInAct(i)*GasFac
+        InitValKat(i)=InitValKat(i)*GasFac
       END IF
     END DO
+    !======================================================
+    !---  Compute pH value and number of ions
+    !---  Initial pH by charge balance 
+    IF ( pHSet>=1.AND.ntAqua>0 )  THEN
+      Kappa = pHValue(InitValAct(ntGas+1:))
+      IF ( Kappa>0.d0 )  THEN
+        InitValAct(Hp_ind)=Kappa
+      ELSE 
+        InitValAct(OHm_ind)=InitValAct(OHm_ind)+InitValAct(Hp_ind)-Kappa
+      END IF
+    END IF
+    !
   END SUBROUTINE InputChemicalData
   !
   !
-  SUBROUTINE Read_EMISS(Emi,FileName)
-    REAL(RealKind), ALLOCATABLE :: Emi(:)
+  !
+  SUBROUTINE Read_SpeciesData(y_acc,y_diff,FileName)
+    REAL(RealKind) :: y_acc(:) , y_diff(:) 
     CHARACTER(*) :: FileName
     !
-    INTEGER :: iPos
-    REAL(RealKind) :: c1,c2
-    CHARACTER(20) :: SpeciesName
-    LOGICAL :: Back
     !
-    ! read emission values
-    ALLOCATE(Emi(nspc))
-    Emi=ZERO
+    CHARACTER(240) :: line
+    CHARACTER(100) :: SpeciesName
+    INTEGER :: iPos, i
+    LOGICAL :: Back=.FALSE.
+    REAL(RealKind) :: mm, alpha, dg, c1
+    REAL(RealKind) :: nue
+    CHARACTER(10) :: ro2d
+    CHARACTER(10) :: c2
+   
     CALL OpenIniFile(FileName)
-    DO
-      CALL LineFile( Back, Start1='BEGIN_GAS',     &
-      &              Start2='BEGIN_EMISS',         &
-      &              End='END_EMISS',              &
-      &              Name1=SpeciesName,R1=c1,R2=c2)
+    !
+    i=0
+    !-----------------------------------------------------------
+    ! --- Gas Phase thermodynamic data
+    !
+    GAS: DO 
+      CALL LineFile( Back,                                     &
+      &              Start1='BEGIN_DATAGAS',                   &
+      &              End   ='END_DATAGAS',                     &
+      &              Name1=SpeciesName, R1=mm, R2=alpha, R3=dg )
       IF (Back)   EXIT
       !
-      iPos=PositionSpecies(SpeciesName)
+      iPos=PositionSpeciesAll(SpeciesName)
+      IF (iPos>0) THEN
+        IF (alpha==0.0d0 .AND. dg==0.0d0) CYCLE GAS 
+        !
+        y_acc(iPos)=1.0d-12/(3.0d0*dg)
+        nue=SQRT(8.0d+03*8.313d0/Pi/mm)
+        y_diff(iPos)=4.0d-06/(3.0d0*alpha*nue)
+        !
+      END IF
+    END DO GAS
+    CALL RewindFile
+    CALL ClearIniFile
+    !
+    !-----------------------------------------------------------
+    ! --- Aqua Phase thermodynamic data
+    !
+    IF ( ntGAS>0 ) THEN
+      AQUA: DO 
+        i=i+1
+        CALL LineFile( Back,                                     &
+        &              Start1='BEGIN_DATAQUA',                   &
+        &              End   ='END_DATAQUA',                     &
+        &              Name1=SpeciesName, R1=mm, R2=alpha, R3=dg ,Name2=c2)
+        IF (Back)  EXIT
+        !
+        iPos=PositionSpeciesAll(SpeciesName)
+        IF ( iPos>0 .AND. iPos<ntGAS+ntAQUA) THEN
+          IF ( alpha==0.0d0 .AND. dg==0.0d0 ) CYCLE AQUA
+          CC(iPos-ntGas)=ADJUSTL(TRIM(c2))
+          y_acc(iPos)=1.0d-12/(3.0d0*dg)
+          nue=SQRT(8.0d+03*8.313d0/Pi/mm)
+          y_diff(iPos)=4.0d-06/(3.0d0*alpha*nue)
+        END IF
+      END DO AQUA
+      CALL RewindFile
+      CALL ClearIniFile
+    END IF
+    !
+    !-----------------------------------------------------------
+    ! --- Gas Phase RO2
+    !
+    IF ( hasRO2 ) THEN
+      CALL LineFile( Back, Start1='BEGIN_DATARO2',    &
+      &              End='END_DATARO2',               &
+      &              Name1=SpeciesName,               &
+      &              R1=c1)
+      !
+      i=0
+      DO
+        CALL LineFile( Back, Start1='BEGIN_DATARO2',  &
+        &              End='END_DATARO2',             &
+        &              Name1=SpeciesName)
+        IF (Back) EXIT
+        IF (PositionSpeciesAll(SpeciesName)>0) i=i+1
+      END DO
+      IF (i>0) THEN
+        ALLOCATE(RO2spcG(i))
+        RO2spcG=''
+        ALLOCATE(RO2(i))
+        RO2=0
+        CALL RewindFile
+        CALL ClearIniFile
+        c1=0
+        CALL LineFile( Back, Start1='BEGIN_DATARO2',  &
+        &              End='END_DATARO2',             &
+        &              Name1=ro2d,                    &
+        &              R1=c1)
+        !
+        i=0
+        DO
+          CALL LineFile( Back, Start1='BEGIN_DATARO2',  &
+          &              End='END_DATARO2',             &
+          &              Name1=SpeciesName)
+          IF (Back) EXIT
+          IF (PositionSpeciesAll(SpeciesName)>0) THEN
+            i=i+1
+            RO2spcG(i)=SpeciesName
+            RO2(i)=PositionSpeciesAll(SpeciesName)
+          END IF
+        END DO
+      END IF
+      CALL RewindFile
+      CALL ClearIniFile
+    END IF
+    !
+    !-----------------------------------------------------------
+    ! --- Aqua Phase RO2
+    !
+    IF ( hasRO2aq ) THEN
+      CALL LineFile( Back, Start1='BEGIN_DATARO2aq',    &
+      &              End='END_DATARO2aq',               &
+      &              Name1=SpeciesName,               &
+      &              R1=c1)
+      !
+      i=0
+      DO
+        CALL LineFile( Back, Start1='BEGIN_DATARO2aq',  &
+        &              End='END_DATARO2aq',             &
+        &              Name1=SpeciesName)
+        IF (Back) EXIT
+        IF (PositionSpeciesAll(SpeciesName)>0) i=i+1
+      END DO
+      IF (i>0) THEN
+        ALLOCATE(RO2spcA(i))
+        RO2spcA=''
+        ALLOCATE(RO2aq(i))
+        RO2aq=0
+        CALL RewindFile
+        CALL ClearIniFile
+        c1=0
+        CALL LineFile( Back, Start1='BEGIN_DATARO2aq',  &
+        &              End='END_DATARO2aq',             &
+        &              Name1=ro2d,                    &
+        &              R1=c1)
+        !
+        i=0
+        DO
+          CALL LineFile( Back, Start1='BEGIN_DATARO2aq',  &
+          &              End='END_DATARO2aq',             &
+          &              Name1=SpeciesName)
+          IF (Back) EXIT
+          IF (PositionSpeciesALL(SpeciesName)>0) THEN
+            i=i+1
+            RO2spcA(i)=SpeciesName
+            RO2aq(i)=PositionSpeciesAll(SpeciesName)
+          END IF
+        END DO
+      END IF
+    END IF
+    CALL CloseIniFile
+  END SUBROUTINE Read_SpeciesData
+  !
+  SUBROUTINE Read_EMISS(FileName,Emi)
+    CHARACTER(*) :: FileName
+    REAL(RealKind) :: Emi(:)
+    !
+    INTEGER :: iPos
+    REAL(RealKind) :: c1
+    CHARACTER(20) :: SpeciesName
+    LOGICAL :: Back=.FALSE.
+    !
+    ! read emission values
+    Emi(:)=ZERO
+    CALL OpenIniFile(FileName)
+    DO
+      CALL LineFile( Back,                    &
+      &              Start1='BEGIN_GAS',      &
+      &              Start2='BEGIN_EMISS',    &
+      &              End   ='END_EMISS',      &
+      &              Name1=SpeciesName, R1=c1 )
+      IF (Back)   EXIT
+      !
+      iPos=PositionSpeciesALL(SpeciesName)
       IF (iPos>0) Emi(iPos)=c1
     END DO
     CALL CloseIniFile
   END SUBROUTINE Read_EMISS
   !
   !
-  SUBROUTINE Read_GASini(GASact,InAct,FileName)
-    REAL(RealKind), ALLOCATABLE :: GASact(:)
-    REAL(RealKind), ALLOCATABLE :: InAct(:)
+  SUBROUTINE Read_GASini(FileName,GASact,InAct)
     CHARACTER(*) :: FileName
     !
+    REAL(RealKind) :: GASact(:)
+    REAL(RealKind) :: InAct(:)
+    !
     INTEGER :: iPos
-    REAL(RealKind) :: c1,c2
+    REAL(RealKind) :: c1
     CHARACTER(20) :: SpeciesName
-    LOGICAL :: Back
+    LOGICAL :: Back=.FALSE.
     !
     !
+    GASact=1.0d-20
+    InAct=1.0d-20
     ! read initial values
-    ALLOCATE(GASact(ntGAS))
-    ALLOCATE(InAct(ntKAT))
-    GASact=ZERO
-    InAct=ZERO
     CALL OpenIniFile(FileName)
     DO
-      CALL LineFile( Back, Start1='BEGIN_GAS',     &
-      &              Start2='BEGIN_INITIAL',       &
-      &              End='END_INITIAL',            &
-      &              Name1=SpeciesName,R1=c1,R2=c2)
+      CALL LineFile( Back,                     &
+      &              Start1='BEGIN_GAS',       &
+      &              Start2='BEGIN_INITIAL',   &
+      &              End   ='END_INITIAL',     &
+      &              Name1 =SpeciesName, R1=c1 )
       IF (Back)   EXIT
       !
-      iPos=PositionSpecies(SpeciesName)
+      iPos=PositionSpeciesAll(SpeciesName)
       IF (iPos>0) THEN
         IF (SpeciesName(1:1)=='[') THEN
-          InAct(iPos)=c1
+          InAct(iPos-nspc)=c1
         ELSE
-          iPos=PositionSpecies(SpeciesName)
+          iPos=PositionSpeciesAll(SpeciesName)
           GASact(iPos)=c1
        END IF
       END IF
@@ -1308,19 +1591,19 @@ MODULE Chemsys_Mod
     CHARACTER(*) :: FileName
     !
     INTEGER :: iPos, cnt
-    REAL(RealKind) :: c1,c2
     CHARACTER(50) :: SpeciesName
     LOGICAL :: Back
     !
     !
+
     ! Read initial values of aqua spc
     CALL OpenIniFile(FileName)
     cnt=0
     DO
-      CALL LineFile( Back, Start1='BEGIN_AQUA',     &
-      &              Start2='BEGIN_DIAG',        &
-      &              End='END_DIAG',             &
-      &              Name1=SpeciesName,R1=c1,R2=c2  )
+      CALL LineFile( Back,                &
+      &              Start1='BEGIN_DIAG', &
+      &              End='END_DIAG',      &
+      &              Name1=SpeciesName    )
       IF (Back)   EXIT
       !
       IF (ADJUSTL(SpeciesName(1:1))/='#') THEN
@@ -1340,10 +1623,10 @@ MODULE Chemsys_Mod
     CALL OpenIniFile(FileName)
     cnt=0
     DO
-      CALL LineFile( Back, Start1='BEGIN_AQUA',     &
-      &              Start2='BEGIN_DIAG',        &
-      &              End='END_DIAG',             &
-      &              Name1=SpeciesName,R1=c1,R2=c2  )
+      CALL LineFile( Back,                &
+      &              Start1='BEGIN_DIAG', &
+      &              End   ='END_DIAG',   &
+      &              Name1 =SpeciesName   )
       IF (Back)   EXIT
       !
       IF (ADJUSTL(SpeciesName(1:1))/='#') THEN
@@ -1364,25 +1647,23 @@ MODULE Chemsys_Mod
   END SUBROUTINE Read_Diag
   !
   SUBROUTINE Read_AQUAini(AQUAact,AquaInAct,FileName)
-    REAL(RealKind), ALLOCATABLE :: AQUAact(:)
-    REAL(RealKind), ALLOCATABLE :: AquaInAct(:)
+    REAL(RealKind) :: AQUAact(:)
+    REAL(RealKind) :: AquaInAct(:)
     CHARACTER(*) :: FileName
     !
     INTEGER :: iPos
-    REAL(RealKind) :: c1,c2
+    REAL(RealKind) :: c1
     CHARACTER(20) :: SpeciesName
     LOGICAL :: Back
-    !
-    ALLOCATE(AQUAact(ntAQUA))
-    AQUAact=ZERO
     !
     ! Read initial values of aqua spc
     CALL OpenIniFile(FileName)
     DO
-      CALL LineFile( Back, Start1='BEGIN_AQUA',     &
-      &              Start2='BEGIN_INITIAL',        &
-      &              End='END_INITIAL',             &
-      &              Name1=SpeciesName,R1=c1,R2=c2  )
+      CALL LineFile( Back,                    &
+      &              Start1='BEGIN_AQUA',     &
+      &              Start2='BEGIN_INITIAL',  &
+      &              End   ='END_INITIAL',    &
+      &              Name1=SpeciesName,R1=c1  )
       IF (Back)   EXIT
       !
       iPos=PositionSpecies(SpeciesName)
@@ -1398,47 +1679,49 @@ MODULE Chemsys_Mod
   END SUBROUTINE Read_AQUAini
   !
   !
-  SUBROUTINE Read_AFRAC(AFRAC,FileName) 
+  SUBROUTINE Read_AFRAC(AFrac,FileName) 
     CHARACTER(*) :: FileName
-    TYPE(AFRAC_T), ALLOCATABLE :: AFRAC(:)
+    TYPE(AFRAC_T), ALLOCATABLE :: AFrac(:)
     !
     INTEGER :: cnt
     REAL(RealKind) :: c1,c2,c3,c4
     CHARACTER(20) :: SpeciesName
-    LOGICAL :: Back
+    LOGICAL :: Back=.FALSE.
     !
     !
     ! Read AFRAC values
     CALL OpenIniFile(FileName)
     cnt=0
     DO
-      CALL LineFile( Back, Start1='BEGIN_AQUA',     &
-      &              Start2='BEGIN_AFRAC',          &
-      &              End='END_AFRAC',               &
-      &              Name1=SpeciesName,             &
-      &              R1=c1,R2=c2,R3=c3,R4=c4        )
+      CALL LineFile( Back,                      &
+      &              Start1 ='BEGIN_AQUA',      &
+      &              Start2 ='BEGIN_AFRAC',     &
+      &              End    ='END_AFRAC',       &
+      &              Name1  =SpeciesName,       &
+      &              R1=c1, R2=c2, R3=c3, R4=c4 )
       IF (Back)   EXIT
       cnt=cnt+1
     END DO
     CALL CloseIniFile
-    ALLOCATE(InitAFrac(cnt)) 
+    ALLOCATE(AFrac(cnt)) 
     !
     CALL OpenIniFile(FileName)
     cnt=0
     DO
-      CALL LineFile( Back, Start1='BEGIN_AQUA',     &
-      &              Start2='BEGIN_AFRAC',          &
-      &              End='END_AFRAC',               &
-      &              Name1=SpeciesName,             &
-      &              R1=c1,R2=c2,R3=c3,R4=c4        )
+      CALL LineFile( Back,                      &
+      &              Start1 ='BEGIN_AQUA',      &
+      &              Start2 ='BEGIN_AFRAC',     &
+      &              End    ='END_AFRAC',       &
+      &              Name1  =SpeciesName,       &
+      &              R1=c1, R2=c2, R3=c3, R4=c4 )
       IF (Back)   EXIT
       !
       cnt=cnt+1
-      InitAFrac(cnt)%Species=SpeciesName
-      InitAFrac(cnt)%MolMass=c1
-      InitAFrac(cnt)%Charge=INT(c2)
-      InitAFrac(cnt)%SolubInd=c3
-      InitAFrac(cnt)%Frac1=c4
+      AFrac(cnt)%Species=SpeciesName
+      AFrac(cnt)%MolMass=c1
+      AFrac(cnt)%Charge=INT(c2)
+      AFrac(cnt)%SolubInd=c3
+      AFrac(cnt)%Frac1=c4
     END DO
     CALL CloseIniFile
   END SUBROUTINE Read_AFRAC
@@ -1451,32 +1734,36 @@ MODULE Chemsys_Mod
     INTEGER :: cnt
     REAL(RealKind) :: c1,c2,c3
     LOGICAL :: Back
-    REAL(RealKind) :: actLWC
+    REAL(RealKind) :: LWC
     !
     ! Read SPEK values
     CALL OpenIniFile(FileName)
-    CALL LineFile( Back, Start1='BEGIN_AQUA',     &
-    &              Start2='BEGIN_SPEK',           &
-    &              End='END_SPEK',                &
-    &              R1=c1                          )
+    CALL LineFile( Back,                 &
+    &              Start1 ='BEGIN_AQUA', &
+    &              Start2 ='BEGIN_SPEK', &
+    &              End    ='END_SPEK',   &
+    &              R1=c1                 )
     !
     ALLOCATE(SPEK(INT(c1))) 
     !
-    actLWC=pseudoLWC(tAnf)
+    LWC=pseudoLWC(tAnf)
     cnt=1
+    REWIND(InputUnit_Initials)
+    CALL ClearIniFile()
     DO 
-      CALL LineFile( Back, Start1='BEGIN_AQUA',     &
-      &              Start2='BEGIN_SPEK',           &
-      &              End='END_SPEK',                &
-      &              R1=c1,R2=c2,R3=c3              )
+      CALL LineFile( Back,                 &
+      &              Start1 ='BEGIN_AQUA', &
+      &              Start2 ='BEGIN_SPEK', &
+      &              End    ='END_SPEK',   &
+      &              R1=c1, R2=c2, R3=c3   )
       IF (Back)   EXIT
       !
       ! HIER KÖNNTE MAL WIEDER WAS PASSIEREN
       IF (c1<1.0d0) THEN
-        SPEK(1)%Radius=c1
-        SPEK(1)%Number=c2
-        SPEK(1)%wetRadius=(3.0d0/4.0d0/PI*actLWC/SPEK(1)%Number)**(1.0d0/3.0d0)
-        SPEK(1)%Density=c3
+        SPEK(1)%Radius=REAL(c1,KIND=RealKind)
+        SPEK(1)%Number=REAL(c2,KIND=RealKind)
+        SPEK(1)%wetRadius=(3.0d0/4.0d0/PI*LWC/SPEK(1)%Number)**(1.0d0/3.0d0)
+        SPEK(1)%Density=REAL(c3,KIND=RealKind)
       END IF
     END DO
     CALL CloseIniFile
@@ -2277,17 +2564,11 @@ MODULE Chemsys_Mod
     neq= nreakgas     &
     &  +2*nreakhenry &
     &  +nreakaqua    &
-    &  +2*nreakdissoc  &
-    &  +nreaksolid   &
-    &  +NumberReactionsPartic  &
-    &  +NumberReactionsMicro
-    ! #Spezies berechnen
-    nspc= ntGAS       &
-    &  +ntAQUA      &
-    &  +ntPart    &
-    &  +ntSOLID
+    &  +2*nreakdissoc  
     !
-    NSactNR=nspc+neq
+    ! #Spezies berechnen
+    nspc= ntGAS+ntAQUA    
+    !
     !
     !
     IF (PRESENT(LGas))    nList=nList+1

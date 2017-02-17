@@ -135,8 +135,14 @@
 
 !--------------------------------------------------------------
 !--   dimensions
-    INTEGER :: nt, ntgas, ntaqua, ntsolid, ntkat, ntpart
+    INTEGER :: nt, ntsolid, ntpart
+    INTEGER :: ntGas          ! number of gaseous species
+    INTEGER :: ntAqua         ! number of aqueeous species
+    INTEGER :: ntKat          ! number of katalysator species
     INTEGER :: neq,nspc,nkat,nreak,nHenry
+    INTEGER :: nDIM
+    INTEGER :: nDIMcl
+    INTEGER :: nDIMex
 
     INTEGER :: nreakgas,nreakhenry,nreakdissoc,nreakaqua, nreaksolid
     INTEGER :: nreakgphoto,nreakgconst,nreakgtemp,nreakgtroe,nreakgspec
@@ -146,7 +152,8 @@
 !--    define indices of special species
     INTEGER ::   hp_ind,         &   ! Index Hp
 &               ohm_ind,         &   ! Index OHm
-&              ah2o_ind              ! Index aH2O
+&              ah2o_ind,         &   ! Index aH2O
+&              Temp_ind              ! Index Temperatur
 
 !--------------------------------------------------------------
 !--    passive species, indices of Henry species
@@ -196,10 +203,12 @@
     INTEGER, ALLOCATABLE  :: iDiag_Schwefel(:)  
 !--------------------------------------------------------------
 !--    Peroxyradicals
+    LOGICAL              :: hasRO2
     INTEGER, ALLOCATABLE :: RO2(:)          ! Species-Index of peroxyradical
     INTEGER              :: nRO2            ! Number of Gasphase-Peroxyradicals in mechanism
     REAL(RealKind), ALLOCATABLE :: SumRO2(:)       ! Summation of all gasphase peroxyradicals in everey cell
 !--    aqueous phase
+    LOGICAL              :: hasRO2aq
     INTEGER, ALLOCATABLE :: RO2aq(:)          ! Species-Index of peroxyradical
     INTEGER              :: nRO2aq            ! Number of aqueos phase peroxy radicals in mechanism
     REAL(RealKind), ALLOCATABLE :: SumRO2aq(:)       ! Summation of all aqueopus phase peroxyradicals in everey cell
@@ -207,7 +216,6 @@
 !--------------------------------------------------------------
 !--    Aerosol species properties
     REAL(RealKind), ALLOCATABLE :: Charge(:)       ! charge of ions
-    REAL(RealKind), ALLOCATABLE :: Ladung(:)       ! charge of ions
     REAL(RealKind), ALLOCATABLE :: SolubInd(:)     ! solubility index
     REAL(RealKind), ALLOCATABLE :: MolMass(:)      ! molar mass of species
     REAL(RealKind), ALLOCATABLE :: SpcDens(:)      ! density of species
@@ -231,10 +239,12 @@
                                              ! after activation
 !--------------------------------------------------------------
 !--    input arrays
-    REAL(RealKind):: tcur
-    REAL(RealKind), ALLOCATABLE :: y_iconc(:)
+    !REAL(RealKind):: tcur
+    !REAL(RealKind), ALLOCATABLE :: y_iconc(:)
+    REAL(RealKind), ALLOCATABLE :: InitValAct(:)
+    REAL(RealKind), ALLOCATABLE :: InitValKat(:)
 
-    REAL(RealKind), ALLOCATABLE :: y_emi(:)
+    !REAL(RealKind), ALLOCATABLE :: y_emi(:)
     REAL(RealKind), ALLOCATABLE :: y_udepo(:)
     REAL(RealKind), ALLOCATABLE :: y_c1(:)
     REAL(RealKind), ALLOCATABLE :: y_c2(:)
@@ -242,7 +252,7 @@
 !--------------------------------------------------------------
 !--    deposition and emissions
     REAL(RealKind), ALLOCATABLE :: vd(:)
-    REAL(RealKind), ALLOCATABLE :: y_e(:,:)
+    REAL(RealKind), ALLOCATABLE :: y_e(:)
 
 !--------------------------------------------------------------
     
@@ -266,6 +276,9 @@
     !
     INTEGER :: LowerRateLim, UpperRateLim
     !
-    REAL(RealKind), ALLOCATABLE :: ReactionRateConst(:)
-
+    INTEGER, ALLOCATABLE :: first_ReacPtr(:)       ! array =(/ 1,2,3,4....,neq/)
+    !
+    LOGICAL :: combustion=.FALSE.                      ! flag for combustion mechanism
+    !
+    !
 END MODULE mo_reac

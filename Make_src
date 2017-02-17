@@ -6,8 +6,8 @@ OBJ = mo_unirnk.f90\
       mo_control.f90\
       mo_reac.f90\
       mo_MPI.f90\
-      mo_micfys.f90\
       mo_met.f90\
+      mo_micfys.f90\
       mo_mphys.f90\
       InitRun.f90\
       NetCDF_Mod.f90\
@@ -21,14 +21,12 @@ OBJ = mo_unirnk.f90\
       ErrorROW_Mod.f90\
       ChemSys_Mod.f90\
       mo_ckinput.f90\
-      InitChem.f90\
       Factorisation_Mod.f90\
       Rates_Mod.f90\
       Rosenbrock_Mod.f90\
       mo_IO.f90\
       Integration_Mod.f90\
-      Euler_Mod.f90\
-      MAIN_CHEMKIN.f90
+      MAIN_CHEMIE.f90
       
 
       
