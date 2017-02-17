@@ -1,0 +1,271 @@
+# ================= MCM2PreChem =================
+# = Please copy the data into your sys-file for =
+# =============== chemical input. ===============
+#
+#  ===================   Unit options   ======================
+
+UNIT GAS    0   #    Gas phase units     (0 = molec/cm3, 1 = mol/m3)
+UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)
+UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)
+
+#  ===================   Gas Phase      ======================
+#
+CLASS: GAS
+O3PX =  O3
+SPEC2MCM:  K1:  5.60E-34  K2:  -2.60E+00  K3:  0.0
+FACTOR: $O2N2
+
+CLASS: GAS
+O3PX =  O3
+SPEC2MCM:  K1:  6.00E-34  K2:  -2.60E+00  K3:  0.0
+FACTOR: $O2O2
+
+CLASS: GAS
+O3PX +  O3 =  [O2] +  [O2]
+TEMP1:  A: 8.00E-12   E/R:  2060.0
+
+CLASS: GAS
+OH +  CO =  HO2
+SPEC1MCM:  K1: 1.300E-13  K2:  6.000E-01  K3: 2.652E+19
+
+CLASS: GAS
+HO2 +  O3 =  OH
+SPEC2MCM:  K1:  2.03E-16  K2:   4.57E+00  K3:  6.93E+02
+
+CLASS: GAS
+OH +  HO2 =  [H2O] +  [O2]
+TEMP1:  A: 4.80E-11   E/R:  -250.0
+
+CLASS: GAS
+HO2 +  HO2 =  H2O2
+SPEC4MCM:  K1:  2.20E-13  K2:   1.40E-21  K3:  2.20E+03  K4:  6.00E+02
+
+CLASS: GAS
+HO2 +  HO2 =  H2O2
+SPEC4MCM:  K1:  1.90E-33  K2:   1.40E-21  K3:  2.20E+03  K4:  9.80E+02
+FACTOR: $M
+
+CLASS: GAS
+OH +  HNO3 =  NO3
+SPEC3:  K1:  2.40E-14  K2:   4.60E+02  K3:  2.70E-17  K4:  2.20E+03  K5:  6.50E-34  K6:  1.34E+03
+
+CLASS: GAS
+O3 =  O1D
+PHOTMCM:  I: 6.073E-05  M: 1.743E+00  N: 4.740E-01
+
+CLASS: GAS
+O3 =  O3PX
+PHOTMCM:  I: 4.775E-04  M: 2.980E-01  N: 8.000E-02
+
+CLASS: GAS
+H2O2 =  OH +  OH
+PHOTMCM:  I: 1.041E-05  M: 7.230E-01  N: 2.790E-01
+
+CLASS: GAS
+NO2 =  NO +  O3PX
+PHOTMCM:  I: 1.165E-02  M: 2.440E-01  N: 2.670E-01
+
+CLASS: GAS
+NO3 =  NO
+PHOTMCM:  I: 2.485E-02  M: 1.680E-01  N: 1.080E-01
+
+CLASS: GAS
+NO3 =  NO2 +  O3PX
+PHOTMCM:  I: 1.747E-01  M: 1.550E-01  N: 1.250E-01
+
+CLASS: GAS
+HONO =  OH +  NO
+PHOTMCM:  I: 2.644E-03  M: 2.610E-01  N: 2.880E-01
+
+CLASS: GAS
+HNO3 =  OH +  NO2
+PHOTMCM:  I: 9.312E-07  M: 1.230E+00  N: 3.070E-01
+
+CLASS: GAS
+O3PX +  NO =  NO2
+TROEMCM:  K1: 1.00E-31  K2:     -1.6   K3:      0.0   K4: 3.00E-11  K5:      0.3   K6:      0.0   K7: 8.50E-01  K8:      0.0   K9: 0.0  K10:     -1.0
+
+CLASS: GAS
+O3PX +  NO2 =  NO
+TEMP1:  A: 5.50E-12   E/R:  -188.0
+
+CLASS: GAS
+O3PX +  NO2 =  NO3
+TROEMCM:  K1: 1.30E-31  K2:     -1.5   K3:      0.0   K4: 2.30E-11  K5:      0.2   K6:      0.0   K7: 6.00E-01  K8:      0.0   K9: 0.0  K10:     -1.0
+
+CLASS: GAS
+O1D =  O3PX
+TEMP1:  A: 3.20E-11   E/R:   -67.0
+FACTOR: $O2
+
+CLASS: GAS
+O1D =  O3PX
+TEMP1:  A: 1.80E-11   E/R:  -107.0
+FACTOR: $N2       
+
+CLASS: GAS
+NO +  O3 =  NO2
+TEMP1:  A: 1.40E-12   E/R:  1310.0
+
+CLASS: GAS
+NO2 +  O3 =  NO3
+TEMP1:  A: 1.40E-13   E/R:  2470.0
+
+CLASS: GAS
+NO +  NO =  NO2 +  NO2
+TEMP1:  A: 3.30E-39   E/R:  -530.0
+FACTOR: $O2
+
+CLASS: GAS
+NO +  NO3 =  NO2 +  NO2
+TEMP1:  A: 1.80E-11   E/R:  -110.0
+
+CLASS: GAS
+NO2 +  NO3 =  NO +  NO2
+TEMP1:  A: 4.50E-14   E/R:  1260.0
+
+CLASS: GAS
+NO2 +  NO3 =  N2O5
+TROEMCM:  K1: 3.60E-30  K2:     -4.1   K3:      0.0   K4: 1.90E-12  K5:      0.2   K6:      0.0   K7: 3.50E-01  K8:      0.0   K9: 0.0  K10:     -1.0
+
+CLASS: GAS
+N2O5 =  NO2 +  NO3
+TROEMCM:  K1: 1.00E-03  K2:     -3.5   K3: -11000.0   K4: 9.70E+14  K5:      0.1   K6: -11080.0   K7: 3.50E-01  K8:      0.0   K9: 0.0  K10:     -1.0
+
+CLASS: GAS
+O1D =  OH +  OH
+CONST:  A: 2.20E-10
+FACTOR: $H2O
+
+CLASS: GAS
+OH +  O3 =  HO2
+TEMP1:  A: 1.70E-12   E/R:   940.0
+
+CLASS: GAS
+OH +  H2 =  HO2
+TEMP1:  A: 7.70E-12   E/R:  2100.0
+
+CLASS: GAS
+OH +  H2O2 =  HO2
+TEMP1:  A: 2.90E-12   E/R:   160.0
+
+CLASS: GAS
+OH +  NO =  HONO
+TROEMCM:  K1: 7.40E-31  K2:     -2.4   K3:      0.0   K4: 3.30E-11  K5:     -0.3   K6:      0.0   K7: 0.0  K8:      0.0   K9: 1.00E+00  K10:  -1420.0
+
+CLASS: GAS
+OH +  NO2 =  HNO3
+TROEMCM:  K1: 3.30E-30  K2:     -3.0   K3:      0.0   K4: 4.10E-11  K5:      0.0   K6:      0.0   K7: 4.00E-01  K8:      0.0   K9: 0.0  K10:     -1.0
+
+CLASS: GAS
+OH +  NO3 =  HO2 +  NO2
+CONST:  A: 2.00E-11
+
+CLASS: GAS
+HO2 +  NO =  OH +  NO2
+TEMP1:  A: 3.60E-12   E/R:  -270.0
+
+CLASS: GAS
+HO2 +  NO2 =  HNO4
+TROEMCM:  K1: 1.80E-31  K2:     -3.2   K3:      0.0   K4: 4.70E-12  K5:      0.0   K6:      0.0   K7: 6.00E-01  K8:      0.0   K9: 0.0  K10:     -1.0
+
+CLASS: GAS
+HNO4 =  HO2 +  NO2
+TROEMCM:  K1: 4.10E-05  K2:      0.0   K3: -10650.0   K4: 4.80E+15  K5:      0.0   K6: -11170.0   K7: 5.00E-01  K8:      0.0   K9: 0.0  K10:     -1.0
+
+CLASS: GAS
+OH +  HNO4 =  NO2
+TEMP1:  A: 1.90E-12   E/R:  -270.0
+
+CLASS: GAS
+HO2 +  NO3 =  OH +  NO2
+CONST:  A: 4.00E-12
+
+CLASS: GAS
+OH +  HONO =  NO2
+TEMP1:  A: 2.50E-12   E/R:  -260.0
+
+CLASS: GAS
+O3PX +  SO2 =  SULF
+TEMP1:  A: 4.00E-32   E/R:  1000.0
+FACTOR: $M
+
+CLASS: GAS
+OH +  SO2 =  HSO3
+TROEMCM:  K1: 4.00E-31  K2:     -3.3   K3:      0.0   K4: 2.00E-12  K5:      0.0   K6:      0.0   K7: 4.50E-01  K8:      0.0   K9: 0.0  K10:     -1.0
+
+CLASS: GAS
+HSO3 =  HO2 +  SULF
+TEMP1:  A: 1.30E-12   E/R:   330.0
+FACTOR: $O2
+
+CLASS: GAS
+OC +  OH =  HO2 +  C=O
+TEMP2:  KO: 6.01E-18   E/R:  -170.0
+
+CLASS: GAS
+C=O =  H2 +  CO
+PHOTMCM:  I: 6.853E-05  M: 4.770E-01  N: 3.230E-01
+
+CLASS: GAS
+OH +  C=O =  HO2 +  CO
+TEMP4:  A: 1.20E-14   E/R:  -287.0
+
+CLASS: GAS
+NO3 +  C=O =  HNO3 +  CO +  HO2
+CONST:  A: 5.80E-16
+
+CLASS: GAS
+C=O =  CO +  HO2 +  HO2
+PHOTMCM:  I: 4.642E-05  M: 7.620E-01  N: 3.530E-01
+
+CLASS: GAS
+OH +  C =  CO[O]
+TEMP2:  KO: 9.65E-20   E/R:  1082.0
+
+CLASS: GAS
+CO[O] = 0.335 OC + 0.335 C=O
+TEMP1:  A: 6.10E-14   E/R:  -416.0
+FACTOR: $RO2      
+
+CLASS: GAS
+CO[O] +  NO = 0.001 CON(=O)=O + 0.999 C[O] + 0.999 NO2
+TEMP1:  A: 3.00E-12   E/R:  -280.0
+
+CLASS: GAS
+CO[O] =  C[O]
+TEMP1:  A: 6.01E-14   E/R:  -416.0
+FACTOR: $RO2      
+
+CLASS: GAS
+CO[O] +  HO2 =  COO
+TEMP1:  A: 3.80E-13   E/R:  -780.0
+
+CLASS: GAS
+CO[O] +  NO2 =  COON(=O)=O
+TROEMCM:  K1: 2.50E-30  K2:      5.5   K3:      0.0   K4: 7.50E-12  K5:      0.0   K6:      0.0   K7: 3.60E-01  K8:      0.0   K9: 0.0  K10:     -1.0
+
+CLASS: GAS
+CO[O] +  NO3 =  C[O] +  NO2
+CONST:  A: 1.00E-12
+
+CLASS: GAS
+OH +  COO =  CO[O]
+TEMP1:  A: 1.90E-12   E/R:  -190.0
+
+CLASS: GAS
+OH +  COO =  C=O +  OH
+TEMP1:  A: 1.00E-12   E/R:  -190.0
+
+CLASS: GAS
+COO =  C[O] +  OH
+PHOTMCM:  I: 7.649E-06  M: 6.820E-01  N: 2.790E-01
+
+CLASS: GAS
+COON(=O)=O =  CO[O] +  NO2
+TROEMCM:  K1: 9.00E-05  K2:      0.0   K3:  -9690.0   K4: 1.10E+16  K5:      0.0   K6: -10560.0   K7: 3.60E-01  K8:      0.0   K9: 0.0  K10:     -1.0
+
+CLASS: GAS
+C[O] =  C=O +  HO2
+TEMP1:  A: 7.20E-14   E/R:  1080.0
+FACTOR: $O2

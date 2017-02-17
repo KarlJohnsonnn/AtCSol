@@ -1,0 +1,2066 @@
+#  ===  Multiphase Reaction Mechanism   RACM + CAPRAM 2.3
+#  ===  Herrmann et. al., 2000 (Version: January 2002)
+#  ===  (Gas Phase:  RACM, e.g. Stockwell et al., 1997)
+#  -----------------------------------------------------------
+#  ===  Good notation for transitional metal ions 
+#  === Reactions with charge balance problems were updated 
+#  === Contains the corrections from 03/2003
+#  ===================   Unit options   ======================
+
+UNIT GAS    0   #    Gas phase units     (0 = molec/cm3, 1 = mol/m3)
+UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)
+
+#  ===========================================================
+
+CLASS: GAS 
+NO2           =     O3PX   +   NO
+PHOTABC:  A: 7.67e-03   B: 1.773179e-00   C:  0.77233e-00
+
+CLASS: GAS 
+O3            =     O1D   
+PHOTABC:   A: 2.55e-5  B: 4.11188e-00   C:  0.77335e-00
+
+CLASS: GAS 
+O3            =     O3PX   
+PHOTABC:   A:  4.38e-4  B: 0.74524e-00    C:  0.87973e-00
+
+CLASS: GAS 
+HONO          =     HO    +   NO
+PHOTABC:   A: 1.72e-3  B: 1.86895e-00   C: 0.76528e-00   
+
+CLASS: GAS 
+HNO3          =     HO   +     NO2
+PHOTABC:   A: 4.67e-7  B: 3.00003e-00    C:  0.77346e-00  
+
+CLASS: GAS 
+HNO4          =  0.65 HO2   +    0.65 NO2 + 0.35 HO + 0.35 NO3
+PHOTABC:   A: 2.93e-6   B: 2.74497e-00    C:  0.77084e-00  
+
+CLASS: GAS 
+NO3           =     NO    
+PHOTABC:   A: 2.32e-2  B: 0.66942e-00    C: 0.89103e-00   
+
+CLASS: GAS 
+NO3           =     NO2    +   O3PX
+PHOTABC:   A: 2.01e-01   B: 0.79342e-00   C:  0.87147e-00  
+
+CLASS: GAS 
+H2O2          =     HO   +     HO
+PHOTABC:   A: 7.65e-06  B: 2.35766e+00   C: 0.76470e+00    
+
+CLASS: GAS 
+HCHO          =     H2   +   CO
+PHOTABC:   A: 3.3e-05   B: 2.16815e+00    C: 0.76255e+00   
+
+CLASS: GAS 
+HCHO          =     HO2   +   HO2   +    CO
+PHOTABC:   A: 2.85e-05   B: 2.49092e+00   C:  0.77402e+00 
+
+CLASS: GAS 
+ALD           =     MO2   +   HO2   +    CO
+PHOTABC:   A: 4.45e-06  B: 2.88929e+00   C: 0.77445e+00  
+
+CLASS: GAS 
+OP1           =     HCHO  +    HO2  +     HO
+PHOTABC:   A: 4.38e-6   B: 2.32912e+00    C: 0.76201e+00  
+
+CLASS: GAS 
+OP2           =     ALD   +   HO2   +    HO
+PHOTABC:   A: 4.38e-6   B: 2.32912e+00    C: 0.76201e+00    
+
+CLASS: GAS 
+PAA           =     MO2     +    HO
+PHOTABC:   A: 4.58e-09   B: 9.3050e+00    C: 0.71754e+00  
+
+CLASS: GAS 
+KET           =     ACO3  +    ETHPX
+PHOTABC:   A: 9.87e-06   B: 2.90556e+00   C:  0.77465e+00 
+
+CLASS: GAS 
+GLY           = 0.13 HCHO  +   1.87 CO + 0.87 H2
+PHOTABC:   A: 2.32e-03  B: 1.32625e+00   C: 0.80629e+00  
+
+CLASS: GAS 
+GLY           = 0.45 HCHO  +   1.55 CO  +   0.80  HO2 + 0.15 H2
+PHOTABC:   A: 2.32e-03  B: 1.32625e+00   C: 0.80629e+00
+
+CLASS: GAS 
+MGLY          =     ACO3   +   HO2   +    CO 
+PHOTABC:   A: 2.5e-03   B: 1.38450e+00    C:  0.80103e+00 
+
+CLASS: GAS 
+DCB           = 0.98 HO2  +  0.02 ACO3   +    TCO3
+PHOTABC:   A: 4.48e-4  B:  2.13016e+00   C: 0.76047e+00  
+
+CLASS: GAS  
+ONIT          = 0.20 ALD +  0.80 KET  +     HO2  +  NO2
+PHOTABC:   A: 8.26e-7  B: 2.83477e+00   C: 0.77775e+00 
+
+CLASS: GAS  
+MACR = CO + HCHO + HO2 + ACO3
+PHOTABC:   A:  4.46e-4  B:  2.05326e+00  C: 0.76199e+00
+
+CLASS: GAS 
+HKET           =  HCHO + HO2 + ACO3
+PHOTABC:   A: 9.87e-06   B: 2.90556e+00   C:  0.77465e+00     
+
+CLASS: GAS  
+O3PX +  [O2]   =  O3
+SPEC2:  A: 6.00E-34  B: -2.3  
+
+CLASS: GAS  
+O3PX + O3 = [O2] + [O2]
+TEMP1:  A: 8e-12  E/R: 2060.0
+                      
+CLASS: GAS  
+O3PX + NO = NO2
+TROE:  KO: 9e-32  N: 1.5  KINF: 3e-11  M: 0
+
+CLASS: GAS  
+O3PX + NO2 = NO3
+TROE:  KO: 9e-32  N: 2.0  KINF: 2.2e-11  M: 0   
+
+CLASS: GAS  
+O3PX +   NO2      =     NO    +    [O2]
+TEMP1:   A:  6.50E-12  E/R:  -120.0
+
+CLASS: GAS  
+O1D  + [N2]   =  O3PX   + [N2]   
+TEMP1:   KO:  1.80E-11  E/R:  -110.0 
+
+CLASS: GAS  
+O1D  + [O2]   =  O3PX  +  [O2]   
+TEMP1:   KO:  3.20E-11  E/R:   -70.0  
+
+CLASS: GAS  
+O1D  + [H2O] =  HO   +  HO 
+CONST:   A:  2.20E-10   
+
+CLASS: GAS  
+O3  +  NO   =  NO2   + [O2]   
+TEMP1:   KO:  2.00E-12  E/R:  1400.0  
+
+CLASS: GAS  
+O3 +  HO   =  HO2  +  [O2]   
+TEMP1:   A:  1.60E-12  E/R:   940.0  
+
+CLASS: GAS  
+O3  +  HO2  =  HO  +  2.  [O2]   
+TEMP1:   KO:  1.10E-14  E/R:   500.0  
+
+CLASS: GAS  
+HO + NO3 = NO2 + HO2
+CONST:  A: 2.2e-11
+ 
+CLASS: GAS  
+HO2 +  NO   =  NO2  +  HO   
+TEMP1:   KO:  3.70E-12  E/R:  -250
+
+CLASS: GAS  
+HO2  + NO2  =  HNO4
+TROE:   KO: 1.80E-31  N:  3.2  KINF:  4.70E-12  M:  1.4  
+
+CLASS: GAS  
+HNO4   =  HO2 +   NO2 
+TROEQ:   KO: 1.80E-31  N: 3.2  KINF: 4.7E-12  M: 1.4  KO: 2.1E-27  B: 10900
+
+CLASS: GAS  
+HO2 + NO3  =  0.3 HNO3 + 0.7 NO2 + 0.7 HO + [O2]
+CONST:   A: 3.50E-12
+
+CLASS: GAS  
+HO + HONO = NO2 + [H2O]
+TEMP1:   A: 1.8E-11  E/R: 390.0
+
+CLASS: GAS  
+HO2 +  HO2  =  H2O2 
+SPEC4:  C1: 2.3E-13   C2: 600   C3: 1.7E-33  C4: 1000   
+ 
+CLASS: GAS  
+HO2 +  HO2 + [H2O]   =  H2O2 
+S4H2O:  C1: 3.22E-34  C2: 2800.  C3: 2.38E-54  C4: 3200.   
+
+CLASS: GAS  
+H2O2  +  HO       = HO2   
+TEMP1:   KO: 2.9E-12   E/R: 160
+
+CLASS: GAS  
+NO +  HO   =  HONO
+TROE:   KO: 7.00E-31  N:  2.6  KINF:  1.50E-11  M:  0.5  
+ 
+CLASS: GAS  
+NO  +  NO  + [O2]  =  NO2  +  NO2  
+TEMP1:   KO:  3.30E-39  E/R:  -530.0 
+
+CLASS: GAS  
+O3  +  NO2      = NO3
+TEMP1:   A:  1.2E-13 E/R:  2450.0
+
+CLASS: GAS  
+NO3  +  NO       = NO2   +    NO2
+TEMP1:   A:  1.50E-11  E/R:  -170.0
+
+CLASS: GAS  
+NO3  +  NO2      =     NO   +     NO2   +    [O2]
+TEMP1:   A:  4.50E-14  E/R:  1260.0
+
+CLASS: GAS  
+NO3 +  NO2  =  N2O5
+TROE:   KO: 2.20E-30  N: 3.9  KINF:  1.50E-12  M: 0.7  
+ 
+CLASS: GAS  
+N2O5   =  NO2   + NO3  
+TROEQ:  KO: 2.2E-30  N: 3.9  KINF: 1.5E-12  M: 0.7  KO: 2.7E-27  B: 11000
+
+CLASS: GAS  
+NO3 + NO3 = NO2 + NO2 + [O2]
+TEMP1:   A: 8.5e-13  E/R: 2450.0
+
+CLASS: GAS  
+HO + H2 =  HO2 + [H2O]
+TEMP1:   A: 5.5e-12  E/R: 2000.0 
+
+CLASS: GAS  
+HO +  NO2  =  HNO3  
+TROE:   KO: 2.60E-30  N:  3.2  KINF:  2.40E-11  M:  1.3  
+ 
+CLASS: GAS  
+HO  +  HNO3  =  NO3 
+SPEC3:  K1: 7.2e-15 K2: 785.0  K3: 4.1e-16 K4: 1440.0 K5: 1.9e-33 K6: 725.0 
+
+CLASS: GAS  
+HO  +  HNO4     =     NO2  
+TEMP1:   A:  1.30E-12  E/R:   -380.0
+
+CLASS: GAS  
+HO  +  HO2      = (DUMMY)
+TEMP1:   A:  4.80E-11  E/R:  -250.0
+
+CLASS: GAS  
+HO  +  SO2  =  SULF +  HO2  
+TROE:  KO: 3.00E-31  N:  3.3  KINF:  1.50E-12  M:  0.0  
+
+CLASS: GAS  
+CO  +  HO   =  HO2   + CO2  
+SPEC1:  KO: 1.5E-13 A: 2.439E-20  
+
+CLASS: GAS  
+ISO + O3PX = 0.86 OLT + 0.05 HCHO + 0.02 HO + 0.01 CO + 0.13 DCB + 0.28 HO2 + 0.15 XO2
+CONST:   A: 6e-11
+
+CLASS: GAS  
+MACR + O3PX = ALD
+TEMP1:   A: 1.59e-11  E/R: -13.0 
+
+CLASS: GAS  
+CH4  + HO   =  MO2  
+TEMP2:  KO:  7.44e-18  E/R: 1361.0 
+ 
+CLASS: GAS  
+ETH  + HO   =  ETHPX 
+TEMP2:  KO:  1.51E-17  E/R: 492.0 
+
+CLASS: GAS  
+HC3   +  HO       = 0.583 HC3PX  +  0.381 HO2  + .01  HCHO   +  .335 ALD   + 0.036 ORA1 + 0.036 CO + 0.036 GLY + 0.036 HO    
+TEMP1:   A:  5.26E-12  E/R:   260.0
+
+CLASS: GAS  
+HC5   +  HO       =  0.75 HC5PX  +   .25  HO2 + 0.25 KET   
+TEMP1:   A:  8.02E-12  E/R:  155.0
+
+CLASS: GAS  
+HC8  +  HO       = 0.951 HC8PX + 0.025 ALD + 0.024 HKET + 0.049 HO2     
+TEMP1:   A:  1.64E-11  E/R:  125.0
+
+CLASS: GAS 
+ETE  +  HO       =     ETEPX
+TEMP1:   A:  1.96E-12  E/R:  -438.0
+
+CLASS: GAS  
+OLT  +  HO       =     OLTPX
+TEMP1:   A:  5.72E-12  E/R:  -500.0
+
+CLASS: GAS  
+OLI  +   HO       =     OLIPX
+TEMP1:   A:  1.33E-11  E/R:  -500.0
+
+CLASS: GAS  
+DIEN + HO  = ISOPX
+TEMP1:   A: 1.48E-11  E/R: -448.0
+
+CLASS: GAS  
+ISO + HO  = ISOPX
+TEMP1:   A: 2.54E-11  E/R:  -410.0
+
+CLASS: GAS  
+API + HO  = APIPX
+TEMP1:   A: 1.21E-11   E/R: -444.0
+
+CLASS: GAS  
+LIMN + HO  = LIMPX
+CONST:  A: 1.70E-10
+
+CLASS: GAS  
+TOL  +  HO       = 0.90 ADDT + 0.10 XO2 + 0.10 HO2
+TEMP1:   A:  1.81E-12  E/R: -355.0
+
+CLASS: GAS  
+XYL + HO      = 0.90 ADDX + 0.10 XO2 + 0.10 HO2
+TEMP1:   A:  7.30E-12  E/R:  -355.0
+
+CLASS: GAS  
+CSL + HO  = 0.85 ADDC + 0.10 PHO + 0.05 HO2 + 0.05 XO2
+CONST:   A:    6.00E-11  
+
+CLASS: GAS  
+HCHO  +  HO        =    HO2   +    CO     
+CONST:   A:    1.00E-11 
+
+CLASS: GAS  
+ALD  +  HO       =     ACO3  
+TEMP1:   A:  5.55E-12  E/R:  -331.0
+
+CLASS: GAS  
+KET  +   HO       =     KETPX   
+TEMP2:   KO:  5.68E-18  E/R: -92.0
+
+CLASS: GAS  
+HKET + HO  = HO2 + MGLY 
+CONST:   A: 3.00E-12
+
+CLASS: GAS  
+GLY  +   HO       =     HO2  +  2 CO  
+CONST:   A:    1.14E-11
+
+CLASS: GAS  
+MGLY  +  HO       =     ACO3  +     CO    
+CONST:   A:    1.72E-11 
+
+CLASS: GAS  
+MACR + HO  = 0.51 TCO3 + 0.41 HKET + 0.08 MGLY + 0.41 CO + 0.08 HCHO + 0.49 HO2 + 0.49 XO2
+TEMP1:  A: 1.86E-11  E/R: -175.0
+
+CLASS: GAS  
+DCB   +  HO =    0.5 TCO3 + 0.50 HO2 + 0.50 XO2 + 0.35 UDD + 0.15 GLY + 0.15 MGLY
+TEMP1:   A:  2.80E-11 E/R: -175.0
+
+CLASS: GAS  
+UDD + HO  =  0.88 ALD + 0.12 KET + HO2
+CONST:  A: 2.7E-10
+
+CLASS: GAS  
+OP1 +  HO       = 0.65 MO2  +  0.35  HCHO  +  0.35  HO
+TEMP1:   A:  2.93E-12   E/R: -190.0
+
+CLASS: GAS  
+OP2 + HO  = 0.44 HC3PX + 0.08 ALD + 0.41 KET + 0.49 HO + 0.07 XO2
+TEMP1:   A: 3.4E-12    E/R: -190   
+
+CLASS: GAS  
+PAA +  HO       =  0.35 HCHO + 0.65 ACO3 + 0.35 HO2 + 0.35 XO2 
+TEMP1:   A:   2.93E-12  E/R: -190.0
+
+CLASS: GAS  
+PAN  + HO   =  HCHO + XO2 + NO3
+CONST:   A:  4.00E-14   
+
+CLASS: GAS  
+TPAN + HO  = 0.60 HKET + 0.40 HCHO + 0.40 HO2 + XO2 + 0.40 PAN + 0.60 NO3
+TEMP1:  A: 3.25E-13  E/R: -500.0
+
+CLASS: GAS  
+ONIT + HO       =     HC3PX   +    NO2
+TEMP1:   A:  5.31E-12  E/R: 260.0
+
+CLASS: GAS  
+ACO3 +  NO2      =     PAN
+TROE:   KO: 9.7E-29  N: 5.6  KINF:  9.3E-12  M: 1.5
+
+CLASS: GAS  
+PAN           =     ACO3    +   NO2
+TROEQ:  KO: 9.7E-29  N: 5.6  KINF: 9.3E-12  M: 1.5  KO: 8.6E-29  B: 13954
+
+CLASS: GAS  
+TCO3 +  NO2      =     TPAN
+TROE:  KO: 9.7E-29  N: 5.6  KINF: 9.3E-12  M: 1.5
+
+CLASS: GAS  
+TPAN          =     TCO3  +    NO2
+TROEQ:  KO: 9.7E-29  N: 5.6  KINF: 9.3E-12  M: 1.5  KO: 8.6E-29  B: 13954
+
+CLASS: GAS  
+MO2 +  NO       = HCHO   +    HO2   +    NO2
+TEMP1:   A:  4.20E-12  E/R:  -180.0
+
+CLASS: GAS  
+ETHPX  +  NO       =     ALD   +    HO2   +    NO2
+CONST:   A:  8.70E-12 
+
+CLASS: GAS  
+HC3PX +   NO       = 0.047 HCHO + 0.233 ALD + 0.623 KET + 0.063 GLY + 0.742 HO2 + 0.15 MO2 + 0.048 ETHPX + 0.048 XO2 + 0.059 ONIT + 0.941 NO2
+CONST:   A:  4.0E-12 
+
+CLASS: GAS  
+HC5PX  + NO       = 0.021 HCHO + 0.211 ALD + 0.722 KET + 0.599 HO2 + 0.031 MO2 + 0.245 ETHPX + 0.334 XO2 + 0.124 ONIT + 0.876 NO2 
+CONST:   A:  4.0E-12 
+
+CLASS: GAS  
+HC8PX  + NO       = 0.15 ALD + 0.642 KET + 0.133 ETHPX + 0.261 ONIT + 0.739 NO2 + 0.606 HO2 + 0.416 XO2
+CONST:   A:  4.0E-12 
+
+CLASS: GAS  
+ETEPX +  NO       = 1.6  HCHO   +    HO2  + NO2  + 0.2  ALD
+CONST:   A: 9.0E-12  
+
+CLASS: GAS  
+OLTPX  + NO       =   0.94 ALD    +   HCHO  + HO2  +  NO2 + 0.06 KET
+CONST:   A:  4.0E-12  
+
+CLASS: GAS  
+OLIPX  +  NO       = HO2 + 1.71 ALD + 0.29 KET + NO2
+CONST:   A:  4.0E-12 
+
+CLASS: GAS  
+ISOPX + NO  = 0.446 MACR + 0.354 OLT + 0.847 HO2 + 0.606 HCHO + 0.153 ONIT + 0.847 NO2
+CONST:   A: 4.0E-12
+
+CLASS: GAS  
+APIPX + NO  = 0.80 HO2 + 0.80 ALD + 0.80 KET + 0.20 ONIT + 0.80 NO2
+CONST:   A: 4.0E-12
+
+CLASS: GAS  
+LIMPX + NO  = 0.65 HO2 + 0.40 MACR + 0.25 OLI + 0.25 HCHO + 0.35 ONIT + 0.65 NO2
+CONST:   A: 4.0E-12
+
+CLASS: GAS  
+ACO3  +  NO       =     MO2   +    NO2
+CONST:   A:  2.0E-11
+
+CLASS: GAS  
+TCO3  + NO       =  ACO3 + HCHO + NO2
+CONST:   A: 2.0E-11
+
+CLASS: GAS  
+TOLPX  +  NO       = 0.95 NO2 + 0.95 HO2 + 0.65 MGLY + 1.20 GLY + 0.50 DCB + 0.05 ONIT
+CONST:   A:  4.0E-12  
+
+CLASS: GAS  
+XYLPX  + NO       = 0.95 NO2 + 0.95 HO2 + 0.60 MGLY + 0.35 GLY + 0.95 DCB + 0.05 ONIT  
+CONST:   A:  4.0E-12 
+
+CLASS: GAS  
+CSLPX + NO  = GLY + MGLY + HO2 + NO2
+CONST:   A: 4.0E-12
+
+CLASS: GAS  
+KETPX  + NO       =  0.54 MGLY + 0.46 ALD + 0.23 ACO3 + 0.77 HO2 + 0.16 XO2 + NO2
+CONST:   A:  4.0E-12
+
+CLASS: GAS  
+OLNN  + NO       = HO2 + ONIT + NO2
+CONST:   A:  4.0E-12
+
+CLASS: GAS  
+OLND + NO  = 0.287 HCHO + 1.24 ALD + 0.464 KET + 2 NO2
+CONST:  A: 4.0E-12
+
+CLASS: GAS  
+HCHO  + NO3      =     HO2    +   HNO3   +   CO
+TEMP1:   A:  3.40E-13  E/R:  1900.0
+
+CLASS: GAS  
+ALD   +  NO3    =         ACO3  +     HNO3 
+TEMP1:   A:  1.40E-12  E/R:  1900.0
+
+CLASS: GAS  
+GLY   +   NO3      =   HNO3   +    HO2   +  2 CO
+TEMP1:   A:  2.90E-12  E/R:  1900.0
+
+CLASS: GAS  
+MGLY  +   NO3      =   HNO3   +  ACO3  +  CO
+TEMP1:   A:  1.40E-12  E/R:  1900.0
+
+CLASS: GAS  
+MACR + NO3  = 0.2 TCO3 + 0.2 HNO3 + 0.8 OLNN + 0.8 CO
+TEMP1:   A: 8.27E-15  E/R: 150.0
+
+CLASS: GAS  
+DCB +   NO3      = 0.5 TCO3 + 0.5 HO2 + 0.5 XO2 + 0.25 GLY + 0.25 ALD + 0.03 KET + 0.25 MGLY + 0.5 HNO3 + 0.5 NO2
+TEMP1:   A:  2.87E-13  E/R:  1000.0
+
+CLASS: GAS  
+CSL  +   NO3        =    HNO3  + PHO
+CONST:   A:    2.20E-11 
+
+CLASS: GAS  
+ETE  +   NO3      =   0.80  OLNN + 0.20 OLND
+TEMP2:   K0:  4.88E-18  E/R: 2282.0
+
+CLASS: GAS  
+OLT +  NO3        =  0.43 OLNN + 0.57 OLND
+TEMP1:   A:  1.79E-13  E/R: 450.0
+
+CLASS: GAS  
+OLI   +   NO3       = 0.11  OLNN + 0.89 OLND
+TEMP1:   A:  8.64E-13  E/R: -450.0
+
+CLASS: GAS  
+DIEN + NO3  = 0.9 OLNN + 0.10 OLND + 0.90 MACR 
+CONST:   A: 1.0E-13
+
+CLASS: GAS  
+ISO + NO3  = 0.90 OLNN + 0.10 OLND + 0.90 MACR
+TEMP1:  A: 4.0E-12  E/R: 446.0
+
+CLASS: GAS  
+API + NO3 = 0.10 OLNN + 0.90 OLND
+TEMP1:  A: 1.19E-12  E/R: -490.0
+
+CLASS: GAS  
+LIMN + NO3 = 0.13 OLNN + 0.87 OLND
+CONST:   A: 1.22E-11
+
+CLASS: GAS  
+TPAN + NO3 = 0.60 ONIT + 0.60 NO3 + 0.40 PAN + 0.40 HCHO + 0.40 NO2 + XO2
+TEMP1:   A: 2.2E-14  E/R: 500.0
+
+CLASS: GAS  
+ETE + O3  = HCHO + 0.43 CO + 0.37 ORA1 + 0.26 HO2 + 0.13 H2 + 0.12 HO
+TEMP1:   A:  9.14E-15  E/R: 2580.0
+
+CLASS: GAS  
+OLT + O3 = 0.64 HCHO + 0.44 ALD + 0.37 CO + 0.14 ORA1 + 0.1 ORA2 + 0.25 HO2 + 0.4 HO + 0.03 KET + 0.03 KETPX + 0.06 CH4 + 0.006 H2O2 + 0.03 ETH + 0.19 MO2 + 0.1 ETHPX
+TEMP1:   A: 4.33E-15  E/R: 1800.0
+
+CLASS: GAS 
+OLI + O3 = 0.02 HCHO + 0.99 ALD + 0.16 KET + 0.3 CO + 0.011 H2O2 + 0.14 ORA2 + 0.07 CH4 + 0.22 HO2 + 0.63 HO + 0.23 MO2 + 0.12 KETPX + 0.06 ETH + 0.18 ETHPX
+TEMP1:  A: 4.4E-15  E/R: 845.0
+
+CLASS: GAS 
+DIEN + O3 = 0.90 HCHO + 0.39 MACR + 0.36 CO + 0.15 ORA1 + 0.09 O3PX + 0.3 HO2 + 0.35 OLT + 0.28 HO + 0.05 H2 + 0.15 ACO3 + 0.03 MO2 + 0.02 KETPX + 0.13 XO2 + 0.001 H2O2
+TEMP1:  A: 1.34E-14  E/R: 2283.0
+
+CLASS: GAS 
+ISO + O3 = 0.9 HCHO + 0.39 MACR + 0.36 CO + 0.15 ORA1 + 0.09 O3PX + 0.3 HO2 + 0.35 OLT + 0.28 HO + 0.05 H2 + 0.15 ACO3 + 0.03 MO2 + 0.02 KETPX + 0.13 XO2 + 0.001 H2O2
+TEMP1:  A: 7.86E-15  E/R: 1913.0
+
+CLASS: GAS 
+API + O3 = 0.65 ALD + 0.53 KET + 0.14 CO + 0.2 ETHPX + 0.42 KETPX + 0.85 HO + 0.1 HO2 + 0.02 H2O2
+TEMP1:  A: 1.01E-15  E/R: 736.0
+
+CLASS: GAS  
+LIMN + O3 = 0.04 HCHO + 0.46 OLT + 0.14 CO + 0.16 ETHPX + 0.42 KETPX + 0.85 HO + 0.1 HO2 + 0.02 H2O2 + 0.79 MACR + 0.01 ORA1 + 0.07 ORA2
+CONST:  A: 2.00E-16 
+
+CLASS: GAS 
+MACR + O3 = 0.4 HCHO + 0.6 MGLY + 0.13 ORA2 + 0.54 CO + 0.08 H2 + 0.22 ORA1 + 0.29 HO2 + 0.07 HO + 0.13 OP2 + 0.13 ACO3
+TEMP1:  A: 1.36E-15  E/R: 2112.0
+
+CLASS: GAS  
+DCB + O3 = 0.21 HO + 0.29 HO2 + 0.66 CO + 0.5 GLY + 0.28 ACO3 + 0.16 ALD + 0.62 MGLY + 0.11 PAA + 0.11 ORA1 + 0.21 ORA2
+CONST:   A: 2e-18
+
+CLASS: GAS  
+TPAN + O3 = 0.7 HCHO + 0.3 PAN + 0.7 NO2 + 0.13 CO + 0.04 H2 + 0.11 ORA1 + 0.08 HO2 + 0.036 HO + 0.70 ACO3
+TEMP1:   A: 2.46E-15  E/R: 1700.0
+
+CLASS: GAS  
+PHO + NO2 = 0.1 CSL + ONIT
+CONST:   A: 2e-11         
+  
+CLASS: GAS  
+PHO + HO2 = CSL
+CONST:   A: 1e-11 
+               
+CLASS: GAS  
+ADDT + NO2 = CSL + HONO
+CONST:   A: 3.6e-11
+                  
+CLASS: GAS  
+ADDT + [O2] = 0.98 TOLPX + 0.02 CSL + 0.02 HO2
+TEMP1:   A: 1.66e-17  E/R: -1044.0
+
+CLASS: GAS  
+ADDT + O3 = CSL + HO
+CONST:   A: 5e-11
+              
+CLASS: GAS  
+ADDX + NO2 = CSL + HONO
+CONST:   A: 3.6e-11
+
+CLASS: GAS  
+ADDX + [O2] = 0.98 XYLPX + 0.02 CSL + 0.02 HO2
+TEMP1:   A: 1.66e-17  E/R: -1044.0
+
+CLASS: GAS  
+ADDX + O3 = CSL + HO
+CONST:   A: 1e-11
+
+CLASS: GAS  
+ADDC + NO2 = CSL + HONO
+CONST:   A:  3.6e-11
+
+CLASS: GAS  
+ADDC + [O2] = 0.98 CSLPX + 0.02 CSL + 0.02 HO2
+TEMP1:   A: 1.66E-17  E/R: -1044.0
+                 
+CLASS: GAS  
+ADDC + O3 = CSL + HO
+CONST:   A: 5e-11
+                 
+CLASS: GAS  
+HO2  + MO2 = OP1
+TEMP1:   A:  3.8E-13  E/R: -800.0   
+
+CLASS: GAS  
+HO2  +  ETHPX      =      OP2
+TEMP1:   A:  7.50E-13 E/R: -700.0
+
+CLASS: GAS  
+HO2 +  HC3PX      =      OP2
+TEMP1:   A:  1.66E-13  E/R: -1300.0
+
+CLASS: GAS  
+HO2  +  HC5PX      =      OP2
+TEMP1:   A: 1.66E-13  E/R: -1300.0
+
+CLASS: GAS  
+HO2  + HC8PX      =      OP2
+TEMP1:   A:   1.66E-13  E/R: -1300.0   
+
+CLASS: GAS  
+HO2  +  ETEPX     =      OP2
+TEMP1:   A:   1.9E-13  E/R: -1300.0
+
+CLASS: GAS  
+HO2  + OLTPX      =      OP2
+TEMP1:   A: 1.66E-13  E/R: -1300.0
+
+CLASS: GAS  
+HO2  + OLIPX      =      OP2
+TEMP1:   A:   1.66E-13  E/R: -1300.0
+
+CLASS: GAS  
+ISOPX + HO2 = OP2
+TEMP1:  A: 1.28E-13  E/R: -1300.0
+
+CLASS: GAS  
+APIPX + HO2 = OP2
+CONST:   A: 1.50E-11   
+
+CLASS: GAS  
+LIMPX + HO2 = OP2
+CONST:   A: 1.50E-11
+
+CLASS: GAS  
+TOLPX + HO2 = OP2
+TEMP1:   A: 3.75E-13  E/R: -980.0
+
+CLASS: GAS  
+XYLPX + HO2 = OP2
+TEMP1:   A: 3.75E-13  E/R: -980.0
+
+CLASS: GAS  
+CSLPX + HO2 = OP2
+TEMP1:   A: 3.75E-13  E/R: -980.0 
+
+CLASS: GAS  
+ACO3 + HO2 = PAA
+TEMP1:   A: 1.15E-12  E/R: -550.0
+
+CLASS: GAS  
+ACO3 + HO2 = ORA2 + O3
+TEMP1:   A: 3.86E-16  E/R: -2640.0
+
+CLASS: GAS 
+HO2  + TCO3      =      OP2
+TEMP1:   A: 1.15e-12  E/R: -550.0
+
+CLASS: GAS 
+HO2  + TCO3      =     ORA2 + O3
+TEMP1:   A: 3.86E-16  E/R: -2640.0
+
+CLASS: GAS  
+KETPX + HO2 = OP2
+TEMP1:  A: 1.15E-13  E/R: -1300.0
+
+CLASS: GAS  
+HO2  +  OLNN       =      ONIT
+TEMP1:   A: 1.66E-13  E/R: -1300.0
+
+CLASS: GAS  
+HO2  +  OLND       =      ONIT
+TEMP1:   A: 1.66E-13  E/R: -1300.0  
+
+CLASS: GAS  
+MO2  + MO2       =  1.33 HCHO + 0.66 HO2
+TEMP1:   A:  9.1E-14  E/R: -416.0
+
+CLASS: GAS  
+MO2 +  ETHPX      =  0.75 HCHO  +    HO2 +  0.75  ALD
+TEMP1:   A:  1.18E-13  E/R:  -158.0
+
+CLASS: GAS  
+MO2  + HC3PX      =  0.81 HCHO  +  0.992   HO2  +  0.58  ALD + 0. 018  KET + 0.007 MO2 + 0.005 MGLY + 0.085 XO2 + 0.119 GLY
+TEMP1:   A:  9.46E-14  E/R: -431.0
+
+CLASS: GAS  
+MO2 +  HC5PX     = 0.829 HCHO + 0.946 HO2 + 0.523 ALD + 0.24 KET + 0.014 ETHPX + 0.049 MO2 + 0.245 XO2
+TEMP1:   A: 1.00E-13  E/R: -467.0
+
+CLASS: GAS  
+MO2  + HC8PX     = 0.753 HCHO + 0.993 HO2 + 0.411 ALD + 0.419 KET + 0.322 XO2 + 0.013 ETHPX
+TEMP1:   A:  4.34E-14  E/R: -633.0
+
+CLASS: GAS 
+ETEPX + MO2 = 1.55 HCHO + HO2 + 0.35 ALD
+TEMP1:   A: 1.71E-13  E/R: -708.0
+
+CLASS: GAS  
+MO2  + OLTPX     =  1.25 HCHO  +     HO2  + 0.669  ALD + 0.081 KET
+TEMP1:   A:  1.46E-13  E/R:  -708.0
+
+CLASS: GAS  
+MO2  + OLIPX      =  0. 755 HCHO  +     HO2 +   0.932 ALD  +  0.313 KET
+TEMP1:   A:  9.18E-14  E/R:  -708.0  
+
+CLASS: GAS 
+ISOPX + MO2 = 0.55 MACR + 0.37 OLT + HO2 + 0.08 OLI + 1.09 HCHO
+TEMP1:   A: 1.36E-13  E/R: -708.0
+
+CLASS: GAS 
+APIPX + MO2 = HCHO + ALD + KET + 2 HO2
+TEMP1:   A: 3.56E-14  E/R: -708.0 
+
+CLASS: GAS 
+LIMPX + MO2 = 1.4 HCHO + 0.6 MACR + 0.4 OLI + 2 HO2
+TEMP1:   A: 3.56E-14  E/R: -708.0      
+
+CLASS: GAS 
+TOLPX + MO2 = HCHO + HO2 + 0.35 MGLY + 0.65 GLY + DCB
+TEMP1:   A: 3.56E-14  E/R: -708.0 
+
+CLASS: GAS 
+XYLPX + MO2 = HCHO + HO2 + 0.63 MGLY + 0.37 GLY + DCB
+TEMP1:   A: 3.56E-14  E/R: -708.0   
+
+CLASS: GAS 
+CSLPX + MO2 =  GLY + MGLY + HCHO + 2 HO2
+TEMP1:   A: 3.56E-14  E/R: -708.0 
+
+CLASS: GAS  
+MO2  + KETPX      =  0.75 HCHO  + 0.88 HO2 + 0.40 MGLY + 0.3 ALD + 0.3 HKET + 0.12 ACO3 + 0.08 XO2
+TEMP1:   A: 6.91E-13  E/R: -508.0
+
+CLASS: GAS  
+MO2  + ACO3      =   HCHO + HO2 + MO2
+TEMP1:   A:  3.21E-11  E/R: 440.0
+
+CLASS: GAS  
+MO2  + ACO3      = HCHO + ORA2
+TEMP1:   A:  2.68E-16  E/R: -2510.0
+
+CLASS: GAS  
+MO2  + TCO3     = 2 HCHO + HO2 + ACO3
+TEMP1:   A:  3.21E-11 E/R: 440.0
+
+CLASS: GAS  
+MO2  + TCO3     = HCHO + ORA2
+TEMP1:   A:  2.68E-16  E/R: -2510.0
+
+CLASS: GAS  
+MO2  +  OLNN      = 0.75 HCHO  +   HO2   +  ONIT
+TEMP1:  A:  1.60E-13  E/R:  -708.0
+
+CLASS: GAS  
+MO2  +  OLND      = 0.96 HCHO + 0.5 HO2 + 0.64 ALD + 0.149 KET + 0.5 NO2 + 0.5 ONIT
+TEMP1:  A:   9.68E-14  E/R: -708.0
+
+CLASS: GAS  
+ETHPX + ACO3 = ALD + 0.5 HO2 + 0.5 MO2 + 0.5 ORA2
+TEMP1:  A: 1.03E-12  E/R: -211.0
+
+CLASS: GAS  
+HC3PX + ACO3 = 0.724 ALD + 0.127 KET + 0.488 HO2 + 0.508 MO2 + 0.006 ETHPX + 0.071 XO2 + 0.091 HCHO + 0.10 GLY + 0.499 ORA2 + 0.004 MGLY
+TEMP1:  A: 6.9E-13  E/R: -460.0
+
+CLASS: GAS  
+HC5PX + ACO3 = 0.677 ALD + 0.33 KET + 0.438 HO2 + 0.554 MO2 + 0.495 ORA2 + 0.018 ETHPX + 0.237 XO2 + 0.076 HCHO
+TEMP1:  A: 5.59E-13  E/R: -522.0 
+
+CLASS: GAS  
+HC8PX + ACO3 = 0.497 ALD + 0.581 KET + 0.489 HO2 + 0.507 MO2 + 0.495 ORA2 + 0.015 ETHPX + 0.318 XO2
+TEMP1:  A: 2.47E-13  E/R: -683.0
+
+CLASS: GAS  
+ETEPX + ACO3 = 0.8 HCHO + 0.6 ALD + 0.5 HO2 + 0.5 MO2 + 0.5 ORA2
+TEMP1:  A: 9.48E-13  E/R: -765.0
+ 
+CLASS: GAS  
+OLTPX + ACO3 = 0.859 ALD + 0.501 HCHO + 0.501 HO2 + 0.501 MO2 + 0.499 ORA2 + 0.141 KET
+TEMP1:  A: 8.11E-13  E/R: -765.0
+
+CLASS: GAS  
+OLIPX + ACO3 = 0.941 ALD + 0.569 KET + 0.51 HO2 + 0.51 MO2 + 0.49 ORA2
+TEMP1:  A:  5.09E-13  E/R: -765.0
+
+CLASS: GAS  
+ISOPX + ACO3 =  0.771 MACR + 0.229 OLT + 0.506 HO2 + 0.494 ORA2 + 0.34 HCHO + 0.506 MO2
+TEMP1:  A: 7.6E-13   E/R: -765.0
+
+CLASS: GAS  
+APIPX + ACO3 = ALD + KET + HO2 + MO2
+TEMP1:  A: 7.4E-13  E/R: -765.0
+
+CLASS: GAS  
+LIMPX + ACO3 = 0.6 MACR + 0.4 OLI + 0.4 HCHO + HO2 + MO2
+TEMP1:  A: 7.4E-13  E/R: -765.0
+
+CLASS: GAS  
+TOLPX + ACO3 = MO2 + HO2 + 0.35 MGLY + 0.65 GLY + DCB
+TEMP1:  A: 7.4E-13  E/R: -765.0
+
+CLASS: GAS  
+XYLPX + ACO3 = MO2 + HO2 + 0.63 MGLY + 0.37 GLY + DCB
+TEMP1:  A:  7.4E-13  E/R: -765.0
+
+CLASS: GAS  
+CSLPX + ACO3 = GLY + MGLY + MO2 + HO2
+TEMP1:  A: 7.4E-13  E/R: -765.0
+
+CLASS: GAS  
+ACO3 + ACO3 = 2 MO2 
+TEMP1:  A: 2.80E-12  E/R:  -530.0       
+
+CLASS: GAS  
+TCO3 + ACO3 = MO2 + ACO3 + HCHO
+TEMP1:  A: 2.8E-12  E/R: -530.0
+
+CLASS: GAS  
+KETPX + ACO3 = 0.54 MGLY + 0.35 ALD + 0.11 KET + 0.12 ACO3 + 0.38 HO2 + 0.08 XO2 + 0.5 MO2 + 0.5 ORA2
+TEMP1:  A:  7.51E-13  E/R: -565.0                
+
+CLASS: GAS  
+OLNN + ACO3 = ONIT + 0.5 ORA2 + 0.5 MO2 + 0.5 HO2 
+TEMP1:  A:  8.85E-13  E/R: -765.0
+
+CLASS: GAS  
+OLND + ACO3 = 0.207 HCHO + 0.65 ALD + 0.167 KET + 0.484 ORA2 + 0.484 ONIT + 0.516 NO2 + 0.516 MO2
+TEMP1:  A: 5.37E-13  E/R: -765.0                 
+
+CLASS: GAS  
+OLNN + OLNN = ONIT + ONIT + HO2
+TEMP1:  A: 7.0E-14  E/R: -1000.0
+
+CLASS: GAS  
+OLNN + OLND = 0.202 HCHO + 0.64 ALD + 0.149 KET + 0.5 HO2 + 1.5  ONIT + 0.5 NO2
+TEMP1:  A: 4.25E-14  E/R: -1000.0                  
+
+CLASS: GAS  
+OLND + OLND = 0.504 HCHO + 1.21 ALD + 0.285 KET + ONIT + NO2
+TEMP1:  A: 2.96E-14  E/R: -1000.0
+
+CLASS: GAS  
+MO2 + NO3 = HCHO + HO2 + NO2 
+CONST:  A: 1.2E-12 
+
+CLASS: GAS  
+ETHPX + NO3 = ALD + HO2 + NO2
+CONST:  A: 1.2E-12
+
+CLASS: GAS  
+HC3PX + NO3 = 0.048 HCHO + 0.243 ALD + 0.67 KET + 0.063 GLY + 0.792 HO2 + 0.155 MO2 + 0.053 ETHPX + 0.051 XO2 + NO2
+CONST:  A: 1.2E-12
+
+CLASS: GAS  
+HC5PX + NO3 = 0.021 HCHO + 0.239 ALD + 0.828 KET + 0.699 HO2 + 0.04 MO2 + 0.262 ETHPX + 0.391 XO2 + NO2
+CONST:  A: 1.20E-12 
+
+CLASS: GAS  
+HC8PX + NO3 = 0.187 ALD + 0.88 KET + 0.845 HO2 + 0.155 ETHPX + 0.587 XO2 + NO2
+CONST:  A: 1.2E-12
+
+CLASS: GAS  
+ETEPX + NO3 = 1.6 HCHO + 0.2 ALD + HO2 + NO2
+CONST:  A: 1.2E-12  
+
+CLASS: GAS  
+OLTPX + NO3 = HCHO + 0.94 ALD + 0.06 KET + HO2 + NO2
+CONST:  A: 1.2E-12  
+
+CLASS: GAS  
+OLIPX + NO3 = 1.71 ALD + 0.29 KET + HO2 + NO2
+CONST:  A: 1.2E-12
+
+CLASS: GAS  
+ISOPX + NO3 = 0.6 MACR + 0.4 OLT + 0.686 HCHO + HO2 + NO2
+CONST:  A: 1.2E-12
+
+CLASS: GAS  
+APIPX + NO3 = ALD + KET + HO2 + NO2
+CONST:  A: 1.2E-12
+
+CLASS: GAS  
+LIMPX + NO3 = 0.6 MACR + 0.4 OLI + 0.4 HCHO + HO2 + NO2
+CONST:  A: 1.2E-12
+
+CLASS: GAS  
+TOLPX + NO3 = 0.7 MGLY + 1.3 GLY + 0.5 DCB + HO2 + NO2
+CONST:  A: 1.2E-12
+
+CLASS: GAS  
+XYLPX + NO3 = 1.26 MGLY + 0.74 GLY + DCB + HO2 + NO2
+CONST:  A: 1.2E-12
+
+CLASS: GAS  
+CSLPX + NO3 = GLY + MGLY + HO2 + NO2
+CONST:  A: 1.2E-12
+                      
+CLASS: GAS 
+ACO3 + NO3 = MO2 + NO2
+CONST:  A: 4e-12
+
+CLASS: GAS  
+TCO3 + NO3 = HCHO + ACO3 + NO2
+CONST:  A:  4e-12
+
+CLASS: GAS  
+KETPX + NO3 = 0.54 MGLY + 0.46 ALD + 0.77 HO2 + 0.23 ACO3 + 0.16 XO2 + NO2
+CONST:  A:  1.2e-12
+
+CLASS: GAS  
+OLNN + NO3 = ONIT + HO2 + NO2
+CONST:  A:  1.2e-12
+
+CLASS: GAS  
+OLND + NO3 = 0.28 HCHO + 1.24 ALD + 0.469 KET + NO2 + NO2
+CONST:  A: 1.2e-12
+
+CLASS: GAS  
+XO2 + HO2 = OP2
+TEMP1:  A: 1.66e-13  E/R: -1300.0
+  
+CLASS: GAS  
+XO2 + MO2 = HCHO + HO2
+TEMP1:  A: 5.99E-15  E/R: -1510.0
+
+CLASS: GAS  
+XO2 + ACO3 = MO2
+TEMP1:  A: 3.4e-14  E/R: -1560
+
+CLASS: GAS  
+XO2 + XO2 = (DUMMY)
+TEMP1:  A: 7.13E-17  E/R: -2950.0
+
+CLASS: GAS  
+XO2 + NO = NO2
+CONST:  A: 4e-12
+
+CLASS: GAS  
+XO2 + NO3 = NO2
+CONST:  A: 1.2e-12
+
+COMMENT --- B parameter is given as - delE/R: attention (change to MM notation)!!!
+COMMENT --- --> Kh = A exp(B (1/T - 1/198))
+
+CLASS: HENRY 
+CO2 = aCO2        
+TEMP3:   A: 3.1e-2  B: 2423.0 
+
+CLASS: HENRY 
+O3 = aO3          
+TEMP3:   A: 1.1e-2  B: 2300.0
+
+CLASS: HENRY 
+HO2  = aHO2       
+TEMP3:   A: 9.0e3  B: 0.0
+
+CLASS: HENRY 
+HO = aHO          
+TEMP3:   A: 25.0  B: 5280.0
+
+CLASS: HENRY 
+H2O2 = aH2O2      
+TEMP3:   A: 1.0e5  B: 6340.0 
+
+CLASS: HENRY 
+NO2 = aNO2        
+TEMP3:   A: 1.2e-2  B: 2500.0
+
+CLASS: HENRY 
+HONO = aHONO     
+TEMP3:   A: 49.0   B: 4880.0
+
+CLASS: HENRY 
+HNO3 = aHNO3      
+TEMP3:   A: 2.1e5  B: 8700.0
+
+CLASS: HENRY 
+NO3 =  aNO3         
+TEMP3:   A: 6.0e-1  B: 0.0
+
+CLASS: HENRY 
+N2O5 = aN2O5      
+TEMP3:   A: 1.4e0  B: 0.0
+ 
+CLASS: HENRY 
+NH3 =  aNH3       
+TEMP3:   A: 60.7  B: 3920.0
+
+CLASS: HENRY 
+HCL =  aHCL       
+TEMP3:   A: 1.1  B: 2020.0 
+
+CLASS: HENRY 
+HCHO = aHCHO      
+TEMP3:   A: 2.5  B: 7216.0
+
+CLASS: HENRY 
+ORA1 = aORA1   
+TEMP3:   A: 5.5e3  B: 5630.0
+ 
+CLASS: HENRY 
+SO2 =  aSO2       
+TEMP3:   A: 1.24  B: 3300.0
+ 
+CLASS: HENRY 
+OP1 =  aOP1       
+TEMP3:   A: 6.00   B: 5640.0
+
+CLASS: HENRY 
+ORA2 =  aORA2      
+TEMP3:   A: 5.5e3  B: 5890.0
+
+CLASS: HENRY 
+PAA =  aPAA      
+TEMP3:   A: 6.69e2 B: 5860.0    
+
+CLASS: HENRY 
+MO2 =  aMO2      
+TEMP3:   A: 6.00 B: 5640.0
+
+CLASS: HENRY 
+ETHPX =  aETHPX      
+TEMP3:   A: 6.00 B: 5640.0
+
+CLASS: HENRY 
+ETOH =  aETOH      
+TEMP3:   A: 1.9e2 B: 6290.0  
+
+CLASS: HENRY 
+CH3OH =  aCH3OH      
+TEMP3:   A: 2.2e2 B: 5390.0  
+
+CLASS: HENRY 
+ALD =  aALD      
+TEMP3:   A: 4.8  B: 6254.0 
+                               
+CLASS: HENRY 
+BR2 =  aBR2      
+TEMP3:   A: 7.58e-1 B: 3800.0
+
+CLASS: HENRY 
+CL2 =  aCL2      
+TEMP3:   A: 9.15e-2 B: 2490.0  
+
+CLASS: HENRY 
+SULF =  aSULF      
+TEMP3:   A: 2.1e5 B: 0.0    
+
+CLASS: HENRY 
+HNO4 =  aHNO4      
+TEMP3:   A: 1.0e5 B: 0.0
+
+CLASS: HENRY 
+CH4 =  aCH4      
+TEMP3:   A: 1.46e-3 B: 0.0
+
+CLASS: HENRY 
+ETH =  aETH      
+TEMP3:   A: 1.95e-3 B: 0.0
+ 
+CLASS: HENRY 
+ETE =  aETE      
+TEMP3:   A: 4.55e-3 B: 0.0
+
+CLASS: HENRY 
+PAN =  aPAN      
+TEMP3:   A: 5.0 B: 0.0
+
+CLASS: HENRY 
+OP2 =  aOP2      
+TEMP3:   A: 837.0  B: 0.0 
+ 
+CLASS: HENRY 
+ETEPX =  aETEPX      
+TEMP3:   A: 6.00 B: 0.0
+
+CLASS: HENRY 
+ACO3 =  aACO3      
+TEMP3:   A: 6.69e2 B: 5860.0
+
+CLASS: HENRY
+[O2] = aO2
+TEMP3:  A: 1.3e-3 B: 1700.0
+
+COMMENT --- THERE ARE xx AQUEOUS REACTIONS IN THE WET REACTION SCHEME;  
+
+CLASS: AQUA 
+FEOHpp    = FEpp  + aHO  
+PHOTABC:   A: 4.76e-03   B: 2.19894e+00  C: 0.76087e+00 
+
+CLASS: AQUA 
+FEOH2p    = FEpp  + aHO + OHm
+PHOTABC:   A: 6.10e-03   B: 2.21811e+00  C: 0.76118e+00 
+
+CLASS: AQUA 
+NO3m   = aNO2 + aHO + OHm - [aH2O]             
+PHOTABC:   A: 4.57e-7  B: 2.59408e+00  C: 0.77213e+00
+
+CLASS: AQUA 
+NO2m     = aNO + aHO + OHm             
+PHOTABC:   A: 2.70e-05  B: 2.01536e+00   C: 0.75915e+00 
+
+CLASS: AQUA 
+FESO4p     = FEpp + SO4m             
+PHOTABC:   A: 6.80e-05  B: 2.24656e+00   C: 0.76118e+00 
+
+CLASS: AQUA 
+aH2O2     = aHO + aHO             
+PHOTABC:   A: 7.64e-06  B: 2.46425e+00   C: 0.76355e+00 
+
+CLASS: AQUA 
+aH2O2 + FEppp     = FEpp  + aHO2  + Hp 
+TEMP3:   A:  2e-3  B:  0.0
+
+CLASS: AQUA 
+aH2O2 + FEOHpp     = FEpp  + aHO2  + [aH2O]
+TEMP3:   A: 2e-3 B:  0.0
+
+CLASS: AQUA 
+aH2O2 + FEOH2p     = FEpp  + aHO2  + OHm + [aH2O]
+TEMP3:   A:  2e-3 B:  0.0
+
+CLASS: AQUA 
+aH2O2 + FEpp     = FEppp  + aHO  + OHm 
+TEMP3:   A: 7.6e1  B:  0.0
+
+CLASS: AQUA 
+aH2O2 + MNppp    = MNpp  + aHO2  + Hp  
+TEMP3:   A: 7.3e4  B: 0.0 
+
+CLASS: AQUA 
+aH2O2 + CUp      = CUpp  + aHO   + OHm
+TEMP3:   A: 7.0e3  B: 0.0 
+
+CLASS: AQUA 
+O2m   + FEppp = FEpp  + aO2            
+TEMP3:   A: 1.5e8  B: 0.0 
+
+CLASS: AQUA 
+aHO2   + FEOHpp = FEpp  + aO2 + [aH2O]           
+TEMP3:   A: 1.3e5  B: 0.0    
+
+CLASS: AQUA 
+O2m   + FEOHpp = FEpp  + aO2 + OHm           
+TEMP3:   A: 1.5e8  B: 0.0 
+
+CLASS: AQUA 
+O2m   + FEOH2p = FEpp  + aO2  + 2 OHm - 2 [aH2O]    
+TEMP3:   A: 1.5e8  B: 0.0 
+ 
+CLASS: AQUA 
+O2m   + FEpp  = FEppp  + aH2O2 + 2 OHm - 2 [aH2O]
+TEMP3:   A: 1.0e7  B: 0.0 
+
+CLASS: AQUA 
+aHO2 + FEpp  = FEppp  + aH2O2 + OHm - [aH2O]
+TEMP3:   A: 1.2e6  B: -5050.0      
+
+CLASS: AQUA 
+aHO + FEpp  = FEOHpp        
+TEMP3:   A: 4.3e8  B: -1100.0      
+
+CLASS: AQUA 
+O2m   + MNpp  = MNppp  + aH2O2 + 2 OHm - 2 [aH2O]
+TEMP3:   A:  1.1e8 B: 0.0 
+
+CLASS: AQUA 
+aHO2 +  MNpp   = MNppp  + aH2O2 + OHm - [aH2O]
+TEMP3:   A: 2.0e5  B: 0.0 
+
+CLASS: AQUA 
+aHO +  MNpp   = MNppp  + OHm     
+TEMP3:   A: 2.6e7  B: 0.0 
+
+CLASS: AQUA 
+O2m  +  CUp   = CUpp  + aH2O2 + 2 OHm - 2 [aH2O]
+TEMP3:   A:  9.4e9 B: 0.0 
+
+CLASS: AQUA 
+aHO2 +   CUp  = CUpp  + aH2O2 + OHm - [aH2O]
+TEMP3:   A: 2.2e9  B: 0.0 
+
+CLASS: AQUA 
+O2m   +  CUpp = CUp  + aO2             
+TEMP3:   A: 1.1e10  B: 0.0 
+
+CLASS: AQUA 
+aHO2   +  CUpp = CUp  + aO2 + Hp            
+TEMP3:   A: 1.2e9  B: 0.0 
+
+CLASS: AQUA 
+aHO   +  CUp = CUpp + OHm - [aH2O]
+TEMP3:   A: 3.0e9  B: 0.0 
+
+CLASS: AQUA 
+FEppp  + CUp  = FEpp  + CUpp         
+TEMP3:   A: 3.0e7  B: 0.0 
+
+CLASS: AQUA 
+FEOHpp  + CUp  = FEpp  + CUpp + OHm            
+TEMP3:   A: 3.0e7  B: 0.0 
+
+CLASS: AQUA 
+FEOH2p  + CUp  = FEpp + CUpp + 2 OHm 
+TEMP3:   A: 3.0e7  B: 0.0 
+
+CLASS: AQUA 
+FEpp  + MNppp  = FEppp + MNpp          
+TEMP3:   A: 1.5e4  B: 0.0 
+
+CLASS: AQUA 
+aO3  + O2m     = aHO + 2 aO2 + OHm - [aH2O]
+TEMP3:   A: 1.5e9  B: 0.0 
+
+CLASS: AQUA 
+aHO2  + aHO2    = aH2O2  + aO2       
+TEMP3:   A: 8.3e5   B: -2720.0 
+
+CLASS: AQUA 
+aHO2  + O2m    = aH2O2  + aO2 + OHm - [aH2O]
+TEMP3:   A: 9.7e7   B: -1060.0 
+                                   
+CLASS: AQUA 
+aHO2  + aHO  = aO2  +  [aH2O]           
+TEMP3:   A: 1.0e10  B: 0.0 
+
+CLASS: AQUA 
+O2m  + aHO  = OHm + aO2          
+TEMP3:   A: 1.1e10  B: -2120.0  
+
+CLASS: AQUA 
+aH2O2  + aHO  = aHO2  +  [aH2O]           
+TEMP3:   A: 3.0e7  B: -1680.0 
+
+CLASS: AQUA 
+aOP1  + aHO  = aMO2  +  [aH2O]           
+TEMP3:  A: 3.0e7  B: -1680.0  
+
+CLASS: AQUA 
+HSO3m  + aHO  = SO3m  +  [aH2O]           
+TEMP3:   A: 2.7e9  B: 0.0 
+
+CLASS: AQUA 
+SO3mm  + aHO  = SO3m  +  OHm          
+TEMP3:   A: 4.6e9  B: 0.0 
+
+CLASS: AQUA 
+aN2O5  +  [aH2O]  = 2 Hp + 2 NO3m             
+TEMP3:   A: 5.0e9  B: -1800.0 
+
+CLASS: AQUA 
+aNO3  + OHm  = NO3m  + aHO              
+TEMP3:   A: 9.4e7  B: -2700.0 
+
+CLASS: AQUA 
+aNO3  + FEpp  = NO3m  + FEppp              
+TEMP3:   A: 8.0e6  B: 0.0 
+
+CLASS: AQUA 
+aNO3  + MNpp  = NO3m  + MNppp             
+TEMP3:   A: 1.1e6  B: 0.0 
+
+CLASS: AQUA 
+aNO3  + aH2O2  = NO3m  + Hp + aHO2           
+TEMP3:   A: 4.9e6  B: -2000.0 
+
+CLASS: AQUA 
+aNO3  + aOP1  = NO3m  + Hp + aMO2           
+TEMP3:   A: 4.9e6  B: -2000.0 
+
+CLASS: AQUA 
+aNO3  + aHO2  = NO3m  + Hp + aO2           
+TEMP3:   A: 3.0e9  B: 0.0 
+
+CLASS: AQUA 
+aNO3  + O2m  = NO3m + aO2           
+TEMP3:   A: 3.0e9  B: 0.0 
+
+CLASS: AQUA 
+aNO3  + HSO3m  = NO3m  + Hp + SO3m           
+TEMP3:   A: 1.3e9  B: -2000.0 
+
+CLASS: AQUA 
+aNO3  + SO3mm  = NO3m + SO3m           
+TEMP3:   A: 3.0e8  B: 0.0 
+
+CLASS: AQUA 
+aNO3  + HSO4m  = NO3m  + Hp + SO4m           
+TEMP3:   A: 5.6e3  B: -2000.0 
+
+CLASS: AQUA 
+aNO3 + SO4mm  = NO3m + SO4m           
+TEMP3:   A: 1e+5  B: 0.0 
+ 
+CLASS: AQUA 
+aNO2  + aHO  = NO3m  + Hp              
+TEMP3:   A: 1.2e10  B: 0.0 
+
+CLASS: AQUA 
+aNO2  + O2m  = NO2m  +  aO2            
+TEMP3:   A: 1.0e8  B: 0.0 
+
+CLASS: AQUA 
+aNO2  + aNO2 = aHONO  + NO3m + Hp      
+TEMP3:   A: 1.0e8  B: 2900.0 
+
+CLASS: AQUA 
+NO2m  + aHO  = aNO2  + OHm              
+TEMP3:   A: 1.1e10  B:  0.0
+
+CLASS: AQUA 
+NO2m  + SO4m  = aNO2  + SO4mm              
+TEMP3:   A: 7.2e8  B:  0.0
+
+CLASS: AQUA 
+NO2m  + aNO3  = aNO2  + NO3m             
+TEMP3:   A: 1.4e9  B:  0.0
+
+CLASS: AQUA 
+NO2m  + CL2m  = 2 CLm + aNO2              
+TEMP3:   A: 6.0e7  B:  0.0
+
+CLASS: AQUA 
+NO2m  + BR2m  = 2 BRm + aNO2              
+TEMP3:   A: 1.2e7  B:  -1720.0
+
+CLASS: AQUA 
+NO2m  + CO3m  = CO3mm + aNO2              
+TEMP3:   A: 6.6e5  B:  -850.0
+
+CLASS: AQUA 
+NO2m  + aO3  = NO3m  + aO2              
+TEMP3:   A: 5.0e5  B:  -6900.0
+
+CLASS: AQUA 
+aHONO  + aHO  = aNO2  + [aH2O]           
+TEMP3:   A: 1.0e9  B:  0.0
+
+CLASS: AQUA 
+aHNO4  + HSO3m  = HSO4m  + Hp + NO3m           
+TEMP3:   A: 3.1e5  B:  0.0
+
+CLASS: AQUA 
+HSO3m  + aHCHO = HMSm   
+TEMP3:   A: 790.0  B: -3293.0 
+
+CLASS: AQUA 
+HMSm = HSO3m  + aHCHO
+TEMP3:   A: 1.197e-7  B: -5831.0 
+
+CLASS: AQUA 
+SO3mm  + aHCHO = HMSm + OHm - [aH2O]
+TEMP3:   A: 2.5e+7  B: -2752.0 
+
+CLASS: AQUA 
+HMSm = aHCHO + SO3mm  + Hp
+TEMP3:   A: 3.79e-3  B: -5290.0
+
+CLASS: AQUA 
+HMSm + SO4m     = SO4mm + Hp + aHCHO + SO3m
+TEMP3:   A: 2.8e6  B: 0.0
+
+CLASS: AQUA 
+HMSm + aNO3     = NO3m +  Hp + aHCHO + SO3m
+TEMP3:   A: 4.2e6  B: 0.0
+
+CLASS: AQUA 
+HMSm + CL2m     = 2 CLm +  Hp + aHCHO + SO3m
+TEMP3:   A: 5.0e4  B: 0.0
+
+CLASS: AQUA 
+HMSm + BR2m     = 2 BRm +  Hp + aHCHO + SO3m
+TEMP3:   A: 5.0e4  B: 0.0
+
+CLASS: AQUA 
+HSO3m  + aH2O2 + Hp = SO4mm  + 2 Hp  + [aH2O]
+TEMP3:   A: 6.9e7  B: -4000.0 
+
+CLASS: AQUA 
+HSO3m  + aOP1 + Hp  = SO4mm  + aCH3OH + 2 Hp 
+TEMP3:   A: 1.8e8  B: -3800.0 
+
+CLASS: AQUA
+HSO3m  + aPAA + Hp = SO4mm   + 2 Hp + aORA2
+TEMP3:   A: 6.3e8  B: -3990.0 
+
+CLASS: AQUA 
+aSO2 + aO3  = HSO4m  + Hp  + aO2 - [aH2O]
+TEMP3:   A: 2.4e4  B: 0.0
+
+CLASS: AQUA 
+HSO3m  + aO3  = SO4mm  + Hp  + aO2 
+TEMP3:   A: 3.7e5 B: 0.0
+
+CLASS: AQUA 
+SO3mm + aO3  = SO4mm + aO2  
+TEMP3:   A: 1.5e9  B: -5280.0
+
+CLASS: AQUA 
+HSO3m + FEOHpp = SO3m + FEpp + [aH2O]
+TEMP3:   A: 3.9e1  B: 0.0 
+
+CLASS: AQUA 
+SO5m + FEpp + [aH2O] = HSO5m + FEOHpp
+TEMP3:   A: 4.3e7  B: 0.0 
+
+CLASS: AQUA 
+HSO5m + FEpp + [aH2O] = SO4m + FEOHpp
+TEMP3:   A: 4.3e7  B: 0.0 
+
+CLASS: AQUA 
+SO5m + MNpp + [aH2O] = HSO5m + MNppp + OHm
+TEMP3:   A: 4.6e6  B: 0.0 
+
+CLASS: AQUA 
+FEpp + SO4m = FEppp + SO4mm
+TEMP3:   A: 3.5e7  B: 0.0 
+
+CLASS: AQUA 
+FEpp + S2O8mm  = FEppp + SO4mm + SO4m
+TEMP3:   A: 1.7e1  B: 0.0 
+
+CLASS: AQUA 
+SO5m + SO5m = S2O8mm + aO2
+TEMP3:   A: 1.8e8  B: -2600.0 
+
+CLASS: AQUA 
+SO5m + SO5m = SO4m + SO4m + aO2
+TEMP3:   A: 7.2e6  B: -2600.0 
+
+CLASS: AQUA 
+SO5m + aHO2 = HSO5m + aO2
+TEMP3:   A: 1.7e9  B: 0.0 
+
+CLASS: AQUA 
+SO5m + O2m = HSO5m + aO2 + OHm - [aH2O]
+TEMP3:   A: 2.34e8  B: 0.0 
+
+CLASS: AQUA 
+SO3m + aO2  = SO5m
+TEMP3:   A: 2.5e9  B: 0.0 
+
+CLASS: AQUA 
+SO5m + HSO3m = HSO5m + SO3m
+TEMP3:   A: 8.6e3  B: 0.0 
+
+CLASS: AQUA 
+SO5m + HSO3m = SO4mm + SO4m + Hp
+TEMP3:   A: 3.6e2  B: 0.0 
+
+CLASS: AQUA 
+SO5m + SO3mm = HSO5m + SO3m + OHm - [aH2O]
+TEMP3:   A: 2.1e5  B: 0.0 
+
+CLASS: AQUA 
+SO5m + SO3mm = SO4m + SO4mm
+TEMP3:   A: 5.5e5  B: 0.0 
+
+CLASS: AQUA 
+aHO + HSO4m = SO4m + [aH2O] 
+TEMP3:   A: 3.5e5  B: 0.0 
+
+CLASS: AQUA 
+SO4m + SO4m = S2O8mm
+TEMP3:   A: 1.6e8  B: 0.0 
+
+CLASS: AQUA 
+SO4m + HSO3m = SO4mm +  SO3m + Hp
+TEMP3:   A: 3.2e8  B: 0.0 
+
+CLASS: AQUA 
+SO4m + SO3mm = SO4mm +  SO3m 
+TEMP3:   A: 3.2e8  B: -1200.0 
+
+CLASS: AQUA 
+SO4m + FEpp = FESO4p
+TEMP3:   A: 3.0e8  B: 1200.0 
+
+CLASS: AQUA 
+SO4m + MNpp = SO4mm + MNppp
+TEMP3:   A: 3.2e8  B: 0.0 
+
+CLASS: AQUA 
+SO4m + CUp = SO4mm + CUpp
+TEMP3:   A: 3.0e8  B: 0.0 
+
+CLASS: AQUA 
+SO4m + aH2O2 = SO4mm + Hp + aHO2
+TEMP3:   A: 2.8e7  B: 0.0 
+
+CLASS: AQUA 
+SO4m + aOP1 = SO4mm + Hp + aMO2
+TEMP3:   A: 2.8e7  B: 0.0 
+
+CLASS: AQUA 
+SO4m + aHO2 = SO4mm + Hp + aO2
+TEMP3:   A: 3.5e9  B: 0.0 
+
+CLASS: AQUA 
+SO4m + O2m = SO4mm + aO2
+TEMP3:   A: 3.5e9  B: 0.0 
+
+CLASS: AQUA 
+SO4m + NO3m = SO4mm + aNO3
+TEMP3:   A: 5.0e4  B: 0.0 
+
+CLASS: AQUA 
+SO4m + OHm = SO4mm + aHO
+TEMP3:   A: 1.4e7  B: 0.0 
+
+CLASS: AQUA 
+SO4m + [aH2O] = SO4mm + aHO + Hp
+TEMP3:   A: 11.9  B: 0.0 
+
+CLASS: AQUA 
+HSO5m + HSO3m + Hp = 2 SO4mm + 3 Hp
+TEMP3:   A: 7.1e6  B: 0.0 
+
+CLASS: AQUA 
+HSO5m + SO3mm + Hp = 2 SO4mm + 2 Hp
+TEMP3:   A: 7.1e6  B: 0.0 
+
+CLASS: AQUA 
+HSO5m + aHO = SO5m + [aH2O] 
+TEMP3:   A: 1.7e7  B: 0.0 
+
+CLASS: AQUA 
+aCH3OH + aHO = aHCHO + aHO2 + [aH2O] - aO2
+TEMP3:   A: 1.0e9  B: -580.0 
+
+CLASS: AQUA 
+aCH3OH + SO4m = SO4mm + Hp + aHO2 + aHCHO - aO2
+TEMP3:   A: 9.0e6  B: -2190.0 
+
+CLASS: AQUA 
+aCH3OH + aNO3 = NO3m + Hp + aHO2 + aHCHO - aO2
+TEMP3:   A: 5.4e5  B: -4300.0 
+
+CLASS: AQUA 
+aCH3OH + CL2m = 2 CLm + Hp + aHO2 + aHCHO - aO2
+TEMP3:   A:  5.1e4 B: -5500 
+
+CLASS: AQUA 
+aCH3OH + BR2m = 2 BRm + Hp + aHO2 + aHCHO - aO2
+TEMP3:   A:  1000.0 B: 0.0 
+
+CLASS: AQUA 
+aCH3OH + CO3m = CO3mm + Hp + aHO2 + aHCHO - aO2
+TEMP3:   A: 2.6e3  B: 0.0 
+
+CLASS: AQUA 
+aETOH + aHO =  aHO2 + aALD + [aH2O] - aO2
+TEMP3:   A: 1.9e9  B: 0.0 
+
+CLASS: AQUA 
+aETOH + SO4m = SO4mm + Hp + aHO2 + aALD - aO2
+TEMP3:   A: 4.1e7  B: -1760.0 
+
+CLASS: AQUA 
+aETOH + aNO3 = NO3m + Hp + aHO2 + aALD - aO2
+TEMP3:   A: 2.2e6  B: -3300.0 
+
+CLASS: AQUA 
+aETOH + CL2m = 2 CLm + Hp + aHO2 + aALD - aO2
+TEMP3:   A: 1.2e5  B: 0.0 
+
+CLASS: AQUA 
+aETOH + BR2m = 2 BRm + Hp + aHO2 + aALD - aO2
+TEMP3:   A: 3.8e3  B: 0.0 
+
+CLASS: AQUA 
+aETOH + CO3m = CO3mm + Hp + aHO2 + aALD - aO2
+TEMP3:   A: 1.5e4  B: 0.0 
+
+CLASS: AQUA 
+aCH2OH2 + aHO = aORA1 + aHO2 + [aH2O] - aO2 
+TEMP3:   A: 1.0e9  B: -1020.0 
+
+CLASS: AQUA 
+aCH2OH2 + SO4m = SO4mm + Hp + aHO2 + aORA1 - aO2
+TEMP3:   A: 1.4e7  B: -1300.0 
+
+CLASS: AQUA 
+aCH2OH2 + aNO3 = NO3m + Hp + aHO2 + aORA1 - aO2
+TEMP3:   A: 1.0e6  B: -4500.0 
+
+CLASS: AQUA 
+aCH2OH2 + CL2m = 2 CLm + Hp + aHO2 + aORA1 - aO2
+TEMP3:   A: 3.1e4  B: -4400.0 
+
+CLASS: AQUA 
+aCH2OH2 + BR2m = 2 BRm + Hp + aHO2 + aORA1 - aO2
+TEMP3:   A: 3.0e3  B: 0.0 
+
+CLASS: AQUA 
+aCH2OH2 + CO3m = CO3mm + Hp + aHO2 + aORA1 - aO2
+TEMP3:   A: 1.3e4  B: 0.0 
+
+CLASS: AQUA 
+aORA1 + aHO = aCO2 + aHO2 + [aH2O] - aO2
+TEMP3:   A: 1.3e8  B: -1000.0 
+
+CLASS: AQUA 
+aCH3CHOH2 + aHO =  aHO2 + aORA2 + [aH2O] - aO2
+TEMP3:   A: 1.2e9   B: 0.0 
+
+CLASS: AQUA 
+aALD + aHO = aHO2 + aORA2 - aO2
+TEMP3:   A: 3.6e9   B: 0.0 
+
+CLASS: AQUA 
+aCH3CHOH2 + SO4m = SO4mm + Hp + aHO2 + aORA2 - aO2
+TEMP3:   A: 2.0e7   B: 0.0 
+
+CLASS: AQUA 
+aCH3CHOH2 + aNO3 = NO3m + Hp + aHO2 + aORA2 - aO2
+TEMP3:   A: 1.9e6   B: 0.0 
+
+CLASS: AQUA 
+aCH3CHOH2 + CL2m = 2 CLm + Hp + aHO2 + aORA2 - aO2
+TEMP3:   A: 4.0e4  B: 0.0 
+
+CLASS: AQUA 
+aCH3CHOH2 + BR2m = 2 BRm + Hp + aHO2 + aORA2 - aO2
+TEMP3:   A: 4.0e4  B: 0.0 
+
+CLASS: AQUA 
+aCH3CHOH2 + CO3m = CO3mm + Hp + aHO2 + aORA2 - aO2
+TEMP3:   A: 1.0e4  B: 0.0 
+
+CLASS: AQUA 
+HCOOm + aHO = aCO2 + OHm + aHO2 - aO2
+TEMP3:   A: 4.0e9  B: -1020.0 
+
+CLASS: AQUA 
+aORA1 + SO4m = SO4mm + Hp + aHO2 + aCO2 - aO2
+TEMP3:   A: 3.2e6  B: 0.0 
+
+CLASS: AQUA 
+HCOOm + SO4m = SO4mm + aHO2 + aCO2 - aO2
+TEMP3:   A: 2.1e7  B: 0.0 
+
+CLASS: AQUA 
+aORA1 + aNO3 = NO3m + Hp + aHO2 + aCO2 - aO2
+TEMP3:   A: 3.8e5  B: -3400.0 
+
+CLASS: AQUA 
+HCOOm + aNO3 = aHO2 + aCO2 + NO3m - aO2
+TEMP3:   A: 5.1e7  B: -2200.0 
+
+CLASS: AQUA 
+aORA1 + CL2m = 2 CLm + Hp + aHO2 + aCO2 - aO2
+TEMP3:   A: 5.5e3  B: -4500.0 
+
+CLASS: AQUA 
+HCOOm + CL2m = 2 CLm + aCO2 + aHO2 - aO2
+TEMP3:   A: 1.3e6  B: 0.0 
+
+CLASS: AQUA 
+aORA1 + BR2m = 2 BRm + Hp + aHO2 + aCO2 - aO2
+TEMP3:   A: 4.0e3  B: 0.0 
+
+CLASS: AQUA 
+HCOOm + BR2m = 2 BRm + aCO2 + aHO2 - aO2
+TEMP3:   A: 4.9e3  B: 0.0 
+
+CLASS: AQUA 
+HCOOm + CO3m = CO3mm + aCO2 + aHO2 - aO2
+TEMP3:   A: 1.4e5  B: -3300.0 
+
+CLASS: AQUA 
+aORA2 + aHO  =  aACO3 + aCO2 + [aH2O]  - aO2
+TEMP3:   A: 1.4e7  B: -1330.0 
+
+CLASS: AQUA 
+MCOOm + aHO  = aACO3 + Xm + [aH2O] - aO2
+TEMP3:   A: 1.0e9  B: -1800.0 
+
+CLASS: AQUA 
+aACO3 + aACO3 = aMO2 + aMO2 + aCO2 + aCO2 + aO2
+TEMP3:  A: 1.5e8  B: 0.0 
+
+CLASS: AQUA 
+aORA2 + SO4m  = SO4mm + Hp + aACO3 + aCO2 - aO2
+TEMP3:   A: 2.0e5  B: 0.0 
+
+CLASS: AQUA 
+MCOOm + SO4m  = SO4mm + aMO2 + aCO2 - aO2
+TEMP3:   A: 2.8e7  B: -1210.0 
+
+CLASS: AQUA 
+aORA2 + aNO3 = aACO3 + NO3m + Hp - aO2
+TEMP3:   A: 1.4e+4  B: -3800.0 
+
+CLASS: AQUA 
+MCOOm + aNO3 = NO3m + aMO2 + aCO2 - aO2
+TEMP3:   A: 2.9e6  B: -3800.0 
+
+CLASS: AQUA 
+aORA2 + CL2m = 2 CLm + Hp + aACO3 - aO2
+TEMP3:   A: 1.95e3  B: -4900.0 
+
+CLASS: AQUA 
+MCOOm + CL2m = 2 CLm + aMO2 + aCO2 - aO2
+TEMP3:   A: 2.6e5  B: -4800.0 
+ 
+CLASS: AQUA 
+aORA2 + BR2m = 2 BRm + Hp + aACO3 - aO2
+TEMP3:   A: 10.0  B: 0.0 
+
+CLASS: AQUA 
+MCOOm + BR2m = 2 BRm + aMO2 + aCO2 - aO2
+TEMP3:   A: 100.0  B: 0.0 
+
+CLASS: AQUA 
+MCOOm + CO3m = CO3mm + aMO2 + aCO2 - aO2
+TEMP3:   A: 580.0  B: 0.0 
+
+CLASS: AQUA 
+aMO2 + aMO2 = aCH3OH + aHCHO + aO2
+TEMP3:   A: 1.7e8  B: -2200.0 
+
+CLASS: AQUA 
+aMO2 + HSO3m = aOP1 + SO3m
+TEMP3:   A: 5.0e5  B: 0.0 
+
+CLASS: AQUA 
+aETHPX + aETHPX = (DUMMY)
+TEMP3:   A: 1.5e8  B: 1500.0 
+
+COMMENT --- CLASS: AQUA TYPE: AQUA
+COMMENT ---aHO + CLm = OHm + aCL
+COMMENT ---PARAMETER:  A: 4.1e7  B: 0.0 
+
+CLASS: AQUA 
+SO4m + CLm = SO4mm + aCL
+TEMP3:   A: 3.3e8  B: 0.0 
+
+CLASS: AQUA 
+aNO3 + CLm = NO3m + aCL
+TEMP3:   A: 1.0e7  B: -4300.0    
+
+CLASS: AQUA 
+CL2m + CL2m = aCL2 + 2 CLm
+TEMP3:   A: 8.7e8  B: 0.0     
+
+CLASS: AQUA 
+CL2m + FEpp = 2 CLm + FEppp
+TEMP3:   A: 1.0e7  B: -3030.0 
+
+CLASS: AQUA 
+CL2m + MNpp = 2 CLm + MNppp
+TEMP3:   A: 8.5e6  B: -4090.0    
+
+CLASS: AQUA 
+CL2m + CUp = 2 CLm + CUpp
+TEMP3:   A: 1.0e7  B: 0.0  
+
+CLASS: AQUA 
+CL2m + aH2O2 = 2 CLm + Hp + aHO2
+TEMP3:   A: 7.0e5  B: -3340.0    
+
+CLASS: AQUA 
+CL2m + aOP1 = 2 CLm + aMO2 + Hp
+TEMP3:   A: 7.0e5  B: -3340.0   
+
+CLASS: AQUA 
+CL2m + OHm = 2 CLm + aHO
+TEMP3:   A: 4.0e6  B: 0.0  
+
+CLASS: AQUA 
+CL2m + aHO2 = 2 CLm + Hp + aO2
+TEMP3:   A: 1.3e10  B: 0.0   
+
+CLASS: AQUA 
+CL2m + O2m = 2 CLm + aO2
+TEMP3:   A: 6.0e9  B: 0.0   
+
+CLASS: AQUA 
+CL2m + HSO3m = 2 CLm + Hp + SO3m
+TEMP3:   A: 1.7e8  B: -400.0  
+
+CLASS: AQUA 
+CL2m + SO3mm = 2 CLm + SO3m
+TEMP3:   A: 6.2e7  B: 0.0    
+
+CLASS: AQUA 
+aCL2 + [aH2O] = Hp + CLm + aHOCL
+TEMP3:   A: 0.4  B: -7900.0  
+
+COMMENT--- CLASS: AQUA TYPE: AQUA
+COMMENT---BRm + aHO = OHm + aBR 
+COMMENT---PARAMETER:  A: 1.1e10  B: 0.0     
+ 
+CLASS: AQUA 
+BRm + SO4m = SO4mm + aBR
+TEMP3:   A: 2.1e9  B: 0.0 
+
+CLASS: AQUA 
+BRm + aNO3 = NO3m + aBR
+TEMP3:   A: 3.8e9  B: 0.0  
+
+CLASS: AQUA 
+BR2m + BR2m = aBR2 + 2 BRm
+TEMP3:   A: 1.7e9  B: 0.0 
+  
+CLASS: AQUA 
+BR2m + FEpp = 2 BRm + FEppp
+TEMP3:   A: 3.6e6  B: -3330.0 
+  
+CLASS: AQUA 
+BR2m + MNpp = 2 BRm + MNppp
+TEMP3:   A: 6.3e6  B: -4330.0 
+  
+CLASS: AQUA 
+BR2m + CUp = 2 BRm + CUpp
+TEMP3:   A: 3.6e6  B: 0.0 
+  
+CLASS: AQUA 
+BR2m + aH2O2 = 2 BRm + Hp + aHO2
+TEMP3:   A: 1.0e5  B: 0.0    
+  
+CLASS: AQUA 
+BR2m + aOP1 = 2 BRm + Hp + aMO2
+TEMP3:   A: 1.0e5  B: -3330.0  
+  
+CLASS: AQUA 
+BR2m + OHm = 2 BRm + aHO
+TEMP3:   A: 1.1e4  B: 0.0 
+  
+CLASS: AQUA 
+BR2m + aHO2 = 2 BRm + aO2 + Hp
+TEMP3:   A: 6.5e9  B: 0.0     
+  
+CLASS: AQUA 
+BR2m + O2m = 2 BRm + aO2
+TEMP3:   A: 1.7e8  B: 0.0  
+  
+CLASS: AQUA 
+BR2m + HSO3m = 2 BRm + Hp + SO3m
+TEMP3:   A: 5.0e7  B: -780.0 
+  
+CLASS: AQUA 
+BR2m + SO3mm = 2 BRm + SO3m
+TEMP3:   A: 3.3e7  B: -650.0 
+
+CLASS: AQUA 
+aBR2 + [aH2O] = Hp + BRm + aHOBR
+TEMP3:   A: 1.7  B: -7500.0  
+  
+CLASS: AQUA 
+HCO3m + aHO =  CO3m + [aH2O]
+TEMP3:   A: 1.7e7  B: -1900.0     
+  
+CLASS: AQUA 
+CO3mm + aHO = OHm + CO3m
+TEMP3:   A: 1.0e9  B: -2550.0   
+  
+CLASS: AQUA 
+HCO3m + SO4m = SO4mm + CO3m + Hp
+TEMP3:   A: 2.8e6  B: -2090.0   
+  
+CLASS: AQUA 
+CO3mm + SO4m = SO4mm + CO3m 
+TEMP3:   A: 4.1e7  B: 0.0        
+  
+CLASS: AQUA 
+CO3mm + aNO3 = NO3m + CO3m
+TEMP3:   A: 4.1e7  B: 0.0     
+  
+CLASS: AQUA 
+CO3mm + CL2m = 2 CLm + CO3m 
+TEMP3:   A: 2.7e6  B: 0.0    
+  
+CLASS: AQUA 
+CO3mm + BR2m = 2 BRm + CO3m 
+TEMP3:   A: 1.1e5  B: 0.0 
+  
+CLASS: AQUA 
+CO3m + CO3m = 2 O2m + 2 aCO2 - aO2
+TEMP3:   A: 2.2e6  B: 0.0 
+  
+CLASS: AQUA 
+CO3m + FEpp = FEppp + CO3mm 
+TEMP3:   A: 2.0e7  B: 0.0   
+  
+CLASS: AQUA 
+CO3m + MNpp = MNppp + CO3mm 
+TEMP3:   A: 1.5e7  B: 0.0 
+  
+CLASS: AQUA 
+CO3m + CUp = CUpp + CO3mm 
+TEMP3:   A: 2.0e7  B: 0.0  
+  
+CLASS: AQUA 
+CO3m + aH2O2 = HCO3m + aHO2 
+TEMP3:   A: 4.3e5  B: 0.0      
+  
+CLASS: AQUA 
+CO3m + aOP1 = HCO3m + aMO2
+TEMP3:   A: 4.3e5  B: 0.0   
+  
+CLASS: AQUA 
+CO3m + aHO2 = HCO3m + aO2 
+TEMP3:   A: 6.5e8  B: 0.0        
+  
+CLASS: AQUA 
+CO3m + O2m = CO3mm + aO2 
+TEMP3:   A: 6.5e8  B: 0.0        
+  
+CLASS: AQUA 
+CO3m + HSO3m = HCO3m + SO3m 
+TEMP3:   A: 1.0e7  B: 0.0    
+  
+CLASS: AQUA 
+CO3m + SO3mm = CO3mm + SO3m 
+TEMP3:   A: 6.5e8  B: 0.0        
+       
+COMMENT --- THERE ARE 20 EQUILIBRIUM REACTIONS IN THE DISS REACTION SCHEME;  
+COMMENT --- B parameter is given as - delE/R: attention (change to MM notation)!!!
+COMMENT --- --> Ke = A exp(B (1/T - 1/298))
+
+CLASS: DISS  
+[aH2O]          =  OHm + Hp
+DTEMP:   A: 1.8e-16  B: -6740.0  C: 1.3e11
+
+CLASS: DISS
+aCO2 = HCO3m + Hp
+DTEMP:  A: 4.3e-7  B: -913  C: 5.6e4
+
+CLASS: DISS  
+HCO3m         = CO3mm + Hp 
+DTEMP:   A: 4.7e-11  B: -1820.0  C: 5.0e10 
+
+CLASS: DISS  
+aHCL          =  CLm + Hp
+DTEMP:   A: 1.72e6  B: 6890.0  C: 2.9e5
+
+CLASS: DISS  
+aNH3 + [aH2O]  =  NH4p  + OHm
+DTEMP:   A: 3.17e-7  B: -560.0  C: 3.47e+10
+
+CLASS: DISS  
+aHO2          =  O2m + Hp
+DCONST:   A: 1.6e-5   B: 5.0e10
+  
+CLASS: DISS  
+aHNO3         =    NO3m + Hp
+DTEMP:   A: 22.0  B: 1800.0  C: 5.0e10
+  
+CLASS: DISS  
+aHONO         =    NO2m + Hp
+DTEMP:   A: 5.3e-4  B: -1760.0  C: 5.0e10
+  
+CLASS: DISS  
+aSO2 + [aH2O]  =  HSO3m  + Hp
+DTEMP:   A: 3.15e-4  B: 1940.0  C: 2.0e8
+
+CLASS: DISS  
+HSO3m  =    SO3mm  + Hp
+DTEMP:   A: 6.22e-8  B: 1960.0  C: 5.0e10
+
+CLASS: DISS  
+aHCHO  + [aH2O] =    aCH2OH2
+DTEMP:   A: 35.3  B: 4030.0  C: 5.1e-3 
+  
+CLASS: DISS  
+aORA1        =    HCOOm  + Hp
+DTEMP:   A: 1.78e-4  B: 12.0  C: 5.0e10
+  
+CLASS: DISS  
+aORA2        =    MCOOm + Hp
+DTEMP:   A: 1.76e-5  B: 46.0  C: 5.0e10
+
+CLASS: DISS  
+FEppp + [aH2O]    =   FEOHpp + Hp
+DCONST:   A: 1.093023256e-4  B: 4.3e8
+
+CLASS: DISS  
+FEOHpp + [aH2O] = FEOH2p + Hp
+DCONST:   A: 1.375e-7  B: 8.0e9
+
+CLASS: DISS  
+FESO4p = FEppp + SO4mm
+DCONST:   A: 1.7567568e-2  B: 3.7e5
+
+CLASS: DISS  
+aALD + [aH2O] = aCH3CHOH2
+DTEMP:   A: 2.45614e-2  B: 2500.0  C: 5.7e-3
+
+CLASS: DISS  
+aCL + CLm = CL2m
+DCONST:   A: 1.928571e5  B: 1.4e5
+
+CLASS: DISS  
+aBR + BRm = BR2m
+DCONST:   A: 6.3157895e5  B: 1.9e4
+
+CLASS: DISS  
+aHNO4 = NO4m + Hp
+DCONST:   A: 1.0e-5   B: 5.0e10
+
+CLASS: DISS  
+aHNO4 = aNO2 + aHO2
+DCONST:   A: 4.6e-10   B: 1.0e7
+
+CLASS: DISS  
+CLm + aHO = CLOHm
+DCONST:   A: 0.7  B:  6.1e9
+
+CLASS: AQUA  
+CLOHm + Hp = aCL + [aH2O]
+TEMP3:   A: 2.0e10  B:  0.0
+
+CLASS: AQUA  
+aCL + [aH2O] = CLOHm + Hp 
+TEMP3:   A: 1.3e3  B:  0.0
+
+CLASS: DISS  
+CLOHm + CLm = CL2m + OHm
+DCONST:   A: 2.2e-04  B:  4.5e7
+
+CLASS: DISS  
+BRm + aHO = BROHm
+DCONST:   A: 3.33e+02  B:  3.3e7
+
+CLASS: AQUA  
+BROHm + Hp = aBR + [aH2O]
+TEMP3:   A: 4.4e10  B:  0.0
+
+CLASS: AQUA  
+aBR + [aH2O] = BROHm + Hp 
+TEMP3:   A: 0.0245  B:  0.0
+
+CLASS: DISS  
+BROHm + BRm = BR2m + OHm
+DCONST:   A: 70.0  B:  2.7e+06
+
+CLASS: DISS 
+aSULF = HSO4m + Hp
+DCONST:  A:  1000.0  B: 5e10
+
+CLASS: DISS  
+HSO4m = SO4mm + Hp
+DTEMP:  A: 1.02e-2  B: -2700.0  C: 1.0e11

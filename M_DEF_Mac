@@ -1,0 +1,40 @@
+OPTFREE =  -ffree-form -ffixed-line-length-none -ffree-line-length-none
+OPTFIX =  -ffixed-line-length-none -ffree-line-length-none 
+COMP1=EigeneProgramme
+LINK = /usr/local/bin/mpif90
+F90  = /usr/local/bin/mpif90 $(OPTFREE)
+F90_F  = /usr/local/bin/mpif90 $(OPTFIX)
+
+CC   = /usr/local/bin/mpicc
+
+OPT_O =  -O3 -Wunused
+OPT_D =  -Warray-bounds -fbacktrace -fbounds-check
+OPTL = -O3 -Wunused  
+
+INCL  = -I. -I/usr/local/include -I/Users/knoth/SparseLinearSolver/MUMPS_5.0.0/include 
+KINCL_O =  -I/usr/local/include -I./LIB -I/Users/knoth/SparseLinearSolver/MUMPS_5.0.0/include 
+KINCL_D =  -I/usr/local/include -I./LIB_D -I/Users/knoth/SparseLinearSolver/MUMPS_5.0.0/include
+LIB_O = /Users/knoth/Schimmel/parallel/LIB
+LIB_D = /Users/knoth/Schimmel/parallel/LIB_D
+MUMPS=-L /Users/knoth/SparseLinearSolver/MUMPS_5.0.0/lib -ldmumps  -lmumps_common  -lpord
+
+#UMF= /Users/knoth/SparseLinearSolver/SuiteSparse/UMFPACK/Demo/umf4_f77wrapper.o \
+#    -L/Users/knoth/SparseLinearSolver/SuiteSparse/UMFPACK/Lib -lumfpack \
+#    -L/Users/knoth/SparseLinearSolver/SuiteSparse/AMD/Lib -lamd \
+#    -L/Users/knoth/SparseLinearSolver/SuiteSparse/CHOLMOD/Lib -lcholmod \
+#    -L/Users/knoth/SparseLinearSolver/SuiteSparse/COLAMD/Lib -lcolamd\
+#    -L/Users/knoth/SparseLinearSolver/SuiteSparse/SuiteSparse_config -lsuitesparseconfig
+
+SCALAP  = /Users/knoth/SparseLinearSolver/scalapack-2.0.1/libscalapack.a \
+          /Users/knoth/SparseLinearSolver/BLACS/LIB/blacs_MPI-LINUX-0.a \
+          /Users/knoth/SparseLinearSolver/BLACS/LIB/blacsF77init_MPI-LINUX-0.a \
+          /Users/knoth/SparseLinearSolver/BLACS/LIB/blacs_MPI-LINUX-0.a
+
+METIS=/usr/local/Cellar/metis/5.1.0/lib/libmetis.dylib -lmetis
+
+NETCDF=-lcurl -L/usr/local/lib -lnetcdf -L/usr/local/lib -lnetcdff -L/usr/local/lib -lhdf5_hl \
+-L/usr/local/lib -lhdf5  -L/usr/local/lib -lz  -L/usr/local/lib -lsz
+
+LAPACK=-llapack
+
+ModSuf=mod

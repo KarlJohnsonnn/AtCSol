@@ -1,0 +1,57 @@
+ &SCENARIO
+  BSP = 'MCM+CAPRAM_Mnorm_3days_e'
+  pHSet = 1
+  LWCLevelmax = 2.0d-8
+  LwcLevelmin = 3.0d-4
+  constLWC = 1
+  Ladebalken = 1
+  ErrorLog = 0
+  MatrixPrint = .false.
+  NetCdfPrint = .true. 
+ /END
+ &FILES
+  ChemFile = 'CHEM/MCM32_CAPRAM40_full'  
+  DataFile = 'DAT/MCM32_CAPRAM40_full.dat'
+  InitFile = 'INI/Urban_Emis.ini'
+  MetFile  = 'MET/Urban.met'
+ /END
+ &TIMES
+  tAnf=0.0d0
+  !tEnd=84600.0d0
+  tEnd=259200.0d0  !84600.0d0
+  Dust    = 0.5d0
+  idate   = 010621     
+  rlat    = 45.d0     
+  rlon    =  0.d0
+  minStp  = 1.0d-30
+  maxStp  = 100.d0
+  StpNetCDF = -1.0d0
+/END
+ &METEO
+ /END
+ &NUMERICS
+  RtolROW  = 1.0d-3
+  AtolGas  = 1.0d-5
+  AtolAqua = 1.0d-5
+  Error_Est= 1
+  PI_StepSize = .FALSE.
+  solveLA = 'cl'  
+  !RosenbrockMethod = 'METHODS/Ros2AMF.fort'   
+  !RosenbrockMethod = 'METHODS/Ros3w.fort'
+  !RosenbrockMethod = 'METHODS/Ros3Pw.fort'
+  !RosenbrockMethod = 'METHODS/Ros3Dw.fort'
+  !RosenbrockMethod = 'METHODS/Ros34PW1a.fort'
+  !RosenbrockMethod = 'METHODS/Ros34PW2.fort'
+  !RosenbrockMethod = 'METHODS/Ros34PW3.fort'
+  !RosenbrockMethod = 'METHODS/TSRosW2P.fort'  
+  !RosenbrockMethod = 'METHODS/TSRosW2M.fort'   
+  RosenbrockMethod = 'METHODS/TSRosWRodas3.fort'
+  !RosenbrockMethod = 'METHODS/TSRosWSandu3.fort'
+  ImpEuler = 0
+ /END
+ &ORDERING
+  OrderingStrategie  = 8
+  ParOrdering        = -1
+ /END
+ &ENTRAIN
+ /END

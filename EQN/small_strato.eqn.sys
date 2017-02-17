@@ -1,0 +1,51 @@
+ COMMENT  EQN/small_strato.eqn
+ COMMENT  last update 16-04-2016 
+ COMMENT   ===================   Unit options   ======================
+ 
+ UNIT GAS    0   COMMENT     Gas phase units     (0 = molec/cm3, 1 = mol/m3)
+ UNIT AQUA   0   COMMENT     Aqueous phase units (0 = mol/l)
+ UNIT AQUA   0   COMMENT     Aqueous phase units (0 = mol/l)
+ 
+ COMMENT   ===========================================================
+ 
+ CLASS: GAS
+ O2  = 2O		 
+ PHOTO3:  A:   -9.2838034582362267E+077
+ 
+ CLASS: GAS
+ O    + O2 = O3		  
+ CONST:  A:    8.0180000000000003E-017
+ 
+ CLASS: GAS
+ O3  = O   + O2 	 
+ PHOTO:  A:    6.1200000000000002E-004
+ 
+ CLASS: GAS
+ O    + O3 = 2O2		  
+ CONST:  A:    1.5760000000000000E-015
+ 
+ CLASS: GAS
+ O  = O1D + O2	
+ PHOTO2:  A:    0.0000000000000000     
+ 
+ CLASS: GAS
+ O1D  + M  = O   + M	  
+ CONST:  A:    7.1100000000000005E-011
+ 
+ CLASS: GAS
+ O1D  + O3 = 2O2 		  
+ CONST:  A:    1.2000000000000000E-010
+ 
+ CLASS: GAS
+ NO   + O3 = NO2 + O2 	  
+ CONST:  A:    6.0620000000000003E-015
+ 
+ CLASS: GAS
+ NO2  + O  = NO  + O2	  
+ CONST:  A:    1.0690000000000001E-011
+ 
+ CLASS: GAS
+ NO2 = NO  + O	 
+ PHOTO:  A:    1.2890000000000000E-002
+ 
+ COMMENT  DONE

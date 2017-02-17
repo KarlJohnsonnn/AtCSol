@@ -1,0 +1,1705 @@
+#==========================================
+   BEGIN_DATAGAS
+#===  ONLY 120 Characters per Line
+#------------------------------------------             
+#  Name          MolMass  Alpha         Dg 
+#                [g/mol]
+#
+ACO3              75.0    0.019         0.00001
+ADDC             125.0    0.0           0.0
+ADDT             109.0    0.0           0.0
+ADDX             123.0    0.0           0.0
+ALD               44.0    0.0           0.0
+CH3CHO            44.0    0.03          0.0000122 
+C2H5CHO           58.0    0.03          0.0000100
+CH3CH2CH2CHO      72.0    0.03          0.0000087 
+API              136.0    0.0           0.0
+APIPX            185.0    0.0           0.0
+BR                80.0    0.05          0.0000129
+BR2              160.0    0.08          0.00001
+BRCH2CH2O        124.0    0.0           0.0
+BRCH2CH2O2       140.0    0.0           0.0
+BRCH2CH2OH       125.0    0.0           0.0
+BRCH2CHO         123.0    0.0           0.0
+BRCH2CO3         154.0    0.019         0.0000084
+BRCH2CO3H        155.0    0.0           0.0
+BRCH2COOH        139.0    3.22e-2       0.0000084
+BRCH2O           110.0    0.0           0.0
+BRCH2O2          126.0    0.0           0.0
+BRCH2O2H         127.0    0.0           0.0
+BRCH2OH          111.0    0.0           0.0
+BRCHO            109.0    0.02          0.0000102
+BRCL             115.5    0.33          0.0000105
+BRCO             108.0    0.0           0.0
+BRNO2            126.0    0.01          0.0000106
+BRNO3            142.0    0.1           0.0000101
+BRO               96.0    0.06          0.0000119
+BRO2             112.0    0.0           0.0
+C2H5I            156.0    0.0           0.0
+C3H7I            170.0    0.0           0.0
+CBR3NO4          330.0    0.0           0.0
+CBR3O            268.0    0.0           0.0
+CBR3O2           284.0    0.0           0.0
+CBR3OH           269.0    0.0           0.0
+CCL3CH2O         148.5    0.0           0.0
+CCL3CH2O2        164.5    0.0           0.0
+CCL3CH2OH        149.5    0.0           0.0
+CCL3CH3          133.5    0.0           0.0
+CCL3CHO          147.5    0.0           0.0
+CCL3CO3          178.5    0.0           0.0
+CCL3NO4          196.5    0.0           0.0
+CCL3O            134.5    0.0           0.0
+CCL3O2           150.5    0.0           0.0
+CCL3OH           135.5    0.0           0.0
+CCL3PAN          212.5    0.0           0.0
+CH2BR2           174.0    0.0           0.0
+CH2BRPAN         188.0    0.0           0.0
+CH2CL2            85.0    0.0           0.0
+CH2CLPAN         143.0    0.0           0.0
+CH2I2            268.0    0.0           0.0
+CH2ICL           176.5    0.0           0.0
+CH2IBR           221.0    0.0           0.0
+CH2IPAN          235.0    0.0           0.0
+CH3BR             95.0    0.0           0.0
+CH3CHIO2         187.0    0.0           0.0
+CH3CHIOH         172.0    0.0           0.0
+CH3CHO2CH2BR     154.0    0.0           0.0
+CH3CHO2CH2CL     109.5    0.0           0.0
+CH3CHOCH2BR      138.0    0.0           0.0
+CH3CHOCH2CL       93.5    0.0           0.0
+CH3CHOHCH2BR     139.0    0.0           0.0
+CH3CHOHCH2CL      94.5    0.0           0.0
+CH3CIO           170.0    0.0           0.0
+CH3CIO2CH3       185.0    0.0           0.0
+CH3CIOCH3        169.0    0.0           0.0
+CH3CL             50.5    0.0           0.0
+CH3COCBRO        151.0    0.03          0.0000079
+CH3COCCLO        106.5    0.03          0.0000088
+CH3COCH2BR       137.0    0.0           0.0
+CH3COCH2CL        92.5    0.0           0.0
+CH3COCHBRO2      168.0    0.0           0.0
+CH3COCHBROH      153.0    0.0           0.0
+CH3COCHCLO2      123.5    0.0           0.0
+CH3COCHCLOH      108.5    0.0           0.0
+CH3I             142.0    0.0           0.0
+CH3OH             32.0    0.0271        0.0000116
+CH4               16.0    5.0e-5        0.0000141
+CHBR3            253.0    0.0           0.0
+CHCL3            119.5    0.0           0.0
+CIOCH2O2         201.0    0.0           0.0
+CL                35.5    0.05          0.0000182
+CL2               71.0    0.08          0.0000128
+CL2O2            103.0    0.0           0.0
+CL2O3            119.0    0.0           0.0
+CLCH2CH2O         79.5    0.0           0.0
+CLCH2CH2O2        95.5    0.0           0.0
+CLCH2CH2OH        80.5    0.0           0.0
+CLCH2CHO          78.5    0.0           0.0
+CLCH2CO3         109.5    0.019         0.0000094
+CLCH2CO3H        110.5    0.0           0.0
+CLCH2COOH         94.5    3.22e-2       0.0000097
+CLCH2O            65.5    0.0           0.0
+CLCH2O2           81.5    0.0           0.0
+CLCH2O2H          82.5    0.0           0.0
+CLCH2OH           66.5    0.0           0.0
+CLCHO             64.5    0.02          0.0000123
+CLCO              63.5    0.0           0.0
+CLNO              65.5    0.01          0.0000139
+CLNO2             81.5    0.01          0.0000127
+CLNO3             97.5    0.1           0.0000118
+CLO               51.5    0.064         0.0000155
+CLO2              67.5    0.05          0.0000139
+COBR2            188.0    0.02          0.0000081
+COCL2             99.0    0.02          0.0000102
+COI2             282.0    0.02          0.0000076
+CO                28.0    0.0           0.0
+CO2               44.0    1.5e-4        0.0000155
+CSL              108.0    0.0           0.0
+CSLPX            157.0    0.0           0.0
+DCB               87.0    0.023         0.0000086
+DIEN              54.0    0.0           0.0
+ETE               28.0    1.0e-4        0.0000101
+ETEPX             77.0    8.2e-3        0.0000082
+ETH               30.0    1.0e-4        0.0000095
+ETHPX             61.0    8.2e-3        0.0000108
+ETI               26.0    0.0           0.0
+ETOH              46.0    0.0176        0.0000095
+GLY               58.0    0.023         0.0000115
+H2                 2.0    0.0           0.0
+H2O2              34.0    0.1532        0.0000146
+HBR               81.0    0.0481        0.0000126
+HC3               44.0    0.0           0.0
+HC3PX             75.0    0.0           0.0
+HC5               72.0    0.0           0.0
+CH3CH2CH2OH       60.0    0.011         0.0000097
+CH3CHOHCH3        60.0    0.013         0.0000097
+CH3CH2CH2CH2OH    74.0    0.01          0.0000085
+CH3CH2CHOHCH3     74.0    0.01          0.0000085
+HC5PX            103.0    0.0           0.0
+HC8              114.0    0.0           0.0
+CH2OHCH2OH        62.0    0.04          0.0000106
+HC8PX            145.0    0.0           0.0
+HCBR2O2          203.0    0.0           0.0
+HCBR2OH          188.0    0.0           0.0
+HCCL2O2           99.0    0.0           0.0
+HCCL2OH          114.0    0.0           0.0
+HCHO              30.0    0.02          0.0000164
+HCI2O2           299.0    0.0           0.0
+HCI2OH           284.0    0.0           0.0
+HCL               36.5    0.1026        0.0000189
+HI               128.0    0.057         0.0000114
+HIO3             176.0    0.0126        0.0000098
+HKET              74.0    0.008         0.0000096
+HNO3              63.0    0.0868        0.0000132
+HNO4              79.0    0.1           0.0000130
+HO                17.0    0.05          0.0000153
+HO2               33.0    0.01          0.0000104
+HOBR              97.0    0.5           0.0000117
+HOCCL2CCL2O2     215.0    0.0           0.0
+HOCCL2CCL2OH     200.0    0.0           0.0
+HOCCL2CCLO       163.5    0.0           0.0
+HOCCL2CHCLO2     180.5    0.0           0.0
+HOCCL2CHCLOH     165.5    0.0           0.0
+HOCHCLCCL2O2     180.5    0.0           0.0
+HOCL              52.5    0.5           0.0000151
+HOI              144.0    0.5           0.0000108
+HONO              47.0    0.05          0.000013
+I                127.0    0.05          0.0000116
+I2               254.0    0.0126        0.0000086
+I2O2             286.0    0.123         0.000008
+IBR              207.0    0.0126        0.0000088
+ICH2CH2O         171.0    0.0           0.0
+ICH2CH2O2        187.0    0.0           0.0
+ICH2CH2OH        172.0    0.0           0.0
+ICH2CHO          170.0    0.0           0.0
+ICH2CO3          201.0    0.019         0.000008
+ICH2CO3H         202.0    0.0           0.0
+ICH2COOH         186.0    3.22e-2       0.0000082
+ICH2O            157.0    0.0           0.0
+ICH2O2           173.0    0.0           0.0
+ICH2O2H          174.0    0.0           0.0
+ICH2OH           158.0    0.0           0.0
+ICHO             156.0    0.02          0.0000096
+ICL              162.5    0.0126        0.0000098
+ICO              155.0    0.0           0.0
+INO              157.0    0.0           0.0
+INO2             173.0    0.123         0.0000099
+INO3             189.0    0.123         0.0000096
+IO               143.0    0.558         0.000011
+ISO               68.0    0.0           0.0
+ISOPX            117.0    0.0           0.0
+KET               72.0    0.0           0.0
+CH3COCH3          58.0    5.4e-3        0.0000100
+CH3CH2COCH3       72.0    0.01          0.0000100
+CH3COCH2CHCH32   100.16   0.01          0.0000075
+KETPX            103.0    0.0           0.0
+LIMN             136.0    0.0           0.0
+LIMPX            185.0    0.0           0.0
+MACR              70.0    0.0           0.0
+MGLY              72.0    0.03          0.0000095
+MO2               47.0    6.7581e-3     0.0000135
+N2O5             108.0    0.018         0.000011
+NH3               17.0    0.091         0.000023
+NO                30.0    0.001         0.0000224
+NO2               46.0    1.5e-3        0.0000192
+NO3               62.0    4.2e-3        0.00001
+O1D               16.0    0.0           0.0
+O2CHBRPAN        219.0    0.0           0.0
+O2CHCLPAN        174.5    0.0           0.0
+O2CHIPAN         265.0    0.0           0.0
+O3                48.0    0.1           0.0000148
+O3PX              16.0    0.0           0.0
+OBRO             112.0    0.0           0.0
+OCLO              67.5    0.0           0.0
+OIO              159.0    1.0           0.0000104
+OLI               68.0    0.0           0.0
+OLIPX            117.0    0.0           0.0
+OLND             136.0    0.0           0.0
+OLNN             136.0    0.0           0.0
+OLT               42.0    0.0           0.0
+C3H6              42.0    0.0           0.0
+OLTPX             91.0    0.0           0.0
+ONIT             119.0    0.0           0.0
+OP1               48.0    6.7581e-3     0.0000131
+OP2               62.0    0.01          0.0000076
+ORA1              46.0    2.29e-2       0.0000153
+ORA2              60.0    3.22e-2       0.0000124
+CH3COOH           60.0    3.22e-2       0.0000124
+CH3CH2COOH        74.0    3.22e-2       0.0000093
+CH3CH2CH2COOH     88.0    0.03          0.0000082
+PAA               76.0    1.9e-2        0.0000102
+PAN              121.0    0.019         0.0000063
+PCE              166.0    0.0           0.0
+PHO              107.0    0.0           0.0
+SO2               64.0    0.11          0.0000128
+SULF              98.0    0.12          0.000013
+TCE              131.5    0.0           0.0
+TCO3             115.0    0.0           0.0
+TOL               92.0    0.0           0.0
+TOLPX            141.0    0.0           0.0
+TPAN             147.0    0.0           0.0
+UDD              119.0    0.0           0.0
+XO2               32.0    0.0           0.0
+XYL              106.0    0.0           0.0
+XYLPX            155.0    0.0           0.0 
+C2H5OCHO          74.08   0.01          0.0000093
+CH2CH2CH2CONCH3   99.13   0.01          0.0000082
+OHCCH2OH          60.0    0.040         0.000011 
+MVK               70.0    0.0           0.0
+CAR4              94.6    0.0           0.0
+ISON             146.0    0.0           0.0
+ISHPX            150.0    0.0           0.0
+MACRPX           119.0    0.0           0.0
+NALD             105.0    0.0           0.0
+MAHPX            152.0    0.0           0.0
+MVKPX            119.0    0.0           0.0
+MPAN             165.0    0.0           0.0
+ISON             130.0    0.0           0.0
+CSC               62.0    1.0e-3        0.0000108
+CS(=O)C           78.0    0.1           0.0000101 
+CS(=O)(=O)C       94.0    0.1           0.00000955
+CS(=O)O           80.0    0.1           0.0000111 
+CS(=O)(=O)O       96.0    0.1           0.0000104 
+[O2]              32.0    0.1           0.0000112
+[N2]              28.0    0.0           0.0
+[H2O]             18.0    0.0           0.0    
+   END_DATAGAS
+
+   BEGIN_DATARO2                                                                                                        
+ nRO2:  942                                                                                                             
+ OCCO[O]                                                                                                                
+ CC(O[O])CO                                                                                                             
+ OCCCO[O]                                                                                                               
+ CC(O)CO[O]                                                                                                             
+ CCC(O[O])CO                                                                                                            
+ CC(O[O])CCO                                                                                                            
+ CC(O)C(O[O])C                                                                                                          
+ CC(O[O])(C)CO                                                                                                          
+ CC(CO)CO[O]                                                                                                            
+ CC(O)(C)CO[O]                                                                                                          
+ CCC(O)C(O[O])C                                                                                                         
+ CCC(O)CCO[O]                                                                                                           
+ CCC(O[O])(C)CO                                                                                                         
+ CC(O[O])C(C)CO                                                                                                         
+ CC(O[O])(C)CCO                                                                                                         
+ CC(C)C(O[O])CO                                                                                                         
+ CC(O[O])C(O)(C)C                                                                                                       
+ CCC(O)(C)CO[O]                                                                                                         
+ CC(O)(C)CCO[O]                                                                                                         
+ CC(O)C(O[O])(C)C                                                                                                       
+ CC(O)C(C)CO[O]                                                                                                         
+ C1CC(O)C(O[O])CC1                                                                                                      
+ CC(=O)C(O[O])C(O)(C)C                                                                                                  
+ CC(=O)CC(O)(C)CO[O]                                                                                                    
+ CC(O)(C)CC(=O)CO[O]                                                                                                    
+ CC(=O)O[O]                                                                                                             
+ CC(O)(C)C(O[O])CO                                                                                                      
+ CC(O)(C)C(O)CO[O]                                                                                                      
+ CC(O)(C)C(O[O])CON(=O)(=O)                                                                                             
+ CC(O)(C)C(ON(=O)=O)CO[O]                                                                                               
+ CO[O]                                                                                                                  
+ CCC(=O)O[O]                                                                                                            
+ CCO[O]                                                                                                                 
+ CC(O[O])CC=O                                                                                                           
+ CCCC(=O)O[O]                                                                                                           
+ CCCO[O]                                                                                                                
+ CC(C=O)CO[O]                                                                                                           
+ CC(O[O])(C)C=O                                                                                                         
+ CC(C)C(=O)O[O]                                                                                                         
+ CC(O[O])C                                                                                                              
+ CCC(O[O])CC=O                                                                                                          
+ CCCCC(=O)O[O]                                                                                                          
+ CCCCO[O]                                                                                                               
+ CCC(O[O])C                                                                                                             
+ CC(C)CO[O]                                                                                                             
+ CC(O[O])(C)C                                                                                                           
+ CCCCCO[O]                                                                                                              
+ CCCC(O[O])C                                                                                                            
+ CCC(O[O])CC                                                                                                            
+ CCC(C)CO[O]                                                                                                            
+ CC(O[O])C(C)C                                                                                                          
+ CCC(O[O])(C)C                                                                                                          
+ CC(C)(C)CO[O]                                                                                                          
+ CCCCCCO[O]                                                                                                             
+ CCCCC(O[O])C                                                                                                           
+ CCCC(O[O])CC                                                                                                           
+ CCCC(C)CO[O]                                                                                                           
+ CC(O[O])CC(C)C                                                                                                         
+ CCC(O[O])C(C)C                                                                                                         
+ CCCC(O[O])(C)C                                                                                                         
+ CCC(C)CCO[O]                                                                                                           
+ CC(O[O])C(C)CC                                                                                                         
+ CCC(O[O])(C)CC                                                                                                         
+ CC(C)(C)CCO[O]                                                                                                         
+ CCC(C)(C)CO[O]                                                                                                         
+ CC(O[O])C(C)(C)C                                                                                                       
+ CC(C)C(C)CO[O]                                                                                                         
+ CC(O[O])(C)C(C)C                                                                                                       
+ CCCCC(O[O])CC                                                                                                          
+ CC(O[O])CCC(C)C                                                                                                        
+ CCCCC(O[O])(C)C                                                                                                        
+ CC(O[O])CC(C)CC                                                                                                        
+ CCCC(O[O])(C)CC                                                                                                        
+ CCCCCC(O[O])CC                                                                                                         
+ CCCCCCC(O[O])CC                                                                                                        
+ CCCCCCCC(O[O])CC                                                                                                       
+ CCCCCCCCC(O[O])CC                                                                                                      
+ CCCCCCCCCC(O[O])CC                                                                                                     
+ C1CCC(O[O])CC1                                                                                                         
+ O=N(=O)OCCO[O]                                                                                                         
+ CC(O[O])CON(=O)(=O)                                                                                                    
+ CC(ON(=O)=O)CO[O]                                                                                                      
+ CCC(O)CO[O]                                                                                                            
+ CCC(O[O])CON(=O)(=O)                                                                                                   
+ CCC(ON(=O)=O)CO[O]                                                                                                     
+ CC(ON(=O)=O)C(O[O])C                                                                                                   
+ CC(O[O])(C)CON(=O)(=O)                                                                                                 
+ CC(ON(=O)=O)(C)CO[O]                                                                                                   
+ CCCC(O[O])CO                                                                                                           
+ CCCC(O)CO[O]                                                                                                           
+ CCCC(O[O])CON(=O)(=O)                                                                                                  
+ CCCC(ON(=O)=O)CO[O]                                                                                                    
+ CC(O)C(O[O])CC                                                                                                         
+ CC(ON(=O)=O)C(O[O])CC                                                                                                  
+ CCC(ON(=O)=O)C(O[O])C                                                                                                  
+ CCC(O[O])(C)CON(=O)(=O)                                                                                                
+ CCC(ON(=O)=O)(C)CO[O]                                                                                                  
+ CC(C)C(O)CO[O]                                                                                                         
+ CC(C)C(O[O])CON(=O)(=O)                                                                                                
+ CC(C)C(ON(=O)=O)CO[O]                                                                                                  
+ [O-][O+]CC(C)C*a                                                                                                       
+ CC(ON(=O)=O)C(O[O])(C)C                                                                                                
+ CC(O[O])C(ON(=O)=O)(C)C                                                                                                
+ CCCCC(O)CO[O]                                                                                                          
+ CCCCC(O[O])CO                                                                                                          
+ CCCCC(ON(=O)=O)CO[O]                                                                                                   
+ CCCCC(O[O])CON(=O)(=O)                                                                                                 
+ CCCC(O[O])C(O)C                                                                                                        
+ CCCC(O)C(O[O])C                                                                                                        
+ CC(ON(=O)=O)C(O[O])CCC                                                                                                 
+ CCCC(ON(=O)=O)C(O[O])C                                                                                                 
+ CC(O[O])(C)C(O)(C)C                                                                                                    
+ CC(ON(=O)=O)(C)C(O[O])(C)C                                                                                             
+ [O]OC1C=CC2OOC1C2O                                                                                                     
+ c1ccccc1CO[O]                                                                                                          
+ [O]OC1C=CC2(C)OOC1C2O                                                                                                  
+ [O]OC1(C)C=CC2OOC1(C)C2O                                                                                               
+ Cc1ccccc1CO[O]                                                                                                         
+ [O]OC1C=CC2(C)OOC1(C)C2O                                                                                               
+ Cc1cccc(c1)CO[O]                                                                                                       
+ [O]OC1(C)C=CC2(C)OOC1C2O                                                                                               
+ Cc1ccc(CO[O])cc1                                                                                                       
+ c1ccccc1CCO[O]                                                                                                         
+ [O]OC1C=CC2(CC)OOC1C2O                                                                                                 
+ c1ccccc1C(O[O])CC                                                                                                      
+ CCCC12OOC(C(O[O])C=C1)C2O                                                                                              
+ c1ccccc1C(O[O])(C)C                                                                                                    
+ [O]OC1C=CC2(OOC1C2O)C(C)C                                                                                              
+ Cc1cccc(CO[O])c1C                                                                                                      
+ [O]OC1C=CC2(C)OOC1(C)C2(C)O                                                                                            
+ Cc1ccc(CO[O])cc1C                                                                                                      
+ [O]OC1(C)C=CC2(C)OOC1(C)C2O                                                                                            
+ [O]OC1C(=CC2(C)OOC1(C)C2O)C                                                                                            
+ c1c(C)cc(CO[O])cc1C                                                                                                    
+ Cc1ccccc1C(O[O])C                                                                                                      
+ CCC1(O[O])C=CC2OOC1(C)C2O                                                                                              
+ [O]OC1C=CC2(C)OOC1(CC)C2O                                                                                              
+ [O]OC1(C)C=CC2(CC)OOC1C2O                                                                                              
+ c1c(C)cc(C)cc1C(O[O])C                                                                                                 
+ [O]OC1C(=CC2(CC)OOC1(C)C2O)C                                                                                           
+ CC(O[O])c(c1)cc(C)cc1CC                                                                                                
+ [O]OC1C(=CC2(CC)OOC1(C)C2O)CC                                                                                          
+ c1ccccc1C(O)CO[O]                                                                                                      
+ c1ccccc1C(O[O])CON(=O)(=O)                                                                                             
+ c1ccccc1C(=O)O[O]                                                                                                      
+ ClCO[O]                                                                                                                
+ [O]OC(Cl)Cl                                                                                                            
+ [O]OC(Cl)(Cl)Cl                                                                                                        
+ ClC(Cl)(Cl)CO[O]                                                                                                       
+ OC(Cl)(Cl)C(Cl)(Cl)O[O]                                                                                                
+ OC(Cl)C(Cl)(Cl)O[O]                                                                                                    
+ OC(Cl)(Cl)C(Cl)O[O]                                                                                                    
+ OC(Cl)C(Cl)O[O]                                                                                                        
+ ClCC(Cl)O[O]                                                                                                           
+ OC(Cl)(Cl)CO[O]                                                                                                        
+ OCC(Cl)(Cl)O[O]                                                                                                        
+ ClCC(Cl)CO[O]                                                                                                          
+ CC(Cl)(O[O])CCl                                                                                                        
+ CC(Cl)C(Cl)O[O]                                                                                                        
+ ClC(Cl)CO[O]                                                                                                           
+ CC(Cl)(Cl)O[O]                                                                                                         
+ CC(Cl)O[O]                                                                                                             
+ ClCCO[O]                                                                                                               
+ ClC(Cl)C(Cl)(Cl)O[O]                                                                                                   
+ ClC(Cl)C(Cl)O[O]                                                                                                       
+ ClCC(Cl)(Cl)O[O]                                                                                                       
+ OCC=CCO[O]                                                                                                             
+ OCC(O[O])C=C                                                                                                           
+ C=CC(O)CO[O]                                                                                                           
+ O=N(=O)OCC(O[O])C=C                                                                                                    
+ O=N(=O)OCC=CCO[O]                                                                                                      
+ CC(CO)=CCO[O]                                                                                                          
+ CC(O[O])(CO)C=C                                                                                                        
+ OCC=C(C)CO[O]                                                                                                          
+ OCC(O[O])C(C)=C                                                                                                        
+ CC(CON(=O)=O)=CCO[O]                                                                                                   
+ O=COCO[O]                                                                                                              
+ CC(=O)OCO[O]                                                                                                           
+ COC(=O)CO[O]                                                                                                           
+ CCOC(=O)CO[O]                                                                                                          
+ CC(=O)OCCO[O]                                                                                                          
+ CC(=O)OC(O[O])C                                                                                                        
+ CC(=O)OCC(O[O])C                                                                                                       
+ CC(=O)OC(O[O])CC                                                                                                       
+ CC(=O)OCCCO[O]                                                                                                         
+ CC(=O)OC(O[O])(C)C                                                                                                     
+ CC(=O)OC(C)CO[O]                                                                                                       
+ CC(=O)OCCC(O[O])C                                                                                                      
+ CC(=O)OCC(O[O])CC                                                                                                      
+ CCCC(O[O])OC(=O)C                                                                                                      
+ CC(=O)OC(O[O])(C)CC                                                                                                    
+ CC(O[O])C(C)OC(=O)C                                                                                                    
+ CC(=O)OC(C)(C)CO[O]                                                                                                    
+ CC(C)(C)OC(=O)CO[O]                                                                                                    
+ COCO[O]                                                                                                                
+ CCOC(O[O])C                                                                                                            
+ CCOCCO[O]                                                                                                              
+ CC(C)(C)OCO[O]                                                                                                         
+ COC(C)(C)CO[O]                                                                                                         
+ CC(O[O])(C)OC(C)C                                                                                                      
+ CC(C)OC(C)CO[O]                                                                                                        
+ CCOC(C)(C)CO[O]                                                                                                        
+ CC(O[O])OC(C)(C)C                                                                                                      
+ CC(C)(C)OCCO[O]                                                                                                        
+ COC(O[O])CO                                                                                                            
+ OCCOCO[O]                                                                                                              
+ CCOC(O[O])CO                                                                                                           
+ CC(O[O])OCCO                                                                                                           
+ CC(O)C(O[O])OC                                                                                                         
+ CC(O)COCO[O]                                                                                                           
+ CCCC(O[O])OCCO                                                                                                         
+ CCCCOC(O[O])CO                                                                                                         
+ CC(O)COC(O[O])CCC                                                                                                      
+ CCCCOC(O[O])C(O)C                                                                                                      
+ BrCO[O]                                                                                                                
+ BrCC(Br)O[O]                                                                                                           
+ CC(=O)CO[O]                                                                                                            
+ CC(=O)CCO[O]                                                                                                           
+ CCC(=O)CO[O]                                                                                                           
+ CC(=O)C(O[O])C                                                                                                         
+ CCC(O[O])C(=O)C                                                                                                        
+ CC(=O)CC(O[O])C                                                                                                        
+ CCC(=O)C(O[O])C                                                                                                        
+ CCC(=O)CCO[O]                                                                                                          
+ CC(=O)C(O[O])(C)C                                                                                                      
+ CC(=O)C(C)CO[O]                                                                                                        
+ CC(=O)CC(O[O])CC                                                                                                       
+ CC(=O)CCC(O[O])C                                                                                                       
+ CCCC(O[O])C(=O)C                                                                                                       
+ CCCC(=O)CCO[O]                                                                                                         
+ CCCC(=O)C(O[O])C                                                                                                       
+ CCC(=O)C(O[O])CC                                                                                                       
+ CCC(=O)CC(O[O])C                                                                                                       
+ CC(=O)CC(O[O])(C)C                                                                                                     
+ CC(=O)C(O[O])C(C)C                                                                                                     
+ CC(=O)C(C)(C)CO[O]                                                                                                     
+ C1C(=O)CC(O[O])CC1                                                                                                     
+ C12CC(C1(C)C)CC(O)C2(O[O])C                                                                                            
+ C12CC(C1(C)C)CC(O[O])C2(O)C                                                                                            
+ C1C(O)C(C)=CCC1C(O[O])(C)C                                                                                             
+ C12CC(C1(C)C)CC(ON(=O)=O)C2(O[O])C                                                                                     
+ C12CC(C1(C)C)CC(O[O])C2(ON(=O)=O)C                                                                                     
+ CC1(C)C(CC12)CCC2(O[O])CO                                                                                              
+ CC1(C)C(CC12)CCC2(O)CO[O]                                                                                              
+ CC(O[O])(C)C1CC=C(CO)CC1                                                                                               
+ CC1(C)C(CC12)CCC2(O[O])CON(=O)(=O)                                                                                     
+ CC1(C)C(CC12)CCC2(ON(=O)=O)CO[O]                                                                                       
+ COCOCO[O]                                                                                                              
+ COC(O[O])OC                                                                                                            
+ COC(=O)OCO[O]                                                                                                          
+ CCC(C)C(=O)O[O]                                                                                                        
+ CC(C)CC(=O)O[O]                                                                                                        
+ CC(O[O])(C)CC=O                                                                                                        
+ OCC(=O)O[O]                                                                                                            
+ CC(O)C(=O)O[O]                                                                                                         
+ CC(O)(C)C(=O)O[O]                                                                                                      
+ [O-][O+]CC(C)C                                                                                                         
+ O=CC(=O)O[O]                                                                                                           
+ O=CC1OC1C(O[O])C(O)C=O                                                                                                 
+ O=CC=CC1OC1C(=O)O[O]                                                                                                   
+ O=CC=CC(O[O])C=O                                                                                                       
+ [O]OC1(O)C=CC2OOC1C2O                                                                                                  
+ [O]OC1(O)C=CC2OOC1C2ON(=O)=O                                                                                           
+ CC(=O)C(O[O])C(O)C1OC1C=O                                                                                              
+ CC(=O)C=CC1OC1C(=O)O[O]                                                                                                
+ CC(=O)C=CC(O[O])C=O                                                                                                    
+ [O]OC1(O)C=CC2(C)OOC1C2O                                                                                               
+ [O]OC1(O)C=CC2(C)OOC1C2ON(=O)=O                                                                                        
+ CC1(C=O)OC1(C)C(O)C(O[O])C=O                                                                                           
+ O=CC=CC1(C)OC1(C)C(=O)O[O]                                                                                             
+ CC(=O)C(O[O])(C)C=CC=O                                                                                                 
+ [O]OC1(O)C=C(C)C2(C)OOC1C2O                                                                                            
+ [O]OC1(O)C=C(C)C2(C)OOC1C2ON(=O)=O                                                                                     
+ CC(=O)C(O[O])C(O)C1OC1(C)C=O                                                                                           
+ CC(=O)C=CC1OC1(C)C(=O)O[O]                                                                                             
+ CC(=O)C=CC(O[O])C(=O)C                                                                                                 
+ [O]OC1(O)C=CC2(C)OOC1(C)C2O                                                                                            
+ [O]OC1(O)C=CC2(C)OOC1(C)C2ON(=O)=O                                                                                     
+ CC(=O)C(O[O])C(O)C1(C)OC1C=O                                                                                           
+ CC(=O)C=CC1(C)OC1C(=O)O[O]                                                                                             
+ CC(=O)C=CC(O[O])(C)C=O                                                                                                 
+ [O]OC1(O)C=C(C)C2OOC1(C)C2O                                                                                            
+ [O]OC1(O)C=C(C)C2OOC1(C)C2ON(=O)=O                                                                                     
+ CCC(=O)C(O[O])C(O)C1OC1C=O                                                                                             
+ CCC(=O)C=CC1OC1C(=O)O[O]                                                                                               
+ CCC(=O)C=CC(O[O])C=O                                                                                                   
+ [O]OC1(O)C=CC2(CC)OOC1C2O                                                                                              
+ CCC12OOC(C2ON(=O)=O)C(O)(O[O])C=C1                                                                                     
+ CCCC(=O)C(O[O])C(O)C1OC1C=O                                                                                            
+ CCCC(=O)C=CC1OC1C(=O)O[O]                                                                                              
+ CCCC(=O)C=CC(O[O])C=O                                                                                                  
+ CCCC12OOC(C2O)C(O)(O[O])C=C1                                                                                           
+ CCCC12OOC(C2ON(=O)=O)C(O)(O[O])C=C1                                                                                    
+ CC(C)C(=O)C=CC1OC1C(=O)O[O]                                                                                            
+ CC(C)C(=O)C(O[O])C(O)C1OC1C=O                                                                                          
+ CC(C)C(=O)C=CC(O[O])C=O                                                                                                
+ [O-][O+]CC(=O)C(C)C*b                                                                                                  
+ [O]OC1(O)C=CC2(OOC1C2O)C(C)C                                                                                           
+ [O]OC1(O)C=CC2(OOC1C2ON(=O)=O)C(C)C                                                                                    
+ CC(=O)C(O)C(O[O])C1OC1(C)C(=O)C                                                                                        
+ [O]OC1(O)C2OOC(C)(C2O)C(=C1C)C                                                                                         
+ [O]OC1(O)C2OOC(C)(C2ON(=O)=O)C(=C1C)C                                                                                  
+ CC(=O)C(O)C(O[O])C1(C)OC1(C)C=O                                                                                        
+ CC(=O)C=CC1(C)OC1(C)C(=O)O[O]                                                                                          
+ CC(=O)C=CC(O[O])(C)C(=O)C                                                                                              
+ [O]OC1(O)C(=C(C)C2OOC1(C)C2O)C                                                                                         
+ [O]OC1(O)C(=C(C)C2OOC1(C)C2ON(=O)=O)C                                                                                  
+ CC(=O)C(O)C(O[O])(C)C1OC1(C)C=O                                                                                        
+ CC(=O)C=C(C)C1OC1(C)C(=O)O[O]                                                                                          
+ CC(=O)C(O[O])C(C)=CC(=O)C                                                                                              
+ [O]OC1(O)C(=CC2(C)OOC1(C)C2O)C                                                                                         
+ [O]OC1(O)C(=CC2(C)OOC1(C)C2ON(=O)=O)C                                                                                  
+ CCC1(C=O)OC1(C)C(O)C(O[O])C=O                                                                                          
+ O=CC=CC1(C)OC1(C(=O)O[O])CC                                                                                            
+ CCC(=O)C(O[O])(C)C=CC=O                                                                                                
+ CCC12OOC(C2O)C(O)(O[O])C=C1C                                                                                           
+ CCC1=C(C)C2OOC(C2ON(=O)=O)C1(O)O[O]                                                                                    
+ CCC(=O)C(O[O])C(O)C1OC1(C)C=O                                                                                          
+ CCC(=O)C=CC1OC1(C)C(=O)O[O]                                                                                            
+ CCC(=O)C=CC(O[O])C(=O)C                                                                                                
+ CCC12C=CC(O)(O[O])C(C)(OO1)C2O                                                                                         
+ CCC12OOC(C)(C2ON(=O)=O)C(O)(O[O])C=C1                                                                                  
+ CCC(=O)C(O[O])C(O)C1(C)OC1C=O                                                                                          
+ CCC(=O)C=CC1(C)OC1C(=O)O[O]                                                                                            
+ CCC(=O)C=CC(O[O])(C)C=O                                                                                                
+ [O]OC1(O)C=C(C)C2OOC1(CC)C2O                                                                                           
+ CCC12OOC(C(=CC2(O)O[O])C)C1ON(=O)=O                                                                                    
+ CCC(=O)C(O)C(O[O])(C)C1OC1(C)C=O                                                                                       
+ CCC(=O)C=C(C)C1OC1(C)C(=O)O[O]                                                                                         
+ CC(=O)C(O[O])C(C)=CC(=O)CC                                                                                             
+ CCC12OOC(C)(C=C(C)C2(O)O[O])C1O                                                                                        
+ CCC12OOC(C)(C=C(C)C2(O)O[O])C1ON(=O)=O                                                                                 
+ CCC(=O)C(O)C(O[O])(C)C1OC1(C=O)CC                                                                                      
+ CCC(=O)C=C(C)C1OC1(C(=O)O[O])CC                                                                                        
+ CCC(=O)C(O[O])C(C)=CC(=O)CC                                                                                            
+ CCC12OOC(CC)(C=C(C)C2(O)O[O])C1O                                                                                       
+ CCC12OOC(CC)(C2ON(=O)=O)C(O)(O[O])C(=C1)C                                                                              
+ C=CC(=O)O[O]                                                                                                           
+ CC(=O)C(O)CO[O]                                                                                                        
+ CC(=O)C(O[O])CO                                                                                                        
+ C=CC(=O)CO[O]                                                                                                          
+ C=C(C)C(=O)O[O]                                                                                                        
+ CC(O[O])(CO)C=O                                                                                                        
+ COCC(=O)O[O]                                                                                                           
+ CCOCC(=O)O[O]                                                                                                          
+ CCOCO[O]                                                                                                               
+ COC(O[O])C(=O)C                                                                                                        
+ CCCCOCC(=O)O[O]                                                                                                        
+ CCCCOCO[O]                                                                                                             
+ CC(=O)COC(O[O])CCC                                                                                                     
+ CCCCOC(O[O])C(=O)C                                                                                                     
+ CC(=O)C(O[O])(C1(C)C)CC1CC=O                                                                                           
+ O=CCC1CC(C1(C)C)C(=O)CO[O]                                                                                             
+ CC(=O)C1CC(CO[O])C1(C)C                                                                                                
+ CC1(C)C(C2)C(=O)C(O[O])CC12                                                                                            
+ CC1(C)C(O[O])(C2)CCC(=O)C12                                                                                            
+ CC1(C)C(C(O[O])C12)C(=O)CC2                                                                                            
+ CC1(C)C(C2)C(O[O])CC(=O)C12                                                                                            
+ OCCC(=O)O[O]                                                                                                           
+ CC(CO)C(=O)O[O]                                                                                                        
+ CCC(O)CC(=O)O[O]                                                                                                       
+ CC(O[O])C(O)CCO                                                                                                        
+ CCC(O)(C)C(=O)O[O]                                                                                                     
+ CC(O)(C)CC(=O)O[O]                                                                                                     
+ OCCC(O)(C)CO[O]                                                                                                        
+ CC(O)C(C)C(=O)O[O]                                                                                                     
+ CC(CO)C(O)CO[O]                                                                                                        
+ CC(=O)C(=O)C(O)(C)CO[O]                                                                                                
+ CC(O)(C)C(O)C(=O)O[O]                                                                                                  
+ CC(O)(C)C(ON(=O)=O)C(=O)O[O]                                                                                           
+ O=CCO[O]                                                                                                               
+ CC(=O)CC(=O)O[O]                                                                                                       
+ CC(O)CC(=O)O[O]                                                                                                        
+ CC(C=O)C(=O)O[O]                                                                                                       
+ CC(O[O])C=O                                                                                                            
+ CCC(=O)CC(=O)O[O]                                                                                                      
+ OCCCCO[O]                                                                                                              
+ CC(O[O])CCCO                                                                                                           
+ CC(O)CCCO[O]                                                                                                           
+ CC(CO)CCO[O]                                                                                                           
+ CC(C)(C)C(=O)O[O]                                                                                                      
+ CCCCCC(=O)O[O]                                                                                                         
+ CCC(O[O])CCCO                                                                                                          
+ CC(O)CCC(O[O])C                                                                                                        
+ CCC(O)CCCO[O]                                                                                                          
+ CCCC(C)C(=O)O[O]                                                                                                       
+ CC(O[O])CC(C)CO                                                                                                        
+ CC(O)CC(C)CO[O]                                                                                                        
+ CCC(=O)C(O[O])(C)C                                                                                                     
+ CCC(=O)C(C)CO[O]                                                                                                       
+ CC(O)(C)CCCO[O]                                                                                                        
+ CCC(C)CC(=O)O[O]                                                                                                       
+ CC(O[O])C(C)CCO                                                                                                        
+ CC(O[O])C(C)C(=O)C                                                                                                     
+ CCC(O[O])(C)C(=O)C                                                                                                     
+ CC(O)C(C)CCO[O]                                                                                                        
+ CC(C)(C)CC(=O)O[O]                                                                                                     
+ OCCC(C)(C)CO[O]                                                                                                        
+ CCC(C)(C)C(=O)O[O]                                                                                                     
+ CC(CO)(C)CCO[O]                                                                                                        
+ CC(C)C(C)C(=O)O[O]                                                                                                     
+ CC(CO)C(C)CO[O]                                                                                                        
+ CCC(=O)CC(O[O])CC                                                                                                      
+ CCC(O)CCC(O[O])C                                                                                                       
+ CC(O)CCC(O[O])(C)C                                                                                                     
+ CC(=O)CC(O[O])C(C)C                                                                                                    
+ CC(O[O])CCC(O)(C)C                                                                                                     
+ CC(O)CC(C)C(O[O])C                                                                                                     
+ CC(=O)CC(O[O])(C)CC                                                                                                    
+ CCC(O)(C)CCCO[O]                                                                                                       
+ CCC(=O)CC(O[O])CCC                                                                                                     
+ CCC(O)CCC(O[O])CC                                                                                                      
+ CCCCC(O[O])CC(=O)CC                                                                                                    
+ CCC(O)CCC(O[O])CCC                                                                                                     
+ CCC(O)CCC(O[O])CCCC                                                                                                    
+ CCCCCC(O[O])CC(=O)CC                                                                                                   
+ CCC(O)CCC(O[O])CCCCC                                                                                                   
+ CCCCCCC(O[O])CC(=O)CC                                                                                                  
+ CCCCCCC(O[O])CCC(O)CC                                                                                                  
+ CCCCCCCC(O[O])CC(=O)CC                                                                                                 
+ O=N(=O)OCC(=O)O[O]                                                                                                     
+ CC(ON(=O)=O)C(=O)O[O]                                                                                                  
+ CCC(O)C(=O)O[O]                                                                                                        
+ CC(O[O])C(=O)CON(=O)(=O)                                                                                               
+ CC(ON(=O)=O)(C)C(=O)O[O]                                                                                               
+ CC(O[O])CC(=O)CO                                                                                                       
+ CCCC(O)C(=O)O[O]                                                                                                       
+ CC(O[O])CC(=O)CON(=O)(=O)                                                                                              
+ CCCC(ON(=O)=O)C(=O)O[O]                                                                                                
+ CC(ON(=O)=O)C(=O)C(O[O])C                                                                                              
+ CC(=O)C(ON(=O)=O)C(O[O])C                                                                                              
+ CCC(ON(=O)=O)(C)C(=O)O[O]                                                                                              
+ CC(C)C(O)C(=O)O[O]                                                                                                     
+ CC(O[O])(C)C(=O)CON(=O)(=O)                                                                                            
+ CC(C)C(ON(=O)=O)C(=O)O[O]                                                                                              
+ CC(=O)C(ON(=O)=O)(C)CO[O]                                                                                              
+ CCCCC(O)C(=O)O[O]                                                                                                      
+ CCC(O[O])CC(=O)CO                                                                                                      
+ CCCCC(ON(=O)=O)C(=O)O[O]                                                                                               
+ CCC(O[O])CC(=O)CON(=O)(=O)                                                                                             
+ CC(ON(=O)=O)C(=O)CC(O[O])C                                                                                             
+ CC(=O)C(ON(=O)=O)C(O[O])CC                                                                                             
+ O=CC=CC(=O)O[O]                                                                                                        
+ O=CC1OC1C(=O)O[O]                                                                                                      
+ O=CC(O[O])C=O                                                                                                          
+ O=CC(O)C(O[O])C=O                                                                                                      
+ CC(=O)C=CC(=O)O[O]                                                                                                     
+ Cc1ccccc1C(=O)O[O]                                                                                                     
+ CC1(C=O)OC1(C)C(=O)O[O]                                                                                                
+ CC(=O)C(O[O])(C)C=O                                                                                                    
+ CC(C=O)=CC(=O)O[O]                                                                                                     
+ Cc1cccc(c1)C(=O)O[O]                                                                                                   
+ CC1(C=O)OC1C(=O)O[O]                                                                                                   
+ CC(O[O])(C=O)C=O                                                                                                       
+ Cc1ccc(C(=O)O[O])cc1                                                                                                   
+ c1ccccc1CC(=O)O[O]                                                                                                     
+ CCC(=O)C=CC(=O)O[O]                                                                                                    
+ c1ccccc1C(=O)C(O[O])C                                                                                                  
+ CCCC(=O)C=CC(=O)O[O]                                                                                                   
+ CC(C)C(=O)C=CC(=O)O[O]                                                                                                 
+ [O-][O+]CC(=O)C(C)C                                                                                                    
+ Cc1cccc(C(=O)O[O])c1C                                                                                                  
+ CC(=O)C1(C)OC1C(=O)O[O]                                                                                                
+ CC(=O)C(O[O])C=O                                                                                                       
+ Cc1ccc(C(=O)O[O])cc1C                                                                                                  
+ CC(=O)C=C(C)C(=O)O[O]                                                                                                  
+ c1c(C)cc(C(=O)O[O])cc1C                                                                                                
+ CC(=O)C1OC1(C)C(=O)O[O]                                                                                                
+ CC(=O)C(O[O])C(=O)C                                                                                                    
+ Cc1ccccc1C(=O)CO[O]                                                                                                    
+ CCC1(C=O)OC1(C)C(=O)O[O]                                                                                               
+ CCC(O[O])(C=O)C(=O)C                                                                                                   
+ c1c(C)cc(C)cc1C(=O)CO[O]                                                                                               
+ CCc1cc(C)cc(c1)C(=O)CO[O]                                                                                              
+ c1c(C)cc(C(=O)O[O])cc1CC                                                                                               
+ CCC(=O)C=C(C(=O)O[O])CC                                                                                                
+ CC(=O)C1OC1(C(=O)O[O])CC                                                                                               
+ CCC(=O)C(O[O])C(=O)C                                                                                                   
+ CCC(O[O])(C=O)C=O                                                                                                      
+ ClC(Cl)(Cl)C(=O)O[O]                                                                                                   
+ ClCC(=O)O[O]                                                                                                           
+ OC(Cl)(Cl)C(=O)O[O]                                                                                                    
+ ClCC(Cl)C(=O)O[O]                                                                                                      
+ CC(Cl)(O[O])C(=O)Cl                                                                                                    
+ ClC(Cl)C(=O)O[O]                                                                                                       
+ O=C(Cl)CO[O]                                                                                                           
+ O=C(Cl)C(Cl)O[O]                                                                                                       
+ OCC(O[O])C(O)C=O                                                                                                       
+ OCC=CC(=O)O[O]                                                                                                         
+ OCC(=O)C(O[O])CO                                                                                                       
+ OCC(=O)C(O)CO[O]                                                                                                       
+ C=CC(O)C(=O)O[O]                                                                                                       
+ OCC(O[O])C(=O)CON(=O)(=O)                                                                                              
+ O=N(=O)OCC=CC(=O)O[O]                                                                                                  
+ O=N(=O)OCC(O[O])C(O)C=O                                                                                                
+ CC(O[O])(CO)C(O)C=O                                                                                                    
+ CC(CO)=CC(=O)O[O]                                                                                                      
+ OCC=C(C)C(=O)O[O]                                                                                                      
+ OCC(O)C(O[O])(C)C=O                                                                                                    
+ CC(O[O])(CO)C(=O)CO                                                                                                    
+ CC(CON(=O)=O)=CC(=O)O[O]                                                                                               
+ CC(O[O])(CON(=O)=O)C(O)C=O                                                                                             
+ O=CC(=O)OCO[O]                                                                                                         
+ CC(O[O])OC(=O)CO                                                                                                       
+ CC(=O)OCC(=O)O[O]                                                                                                      
+ CC(=O)OC(=O)CO[O]                                                                                                      
+ CC(=O)OC(O[O])C(=O)C                                                                                                   
+ CC(=O)OC(=O)CCO[O]                                                                                                     
+ CC(=O)OCCC(=O)O[O]                                                                                                     
+ CC(=O)OC(C)C(=O)O[O]                                                                                                   
+ CC(=O)CC(O[O])OC(=O)C                                                                                                  
+ CCC(=O)C(O[O])OC(=O)C                                                                                                  
+ CC(=O)OC(=O)CC(O[O])C                                                                                                  
+ CC(=O)OC(O[O])(C)C(=O)C                                                                                                
+ CC(=O)OC(C)(C)C(=O)O[O]                                                                                                
+ O=COC(C)(C)CO[O]                                                                                                       
+ COC(C)(C)C(=O)O[O]                                                                                                     
+ CC(O[O])OC(C)C                                                                                                         
+ CC(C)OC(C)C(=O)O[O]                                                                                                    
+ CCOC(C)(C)C(=O)O[O]                                                                                                    
+ CCOC(O[O])(C)C                                                                                                         
+ CC(C)(C)OCC(=O)O[O]                                                                                                    
+ CC(O)C(=O)OC(O[O])CCC                                                                                                  
+ BrCC(=O)O[O]                                                                                                           
+ OCCC(=O)CO[O]                                                                                                          
+ CC(=O)C(=O)CO[O]                                                                                                       
+ CC(=O)C(=O)C(O[O])C                                                                                                    
+ CC(O)CC(=O)CO[O]                                                                                                       
+ CC(O[O])C(=O)CCO                                                                                                       
+ CC(CO)C(=O)CO[O]                                                                                                       
+ CC(=O)C(C)C(=O)O[O]                                                                                                    
+ CCC(O)CC(=O)CO[O]                                                                                                      
+ CC(=O)CC(=O)C(O[O])C                                                                                                   
+ CC(=O)CC(O[O])C(=O)C                                                                                                   
+ CC(O)C(O[O])CC(=O)C                                                                                                    
+ CC(O)CCO[O]                                                                                                            
+ CC(=O)C(=O)CC(O[O])C                                                                                                   
+ CCC(O[O])C(=O)CCO                                                                                                      
+ CCCC(=O)CC(=O)O[O]                                                                                                     
+ CCCC(=O)CO[O]                                                                                                          
+ CCC(=O)C(=O)C(O[O])C                                                                                                   
+ CC(O)CC(=O)C(O[O])C                                                                                                    
+ CC(=O)C(=O)C(O[O])(C)C                                                                                                 
+ CC(CO)(C)C(=O)CO[O]                                                                                                    
+ CC(=O)C(C)(C)C(=O)O[O]                                                                                                 
+ O=CCC(=O)CCCO[O]                                                                                                       
+ C1C(=O)CC(O[O])CC1=O                                                                                                   
+ CC(=O)C(C1(C)C)CC1CC(=O)O[O]                                                                                           
+ OC1CC(O[O])CC=C1C                                                                                                      
+ C12CC(O[O])(C1(C)C)CC(=O)C2(ON(=O)=O)C                                                                                 
+ CC1(C)C(CC12)CCC2(O)C(=O)O[O]                                                                                          
+ CC1(C)C(CC12)CCC2(ON(=O)=O)C(=O)O[O]                                                                                   
+ CC1(C)C(C2)C(O[O])CC12                                                                                                 
+ COC(O[O])OC=O                                                                                                          
+ O=COC(=O)OCO[O]                                                                                                        
+ O=CCCCCC(=O)O[O]                                                                                                       
+ O=CCCC(O[O])CC=O                                                                                                       
+ O=CCCCCO[O]                                                                                                            
+ C1C(=O)C(=O)CC(O[O])C1                                                                                                 
+ C1OC(=O)C(O[O])C1O                                                                                                     
+ O=N(=O)OC1C(O[O])C(=O)OC1                                                                                              
+ O=CC(O)C(=O)O[O]                                                                                                       
+ OC1C(O[O])C(=O)OC1C                                                                                                    
+ O=N(=O)OC1C(O[O])C(=O)OC1C                                                                                             
+ CC(=O)C(O[O])C(O)C=O                                                                                                   
+ O=CC=C(C)C(=O)O[O]                                                                                                     
+ CC(O[O])(C=O)C(O)C=O                                                                                                   
+ CC(=O)C(O[O])(C)C(O)C=O                                                                                                
+ CC(=O)C(C)=CC(=O)O[O]                                                                                                  
+ CC1(O)COC(=O)C1(O[O])C                                                                                                 
+ CC(=O)C(=O)OC(O[O])C(=O)C                                                                                              
+ CC1(ON(=O)=O)COC(=O)C1(O[O])C                                                                                          
+ CC(=O)C(O)C(O[O])(C)C=O                                                                                                
+ OC1C(O[O])(C)C(=O)OC1C                                                                                                 
+ CC(=O)C(=O)OC(O[O])C                                                                                                   
+ O=C1OC(C)C(ON(=O)=O)C1(O[O])C                                                                                          
+ OC1COC(=O)C1(O[O])C                                                                                                    
+ CC(=O)C(=O)OCO[O]                                                                                                      
+ O=C1OCC(ON(=O)=O)C1(O[O])C                                                                                             
+ CC(=O)C(O)C(O[O])C(=O)C                                                                                                
+ OC1C(O[O])C(=O)OC1CC                                                                                                   
+ CCC(O[O])C=O                                                                                                           
+ O=N(=O)OC1C(O[O])C(=O)OC1CC                                                                                            
+ CCC(=O)C(O[O])C(O)C=O                                                                                                  
+ CCC(=O)C(O[O])C(O)C(=O)C=O                                                                                             
+ OC1C(O[O])C(=O)OC1CCC                                                                                                  
+ CCCC(O[O])C=O                                                                                                          
+ O=N(=O)OC1C(O[O])C(=O)OC1CCC                                                                                           
+ CCCC(=O)C(O[O])C(O)C=O                                                                                                 
+ CCCC(=O)C(O[O])C(O)C(=O)C=O                                                                                            
+ c1ccccc1C(=O)CO[O]                                                                                                     
+ OC1C(O[O])C(=O)OC1C(C)C                                                                                                
+ CC(C)C(O[O])C=O                                                                                                        
+ O=N(=O)OC1C(O[O])C(=O)OC1C(C)C                                                                                         
+ CC(C)C(=O)C(O[O])C(O)C=O                                                                                               
+ CC(C)C(=O)C(O[O])C(O)C(=O)C=O                                                                                          
+ CC1OC(=O)C(O[O])(C)C1(O)C                                                                                              
+ CC(=O)C(=O)OC(O[O])(C)C(=O)C                                                                                           
+ CC1(ON(=O)=O)C(O[O])(C)C(=O)OC1C                                                                                       
+ CC1(O[O])C(O)C(=O)OC1C                                                                                                 
+ CC1(O[O])C(ON(=O)=O)C(=O)OC1C                                                                                          
+ CC(=O)C(C)=C(C)C(=O)O[O]                                                                                               
+ CC(=O)C(O[O])(C)C(O)(C)C=O                                                                                             
+ CC(=O)C(O)C(=O)O[O]                                                                                                    
+ CC(=O)C(O)C(O[O])(C)C(=O)C                                                                                             
+ CCC(=O)C(O)C(O[O])C(=O)C                                                                                               
+ CCC(=O)C(O)C(O[O])(C)C=O                                                                                               
+ CCC(=O)C=C(C)C(=O)O[O]                                                                                                 
+ OC1C(O[O])(C)C(=O)OC1CC                                                                                                
+ CC(=O)C(=O)OC(O[O])CC                                                                                                  
+ O=C1OC(CC)C(ON(=O)=O)C1(O[O])C                                                                                         
+ CC(=O)C(Cl)O[O]                                                                                                        
+ O=C(Cl)C(Cl)(Cl)O[O]                                                                                                   
+ CC(O[O])OC=O                                                                                                           
+ COC(O[O])(C)C                                                                                                          
+ O=COCC(=O)O[O]                                                                                                         
+ CC(=O)C(O[O])OC=O                                                                                                      
+ CCCC(=O)OCC(=O)O[O]                                                                                                    
+ CCCC(=O)OCO[O]                                                                                                         
+ CCCC(O[O])OC(=O)C=O                                                                                                    
+ CCCC(O[O])OC=O                                                                                                         
+ CC(=O)COC(=O)CC(O[O])C                                                                                                 
+ CC(=O)C(=O)OC(O[O])CCC                                                                                                 
+ CC(=O)C1CC(O[O])(C1(C)C)CC=O                                                                                           
+ OC1CC(=O)CC(O)C1(O[O])C                                                                                                
+ CC(=O)C(=O)CC(C(O[O])(C)C)CC=O                                                                                         
+ CC1(C)C(C(=O)CO)CC1CC(=O)O[O]                                                                                          
+ O=CCC1CC(C(=O)O[O])C1(C)C                                                                                              
+ OCC(=O)C1CC(CO[O])C1(C)C                                                                                               
+ CC(=O)C1CC(C(=O)O[O])C1(C)C                                                                                            
+ CC(=O)C1CC(O[O])C1(C)C                                                                                                 
+ CC(=O)C(O[O])(C1(C)C)CC1CO                                                                                             
+ C1C(=O)CCC(=O)C1C(O[O])(C)C                                                                                            
+ CC1(C)C(O[O])CCC(=O)C1C=O                                                                                              
+ CC1(C)C(O[O])CC1C(=O)CC=O                                                                                              
+ CC1(C)C(C(O[O])C12)C(=O)CC2=O                                                                                          
+ OCCC(O)(C)C(=O)O[O]                                                                                                    
+ CC(CO)C(O)C(=O)O[O]                                                                                                    
+ OCCCC(=O)O[O]                                                                                                          
+ CC(=O)CC(O[O])CO                                                                                                       
+ CC(O)CCC(=O)O[O]                                                                                                       
+ CC(CO)CC(=O)O[O]                                                                                                       
+ CCC(=O)CC(O[O])CO                                                                                                      
+ CCC(O)CCC(=O)O[O]                                                                                                      
+ CC(=O)CC(O[O])(C)CO                                                                                                    
+ CC(O)CC(C)C(=O)O[O]                                                                                                    
+ CC(O)CC(O[O])C                                                                                                         
+ CC(O[O])C(=O)C(C)CO                                                                                                    
+ CCC(=O)C(C)C(=O)O[O]                                                                                                   
+ CC(O)(C)CCC(=O)O[O]                                                                                                    
+ CC(O)(C)C(O[O])CC=O                                                                                                    
+ CC(=O)C(C)C(O[O])CO                                                                                                    
+ CC(O)C(C)C(=O)CO[O]                                                                                                    
+ CC(=O)C(O[O])(C)C(=O)C                                                                                                 
+ CC(O)C(C)CC(=O)O[O]                                                                                                    
+ CC(O)C(O[O])(C)CC=O                                                                                                    
+ OCCC(C)(C)C(=O)O[O]                                                                                                    
+ CC(CO)(C)CC(=O)O[O]                                                                                                    
+ CC(CO)(C)CO[O]                                                                                                         
+ CC(CO)C(C)C(=O)O[O]                                                                                                    
+ CCC(O)CC(=O)C(O[O])C                                                                                                   
+ CC(C)C(O)CC(=O)CO[O]                                                                                                   
+ CC(=O)CC(O[O])C(O)(C)C                                                                                                 
+ CC(=O)C(O[O])CC(O)(C)C                                                                                                 
+ CCC(O)(C)CC(=O)CO[O]                                                                                                   
+ CCC(O)(C)CCC(=O)O[O]                                                                                                   
+ CCC(O)(C)CCO[O]                                                                                                        
+ CCCC(O)CC(=O)C(O[O])C                                                                                                  
+ CCC(O)C(O[O])CC(=O)CC                                                                                                  
+ CCCCC(O)CC(=O)C(O[O])C                                                                                                 
+ CCCC(O)C(O[O])CC(=O)CC                                                                                                 
+ CCCCC(O)C(O[O])CC(=O)CC                                                                                                
+ CCCCCC(O)CO[O]                                                                                                         
+ CCCCCC(O)CC(=O)C(O[O])C                                                                                                
+ CCCCCC(O)C(O[O])CC(=O)CC                                                                                               
+ CCCCCCC(O)CO[O]                                                                                                        
+ CCCCCCC(O)CC(=O)C(O[O])C                                                                                               
+ CCCCCCC(O)C(O[O])CC(=O)CC                                                                                              
+ CCCCCCCC(O)CO[O]                                                                                                       
+ CCCCCCCC(O)CC(=O)C(O[O])C                                                                                              
+ O=N(=O)OCC(=O)CO[O]                                                                                                    
+ O=C1C=CC(=O)C(O[O])C1O                                                                                                 
+ O=C1C=CC(=O)C(O[O])C1ON(=O)(=O)                                                                                        
+ [O]OC1(O)C(=CC2(OOC1C2O)N(=O)=O)O                                                                                      
+ [O]OC1(O)C(=CC2(OOC1C2ON(=O)=O)N(=O)=O)O                                                                               
+ O=C1C(O)C(O[O])C(=O)C=C1C                                                                                              
+ O=C1C(ON(=O)=O)C(O[O])C(=O)C=C1C                                                                                       
+ [O]OC1(O)C(=C(N(=O)=O)C2OOC1(C)C2O)O                                                                                   
+ [O]OC1(O)C(=C(N(=O)=O)C2OOC1(C)C2ON(=O)=O)O                                                                            
+ O=C1C(O)C(O[O])C(=O)C(C)=C1C                                                                                           
+ O=C1C(ON(=O)=O)C(O[O])C(=O)C(C)=C1C                                                                                    
+ [O]OC1(O)C(=C(C)C2(C)OOC1(N(=O)=O)C2O)O                                                                                
+ [O]OC1(O)C(=C(C)C2(C)OOC1(N(=O)=O)C2ON(=O)=O)O                                                                         
+ CC(O)(C=O)C(=O)O[O]                                                                                                    
+ OC1C(=O)C=C(C)C(=O)C1(O[O])C                                                                                           
+ O=C1C(O[O])(C)C(ON(=O)=O)C(=O)C=C1C                                                                                    
+ [O]OC1(O)C(=C(N(=O)=O)C2(C)OOC1(C)C2O)O                                                                                
+ [O]OC1(O)C(=C(N(=O)=O)C2(C)OOC1(C)C2ON(=O)=O)O                                                                         
+ OC1C(=O)C(C)=CC(=O)C1(O[O])C                                                                                           
+ O=C1C(ON(=O)=O)C(O[O])(C)C(=O)C=C1C                                                                                    
+ [O]OC1(O)C(=C(C)C2(OOC1(C)C2O)N(=O)=O)O                                                                                
+ [O]OC1(O)C(=C(C)C2(OOC1(C)C2ON(=O)=O)N(=O)=O)O                                                                         
+ CCC(=O)C(O)C(=O)O[O]                                                                                                   
+ [O]OCC(=O)C=C(CC)C(=O)CO.O=C1CCC(=O)C(=C1)C                                                                            
+ O=C1C(ON(=O)=O)C(O[O])C(=O)C=C1CC                                                                                      
+ [O]OC1(O)C(=C(N(=O)=O)C2OOC1(CC)C2O)O                                                                                  
+ CCC12OOC(C(=C(O)C2(O)O[O])N(=O)=O)C1ON(=O)=O                                                                           
+ c1ccccc1C(=O)C(=O)CO[O]                                                                                                
+ CCCC(=O)C(O)C(=O)O[O]                                                                                                  
+ CCCC(=CC(=O)CO[O])C(=O)CO.O=C1CCC(=O)C(=C1)C                                                                           
+ O=C1C(ON(=O)=O)C(O[O])C(=O)C=C1CCC                                                                                     
+ CCCC12OOC(C(=C(O)C2(O)O[O])N(=O)=O)C1O                                                                                 
+ CCCC12OOC(C(=C(O)C2(O)O[O])N(=O)=O)C1ON(=O)=O                                                                          
+ CC(C)C(=O)C(O)C(=O)O[O]                                                                                                
+ O=C1C(O)C(O[O])C(=O)C=C1C(C)C                                                                                          
+ O=C1C(ON(=O)=O)C(O[O])C(=O)C=C1C(C)C                                                                                   
+ [O]OC1(O)C(=C(N(=O)=O)C2OOC1(C(C)C)C2O)O                                                                               
+ [O]OC1(O)C(=C(N(=O)=O)C2OOC1(C(C)C)C2ON(=O)=O)O                                                                        
+ [O]OC1(O)C(=C(N(=O)=O)C2(C)OOC1(C)C2(C)O)O                                                                             
+ [O]OC1(O)C(=C(N(=O)=O)C2(C)OOC1(C)C2(C)ON(=O)=O)O                                                                      
+ O=C1C(O[O])(C)C(O)C(=O)C(C)=C1C                                                                                        
+ O=C1C(O[O])(C)C(ON(=O)=O)C(=O)C(C)=C1C                                                                                 
+ [O]OC1(O)C(=C(C)C2(OOC1(C)C2(C)O)N(=O)=O)O                                                                             
+ [O]OC1(O)C(=C(C)C2(OOC1(C)C2(C)ON(=O)=O)N(=O)=O)O                                                                      
+ CC(=O)C(=O)C(=O)CO[O]                                                                                                  
+ O=C1C(O)C(O[O])C(=O)C(C)=C1CC                                                                                          
+ O=C1C(ON(=O)=O)C(O[O])C(=O)C(C)=C1CC                                                                                   
+ CCC1=C(O)C(O)(O[O])C2(OOC1(C)C2O)N(=O)=O                                                                               
+ CCC1=C(O)C(O)(O[O])C2(OOC1(C)C2ON(=O)=O)N(=O)=O                                                                        
+ O=C1C(O[O])(C)C(O)C(=O)C=C1CC                                                                                          
+ O=C1C(O[O])(C)C(ON(=O)=O)C(=O)C=C1CC                                                                                   
+ CCC12OOC(C)(C(=C(O)C2(O)O[O])N(=O)=O)C1O                                                                               
+ CCC12OOC(C)(C(=C(O)C2(O)O[O])N(=O)=O)C1ON(=O)=O                                                                        
+ O=C1C(O)C(O[O])(CC)C(=O)C=C1C                                                                                          
+ O=C1C(ON(=O)=O)C(O[O])(C)C(=O)C=C1CC                                                                                   
+ CCC12OOC(N(=O)=O)(C(=C(O)C2(O)O[O])C)C1O                                                                               
+ [O]OC1(O)C(=C(C)C2(OOC1(CC)C2ON(=O)=O)N(=O)=O)O                                                                        
+ CC(=O)C(=O)C(=O)C(O[O])C                                                                                               
+ OCC(=O)C(O)C(=O)O[O]                                                                                                   
+ CC(=O)OC(=O)C(=O)CO[O]                                                                                                 
+ CC(=O)OC(=O)CC(=O)CO[O]                                                                                                
+ CC(=O)OC(O)CO[O]                                                                                                       
+ CC(=O)OC(=O)C(=O)C(O[O])C                                                                                              
+ O=COC(C)(C)C(=O)O[O]                                                                                                   
+ CC(=O)C(=O)C(O[O])C(=O)C                                                                                               
+ OCCC(O)CO[O]                                                                                                           
+ CC(CO)(C)C(=O)O[O]                                                                                                     
+ O=CCCC(=O)CC(=O)O[O]                                                                                                   
+ O=CCCO[O]                                                                                                              
+ O=CCC(=O)O[O]                                                                                                          
+ O=CCCC(=O)CO[O]                                                                                                        
+ O=CCC(=O)CC(=O)CO[O]                                                                                                   
+ O=C1CC(=O)C(O[O])C(=O)C1                                                                                               
+ CC1(ON(=O)=O)C(=O)CC(=O)CC1C(O[O])(C)C                                                                                 
+ CC1(C)C(O[O])CC1CC=O                                                                                                   
+ O=CCC(=O)CCC(=O)O[O]                                                                                                   
+ O=CCCC(O)CO[O]                                                                                                         
+ OCCCC(O[O])C=O                                                                                                         
+ O=CCCC(=O)C(=O)CO[O]                                                                                                   
+ CC(=O)CCC(=O)O[O]                                                                                                      
+ OCCC(C)C(=O)O[O]                                                                                                       
+ CCC(=O)CCC(=O)O[O]                                                                                                     
+ CC(=O)CC(C)C(=O)O[O]                                                                                                   
+ CC(=O)CC(O[O])(C)C=O                                                                                                   
+ CC(=O)C(C)CC(=O)O[O]                                                                                                   
+ CCC(=O)CC(O[O])C(O)C                                                                                                   
+ CCC(=O)CC(O[O])C(=O)C                                                                                                  
+ CCC(=O)C(O[O])CC(=O)C                                                                                                  
+ CC(O)C(O[O])(C)CC(=O)C                                                                                                 
+ CC(=O)CC(O[O])(C)C(=O)C                                                                                                
+ CC(=O)C(O[O])C(C)C(=O)C                                                                                                
+ CCC(=O)CC(O[O])C(=O)CC                                                                                                 
+ CCCC(=O)C(O[O])CC(=O)CC                                                                                                
+ CCCCC(=O)C(O[O])CC(=O)CC                                                                                               
+ CCCCCC(=O)C(O[O])CC(=O)CC                                                                                              
+ CCCCCCC(=O)C(O[O])CC(=O)CC                                                                                             
+ CCCCCCC(=O)O[O]                                                                                                        
+ O=C1OC(=O)C(O[O])C1O                                                                                                   
+ [O]OC1(O)C(=CC2(OOC1C2O)N(=O)=O)N(=O)=O                                                                                
+ [O]OC1(O)C(=CC2(OOC1C2ON(=O)=O)N(=O)=O)N(=O)=O                                                                         
+ [O]OC1(O)C(=CC2(OOC1(C)C2O)N(=O)=O)N(=O)=O                                                                             
+ [O]OC1(O)C(=CC2(OOC1(C)C2ON(=O)=O)N(=O)=O)N(=O)=O                                                                      
+ CC(=O)C(=O)OC(=O)C(=O)CO[O]                                                                                            
+ [O]OC1(O)C(=C(C)C2(C)OOC1(N(=O)=O)C2O)N(=O)=O                                                                          
+ [O]OC1(O)C(=C(C)C2(C)OOC1(N(=O)=O)C2ON(=O)=O)N(=O)=O                                                                   
+ OC1C(=O)OC(=O)C1(O[O])C                                                                                                
+ [O]OC1(O)C(=C(N(=O)=O)C2(OOC1(C)C2O)N(=O)=O)C                                                                          
+ [O]OC1(O)C(=C(N(=O)=O)C2(OOC1(C)C2ON(=O)=O)N(=O)=O)C                                                                   
+ [O]OC1(O)C(=CC2(C)OOC1C2O)N(=O)=O                                                                                      
+ [O]OC1(O)C(=C(C)C2(OOC1(C)C2O)N(=O)=O)N(=O)=O                                                                          
+ [O]OC1(O)C(=C(C)C2(OOC1(C)C2ON(=O)=O)N(=O)=O)N(=O)=O                                                                   
+ CCC12OOC(C=C(N(=O)=O)C2(O)O[O])(N(=O)=O)C1O                                                                            
+ [O]OC1(O)C(=CC2(OOC1(CC)C2ON(=O)=O)N(=O)=O)N(=O)=O                                                                     
+ CCCC(=O)C(=O)C(O)C(=O)O[O]                                                                                             
+ CCCC12OOC(C=C(N(=O)=O)C2(O)O[O])(N(=O)=O)C1O                                                                           
+ CCCC12OOC(C=C(N(=O)=O)C2(O)O[O])(N(=O)=O)C1ON(=O)=O                                                                    
+ CC(C)C(=O)C(=O)C(O)C(=O)O[O]                                                                                           
+ [O]OC1(O)C(=CC2(OOC1(C(C)C)C2O)N(=O)=O)N(=O)=O                                                                         
+ [O]OC1(O)C(=CC2(OOC1(C(C)C)C2ON(=O)=O)N(=O)=O)N(=O)=O                                                                  
+ [O]OC1(O)C(=C(C)C2(C)OOC1(N(=O)=O)C2(C)O)N(=O)=O                                                                       
+ [O]OC1(O)C(=C(C)C2(C)OOC1(N(=O)=O)C2(C)ON(=O)=O)N(=O)=O                                                                
+ [O]OC1(O)C=C(C)C2(C)OOC1(N(=O)=O)C2O                                                                                   
+ [O]OC1(O)C(=C(C)C2(OOC1(C)C2(C)O)N(=O)=O)N(=O)=O                                                                       
+ [O]OC1(O)C(=C(C)C2(OOC1(C)C2(C)ON(=O)=O)N(=O)=O)N(=O)=O                                                                
+ [O]OC1(O)C(=CC2(C)OOC1(N(=O)=O)C2O)C                                                                                   
+ CCC12OOC(N(=O)=O)(C2O)C(O)(O[O])C(=C1C)N(=O)=O                                                                         
+ CCC12OOC(N(=O)=O)(C2ON(=O)=O)C(O)(O[O])C(=C1C)N(=O)=O                                                                  
+ CCC1=C(N(=O)=O)C2(OOC(C)(C2O)C1(O)O[O])N(=O)=O                                                                         
+ CCC1=C(N(=O)=O)C2(OOC(C)(C2ON(=O)=O)C1(O)O[O])N(=O)=O                                                                  
+ CCC12OOC(N(=O)=O)(C(=C(N(=O)=O)C2(O)O[O])C)C1O                                                                         
+ CCC12OOC(N(=O)=O)(C(=C(N(=O)=O)C2(O)O[O])C)C1ON(=O)=O                                                                  
+ CC(=O)C(=O)OC(=O)C(O[O])C                                                                                              
+ CC(=O)OC(=O)CC(=O)O[O]                                                                                                 
+ CC(O[O])(C)OC=O                                                                                                        
+ CC(O[O])CC(=O)OC=O                                                                                                     
+ CC(=O)COC(=O)CO[O]                                                                                                     
+ CC(=O)C(=O)CC(=O)O[O]                                                                                                  
+ CCC(=O)C(=O)CC(=O)O[O]                                                                                                 
+ CC(=O)C(C(O[O])(C)C)CC(=O)CC=O                                                                                         
+ CC(=O)C(=O)CC(O[O])CC=O                                                                                                
+ CC1(C)C(C(=O)O)CC1CC(=O)O[O]                                                                                           
+ CC1(C)C(O[O])(C(=O)CO)CC1CO                                                                                            
+ CC(=O)C(C(O[O])(C)C)CC=O                                                                                               
+ CC(O[O])(C)C(CO)CC(=O)C(=O)C                                                                                           
+ O=CCC(=O)CCO[O]                                                                                                        
+ C1C(=O)CC(O[O])C(=O)C1                                                                                                 
+ CC(O[O])(C)C(C=O)C(=O)CCC=O                                                                                            
+ CC1(C)C(=O)CCC(=O)C1C(=O)O[O]                                                                                          
+ C1C(=O)C(O[O])C(C)(C)C(=O)C1                                                                                           
+ CC(O[O])(C)C(CC=O)C(=O)CC=O                                                                                            
+ CC1(C)C(O[O])C(=O)CC(=O)C1C=O                                                                                          
+ CC(O)CC(O)CO[O]                                                                                                        
+ CC(O)(C)C(=O)CC(=O)O[O]                                                                                                
+ CC(O)(C)C(=O)CO[O]                                                                                                     
+ CC(C)C(O)CC(=O)O[O]                                                                                                    
+ CC(=O)CC(=O)C(O)(C)CO[O]                                                                                               
+ CCC(O)(C)CC(=O)O[O]                                                                                                    
+ CC(O[O])C(O)(C)CCO                                                                                                     
+ CCCC(O)CC(=O)O[O]                                                                                                      
+ CCCCC(O)CC(=O)O[O]                                                                                                     
+ CCCCCC(O)CC(=O)O[O]                                                                                                    
+ CCCCCCC(O)CC(=O)O[O]                                                                                                   
+ CCCCCCCC(O)CC(=O)O[O]                                                                                                  
+ O=CC(O)C(=O)C=CC(=O)O[O]                                                                                               
+ CC(=O)C(=O)O[O]                                                                                                        
+ O=CC(O)C(=O)C(C)=CC(=O)O[O]                                                                                            
+ O=CC(O)C(=O)C(C)=C(C)C(=O)O[O]                                                                                         
+ CC(=O)C(=O)C(O)(C)C(=O)O[O]                                                                                            
+ CC(=O)C(=O)OC(C)C(=O)O[O]                                                                                              
+ CC(=O)C(=O)OCC(=O)O[O]                                                                                                 
+ CC(=O)C(O)C(=O)C=C(C)C(=O)O[O]                                                                                         
+ CC(=O)C(O)C(=O)C(C)=CC(=O)O[O]                                                                                         
+ CCC(=O)C(=O)C(=O)C(=O)O[O]                                                                                             
+ O=CC(O)C(=O)C(CC)=CC(=O)O[O]                                                                                           
+ O=CC(O)C(=O)C(C(C)C)=CC(=O)O[O]                                                                                        
+ CCCC(C(=O)C(O)C=O)=CC(=O)O[O]                                                                                          
+ CC1(O[O])C(=O)OC(=O)C1(O)C                                                                                             
+ CC1(ON(=O)=O)C(=O)OC(=O)C1(O[O])C                                                                                      
+ CC(=O)C(O)C(=O)C(C)=C(C)C(=O)O[O]                                                                                      
+ O=CC(O)C(=O)C(CC)=C(C)C(=O)O[O]                                                                                        
+ CC(=O)C(O)C(=O)C=C(C(=O)O[O])CC                                                                                        
+ CCC(=O)C(O)C(=O)C(C)=CC(=O)O[O]                                                                                        
+ CC(=O)C(=O)OC(C(=O)O[O])CC                                                                                             
+ CCC1=CC(O)(O[O])C2(OOC1C2(C)O)N(=O)=O                                                                                  
+ OCCC(O)C(=O)O[O]                                                                                                       
+ CCC(=O)C(=O)CO[O]                                                                                                      
+ O=CCCC(=O)O[O]                                                                                                         
+ O=CCC(=O)CC(=O)O[O]                                                                                                    
+ O=CC(=O)CC(=O)CC(=O)O[O]                                                                                               
+ CC(=O)C(=O)CC(=O)CC(=O)O[O]                                                                                            
+ CC(=O)C(O)CC(=O)CC(=O)O[O]                                                                                             
+ CC(=O)C(O)CC(=O)CO[O]                                                                                                  
+ O=C(O)C1CC(CO[O])C1(C)C                                                                                                
+ O=CCC(=O)CO[O]                                                                                                         
+ O=C1CC(=O)CC(O[O])C1(ON(=O)=O)C                                                                                        
+ CC(O[O])(C)C(CC=O)CC=O                                                                                                 
+ OCC(O)CC(O[O])C=O                                                                                                      
+ OCC(=O)C(=O)C(O[O])CC=O                                                                                                
+ CC(=O)C(=O)C(C)C(=O)O[O]                                                                                               
+ CC(=O)C(=O)CC(=O)C(O[O])C                                                                                              
+ CC(=O)CC(=O)C(=O)C(O[O])C                                                                                              
+ CC(=O)C(=O)C(O[O])(C)C(=O)C                                                                                            
+ CCC(=O)C(=O)C(O[O])C(=O)CC                                                                                             
+ CCCC(=O)C(=O)C(O[O])C(=O)CC                                                                                            
+ CCCCC(=O)C(=O)C(O[O])C(=O)CC                                                                                           
+ CCCCCC(=O)C(=O)C(O[O])C(=O)CC                                                                                          
+ CCCCCCC(=O)C(=O)C(O[O])C(=O)CC                                                                                         
+ O=CC(=O)C=CC(=O)O[O]                                                                                                   
+ O=CC(=O)C=C(C)C(=O)O[O]                                                                                                
+ O=CC(=O)C(C)=C(C)C(=O)O[O]                                                                                             
+ O=CC(=O)C(C)=CC(=O)O[O]                                                                                                
+ O=CC(=O)C=C(C(=O)O[O])CC                                                                                               
+ CCCC(C(=O)O[O])=CC(=O)C=O                                                                                              
+ CC(C)C(C(=O)O[O])=CC(=O)C=O                                                                                            
+ CCC(C(=O)C=O)=C(C)C(=O)O[O]                                                                                            
+ CC(=O)C(=O)C(CC)=CC(=O)O[O]                                                                                            
+ CC(=O)C(=O)C=C(C(=O)O[O])CC                                                                                            
+ O=COC(=O)CO[O]                                                                                                         
+ O=CC(=O)CC(=O)CO[O]                                                                                                    
+ CC(=O)C(=O)CC(=O)CO[O]                                                                                                 
+ CC(=O)C(O[O])CC(=O)CC=O                                                                                                
+ CC(O[O])(C)C(CO)CC(=O)C(=O)CO                                                                                          
+ CC(=O)C(O[O])CC=O                                                                                                      
+ CC(=O)C(=O)CC(O[O])CO                                                                                                  
+ OCCC(=O)C(O[O])C=O                                                                                                     
+ O=CCCC(=O)C(O[O])C=O                                                                                                   
+ CC(C=O)(C)C(=O)CCC(=O)O[O]                                                                                             
+ O=CCC(=O)C(O[O])CC=O                                                                                                   
+ CC(C=O)(C)C(C=O)C(=O)CC(=O)O[O]                                                                                        
+ CC(O)CC(O)C(=O)O[O]                                                                                                    
+ CC(=O)C(O)(C)C(O[O])CO                                                                                                 
+ CC(=O)C(O)(C)C(=O)O[O]                                                                                                 
+ CC(=O)C(O)CC(=O)O[O]                                                                                                   
+ O=C(O)C1CC(C(=O)O[O])C1(C)C                                                                                            
+ CC1(C)C(O[O])CC1C(=O)O                                                                                                 
+ OCC1CC(O[O])(C(=O)O)C1(C)C                                                                                             
+ O=CCC(O[O])CC=O                                                                                                        
+ CC(C=O)(C)C(=O)CCO[O]                                                                                                  
+ CC(C=O)(C)C(C=O)C(=O)CO[O]                                                                                             
+ OC1C(=O)OC(=O)C1(O[O])CC                                                                                               
+ OC1C(=O)OC(=O)C1(O[O])CCC                                                                                              
+ OC1C(=O)OC(=O)C1(O[O])C(C)C                                                                                            
+ O=CC(=O)CC(=O)O[O]                                                                                                     
+ O=CC(=O)CO[O]                                                                                                          
+ OCC(=O)C(=O)CC(O[O])CO                                                                                                 
+ O=C1CC(=O)C(O[O])C(=O)C1(ON(=O)=O)C                                                                                    
+ O=CCC(=O)C(=O)CC(=O)O[O]                                                                                               
+ O=CCC(=O)C(=O)CO[O]                                                                                                    
+ OCC(O)CO[O]                                                                                                            
+ CC(O[O])(C)C(C(=O)O)CC=O                                                                                               
+ CC(O[O])(C)C(CO)CC(=O)C(=O)O                                                                                           
+ O=CCC(=O)C(C)(C)C(=O)O[O]                                                                                              
+ CC(C=O)(C)C(=O)CC(=O)O[O]                                                                                              
+ CC(O[O])(C)C(=O)CC=O                                                                                                   
+ CC(C=O)(C)C(=O)CO[O]                                                                                                   
+ CC(C=O)(C)C(C=O)C(=O)O[O]                                                                                              
+ O=CC(=O)CC(=O)C(ON(=O)=O)(C)C(=O)O[O]                                                                                  
+ CC(C=O)(C)C(O[O])C=O                                                                                                   
+ O=C(O)C(O[O])CC=O                                                                                                      
+ OCC(=O)C(=O)CC(=O)O[O]                                                                                                 
+ OCC(=O)C(=O)CO[O]                                                                                                      
+ CC(C=O)(C)C(=O)O[O]                                                                                                    
+END_DATARO2      
+
+#==========================================
+   BEGIN_DATAQUA              
+#===  ONLY 120 Characters per Line
+#------------------------------------------
+# Name          MolMass          Charge       SolubInd      OrgIndex
+#               [g/mol]                                        
+# 
+BR2CLm            195.25         -1.00          1.00          0.00
+BR2m              159.81         -1.00          1.00          0.00
+BR3m              239.70         -1.00          1.00          0.00
+BRCL2m            150.80         -1.00          1.00          0.00
+BRCLm             115.35         -1.00          1.00          0.00
+BRCH2COOm         137.90         -1.00          1.00          2.00
+BRO2m             111.90         -1.00          1.00          0.00
+BRO3m             127.90         -1.00          1.00          0.00
+BROHm              96.91         -1.00          1.00          0.00
+BRm                79.90         -1.00          1.00          0.00
+C2H5COOm           73.04         -1.00          1.00          2.00
+C2O4m              88.00         -1.00          1.00          2.00
+C2O4mm             88.00         -2.00          1.00          2.00
+CH2COCOOm          86.00         -1.00          1.00          3.00
+CH2COOm            58.00         -1.00          1.00          2.00
+CH2OHCOOm          75.02         -1.00          1.00          2.00
+CH3CH2CH2COOm      87.06         -1.00          1.00          4.00
+CH3CH2CHCOOm       86.06         -1.00          1.00          4.00
+CH3CH2CHO2COOm    118.05         -1.00          1.00          4.00
+CH3CH2CHOHCOOm    103.06         -1.00          1.00          4.00
+CH3CH2COCOOm      101.04         -1.00          1.00          4.00
+CH3CHCOOm          72.03         -1.00          1.00          3.00
+CH3CHO2COOm       104.03         -1.00          1.00          3.00
+CH3CHOHCOOm        89.04         -1.00          1.00          3.00
+CH3CO2OHCOOm      120.03         -1.00          1.00          3.00
+CH3COCOOm          87.03         -1.00          1.00          3.00
+CH3COHCOOm         88.03         -1.00          1.00          3.00
+CHOCH2COOm         86.02         -1.00          1.00          3.00
+CHOCHOHCOOm       103.03         -1.00          1.00          3.00
+CHOCOCOOm         101.01         -1.00          1.00          3.00
+CHOCOHCOOm        102.01         -1.00          1.00          3.00
+CHOCOHO2COOm      118.02         -1.00          1.00          3.00
+CHOH2CH2COOm      105.04         -1.00          1.00          3.00
+CHOH2COOm          91.02         -1.00          1.00          2.00
+CHOHCOOm           74.02         -1.00          1.00          2.00
+CHOHSO3m          110.07         -1.00          1.00          1.00
+CHOSO3m           109.07         -1.00          1.00          1.00
+CHOSO3mm          109.07         -2.00          1.00          1.00
+CL2m               70.90         -1.00          1.00          0.00
+CL3m              106.35         -1.00          1.00          0.00
+CLCH2COOm          93.45         -1.00          1.00          2.00
+CLO2m              67.45         -1.00          1.00          0.00
+CLOHm              52.45         -1.00          1.00          0.00
+CLm                35.45         -1.00          1.00          0.00
+CO2m               44.00         -1.00          1.00          0.00
+CO3m               60.00         -1.00          1.00          0.00
+CO3mm              60.00         -2.00          1.00          0.00
+COH2CH2COOm       104.03         -1.00          1.00          3.00
+COH2COOm           90.02         -1.00          1.00          2.00
+COH2O2CH2COOm     136.03         -1.00          1.00          3.00
+CUOHpp             80.55          2.00          1.00          0.00
+CUp                63.55          1.00          1.00          0.00
+CUpp               63.55          2.00          1.00          0.00
+FEC2O42m          231.85         -1.00          1.00          4.00
+FEC2O43mmm        319.85         -3.00          1.00          6.00
+FEC2O4p           143.85          1.00          1.00          2.00
+FECLpp             91.30          2.00          1.00          0.00
+FEMO2pp            87.85          2.00          1.00          1.00
+FEOH2FEpppp       145.71          4.00          1.00          0.00
+FEOH2p             89.86          1.00          1.00          0.00
+FEOHpp             72.85          2.00          1.00          0.00
+FEOpp              71.85          2.00          1.00          0.00
+FESO4p            151.91          1.00          1.00          0.00
+FEpp               55.85          2.00          1.00          0.00
+FEppp              55.85          3.00          1.00          0.00
+HC2O4m             89.01         -1.00          1.00          2.00
+HCO3m              61.00         -1.00          1.00          0.00
+HCOOm              45.01         -1.00          1.00          1.00
+HMSm              111.00         -1.00          1.00          1.00
+HO2CH2COOm         91.02         -1.00          1.00          2.00
+HOCH2COCOOm       103.02         -1.00          1.00          3.00
+HOCHCOCOOm        102.02         -1.00          1.00          3.00
+HOCO2HCOCOOm      134.02         -1.00          1.00          3.00
+HOOCC2H4COOm      117.04         -1.00          1.00          4.00
+HOOCCH2COOm       103.02         -1.00          1.00          3.00
+HOOCCHCH2COOm     116.04         -1.00          1.00          4.00
+HOOCCHCOOm        102.02         -1.00          1.00          3.00
+HOOCCHO2CH2COOm   148.04         -1.00          1.00          4.00
+HOOCCHOHCH2COOm   133.04         -1.00          1.00          4.00
+HOOCCHOHCOCOOm    119.02         -1.00          1.00          4.00
+HOOCCHOHCOOm      147.02         -1.00          1.00          3.00
+HOOCCO2HCOOm      134.02         -1.00          1.00          3.00
+HOOCCO2OHCH2COOm  164.03         -1.00          1.00          4.00
+HOOCCO2OHCOOm     150.02         -1.00          1.00          3.00
+HOOCCOCH2COOm     119.02         -1.00          1.00          4.00
+HOOCCOCHCOOm      118.02         -1.00          1.00          4.00
+HOOCCOCHO2COOm    162.02         -1.00          1.00          4.00
+HOOCCOCOCOOm      145.02         -1.00          1.00          4.00
+HOOCCOCOOm        117.01         -1.00          1.00          3.00
+HOOCCOHCH2COOm    132.03         -1.00          1.00          4.00
+HOOCCOHCOOm       118.02         -1.00          1.00          3.00
+HSO3m              81.07         -1.00          1.00          0.00
+HSO4m              97.07         -1.00          1.00          0.00
+HSO5m             113.07         -1.00          1.00          0.00
+I2m               253.80         -1.00          1.00          0.00
+I3m               380.70         -1.00          1.00          0.00
+IBR2m             286.70         -1.00          1.00          0.00
+ICH2COOm          184.90         -1.00          1.00          2.00
+ICL2m             197.80         -1.00          1.00          0.00
+ICLBRm            242.25         -1.00          1.00          0.00
+IO2m              158.90         -1.00          1.00          0.00
+IO3m              174.90         -1.00          1.00          0.00
+Im                126.90         -1.00          1.00          0.00
+MCOOm              59.02         -1.00          1.00          2.00
+MNBR2p            214.75          1.00          1.00          0.00
+MNCL2p            125.85          1.00          1.00          0.00
+MNHSO3p           136.01          1.00          1.00          0.00
+MNO2p              86.94          1.00          1.00          0.00
+MNOH2p             88.94          1.00          1.00          0.00
+MNOHpp             71.94          2.00          1.00          0.00
+MNOpp              70.94          2.00          1.00          0.00
+MNpp               54.94          2.00          1.00          0.00
+MNppp              54.94          3.00          1.00          0.00
+MNpppp             54.94          4.00          1.00          0.00
+NH4p               18.04          1.00          1.00          0.00
+NO2m               46.00         -1.00          1.00          0.00
+NO2p               46.00          1.00          1.00          0.00
+NO3m               62.00         -1.00          1.00          0.00
+NO4m               78.00         -1.00          1.00          0.00
+O2CH2COCOOm       118.02         -1.00          1.00          3.00
+O2CH2COOm          90.02         -1.00          1.00          2.00
+O2CHOHCOOm        106.02         -1.00          1.00          2.00
+O2CHOHSO3m        142.08         -1.00          1.00          1.00
+O2COH2COOm        122.01         -1.00          1.00          2.00
+O2m                32.00         -1.00          1.00          0.00
+O3m                48.00         -1.00          1.00          0.00
+OBRm               95.90         -1.00          1.00          2.00
+OCCOCOOm          100.00         -1.00          1.00          2.00
+OCLm               51.45         -1.00          1.00          2.00
+OCO2COCOOm        132.00         -1.00          1.00          3.00
+OIm               142.90         -1.00          1.00          0.00
+OOCCH2CH2COOmm    116.03         -2.00          1.00          4.00
+OOCCH2COOmm       102.02         -2.00          1.00          3.00
+OOCCHCH2COOmm     115.02         -2.00          1.00          4.00
+OOCCHCOOmm        101.01         -2.00          1.00          3.00
+OOCCHO2CH2COOmm   147.02         -2.00          1.00          4.00
+OOCCHO2COOmm      133.01         -2.00          1.00          3.00
+OOCCHOHCH2COOmm   132.03         -2.00          1.00          4.00
+OOCCHOHCHOHCHOm   133.04         -1.00          1.00          4.00
+OOCCHOHCHOHCOO2m  164.03         -1.00          1.00          4.00
+OOCCHOHCHOHCOOHm  149.04         -1.00          1.00          4.00
+OOCCHOHCHOHCOm    132.03         -1.00          1.00          4.00
+OOCCHOHCOCHOm     131.03         -1.00          1.00          4.00
+OOCCHOHCOCOO2m    162.02         -1.00          1.00          4.00
+OOCCHOHCOCOm      130.02         -1.00          1.00          4.00
+OOCCHOHCOOmm      118.02         -2.00          1.00          3.00
+OOCCOCH2COOmm     130.02         -2.00          1.00          4.00
+OOCCOCOOmm        116.00         -2.00          1.00          3.00
+OONOm              62.00         -1.00          1.00          0.00
+PAAm               75.00         -1.00          1.00          2.00
+S2O8mm            192.13         -2.00          1.00          0.00
+SO3m               80.06         -1.00          1.00          0.00
+SO3mm              80.06         -2.00          1.00          0.00
+SO4m               96.06         -1.00          1.00          0.00
+SO4mm              96.06         -2.00          1.00          0.00
+SO5O2Hm           145.07         -1.00          1.00          0.00
+SO5O2mm           144.07         -2.00          1.00          0.00
+SO5m              112.06         -1.00          1.00          0.00
+aACO3              75.03          0.00          1.00          2.00
+aBR                79.90          0.00          1.00          0.00
+aBR2              159.80          0.00          1.00          0.00
+aBR2O4            223.80          0.00          1.00          0.00
+aBRCH2CO3         153.92          0.00          1.00          2.00
+aBRCH2COH2O2      155.92          0.00          1.00          2.00
+aBRCH2COOH        138.92          0.00          1.00          2.00
+aBRCHO            108.91          0.00          1.00          1.00
+aBRCL             115.35          0.00          1.00          0.00
+aBRCOOH           124.91          0.00          1.00          1.00
+aBRO               95.90          0.00          1.00          0.00
+aBRO2             111.90          0.00          1.00          0.00
+aBRNO2            125.91          0.00          1.00          0.00
+aBRNO3            141.91          0.00          1.00          0.00
+aC2H4COOH2        118.05          0.00          1.00          4.00
+aC2H5              29.04          0.00          1.00          2.00
+aC2H5CHO           58.05          0.00          1.00          3.00
+aC2H5CHOH2         76.07          0.00          1.00          3.00
+aC2H5CO            57.04          0.00          1.00          3.00
+aC2H5CO2OH2       107.06          0.00          1.00          3.00
+aC2H5COH2          59.06          0.00          1.00          3.00
+aC2H5COO           73.04          0.00          1.00          3.00
+aC2H5COO2          89.04          0.00          1.00          3.00
+aC2H5OCHO          74.05          0.00          1.00          3.00
+aC2H5OCO           73.04          0.00          1.00          3.00
+aC2H5OCOO          89.04          0.00          1.00          3.00
+aC2H5OCOO2        105.04          0.00          1.00          3.00
+aC3H6OH            58.05          0.00          1.00          3.00
+aCH2CH2CH2CONCH2   98.08          0.00          1.00          5.00
+aCH2CH2CH2CONCH2O2  130.07        0.00          1.00          5.00
+aCH2CH2CH2CONCH3   99.08          0.00          1.00          5.00
+aCH2CH2CONCH2CO   112.06          0.00          1.00          5.00
+aCH2CH2CONCH2OOCO 144.06          0.00          1.00          5.00
+aCH2CH2CONCH3CH    98.07          0.00          1.00          5.00
+aCH2CH2CONCH3CHO  114.07          0.00          1.00          5.00
+aCH2CH2CONCH3CHO2 130.07          0.00          1.00          5.00
+aCH2CH2CONCH3CO   113.07          0.00          1.00          5.00
+aCH2CH2CONHCH      84.06          0.00          1.00          4.00
+aCH2CH2CONHCH2     85.06          0.00          1.00          4.00
+aCH2CH2CONHCHO    100.06          0.00          1.00          4.00
+aCH2CH2CONHCHO2   116.06          0.00          1.00          4.00
+aCH2CH2CONHCO      99.05          0.00          1.00          4.00
+aCH2CH2OCOOH       89.04          0.00          1.00          3.00
+aCH2COCH2CH3       71.06          0.00          1.00          4.00
+aCH2COCH2COHCH32  115.09          0.00          1.00          6.00
+aCH2COCOOH         87.02          0.00          1.00          3.00
+aCH2COOH           59.02          0.00          1.00          2.00
+aCH2OCOOH          75.02          0.00          1.00          2.00
+aCH2OH             31.02          0.00          1.00          1.00
+aCH2OH2            48.03          0.00          1.00          1.00
+aCH2OHCH2OH        62.05          0.00          1.00          2.00
+aCH2OHCO           59.02          0.00          1.00          2.00
+aCH2OHCO2O         91.02          0.00          1.00          2.00
+aCH2OHCOCH2COHCH32    132.10      0.00          1.00          6.00
+aCH2OHCOOH         76.03          0.00          1.00          2.00
+aCH3               15.00          0.00          1.00          1.00
+aCH3CH2CH2         43.06          0.00          1.00          3.00
+aCH3CH2CH2CH2OH    74.08          0.00          1.00          4.00
+aCH3CH2CH2CHO      72.07          0.00          1.00          4.00
+aCH3CH2CH2CHO2OH  105.07          0.00          1.00          4.00
+aCH3CH2CH2CHOH     73.08          0.00          1.00          4.00
+aCH3CH2CH2CHOH2    90.08          0.00          1.00          4.00
+aCH3CH2CH2CO       71.07          0.00          1.00          4.00
+aCH3CH2CH2CO2OH2  121.07          0.00          1.00          4.00
+aCH3CH2CH2COH2     89.08          0.00          1.00          4.00
+aCH3CH2CH2COO      87.06          0.00          1.00          4.00
+aCH3CH2CH2COO2    103.06          0.00          1.00          4.00
+aCH3CH2CH2COOH     88.06          0.00          1.00          4.00
+aCH3CH2CH2O        58.05          0.00          1.00          3.00
+aCH3CH2CH2O2       74.05          0.00          1.00          3.00
+aCH3CH2CH2OH       60.07          0.00          1.00          3.00
+aCH3CH2CHCOOH      87.06          0.00          1.00          4.00
+aCH3CH2CHO2COOH   119.06          0.00          1.00          4.00
+aCH3CH2CHOHCH3     74.05          0.00          1.00          4.00
+aCH3CH2CHOHCOOH   104.07          0.00          1.00          4.00
+aCH3CH2CO2OHCH3   105.07          0.00          1.00          4.00
+aCH3CH2COCOOH     102.05          0.00          1.00          4.00
+aCH3CH2COHCH3      73.05          0.00          1.00          4.00
+aCH3CH2COOH        74.05          0.00          1.00          3.00
+aCH3CH2O           45.04          0.00          1.00          2.00
+aCH3CHCOOH         73.05          0.00          1.00          3.00
+aCH3CHO            44.04          0.00          1.00          2.00
+aCH3CHO2COOH      105.05          0.00          1.00          3.00
+aCH3CHO2OCHO      105.04          0.00          1.00          3.00
+aCH3CHO2OH         77.04          0.00          1.00          2.00
+aCH3CHOCHO         61.04          0.00          1.00          3.00
+aCH3CHOH           45.04          0.00          1.00          2.00
+aCH3CHOH2          62.05          0.00          1.00          2.00
+aCH3CHOHCH3        60.07          0.00          1.00          3.00
+aCH3CHOHCOOH       90.05          0.00          1.00          3.00
+aCH3CO             43.03          0.00          1.00          2.00
+aCH3CO2OHCH3       91.06          0.00          1.00          3.00
+aCH3CO2OHCOOH     121.04          0.00          1.00          3.00
+aCH3COCBRO        150.93          0.00          1.00          3.00
+aCH3COCCLO        106.48          0.00          1.00          3.00
+aCH3COCH2          57.04          0.00          1.00          3.00
+aCH3COCH2CCH32     99.09          0.00          1.00          6.00
+aCH3COCH2CH3       72.07          0.00          1.00          4.00
+aCH3COCH2CHCH32   100.09          0.00          1.00          6.00
+aCH3COCH2CO2CH32  131.09          0.00          1.00          6.00
+aCH3COCH2COCH32   115.09          0.00          1.00          6.00
+aCH3COCH2O         73.03          0.00          1.00          3.00
+aCH3COCH2O2        89.03          0.00          1.00          3.00
+aCH3COCH2OH        74.03          0.00          1.00          3.00
+aCH3COCH3          58.04          0.00          1.00          3.00
+aCH3COCHCH3        71.07          0.00          1.00          4.00
+aCH3COCHCHCH32     99.09          0.00          1.00          6.00
+aCH3COCHO2CH3     103.06          0.00          1.00          4.00
+aCH3COCHO2CHCH32  131.09          0.00          1.00          6.00
+aCH3COCHOCH3       87.06          0.00          1.00          4.00
+aCH3COCHOCHCH32   115.10          0.00          1.00          6.00
+aCH3COCHOH         73.04          0.00          1.00          3.00
+aCH3COCHOH2        90.05          0.00          1.00          3.00
+aCH3COCHOHCHCH32  116.10          0.00          1.00          6.00
+aCH3COCHOHO2      105.04          0.00          1.00          3.00
+aCH3COCOCH2        85.04          0.00          1.00          3.00
+aCH3COCOCH2O      101.04          0.00          1.00          4.00
+aCH3COCOCH2O2     117.04          0.00          1.00          4.00
+aCH3COCOCH3        86.04          0.00          1.00          4.00
+aCH3COCOCHCH32    114.08          0.00          1.00          6.00
+aCH3COCOH2         89.04          0.00          1.00          3.00
+aCH3COCOH2O2      121.04          0.00          1.00          3.00
+aCH3COCOOH         88.03          0.00          1.00          3.00
+aCH3COH2           61.04          0.00          1.00          2.00
+aCH3COH2O2         93.04          0.00          1.00          2.00
+aCH3COHCH3         59.06          0.00          1.00          2.00
+aCH3COHCOOH        89.04          0.00          1.00          2.00
+aCH3CONO3         105.00          0.00          1.00          2.00
+aCH3COO            59.03          0.00          1.00          2.00
+aCH3COOH           60.03          0.00          1.00          2.00
+aCH3O              31.00          0.00          1.00          1.00
+aCH3OH             32.00          0.00          1.00          1.00
+aCHCH2COOH2       117.04          0.00          1.00          4.00
+aCHOCH2COHCH3CH2  101.08          0.00          1.00          5.00
+aCHOCH2COHCH3CH2O2   133.08       0.00          1.00          5.00
+aCHOCH2COHCH3CH2OH   134.04       0.00          1.00          5.00
+aCHOCH2COHCH3CHO     116.07       0.00          1.00          5.00
+aCHOCH2COOH        88.03          0.00          1.00          3.00
+aCHOCHOHCOOH      104.03          0.00          1.00          3.00
+aCHOCOCOOH        102.02          0.00          1.00          3.00
+aCHOCOHCOOH       103.03          0.00          1.00          3.00
+aCHOCOHO2COOH     135.03          0.00          1.00          3.00
+aCHOH2             47.02          0.00          1.00          1.00
+aCHOH2CH2COOH     106.05          0.00          1.00          3.00
+aCHOH2CHOH2        94.05          0.00          1.00          3.00
+aCHOH2COOH         92.03          0.00          1.00          2.00
+aCHOHCH2OH         61.04          0.00          1.00          2.00
+aCHOHCOOH          75.02          0.00          1.00          2.00
+aCL                35.45          0.00          1.00          0.00
+aCL2               70.90          0.00          1.00          0.00
+aCLCH2CO3         109.47          0.00          1.00          2.00
+aCLCH2COH2O2      111.47          0.00          1.00          2.00
+aCLCH2COOH         94.47          0.00          1.00          2.00
+aCLCHO             64.46          0.00          1.00          1.00
+aCLCOOH            80.46          0.00          1.00          1.00
+aCLNO              65.45          0.00          1.00          0.00
+aCLNO2             81.46          0.00          1.00          0.00
+aCLNO3             97.45          0.00          1.00          0.00
+aCLO               51.45          0.00          1.00          0.00
+aCLO2              67.45          0.00          1.00          0.00
+aCO                28.00          0.00          1.00          0.00
+aCO2               44.00          0.00          1.00          0.00
+aCO2H              45.00          0.00          1.00          0.00
+aCOBR2            187.81          0.00          1.00          1.00
+aCOCH2COHCH32     101.08          0.00          1.00          5.00
+aCOCL2             98.91          0.00          1.00          1.00
+aCOH2CH2COOH      105.04          0.00          1.00          3.00
+aCOH2CHOH2         93.04          0.00          1.00          2.00
+aCOH2COOH          91.02          0.00          1.00          2.00
+aCOH2O2CH2COOH    137.04          0.00          1.00          3.00
+aCOI2             281.81          0.00          1.00          1.00
+aETHPX             61.04          0.00          1.00          2.00
+aETOH              46.05          0.00          1.00          2.00
+aGLY               58.02          0.00          1.00          2.00
+aH2C2O4            90.02          0.00          1.00          2.00
+aH2O2              34.00          0.00          1.00          0.00
+aHBR               80.90          0.00          1.00          0.00
+aHBRO2            112.90          0.00          1.00          0.00
+aHCHO              30.00          0.00          1.00          1.00
+aHCL               36.45          0.00          1.00          0.00
+aHI               127.90          0.00          1.00          0.00
+aHIO2             159.90          0.00          1.00          0.00
+aHIO3             175.90          0.00          1.00          0.00
+aHNO3              63.00          0.00          1.00          0.00
+aHNO4              79.00          0.00          1.00          0.00
+aHO                17.00          0.00          1.00          0.00
+aHO2               33.00          0.00          1.00          0.00
+aHO2CH2COOH        92.03          0.00          1.00          2.00
+aHO3               49.00          0.00          1.00          0.00
+aHOBR              96.91          0.00          1.00          0.00
+aHOCH2COCOOH      104.03          0.00          1.00          3.00
+aHOCHCOCOOH       103.03          0.00          1.00          3.00
+aHOCL              52.46          0.00          1.00          0.00
+aHOCO2HCOCOOH     135.03          0.00          1.00          3.00
+aHONO              47.00          0.00          1.00          0.00
+aHOI              143.90          0.00          1.00          0.00
+aHOOCCH2COOH      104.03          0.00          1.00          3.00
+aHOOCCHCOOH       103.03          0.00          1.00          3.00
+aHOOCCHO2COOH     135.03          0.00          1.00          3.00
+aHOOCCHOHCH2COOH  134.05          0.00          1.00          4.00
+aHOOCCHOHCHOHCHO  134.05          0.00          1.00          4.00
+aHOOCCHOHCHOHCO   133.05          0.00          1.00          4.00
+aHOOCCHOHCHOHCOO2    165.05       0.00          1.00          4.00
+aHOOCCHOHCHOHCOOH    150.05       0.00          1.00          4.00
+aHOOCCHOHCOCHO    132.03          0.00          1.00          4.00
+aHOOCCHOHCOCO     131.03          0.00          1.00          4.00
+aHOOCCHOHCOCOO2   163.03          0.00          1.00          4.00
+aHOOCCHOHCOCOOH   148.03          0.00          1.00          4.00
+aHOOCCHOHCOOH     120.03          0.00          1.00          3.00
+aHOOCCO2OHCH2COOH    165.04       0.00          1.00          4.00
+aHOOCCO2OHCOOH    151.02          0.00          1.00          3.00
+aHOOCCOCH2COOH    132.03          0.00          1.00          4.00
+aHOOCCOCHCOOH     131.03          0.00          1.00          4.00
+aHOOCCOCHO2COOH   163.03          0.00          1.00          4.00
+aHOOCCOCOCOOH     146.02          0.00          1.00          4.00
+aHOOCCOCOOH       118.02          0.00          1.00          3.00
+aHOOCCOHCH2COOH   133.04          0.00          1.00          4.00
+aHOOCCOHCOOH      119.03          0.00          1.00          3.00
+aHOONO             63.00          0.00          1.00          0.00
+aI                126.90          0.00          1.00          0.00
+aI2               253.80          0.00          1.00          0.00
+aI2O2             285.80          0.00          1.00          0.00
+aIBR              206.80          0.00          1.00          0.00
+aICH2CO3          200.92          0.00          1.00          2.00
+aICH2COH2O2       202.92          0.00          1.00          2.00
+aICH2COOH         185.92          0.00          1.00          2.00
+aICHO             155.91          0.00          1.00          1.00
+aICL              162.35          0.00          1.00          0.00
+aICOOH            171.91          0.00          1.00          1.00
+aINO2             172.90          0.00          1.00          0.00
+aINO3             188.90          0.00          1.00          0.00
+aIO               142.90          0.00          1.00          0.00
+aMGLY              72.03          0.00          1.00          3.00
+aMO2               47.00          0.00          1.00          2.00
+aN2O5             108.01          0.00          1.00          0.00
+aNH3               17.00          0.00          1.00          0.00
+aNO                30.00          0.00          1.00          0.00
+aNO2               46.00          0.00          1.00          0.00
+aNO3               62.00          0.00          1.00          0.00
+aO2                32.00          0.00          1.00          0.00
+aO2C3H6OH          91.06          0.00          1.00          3.00
+aO2CH2COCH2CH3    103.06          0.00          1.00          4.00
+aO2CH2COCH2COHCH32   148.10       0.00          1.00          6.00
+aO2CH2COCOOH      119.02          0.00          1.00          3.00
+aO2CH2COOH         91.02          0.00          1.00          2.00
+aO2CH2OH           63.02          0.00          1.00          1.00
+aO2CH3CHOH         77.04          0.00          1.00          2.00
+aO2CHCH2COOH2     149.04          0.00          1.00          4.00
+aO2CHO             61.01          0.00          1.00          1.00
+aO2CHOHCH2OH       93.04          0.00          1.00          2.00
+aO2CHOHCOOH       107.20          0.00          1.00          2.00
+aO2COH2CHOH2      125.04          0.00          1.00          2.00
+aO2COH2COOH       123.02          0.00          1.00          2.00
+aO3                48.00          0.00          1.00          0.00
+aO3PX              16.00          0.00          1.00          0.00
+aOCCHOHCHOHCHO    117.04          0.00          1.00          4.00
+aOCCHOHCOCHO      115.03          0.00          1.00          4.00
+aOCCOCOOH         101.01          0.00          1.00          3.00
+aOCH2CH2OCOOH     105.04          0.00          1.00          3.00
+aOCH2COCH2CH3      87.06          0.00          1.00          4.00
+aOCH2COCH2COHCH32    131.09       0.00          1.00          6.00
+aOCH2COOH          75.02          0.00          1.00          2.00
+aOCO2CHOHCHOHCHO  149.04          0.00          1.00          4.00
+aOCO2CHOHCOCHO    147.02          0.00          1.00          4.00
+aOCO2COCOOH       133.01          0.00          1.00          3.00
+aOH2CCH2OH         77.04          0.00          1.00          2.00
+aOH2CHCH2OH        78.05          0.00          1.00          2.00
+aOH2CO2CH2OH      109.04          0.00          1.00          2.00
+aOHCCH2OH          60.03          0.00          1.00          2.00
+aOHCCHCH32         72.07          0.00          1.00          4.00
+aOHCCHCHCHO        84.03          0.00          1.00          4.00
+aOHCCHOHCHCHO     101.04          0.00          1.00          4.00
+aOHCCHOHCHO2CHO   133.04          0.00          1.00          4.00
+aOHCCHOHCHOHCHO   118.05          0.00          1.00          4.00
+aOHCCHOHCOCHO     116.03          0.00          1.00          4.00
+aOHCCOCH2COHCH32  130.08          0.00          1.00          6.00
+aOHCH2SO3         111.09          0.00          1.00          1.00
+aOIO              158.90          0.00          1.00          0.00
+aOOCH2CH2OCOOH    121.04          0.00          1.00          3.00
+aOP1               48.00          0.00          1.00          1.00
+aORA1              46.00          0.00          1.00          1.00
+aPAA               76.03          0.00          1.00          2.00
+aSO2               64.00          0.00          1.00          0.00
+aSO3               80.00          0.00          1.00          0.00
+aSULF              98.00          0.00          1.00          0.00
+aWSOC             100.00          0.00          1.00          6.00
+aWISOC            250.00          0.00          0.00         20.00
+aEC                12.00          0.00          0.00          0.00
+KATp               23.60          1.00          1.00          0.00
+KATpp              27.60          2.00          1.00          0.00
+ANIm               19.00         -1.00          1.00          0.00
+aMETAL             87.60          0.00          0.00          0.00
+aSIO2              60.00          0.00          0.00          0.00
+aP                 31.00          0.00          1.00          0.00
+aMSA               96.00          0.00          1.00          1.00
+OHm                17.00         -1.00          1.00          0.00
+Hp                  1.00          1.00          1.00          0.00
+aCS(=O)(=O)[O-]        96.11     -1.00          1.00          1.00
+aCS(=O)[O-]            80.11     -1.00          1.00          1.00
+aC[S+](=O)C            78.13      1.00          1.00          2.00
+aICC(=O)[O-]          184.90     -1.00          1.00          2.00
+aO=C([O-])CCL          93.45     -1.00          1.00          2.00
+a[C]S(=O)(=O)[O-]      95.11     -1.00          1.00          1.00
+a[O]OCS(=O)(=O)[O-]   127.11     -1.00          1.00          1.00
+a[C]S(=O)(=O)O         95.11      0.00          1.00          1.00
+a[O]OCS(=O)(=O)O      127.11      0.00          1.00          1.00
+a[S](C)(C)BR          142.04      0.00          1.00          2.00
+a[S](C)(C)CL           97.59      0.00          1.00          2.00
+aCS(=O)(=O)C           94.13      0.00          1.00          2.00
+aCS(=O)(=O)CO[O]      125.13      0.00          1.00          2.00
+aCS(=O)(=O)O[O]       111.11      0.00          1.00          1.00
+aCS(=O)(=O)[C]         93.13      0.00          1.00          2.00
+aCS(=O)(=O)[O]         95.13      0.00          1.00          1.00
+aC[S](=O)(BR)C        157.96      0.00          1.00          2.00
+aCS(=O)C               78.13      0.00          1.00          2.00
+aCS(=O)O               80.11      0.00          1.00          1.00
+aCSC                   62.14      0.00          1.00          2.00
+aC[C](=O)              43.03      0.00          1.00          2.00
+aC[S](=O)(CL)C        113.51      0.00          1.00          2.00
+aC[S](=O)(O)C          95.05      0.00          1.00          2.00
+aC[S](=O)(O)O          98.11      0.00          1.00          1.00
+aC[S](=O)=O            79.11      0.00          1.00          1.00
+[H2O]              18.00          0.00          1.00          0.00
+[N2]               28.00          0.00          1.00          0.00
+[O2]               32.00          0.00          1.00          0.00
+[aH2O]             18.00          0.00          1.00          0.00
+   END_DATAQUA

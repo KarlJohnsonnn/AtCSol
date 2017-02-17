@@ -1,0 +1,40 @@
+ &ZEITEN
+  DELTAT = .1E0
+ /END
+ &FEBDAT
+ /END
+ &MICPHYS
+  icond  = 1,
+  ikoll  = 0,
+  ibrea  = 0,
+  imoving =  1,
+  ifeedback =  2,
+  isolutens =  0,
+  iideal = 1,
+  iextern =  0,
+  icoarse =  0,
+  idepo   =  0,
+ /END
+ &METEOROLOGY
+  TABS0 = 290.E0,
+  SATT0 =  90.0E0,
+  tSimul0 = 0.E0, !43200.E0,
+ /END
+
+BEGIN_TRAJ
+  2                               # nTraj    ... number of trajectory values
+    1.e0                         # hWind    ... acceleration of run
+
+     0.e0  864000.e0
+  1600.e0  1600.e0
+   850.e0   850.e0
+END_TRAJ
+
+
+BEGIN_SPEK
+   1                 # nModes  ...  number of input modes
+#  Dichten:  NaCl = 2160 kg/m3, AmmSulfate = 1770 kg/m3
+#  Radius [m]     Number [#/cm3]     Density [kg/m3]
+     0.1E-6          1.0E+8             2160.E0
+END_SPEK
+
