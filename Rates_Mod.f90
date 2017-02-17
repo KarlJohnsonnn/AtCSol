@@ -119,7 +119,6 @@
         Rate(iReac) = Meff * k
         print*, 'debugg:: i,rate(i) = ', ireac, Rate(ireac)
         IF (combustion) DRatedT(iReac) = DkdT
-      if (ireac==21368) print*, ReactionSystem(iReac)%line1
       END DO
       !stop
       TimeRateE=MPI_WTIME()

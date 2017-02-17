@@ -23,8 +23,8 @@ CL=
 
 KINCL_O =   -I./LIB -I/Users/schimmel/Documents/SparseLinearSolver/MUMPS_5.0.0/include -I/usr/local/include
 KINCL_D =   -I./LIB_D -I/Users/schimmel/Documents/SparseLinearSolver/MUMPS_5.0.0/include -I/usr/local/include
-LIB_O = /Users/schimmel/Documents/CHEMIE/parallel_17X/LIB
-LIB_D = /Users/schimmel/Documents/CHEMIE/parallel_17X/LIB_D
+LIB_O = ./LIB
+LIB_D = ./LIB_D
 MUMPS=-L/Users/schimmel/Documents/SparseLinearSolver/MUMPS_5.0.0/lib -ldmumps  -lmumps_common  -lpord
 
 SCALAP  = /Users/schimmel/Documents/SparseLinearSolver/scalapack-2.0.2/libscalapack.a \
