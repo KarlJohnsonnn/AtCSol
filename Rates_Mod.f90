@@ -107,9 +107,9 @@
         !
         ! ======================== Build rate =============================
         DO j=A%RowPtr(iReac),A%RowPtr(iReac+1)-1
-          IF (A%Val(j)==ONE) THEN
+          IF ( A%Val(j)==ONE ) THEN
             k=k*y_conc(A%ColInd(j))
-          ELSE IF(A%Val(j)==2.0d0) THEN
+          ELSE IF ( A%Val(j)==TWO ) THEN
             k=k*y_conc(A%ColInd(j))*ABS(y_conc(A%ColInd(j)))
           ELSE
             k=k*y_conc(A%ColInd(j))**A%Val(j)

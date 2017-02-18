@@ -130,6 +130,7 @@ REAL(RealKind) :: tAnf              & ! Model start time
 &                              , ZERO       = 0.d0               &
 &                              , ONE        = 1.d0               &
 &                              , mONE       = -1.d0              &
+&                              , TWO        = 2.d0              &
 &                              , Pi         = 4.0d0*ATAN(1.0d0)  &
 &                              , DR         = Pi / 180.d0        &
 &                              , PiHalf     = 2.0d0*ATAN(1.0d0)  &

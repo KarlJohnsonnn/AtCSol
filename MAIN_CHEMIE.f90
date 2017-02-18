@@ -208,8 +208,10 @@ PROGRAM Main_ChemKin
   !
     !print*, 'debug :: nach schwefel'
     !do i=1,nspc
-    !  print*, y_name(i),InitValAct(i)
+      !print*, y_name(i),InitValAct(i)
+      !WRITE(111,*) y_name(i)
     !end do
+    !stop
   !
   CALL Print_Run_Param()
   !-----------------------------------------------------------------------

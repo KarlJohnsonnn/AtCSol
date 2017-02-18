@@ -294,15 +294,14 @@ MODULE Rosenbrock_Mod
     !---- Compute y''(t) and a better initial step size
     h=absh
     tdel=(t+MIN(sqrteps*MAX(ABS(t),ABS(t+h)),absh))-t
-     print*, 'debug:: tdel=     ', tdel
+    print*, 'debug:: tdel=     ', tdel
     !
     CALL Rates((t+tdel),y,Rate,DRatedT)
     Output%nRateEvals=Output%nRateEvals+1
     !
     print*, 'debug:: sumzzz(bat,rate,yem,f1)=     ', SUM(BAT%Val),SUM(Rate),SUM(y_e)
     CALL MatVecMult(BAT,Rate,y_e,f1)
-     print*, 'debug:: sum(f1)=     ', SUM(f1), SIZE(BAT%VAL),SIZE(rate),SIZE(y_e)
-     stop 'stop'
+    print*, 'debug:: sum(f1)=     ', SUM(f1), SIZE(BAT%VAL),SIZE(rate),SIZE(y_e)
     !
     DfDt=(f1-f0)/tdel
     CALL MatVecMult(Jac,f0,zeros,Tmp)
@@ -315,8 +314,8 @@ MODULE Rosenbrock_Mod
       absh=1.0D0/rh
     END IF
     absh=MAX(absh,hmin)
-     print*, 'debug:: h, absh', h, absh
-     !stop
+    print*, 'debug:: h, absh', h, absh
+    !stop
   END SUBROUTINE InitialStepSize
   !
   !
@@ -453,13 +452,13 @@ MODULE Rosenbrock_Mod
     !
 
     !call printsparse(LU_miter,'*')
-    !WRITE(*,*) '----------------------------'
-    !WRITE(*,*) 'debug h, t      :: ', h , t
-    !WRITE(*,*) '      rate(1:3) :: ', rate(1:3), SUM(rate)
-    !WRITE(*,*) '      conc(1:3) :: ', y(1:3), SUM(y)
-    !WRITE(*,*) '      sum(Miter):: ', SUM(Miter%val)
-    !WRITE(*,*) '      sum(LU)   :: ', SUM(LU_Miter%val)
-    !WRITE(*,*) 
+    WRITE(*,*) '----------------------------'
+    WRITE(*,*) 'debug h, t      :: ', h , t
+    WRITE(*,*) '      rate(1:3) :: ', rate(1:3), SUM(rate)
+    WRITE(*,*) '      conc(1:3) :: ', y(1:3), SUM(y)
+    WRITE(*,*) '      sum(Miter):: ', SUM(Miter%val)
+    WRITE(*,*) '      sum(LU)   :: ', SUM(LU_Miter%val)
+    WRITE(*,*) 
     !
     !****************************************************************************************
     !   ____    ___ __        __          _____  _                    ____   _               

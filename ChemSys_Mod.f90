@@ -1437,6 +1437,7 @@ MODULE Chemsys_Mod
       &              R1=c1)
       !
       i=0
+      !print*, i
       DO
         CALL LineFile( Back, Start1='BEGIN_DATARO2',  &
         &              End='END_DATARO2',             &
@@ -1444,6 +1445,8 @@ MODULE Chemsys_Mod
         IF (Back) EXIT
         IF (PositionSpeciesAll(SpeciesName)>0) i=i+1
       END DO
+      !print*, i
+      !Stop
       IF (i>0) THEN
         ALLOCATE(RO2spcG(i))
         RO2spcG=''
@@ -1467,18 +1470,20 @@ MODULE Chemsys_Mod
           IF ( slash>0 ) THEN
             SpeciesName(slash:slash)='/'
           END IF
-          print*, 'debug :: spc pos=', PositionSpeciesAll(SpeciesName), TRIM(SpeciesName)
+          !print*, 'debug :: spc pos=', PositionSpeciesAll(SpeciesName), TRIM(SpeciesName)
           IF (PositionSpeciesAll(SpeciesName)>0) THEN
             i=i+1
             RO2spcG(i)=SpeciesName
             RO2(i)=PositionSpeciesAll(SpeciesName)
           END IF
+          !WRITE(222,*) 'debug:: ', TRIM(RO2spcG(i)), RO2(i)
         END DO
       END IF
       CALL RewindFile
       CALL ClearIniFile
     END IF
     !
+    !stop 'chemsysmod'
     !-----------------------------------------------------------
     ! --- Aqua Phase RO2
     !
