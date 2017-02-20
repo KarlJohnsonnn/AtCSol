@@ -5,3 +5,5 @@ CHEMIE
 CHEMIE_g
 *.chem
 matrixOut/
+fort.*
+list

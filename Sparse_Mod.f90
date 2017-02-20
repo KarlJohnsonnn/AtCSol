@@ -1434,7 +1434,7 @@ MODULE Sparse_Mod
     !          _ 
     INTEGER :: i
     !
-    !LU%Val=ZERO
+    LU%Val=ZERO
     LU%Val(Permu(:))=A%Val(:)
     !DO i=1,A%RowPtr(A%m+1)-1
     !  LU%Val(Permu(i))=A%Val(i)
@@ -1684,23 +1684,24 @@ MODULE Sparse_Mod
       Tmp=ZERO
       DO jj=A%RowPtr(i),A%RowPtr(i+1)-1
         Tmp=Tmp+A%Val(jj)*Vec1(A%ColInd(jj))
+        !print*, 'debug:: A,V=',A%Val(jj),Vec1(A%ColInd(jj))
       END DO
       Rhs(i)=Tmp+Vec2(i)
+      !print*, 'debug:: tmp=',rhs(i)
     END DO
-    write(343,*) '-----------'
-    do i=1,SIZE(A%val)
-     write(343,*) A%val(i)
-    end do 
-    write(343,*) '-----------'
-    do i=1,SIZE(vec1)
-     write(343,*) vec1(i)
-    end do 
-     write(343,*) '-----------'
-    do i=1,SIZE(vec2)
-     write(343,*) vec2(i)
-    end do
-    write(343,*) '-----------'
-    stop
+    !write(343,*) '-----------',SIZE(A%val)
+    !do i=1,SIZE(A%val)
+    ! write(343,*) A%val(i)
+    !end do 
+    !write(343,*) '-----------',SIZE(vec1)
+    !do i=1,SIZE(vec1)
+    ! write(343,*) vec1(i)
+    !end do 
+    ! write(343,*) '-----------',SIZE(vec2)
+    !do i=1,SIZE(vec2)
+    ! write(343,*) vec2(i)
+    !end do
+    !stop
   END SUBROUTINE MatVecMult
   !
   !

@@ -137,6 +137,8 @@ MODULE Integration_Mod
     CALL SparseAdd(BA,B,A,'-')     ! numeric subtraction:  BA = B - A
     CALL TransposeSparse(BAT,BA)   ! transpose BA:        BAT = Transpose(BA) 
     !  
+    !call printsparse(BAT,'*')
+    !stop
     ! we need to calculate the Jacobian for both versions 'cl' and 'ex' to
     ! calculate an initial stepsize based on 2nd derivative (copy of MATLABs ode23s)
     !
@@ -190,7 +192,7 @@ MODULE Integration_Mod
     CALL Rates(Tspan(1),y0,Rate,DRatedT)      ! Calculate first reaction rates
     dummyrate(:)=Rate(:)
 
-    print*, 'debug :: roargs srate,sy  ', SUM(Rate), SUM(y0)
+    !print*, 'debug :: roargs srate,sy  ', SUM(Rate), SUM(y0)
     !stop
     
     Rate(:)=MAX(ABS(Rate(:)),eps)*SIGN(ONE,Rate(:))
@@ -198,7 +200,7 @@ MODULE Integration_Mod
     !
     ! ----calc values of Jacobian
     TimeJacobianA=MPI_WTIME()
-    CALL JacobiMatrix(BAT,A,dummyrate,y0,Jac_C)
+    CALL JacobiMatrix(BAT,A,Rate,y,Jac_C)
     !CALL JacobiMatrix(BAT,A,Rate,y,Jac_C)
     TimeJac=TimeJac+MPI_WTIME()-TimeJacobianA
     Output%npds=Output%npds+1
@@ -207,7 +209,7 @@ MODULE Integration_Mod
     IF (MPI_ID==0.AND.MatrixPrint) CALL SaveMatricies(A,B,BAT,Miter,LU_Miter,BSP)
     !
     !---- calculate a first stepsize based on 2nd deriv.
-    CALL InitialStepSize(h,hmin,absh,Jac_C,dummyrate,t,y0(1:nspc),RCo%pow)
+    CALL InitialStepSize(h,hmin,absh,Jac_C,dummyrate,t,y(1:nspc),RCo%pow)
     !CALL InitialStepSize(h,hmin,absh,Jac_C,Rate,t,y(1:nspc),RCo%pow)
     ! 
     !call printsparse(Jac_C,'*')

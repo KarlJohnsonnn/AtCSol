@@ -280,12 +280,15 @@ MODULE Rosenbrock_Mod
     ! the working precision, but with this definition, it is 0 if t = 0.
     hmin=minStp
     !
+    !print*,'debug:: in ', SUM(ABS(y))
     !---- Compute an initial step size h using yp=y'(t) 
     CALL MatVecMult(BAT,Rate,y_e,f0)
     wt=MAX(ABS(y),ThresholdStepSizeControl(1:nspc))
     rh=(1.25D0*MAXVAL(ABS(f0(:)/wt(:))))/(RTolRow**pow)
     !
-    print*, 'debug:: SUM(wt),rh,sum(f0)', sum(wt) , rh, SUM(f0)
+    !print*,'debug:: pw,nspcm', RTolRow**pow, nspc
+    !print*,
+    !print*, 'debug:: SUM(wt),rh,sum(f0)', sum(ABS(wt)) , rh, SUM(ABS(f0))
     absh=MIN(maxStp,Tspan(2)-Tspan(1))
     IF (absh*rh>1.0D0) THEN
       absh=1.0D0/rh
@@ -294,15 +297,16 @@ MODULE Rosenbrock_Mod
     !---- Compute y''(t) and a better initial step size
     h=absh
     tdel=(t+MIN(sqrteps*MAX(ABS(t),ABS(t+h)),absh))-t
-    print*, 'debug:: tdel=     ', tdel
+    !print*, 'debug:: tdel=     ', tdel, t+tdel
     !
     CALL Rates((t+tdel),y,Rate,DRatedT)
     Output%nRateEvals=Output%nRateEvals+1
     !
-    print*, 'debug:: sumzzz(bat,rate,yem,f1)=     ', SUM(BAT%Val),SUM(Rate),SUM(y_e)
+    !print*, 'debug:: sumzzz(bat,rate,yem,f1)=     ', SUM(BAT%Val),SUM(Rate),SUM(y_e)
     CALL MatVecMult(BAT,Rate,y_e,f1)
-    print*, 'debug:: sum(f1)=     ', SUM(f1), SIZE(BAT%VAL),SIZE(rate),SIZE(y_e)
+    !print*, 'debug:: sum(f1)=     ', SUM(f1), SIZE(BAT%VAL),SIZE(rate),SIZE(y_e)
     !
+    !stop 'stop'
     DfDt=(f1-f0)/tdel
     CALL MatVecMult(Jac,f0,zeros,Tmp)
     DfDt=DfDt+Tmp
@@ -314,7 +318,7 @@ MODULE Rosenbrock_Mod
       absh=1.0D0/rh
     END IF
     absh=MAX(absh,hmin)
-    print*, 'debug:: h, absh', h, absh
+    !print*, 'debug:: h, absh', h, absh
     !stop
   END SUBROUTINE InitialStepSize
   !
@@ -428,6 +432,12 @@ MODULE Rosenbrock_Mod
       END IF
     END IF
     !
+    !WRITE(*,*) '----------------------------'
+    !WRITE(*,*) 'debug h, t        :: ', h , t
+    !WRITE(*,*) '      rate(1:3)   :: ', rate(1:3), SUM(rate)
+    !WRITE(*,*) '      conc(1:3)   :: ', y(1:3), SUM(y)
+    !WRITE(*,*) '      sum(Miter)  :: ', SUM(Miter%val)
+    !WRITE(*,*) '      sum(LU)1    :: ', SUM(LU_Miter%val)
 
     !
     !****************************************************************************************
@@ -452,13 +462,8 @@ MODULE Rosenbrock_Mod
     !
 
     !call printsparse(LU_miter,'*')
-    WRITE(*,*) '----------------------------'
-    WRITE(*,*) 'debug h, t      :: ', h , t
-    WRITE(*,*) '      rate(1:3) :: ', rate(1:3), SUM(rate)
-    WRITE(*,*) '      conc(1:3) :: ', y(1:3), SUM(y)
-    WRITE(*,*) '      sum(Miter):: ', SUM(Miter%val)
-    WRITE(*,*) '      sum(LU)   :: ', SUM(LU_Miter%val)
-    WRITE(*,*) 
+    !WRITE(*,*) '      sum(LU)2    :: ', SUM(LU_Miter%val)
+    !WRITE(*,*) 
     !
     !****************************************************************************************
     !   ____    ___ __        __          _____  _                    ____   _               

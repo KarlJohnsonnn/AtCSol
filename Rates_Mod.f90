@@ -89,21 +89,26 @@
         ! ====== Compute the rate constant for specific reaction type ===
         CALL ComputeRateConstant(k,DkdT,T,Time,chi,mAir,iReac,y_conc,Meff)
         !
+        !print*, 'DEBUGG :: k1=',k
         ! ================ Multiplication with FACTOR====================
         CALL CheckThirdBodys(Meff,y_conc,iReac)
         !
+        !print*, 'DEBUGG :: me=',meff
         ! ========= Multiplication with Inactiv (passiv) Educts ===========
         CALL CheckInactEducts(k,iReac,actLWC)
         !
+        !print*, 'DEBUGG :: k2=',k
         ! ===== mult with (LWC^SUM(EductsCoefs)^-1) for correct dim units =============
         IF (ReactionSystem(iReac)%Type=='DISS'.OR.ReactionSystem(iReac)%Type=='AQUA') THEN
           CALL AquaDimLWC(k,iReac,actLWC)
         END IF
         !
+        !print*, 'DEBUGG :: k3=',k
         ! === Calc the coefficient for Gas->Aqua or Aqua->Gas Reactions ===
         IF (ReactionSystem(iReac)%Type=='HENRY') THEN
           CALL HenryMassTransferCoef(k,T(1),Time,iReac,actLWC)
         END IF
+        !print*, 'DEBUGG :: k4=',k
         !
         ! ======================== Build rate =============================
         DO j=A%RowPtr(iReac),A%RowPtr(iReac+1)-1
@@ -116,6 +121,7 @@
           END IF  
         END DO
         ! Last step
+        !print*, 'DEBUGG :: k5=',k
         Rate(iReac) = Meff * k
        ! print*, 'debugg:: i,rate(i) = ', ireac, Rate(ireac)
         IF (combustion) DRatedT(iReac) = DkdT

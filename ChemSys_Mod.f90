@@ -1375,6 +1375,8 @@ MODULE Chemsys_Mod
     CHARACTER(10) :: ro2d
     CHARACTER(10) :: c2
     INTEGER :: slash
+    INTEGER, ALLOCATABLE :: allRO2(:)
+    CHARACTER(100), ALLOCATABLE :: allRO2name(:)
    
     CALL OpenIniFile(FileName)
     !
@@ -1436,53 +1438,46 @@ MODULE Chemsys_Mod
       &              Name1=SpeciesName,               &
       &              R1=c1)
       !
+      ALLOCATE(allRO2(c1))
+      ALLOCATE(allRO2name(c1))
+      allRO2(:)=0
+      allRO2name(:)='dummy'
+      !
+      !
+      CALL RewindFile
+      CALL ClearIniFile
+      c1=0
+      CALL LineFile( Back, Start1='BEGIN_DATARO2',  &
+      &              End='END_DATARO2',             &
+      &              Name1=ro2d,                    &
+      &              R1=c1)
+      !
       i=0
-      !print*, i
       DO
         CALL LineFile( Back, Start1='BEGIN_DATARO2',  &
         &              End='END_DATARO2',             &
         &              Name1=SpeciesName)
-        IF (Back) EXIT
-        IF (PositionSpeciesAll(SpeciesName)>0) i=i+1
+        IF ( Back ) EXIT
+        slash=INDEX(SpeciesName,'_')
+        IF ( slash>0 ) THEN
+          SpeciesName(slash:slash)='/'
+        END IF
+        IF (PositionSpeciesAll(SpeciesName)>0) THEN
+          i=i+1
+          allRO2name(i)=SpeciesName
+          allRO2(i)=PositionSpeciesAll(SpeciesName)
+          !print*, 'debug:: ro2 :',i,PositionSpeciesAll(SpeciesName), SpeciesName
+        END IF
       END DO
-      !print*, i
-      !Stop
-      IF (i>0) THEN
-        ALLOCATE(RO2spcG(i))
-        RO2spcG=''
-        ALLOCATE(RO2(i))
-        RO2=0
-        CALL RewindFile
-        CALL ClearIniFile
-        c1=0
-        CALL LineFile( Back, Start1='BEGIN_DATARO2',  &
-        &              End='END_DATARO2',             &
-        &              Name1=ro2d,                    &
-        &              R1=c1)
-        !
-        i=0
-        DO
-          CALL LineFile( Back, Start1='BEGIN_DATARO2',  &
-          &              End='END_DATARO2',             &
-          &              Name1=SpeciesName)
-          IF (Back) EXIT
-          slash=INDEX(SpeciesName,'_')
-          IF ( slash>0 ) THEN
-            SpeciesName(slash:slash)='/'
-          END IF
-          !print*, 'debug :: spc pos=', PositionSpeciesAll(SpeciesName), TRIM(SpeciesName)
-          IF (PositionSpeciesAll(SpeciesName)>0) THEN
-            i=i+1
-            RO2spcG(i)=SpeciesName
-            RO2(i)=PositionSpeciesAll(SpeciesName)
-          END IF
-          !WRITE(222,*) 'debug:: ', TRIM(RO2spcG(i)), RO2(i)
-        END DO
-      END IF
       CALL RewindFile
       CALL ClearIniFile
     END IF
     !
+    c1=c1-COUNT(allRO2==0,1)
+    ALLOCATE(RO2spcG(c1))
+    ALLOCATE(RO2(c1))
+    RO2spcG(:)=allRO2name(1:c1)
+    RO2(:)=allRO2(1:c1)
     !stop 'chemsysmod'
     !-----------------------------------------------------------
     ! --- Aqua Phase RO2
