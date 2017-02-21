@@ -1417,7 +1417,7 @@ MODULE Sparse_Mod
       LU%Val(LU%DiagPtr_C(:))=hyVec(:)  
       LU%Val(LU%ColVectorPtr(:))=KVec(:)
       LU%Val(LU%RowVectorPtr(:))=UVec(:)  
-      LU%Val(LU%RowVectorPtr(LU%Permu(n+m+1)))=X
+      LU%Val(LU%Permu(n+m+1))=X
     ELSE
       !          _                            _
       ! miter = | invDiagrVec  |   contvals    |
