@@ -615,11 +615,16 @@ CONTAINS
         !
         ! extract 3rd body species and alpha values
         IF (iKL>0) THEN
-          CALL ComputeThirdBody(ReactionSystem(iReac)%TB,ReactionSystem(iReac)%TBalpha,LocString)
+          CALL ComputeThirdBody(  ReactionSystem(iReac)%TB      &
+          &                     , ReactionSystem(iReac)%TBspc   &
+          &                     , ReactionSystem(iReac)%TBalpha &
+          &                     , LocString)
           IF (bR) THEN
             ALLOCATE(ReactionSystem(iReac+1)%TB(SIZE(ReactionSystem(iReac)%TB)))
+            ALLOCATE(ReactionSystem(iReac+1)%TBspc(SIZE(ReactionSystem(iReac)%TB)))
             ALLOCATE(ReactionSystem(iReac+1)%TBalpha(SIZE(ReactionSystem(iReac)%TB)))
             ReactionSystem(iReac+1)%TB=ReactionSystem(iReac)%TB
+            ReactionSystem(iReac+1)%TBspc=ReactionSystem(iReac)%TBspc
             ReactionSystem(iReac+1)%TBalpha=ReactionSystem(iReac)%TBalpha
           END IF
         END IF
@@ -672,11 +677,14 @@ CONTAINS
   END SUBROUTINE NewLine
   !
   !
-  SUBROUTINE ComputeThirdBody(indM,aM,Line)
-    INTEGER, ALLOCATABLE :: indM(:)
+  SUBROUTINE ComputeThirdBody(indM,spcM,aM,Line)
+    ! out:
+    INTEGER, ALLOCATABLE        :: indM(:)
+    CHARACTER(*), ALLOCATABLE   :: spcM(:)
     REAL(RealKind), ALLOCATABLE :: aM(:)
+    ! in:
     CHARACTER(*), INTENT(IN) :: Line
-    !
+    ! temp:
     CHARACTER(LEN(Line)) :: locLine
     INTEGER :: ind, kl1, kl2
     REAL(RealKind) :: tmp
@@ -692,6 +700,7 @@ CONTAINS
     END DO
     !
     ALLOCATE(indM(ind))
+    ALLOCATE(spcM(ind))
     ALLOCATE(aM(ind))
     locLine=Line
     ind=0
@@ -700,8 +709,16 @@ CONTAINS
       ind=ind+1
       kl1=INDEX(locLine,'/')
       kl2=INDEX(locLine(kl1+1:),'/')
+      !print*, 'DEBUG::ckINput_____________'
+      !print*, 'DEBUG::ckINpt                  ind=    ', ind
+      !print*, 'DEBUG::ckINput             locline=    ', locline
+      !print*, 'DEBUG::ckINput              species=   ', locLine(1:kl1-1)
+      !print*, 'DEBUG::ckINput  posspc(unsortiert) =   ', PositionSpeciesGas(locLine(1:kl1-1))
+      !print*, 'DEBUG::ckINput        locline(kl1:)=   ', locline(kl1+1:)
+      !print*, 'DEBUG::ckINput_____________'
       !
       indM(ind)=PositionSpeciesGas(locLine(1:kl1-1))
+      spcM(ind)=locLine(1:kl1-1)
       READ(locLine(kl1+1:kl1+kl2-1),'(E12.6)') tmp
       aM(ind)=REAL(tmp,KIND=RealKind)
       !
