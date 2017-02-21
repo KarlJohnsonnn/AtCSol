@@ -1471,13 +1471,15 @@ MODULE Chemsys_Mod
       END DO
       CALL RewindFile
       CALL ClearIniFile
+      !
+      c1=c1-COUNT(allRO2==0,1)
+      ALLOCATE(RO2spcG(c1))
+      ALLOCATE(RO2(c1))
+      RO2spcG(:)=allRO2name(1:c1)
+      RO2(:)=allRO2(1:c1)
+      DEALLOCATE(allRO2name,allRO2)
     END IF
     !
-    c1=c1-COUNT(allRO2==0,1)
-    ALLOCATE(RO2spcG(c1))
-    ALLOCATE(RO2(c1))
-    RO2spcG(:)=allRO2name(1:c1)
-    RO2(:)=allRO2(1:c1)
     !stop 'chemsysmod'
     !-----------------------------------------------------------
     ! --- Aqua Phase RO2
@@ -1525,14 +1527,14 @@ MODULE Chemsys_Mod
     END IF
     CALL CloseIniFile
       
-      WRITE(333,*) ' nRO2=',SIZE(RO2)
-    DO i=1,SIZE(RO2)
-      WRITE(333,*) i, RO2(i)
-    END DO 
-      WRITE(333,*) ' nRO2aq=',SIZE(RO2aq)
-    DO i=1,SIZE(RO2aq)
-      WRITE(333,*) i, RO2aq(i)
-    END DO 
+    !  WRITE(333,*) ' nRO2=',SIZE(RO2)
+    !DO i=1,SIZE(RO2)
+    !  WRITE(333,*) i, RO2(i)
+    !END DO 
+    !  WRITE(333,*) ' nRO2aq=',SIZE(RO2aq)
+    !DO i=1,SIZE(RO2aq)
+    !  WRITE(333,*) i, RO2aq(i)
+    !END DO 
   END SUBROUTINE Read_SpeciesData
   !
   SUBROUTINE Read_EMISS(FileName,Emi)
