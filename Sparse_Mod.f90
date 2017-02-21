@@ -165,13 +165,18 @@ MODULE Sparse_Mod
     !END IF
     !IF (.NOT.ALLOCATED(CSR%DiagPtr)) THEN
     IF ( vers=='ex' ) THEN
-      ALLOCATE(CSR%DiagPtr(n+m))
-      ALLOCATE(CSR%DiagPtr_R(n))
-      ALLOCATE(CSR%DiagPtr_C(m))
+      IF ( combustion ) THEN
+        ALLOCATE(CSR%DiagPtr(n+m+1))
+        ALLOCATE(CSR%DiagPtr_R(n))
+        ALLOCATE(CSR%DiagPtr_C(m+1))
+      ELSE
+        ALLOCATE(CSR%DiagPtr(n+m))
+        ALLOCATE(CSR%DiagPtr_R(n))
+        ALLOCATE(CSR%DiagPtr_C(m))
+      END IF
       CSR%DiagPtr_R(:)=0
       CSR%DiagPtr_C(:)=0
     ELSE
-      !ALLOCATE(CSR%DiagPtr(m))
       ALLOCATE(CSR%DiagPtr(SpRow%n))
     END IF
     CSR%DiagPtr(:)=0

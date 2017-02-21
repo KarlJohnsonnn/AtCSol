@@ -741,11 +741,11 @@
       END DO
       Ddelg0dT=Ddelg0dT+Tmp
       !
-      DfRdT=ForwRate*T(6)*(Constants(2)+Constants(3)*T(6))
+      DfRdT=ForwRate*T(6)*(Constants(2)+Constants(3)*T(6))    ! (21) Perini
       !
-      DeRdT=-EquiRate*(sumBAT(iReac)*T(6)+Ddelg0dT)
+      DeRdT=-EquiRate*(sumBAT(iReac)*T(6)+Ddelg0dT)           ! (23) Perini
       !
-      DbRdT=(DfRdT-ForwRate*DeRdT/EquiRate)/EquiRate
+      DbRdT=(DfRdT-ForwRate*DeRdT/EquiRate)/EquiRate          ! (22) Perini
       !
       IF (ReactionSystem(iReac)%Line3=='rev') THEN
         DkDT=DbRdT
