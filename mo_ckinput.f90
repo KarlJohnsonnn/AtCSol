@@ -635,9 +635,6 @@ CONTAINS
     END DO                      ! next reaction
     CALL CloseFile(UnitReac,DataReac,'sys')
     !
-    !
-    ! build colind and val for sparse matrices
-    !
     neq=nReak
     nreakgas=nReak
     ALLOCATE(ListGas2(ntGAS))
