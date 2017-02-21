@@ -65,6 +65,7 @@ MODULE Chemsys_Mod
     INTEGER                         :: NumConst=0
     INTEGER                         :: HenrySpc=0
     INTEGER, ALLOCATABLE            :: TB(:)
+    CHARACTER(100), ALLOCATABLE     :: TBspc(:)
     REAL(RealKind), ALLOCATABLE     :: TBalpha(:)
     CHARACTER(LenName), ALLOCATABLE :: InActEductSpc(:)
   END TYPE ReactionStruct_T
@@ -2202,6 +2203,17 @@ MODULE Chemsys_Mod
     PositionSpeciesGas=0
     PositionSpeciesGas=GetHash(ListGas,TRIM(ADJUSTL(Species)))
   END FUNCTION
+  !
+  !
+  FUNCTION PositionSpeciesCK(Species)
+    CHARACTER(*) :: Species
+    !
+    INTEGER :: PositionSpeciesCK
+    ! 
+    PositionSpeciesCK=0
+    PositionSpeciesCK=GetHash(ListGas,TRIM(ADJUSTL(Species)))
+  END FUNCTION PositionSpeciesCK
+  !
   !
   !
   FUNCTION PositionSpecies(Species)
