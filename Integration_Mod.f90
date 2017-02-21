@@ -103,6 +103,12 @@ MODULE Integration_Mod
     IF ( combustion ) THEN
       y0(nDIM)=280.0d0   ! = 280 [K]
       y(nDIM)=280.0d0    ! = 280 [K]
+      ALLOCATE(GFE(nspc),DGFEdT(nspc))
+      ALLOCATE(DelGFE(neq),DDelGFEdT(neq))
+      GFE(:)=ZERO
+      DGFEdT(:)=ZERO
+      DelGFE(:)=ZERO
+      DDelGFEdT(:)=ZERO
     END IF
     !
     !
