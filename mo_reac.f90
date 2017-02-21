@@ -280,5 +280,7 @@
     !
     LOGICAL :: combustion=.FALSE.                      ! flag for combustion mechanism
     !
+    REAL(RealKind), ALLOCATABLE :: GFE(:), DGFEdT(:)
+    REAL(RealKind), ALLOCATABLE :: DelGFE(:), DDelGFEdT(:)
     !
 END MODULE mo_reac
