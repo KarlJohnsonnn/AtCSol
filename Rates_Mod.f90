@@ -271,7 +271,7 @@
         CASE ('TROEMCM')
           CALL TroeMCMCompute(k,ReactionSystem(iReac)%Constants,T(1),mAir)!
         CASE ('PRESSX')
-          CALL PressXCompute(k,k0,kinf,EqRate,Fcent,logF,iReac,T,mAir,Meff)
+          CALL PressXCompute(k,k0,kinf,EqRate,Fcent,logF,iReac,T,Meff)
           CALL DiffPressXCompute(DkdT,k0,kinf,iReac,T,Meff,logF,Fcent)
         CASE ('SPEC1')
           CALL Spec1Compute(k,ReactionSystem(iReac)%Constants,mAir)
@@ -755,8 +755,8 @@
     END SUBROUTINE TempXComputeCK
     !
     !
-    SUBROUTINE DiffTempXComputeCK(DkdT,EquiRate,ForwRate,Constants,T,iReac)
-      REAL(RealKind) :: DkDT
+    SUBROUTINE DiffTempXComputeCK(Dkcoef,EquiRate,ForwRate,Constants,T,iReac)
+      REAL(RealKind) :: Dkcoef
       REAL(RealKind) :: DfRdT, DbRdT, DeRdT
       REAL(RealKind) :: ForwRate, EquiRAte
       REAL(RealKind) :: Constants(:)
@@ -772,16 +772,16 @@
       !???????
       !
       !
-      DfRdT=ForwRate*T(6)*(Constants(2)+Constants(3)*T(6))    ! (21) Perini
+      DfRdT=T(6)*(Constants(2)+Constants(3)*T(6))    ! (21) Perini
       !
-      DeRdT=-EquiRate*(sumBAT(iReac)*T(6)+DDelGFEdT(iReac))   ! (23) Perini
+      DeRdT=-(sumBAT(iReac)*T(6)+DDelGFEdT(iReac))   ! (23) Perini
       !
-      DbRdT=(DfRdT-ForwRate*DeRdT/EquiRate)/EquiRate          ! (22) Perini
+      DbRdT=(DfRdT-DeRdT)          ! (22) Perini   umgestellt
       !
       IF (ReactionSystem(iReac)%Line3=='rev') THEN
-        DkDT=DbRdT
+        Dkcoef=DbRdT
       ELSE   
-        DkDT=DfRdT
+        Dkcoef=DfRdT
       END IF
       !print*, 'DEBUG::RATES       Ddelg0dT  =', DDelGFEdT(iReac)
       !print*, 'DEBUG::RATES       DfRdT     =', DfRdT
@@ -904,15 +904,13 @@
     !   - Reaction constant
     !--------------------------------------------------------------------------!
     !
-    SUBROUTINE PressXCompute(ReacConst,k0,kinf,EquiRate,Fcent,logF,i,T,mAir,Meff)
+    SUBROUTINE PressXCompute(ReacConst,k0,kinf,EquiRate,Fcent,logF,i,T,Meff)
       REAL(RealKind) :: ReacConst, EquiRate
       !
       REAL(RealKind) :: T(:)
-      REAL(RealKind) :: mAir, Meff
-      INTEGER :: i, jj, j
+      REAL(RealKind) :: Meff
+      INTEGER :: i
       !
-      REAL(RealKind) :: g0(nspc)
-      REAL(RealKind) :: delg0,  k
       REAL(RealKind) :: k0 ,kinf, Pr, logF, c, n, Fcent
       REAL(RealKind) :: TroeConst(4)
       REAL(RealKind) :: HighConst(3), LowConst(3)
@@ -943,7 +941,7 @@
       ReacConst=kinf*Pr
       !
       ! If Troe reaction
-      IF (ALLOCATED(ReactionSystem(i)%TroeConst) THEN
+      IF (ALLOCATED(ReactionSystem(i)%TroeConst)) THEN
         TroeConst(:)=ReactionSystem(i)%TroeConst(:)
         ! Formel (73) Chemkin Dokumentation
         Fcent=(ONE-TroeConst(1))*EXP(-T(1)/TroeConst(2)) +                  &
@@ -952,7 +950,7 @@
         c=-0.4d0-0.67d0*LOG10(Fcent)
         n=0.75d0-1.27d0*LOG10(Fcent)
         logF=LOG10(Fcent)/(ONE + ((LOG10(Pr)+c)/(n-0.14d0*(LOG10(Pr)+c)))**TWO)
-        ReacConst=kinf*(Pr/(ONE+Pr))*10.0d0*logF
+        ReacConst=kinf*(Pr/(ONE+Pr))*10.0d0**logF
         !
       END IF
       !print*, 'DEBUG::RATES    Pr=',Pr
@@ -1006,18 +1004,26 @@
       Dkf0dT=kf0*(LowConst(2)+LowConst(3)/R_Const*T(6))*T(6)
       DkfoodT=kfoo*(HighConst(2)+HighConst(3)/R_Const*T(6))*T(6)
       !
-      DlogFTdPr= -2.0d0*LOG10(F_cent)*l10Prc                  &
-      &          *(n-d*l10Prc)*(n*n-2.0d0*n*d*l10Prc          &
-      &                         +(d+1)*l10Prc*l10Prc)**(-2.0d0)
+      DlogFTdPr= -TWO*LOG10(F_cent)*l10Prc                  &
+      &          *(n-d*l10Prc)*(n*n-TWO*n*d*l10Prc          &
+      &                         +(d+ONE)*l10Prc*l10Prc)**(-TWO)
       !
-      DF_linddT= Meff/(kfoo+kf0*Meff)**2 * ( kfoo*Dkf0dT - kf0*DkfoodT )
+      DlogPrdT=ONE/LOG10(10.0d0)*(ONE/kf0*Dkf0dT+ONE/kfoo*DkfoodT)
       !
-      DlogPrdT=1.0d0/LOG10(10.0d0)*(1.0d0/kf0*Dkf0dT+1.0d0/kfoo*DkfoodT)
       DlogFTdT=DlogFTdPr*DlogPrdT
+
+      IF (ALLOCATED(ReactionSystem(i)%TroeConst)) THEN
+        DF_troedT=10.0d0**logF_troe * (DF_linddT+LOG10(10.0d0)*DlogFTdT)
+        DiffCoef=DF_troeDT+10.0d0**logF_troe*(HighConst(2)+HighConst(3)/R_Const*T(6))*T(6)
+
+      ELSE
+        DF_linddT= Meff/(kfoo+kf0*Meff)**2 * ( kfoo*Dkf0dT - kf0*DkfoodT )
+
+      END IF
       !
-      DF_troedT=10.0d0**logF_troe * (DF_linddT+LOG10(10.0d0)*DlogFTdT)
       !
-      DiffCoef=DF_troeDT+10.0d0**logF_troe*(HighConst(2)+HighConst(3)/R_Const*T(6))*T(6)
+      !
+      !
       !print*, 'DEBUG::RATES  Dkf0dT   =',Dkf0dT
       !print*, 'DEBUG::RATES  DkfoodT  =',DkfoodT
       !print*, 'DEBUG::RATES  DlogFTdPr=',DlogFTdPr
