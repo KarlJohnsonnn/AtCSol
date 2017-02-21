@@ -20,6 +20,7 @@ MODULE Integration_Mod
   USE Factorisation_Mod
   USE ErrorROW_Mod
   USE NetCDF_Mod
+  USE Meteo_Mod, ONLY: Temp
   IMPLICIT NONE
   !
   TYPE PI_Param
@@ -100,8 +101,8 @@ MODULE Integration_Mod
     y(1:nspc)=y_iconc(:)
     !
     IF ( combustion ) THEN
-      y0(nDIM)=Temp   ! = 280 [K]
-      y(nDIM)=Temp    ! = 280 [K]
+      y0(nDIM)=280.0d0   ! = 280 [K]
+      y(nDIM)=280.0d0    ! = 280 [K]
     END IF
     !
     !
