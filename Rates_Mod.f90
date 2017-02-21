@@ -71,7 +71,12 @@
       !print*, 'debug:: chi,lwc', chi, actLWC
       ! --- Update temperature array
       IF ( combustion ) THEN
+        print*, 'DEBUG::RATES      Temperatur =',y_conc(nDIM)
         CALL UpdateTempArray(T,y_conc(nDIM))
+        CALL CalcGibbsFreeEnergie(GFE,T)
+        CALL CalcDeltaGibbs(DelGFE)
+        CALL CalcDiffGibbsFreeEnergie(DGFEdT,T)
+        CALL CalcDiffDeltaGibbs(DDelGFEdT)
       ELSE
         T(1)=Temp    ! = 280 [K]
       END IF
@@ -79,6 +84,7 @@
       ! --- compute rate of all reactions (gas,henry,aqua,diss)
       !print*, MPI_ID, '--loc_rateCnt= ',loc_rateCnt
       !print*, MPI_ID, '--loc_ratePtr= ',loc_ratePtr(:)
+      !print*, 'debugg:: i,        rate(i),          Diffcoefrate(i) '
       DO ii=1,loc_rateCnt
         IF (MPI_np>1.AND.ParOrdering>=0) THEN
           iReac=loc_RatePtr(ii)
@@ -86,24 +92,24 @@
           iReac=ii
         END IF
         !
-        ! ====== Compute the rate constant for specific reaction type ===
-        CALL ComputeRateConstant(k,DkdT,T,Time,chi,mAir,iReac,y_conc,Meff)
-        !
-        !print*, 'DEBUGG :: k1=',k
         ! ================ Multiplication with FACTOR====================
         CALL CheckThirdBodys(Meff,y_conc,iReac)
-        !
         !print*, 'DEBUGG :: me=',meff
+        !
+        ! ====== Compute the rate constant for specific reaction type ===
+        CALL ComputeRateConstant(k,DkdT,T,Time,chi,mAir,iReac,y_conc,Meff)
+        !print*, 'DEBUGG :: k1=',k
+        !
         ! ========= Multiplication with Inactiv (passiv) Educts ===========
         CALL CheckInactEducts(k,iReac,actLWC)
-        !
         !print*, 'DEBUGG :: k2=',k
+        !
         ! ===== mult with (LWC^SUM(EductsCoefs)^-1) for correct dim units =============
         IF (ReactionSystem(iReac)%Type=='DISS'.OR.ReactionSystem(iReac)%Type=='AQUA') THEN
           CALL AquaDimLWC(k,iReac,actLWC)
         END IF
-        !
         !print*, 'DEBUGG :: k3=',k
+        !
         ! === Calc the coefficient for Gas->Aqua or Aqua->Gas Reactions ===
         IF (ReactionSystem(iReac)%Type=='HENRY') THEN
           CALL HenryMassTransferCoef(k,T(1),Time,iReac,actLWC)
@@ -123,8 +129,8 @@
         ! Last step
         !print*, 'DEBUGG :: k5=',k
         Rate(iReac) = Meff * k
-        print*, 'debugg:: i,rate(i) = ', ireac, Rate(ireac), DRatedT(ireac)
         IF (combustion) DRatedT(iReac) = DkdT
+        print*, 'debugg:: ', ireac, Rate(ireac), DRatedT(ireac)
       END DO
       stop 'rates_mod'
       TimeRateE=MPI_WTIME()
@@ -661,6 +667,63 @@
     END SUBROUTINE Temp4Compute
     !
     !
+    SUBROUTINE CalcGibbsFreeEnergie(Gibbs,T)
+      REAL(RealKind) :: Gibbs(:)
+      REAL(RealKind) :: T(:)
+      !
+      Gibbs(:)=ZERO
+      WHERE (SwitchTemp>T(1))
+        Gibbs=-(lowA*(LOG(T(1))-1) + 0.5d0*lowB*T(1) + lowC*T(2)/6.0d0 +    &
+        &        lowD*T(3)/12.0d0 + 0.05d0*lowE*T(4) + lowF*T(6) + lowG )
+      ELSEWHERE
+        Gibbs=-(highA*(LOG(T(1))-1) + 0.5d0*highB*T(1) + highC*T(2)/6.0d0 + &
+        &        highD*T(3)/12.0d0 + 0.05d0*highE*T(4) + highF*T(6) + highG )
+      END WHERE
+    END SUBROUTINE CalcGibbsFreeEnergie
+    !
+    !
+    SUBROUTINE CalcDiffGibbsFreeEnergie(DGibbsdT,T)
+      REAL(RealKind) :: DGibbsdT(:)
+      REAL(RealKind) :: T(:)
+      !
+      WHERE (SwitchTemp>T(1))
+        DGibbsdT=-(lowA*T(6) + 0.5d0*lowB + lowC*T(1)/3.0d0 +            &
+        &              0.25d0*lowD*T(2) + 0.2d0*lowE*T(3) + lowF*T(7) )
+      ELSEWHERE
+        DGibbsdT=-(highA*T(6) + 0.5d0*highB + highC*T(1)/3.0d0 +         &
+        &              0.25d0*highD*T(2) + 0.2d0*highE*T(3) + highF*T(7) )
+      END WHERE  
+    END SUBROUTINE CalcDiffGibbsFreeEnergie
+    !
+    !
+    SUBROUTINE CalcDeltaGibbs(DelGibbs)
+      REAL(RealKind) :: DelGibbs(:)
+      !
+      INTEGER :: iR, jS, jj
+      !
+      DelGibbs(:)=ZERO         
+      DO iR=1,BA%m
+        DO jj=BA%RowPtr(iR),BA%RowPtr(iR+1)-1
+          jS=BA%ColInd(jj)
+          DelGibbs(iR)=DelGibbs(iR)+BA%Val(jj)*GFE(jS)      
+        END DO
+      END DO
+    END SUBROUTINE CalcDeltaGibbs
+    !
+    SUBROUTINE CalcDiffDeltaGibbs(DiffDelGibbs)
+      REAL(RealKind) :: DiffDelGibbs(:)
+      !
+      INTEGER :: iR, jS, jj
+      !
+      DiffDelGibbs(:)=ZERO         
+      DO iR=1,BA%m
+        DO jj=BA%RowPtr(iR),BA%RowPtr(iR+1)-1
+          jS=BA%ColInd(jj)
+          DiffDelGibbs(iR)=DiffDelGibbs(iR)+BA%Val(jj)*DGFEdT(jS)      
+        END DO
+      END DO
+    END SUBROUTINE CalcDiffDeltaGibbs
+    !
     SUBROUTINE TempXComputeCK(ReacConst,EquiRate,ForwRate,Constants,T,iReac)
       REAL(RealKind) :: ReacConst
       REAL(RealKind) :: ForwRate, EquiRate!, BackRate
@@ -672,36 +735,22 @@
       REAL(RealKind) :: delg0
       INTEGER :: jj,j
       !
-      IF (ReactionSystem(iReac)%Factor/='rev') THEN
-        !
+      !
+      IF (ReactionSystem(iReac)%Line2=='BackReaction') THEN
         IF (ReactionSystem(iReac)%Line3=='rev'.OR.ReactionSystem(iReac)%Line3=='REV') THEN
           ! backward with backwardcoeffs reaction
           ReacConst=Constants(1)*T(1)**Constants(2)*EXP(-Constants(3)*T(6))
+          !print*, 'DEBUG::RATES   revConst=',Constants
         ELSE
-          ! backward calculated with eq. constant
-          ! Standard non-dimensional Gibbs free energy
-          !print*, 'debug:: switchtemp = ', SwitchTemp
-          WHERE (SwitchTemp>T(1))
-            g0=-(lowA*(LOG(T(1))-1) + 0.5d0*lowB*T(1) + lowC*T(2)/6.0d0 + &
-            &        lowD*T(3)/12.0d0 + 0.05d0*lowE*T(4) + lowF*T(6) + lowG )           ! [-] dim.less
-          ELSEWHERE
-            g0=-(highA*(LOG(T(1))-1) + 0.5d0*highB*T(1) + highC*T(2)/6.0d0 + &
-            &        highD*T(3)/12.0d0 + 0.05d0*highE*T(4) + highF*T(6) + highG )           ! [-] dim.less
-          END WHERE
-          !
-          delg0=ZERO
-          DO jj=BA%RowPtr(iReac),BA%RowPtr(iReac+1)-1
-            j=BA%ColInd(jj)
-            delg0=delg0+BA%Val(jj)*g0(j)      
-          END DO
-          !
-          EquiRate=EXP(-delg0)*(PressR*T(6))**sumBAT(iReac)
-          ! backward reaction
-          ReacConst=Constants(1)*T(1)**Constants(2)*EXP(-Constants(3)*T(6))/EquiRate
+          ! backward without extra coef, equiv constant nessesarry
+          ForwRate =Constants(1)*T(1)**Constants(2)*EXP(-Constants(3)*T(6))
+          EquiRate =EXP(-DelGFE(iReac))*(PressR*T(6))**sumBAT(iReac)
+          ReacConst=ForwRate/EquiRate
         END IF
       ELSE
-        ! forward reaction
-        ReacConst=Constants(1)*T(1)**Constants(2)*EXP(-Constants(3)*T(6))
+        ForwRate =Constants(1)*T(1)**Constants(2)*EXP(-Constants(3)*T(6))
+        EquiRate =EXP(-DelGFE(iReac))*(PressR*T(6))**sumBAT(iReac)
+        ReacConst=ForwRate
       END IF
     END SUBROUTINE TempXComputeCK
     !
@@ -722,28 +771,10 @@
       !hier ?????????????
       !???????
       !
-      WHERE (SwitchTemp>T(1))
-        Dg0dT=-(lowA*T(6) + 0.5d0*lowB + lowC*T(1)/3.0d0 +     &
-        &              0.25d0*lowD*T(2) + 0.2d0*lowE*T(3) + lowF*T(7) )
-      ELSEWHERE
-        Dg0dT=-(highA*T(6) + 0.5d0*highB + highC*T(1)/3.0d0 +     &
-        &              0.25d0*highD*T(2) + 0.2d0*highE*T(3) + highF*T(7) )
-      END WHERE  
-      !
-      Tmp=0.0d0
-      DO jj=A%RowPtr(iReac),A%RowPtr(iReac+1)-1
-        Tmp=Tmp-Dg0dT(A%ColInd(jj))*A%Val(jj)
-      END DO
-      Ddelg0dT=Tmp
-      Tmp=0.0d0
-      DO jj=B%RowPtr(iReac),B%RowPtr(iReac+1)-1
-        Tmp=Tmp+Dg0dT(B%ColInd(jj))*B%Val(jj)
-      END DO
-      Ddelg0dT=Ddelg0dT+Tmp
       !
       DfRdT=ForwRate*T(6)*(Constants(2)+Constants(3)*T(6))    ! (21) Perini
       !
-      DeRdT=-EquiRate*(sumBAT(iReac)*T(6)+Ddelg0dT)           ! (23) Perini
+      DeRdT=-EquiRate*(sumBAT(iReac)*T(6)+DDelGFEdT(iReac))   ! (23) Perini
       !
       DbRdT=(DfRdT-ForwRate*DeRdT/EquiRate)/EquiRate          ! (22) Perini
       !
@@ -752,6 +783,10 @@
       ELSE   
         DkDT=DfRdT
       END IF
+      !print*, 'DEBUG::RATES       Ddelg0dT  =', DDelGFEdT(iReac)
+      !print*, 'DEBUG::RATES       DfRdT     =', DfRdT
+      !print*, 'DEBUG::RATES       DeRdT     =', DeRdT
+      !print*, 'DEBUG::RATES       DbRdT     =', DbRdT
       !
     END SUBROUTINE DiffTempXComputeCK
     ! 
@@ -761,14 +796,22 @@
       REAL(RealKind) :: y_conc(nspc)
       INTEGER :: i        !iReac
       !
-      INTEGER :: j, jj, alphI
+      INTEGER :: j, jj
+      REAL(RealKind) :: Stmp
       !
-      M=0
-      alphI=1
+      !print*, 'DEBUG::RATES   Meeffsize =', SIZE(ReactionSystem(i)%TB)
+      M=SUM(y_conc)
+      Stmp=ZERO
       DO jj=1,SIZE(ReactionSystem(i)%TB)
-        j=ReactionSystem(i)%TB(jj)
-        M=M+y_conc(j)*(1.0d0-ReactionSystem(i)%TBalpha(jj) )
+        !print*, 'DEBUG::RATES       TB        =', ReactionSystem(i)%TB(jj)
+        !print*, 'DEBUG::RATES       TBspc     =', ReactionSystem(i)%TBspc(jj)
+        !print*, 'DEBUG::RATES       Posspc    =', PositionSpeciesCK(ReactionSystem(i)%TBspc(jj))
+        !print*, 'DEBUG::RATES       SpcAlpha  =', ReactionSystem(i)%TBalpha(jj)
+        !j=ReactionSystem(i)%TB(jj)
+        j=PositionSpeciesCK(ReactionSystem(i)%TBspc(jj)) ! richtigen index holen, da TB unsortiert eingelesen wurde
+        Stmp=Stmp+(ONE-ReactionSystem(i)%TBalpha(jj))*y_conc(j)
       END DO
+      M=M-Stmp        ! Formel (6) Perini 2012
     END SUBROUTINE ThirdBodyCompute
     !
     !
@@ -892,9 +935,11 @@
       !
       Pr=k0/kinf*Meff
       !
-      print*, 'DEBUG::RATES    k0  =',k0
-      print*, 'DEBUG::RATES    kinf=',kinf
-      print*, 'DEBUG::RATES    Meff=',Meff
+      print*, 'DEBUG::RATES    i=',i
+      !stop
+      !print*, 'DEBUG::RATES    k0  =',k0
+      !print*, 'DEBUG::RATES    kinf=',kinf
+      !print*, 'DEBUG::RATES    Meff=',Meff
       !
       ! hier nochmal nach LIND oder TROE abfragen für H2 O2 nur troe
       ! IF (TROE) THEN
@@ -908,9 +953,9 @@
       logF=LOG10(Fcent)/(1.0d0 + ((LOG10(Pr)+c)/(n-0.14d0*(LOG10(Pr)+c)))**2)
       k=kinf*(Pr/(1.0d0+Pr))*10.0d0**logF
       !
-      print*, 'DEBUG::RATES    Pr=',Pr
-      print*, 'DEBUG::RATES    Fcent=',fcent
-      print*, 'DEBUG::RATES    logF =',logF
+      !print*, 'DEBUG::RATES    Pr=',Pr
+      !print*, 'DEBUG::RATES    Fcent=',fcent
+      !print*, 'DEBUG::RATES    logF =',logF
       !
       IF (ReactionSystem(i)%Line2=='BackReaction') THEN
         ! backward calculated with eq. constant
@@ -922,27 +967,27 @@
           g0=-(highA*(LOG(T(1))-1) + 0.5d0*highB*T(1) + highC*T(2)/6.0d0 + &
           &        highD*T(3)/12.0d0 + 0.05d0*highE*T(4) + highF*T(6) + highG )           ! [-] dim.less
         END WHERE
-        print*, 'DEBUG::RATES  g0=',g0
+        !print*, 'DEBUG::RATES  g0=',g0
         !
         delg0=ZERO
         DO jj=BA%RowPtr(i),BA%RowPtr(i+1)-1
           j=BA%ColInd(jj)
           delg0=delg0+BA%Val(jj)*g0(j)      
         END DO
-        print*, 'DEBUG::RATES  delg0=',delg0
+        !print*, 'DEBUG::RATES  delg0=',delg0
         !
         EquiRate=EXP(-delg0)*(PressR*T(1))**sumBAT(i)
         ! backward reaction
         ReacConst=k/EquiRate
-        print*, 'DEBUG::RATES  k=',k
-        print*, 'DEBUG::RATES  keq=',EquiRate
-        print*, 'DEBUG::RATES  ReacKonst=',ReacConst
+        !print*, 'DEBUG::RATES  k=',k
+        !print*, 'DEBUG::RATES  keq=',EquiRate
+        !print*, 'DEBUG::RATES  ReacKonst=',ReacConst
       ELSE
         EquiRate=ONE
         ReacConst=k
       END IF
 
-      IF (ReactionSystem(i)%Line2=='BackReaction') stop 'pressreaktion'
+      !IF (ReactionSystem(i)%Line2=='BackReaction') stop 'pressreaktion'
     END SUBROUTINE PressXCompute
     !
     !
@@ -971,6 +1016,7 @@
       n=0.75d0-1.27d0*LOG10(F_cent)
       d=0.14d0
       l10Prc=LOG10(Pr)+c
+      !print*, 'DEBUG::RATES  Pr     =',Pr
       !
       Dkf0dT=kf0*(LowConst(2)+LowConst(3)/R_Const*T(6))*T(6)
       DkfoodT=kfoo*(HighConst(2)+HighConst(3)/R_Const*T(6))*T(6)
@@ -987,6 +1033,14 @@
       DF_troedT=10.0d0**logF_troe * (DF_linddT+LOG10(10.0d0)*DlogFTdT)
       !
       DiffCoef=DF_troeDT+10.0d0**logF_troe*(HighConst(2)+HighConst(3)/R_Const*T(6))*T(6)
+      !print*, 'DEBUG::RATES  Dkf0dT   =',Dkf0dT
+      !print*, 'DEBUG::RATES  DkfoodT  =',DkfoodT
+      !print*, 'DEBUG::RATES  DlogFTdPr=',DlogFTdPr
+      !print*, 'DEBUG::RATES  DF_linddT=',DF_linddT
+      !print*, 'DEBUG::RATES  DlogPrdT =',DlogPrdT
+      !print*, 'DEBUG::RATES  DlogFTdT =',DlogFTdT
+      !print*, 'DEBUG::RATES  DF_troedT=',DF_troedT
+      !print*, 'DEBUG::RATES  DiffCoef =',DiffCoef
     END SUBROUTINE
     !
     !
