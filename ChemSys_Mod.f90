@@ -1027,8 +1027,8 @@ MODULE Chemsys_Mod
       IF (ReactionSystem(iLoop)%Factor=='$RO2') hasRO2=.TRUE.
       IF (ReactionSystem(iLoop)%Factor=='$RO2aq') hasRO2aq=.TRUE.
       !
-      IF (PRESENT(CK)) WRITE(Unit,*) 'FACTOR:  ',ADJUSTL(TRIM(ReactionSystem(iLoop)%Line2))
-      IF (PRESENT(CK)) WRITE(Unit,*) 'FACTOR:  ',ADJUSTL(TRIM(ReactionSystem(iLoop)%Line3))
+      IF (PRESENT(CK)) WRITE(Unit,*) 'EXTRA1:  ',ADJUSTL(TRIM(ReactionSystem(iLoop)%Line2))
+      IF (PRESENT(CK)) WRITE(Unit,*) 'EXTRA2:  ',ADJUSTL(TRIM(ReactionSystem(iLoop)%Line3))
     END DO
     !
     ! loop again to set ColInd and Val on A and B
