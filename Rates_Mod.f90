@@ -864,7 +864,6 @@
     SUBROUTINE PressXCompute(ReacConst,k0,kinf,EquiRate,Fcent,logF,i,T,mAir,Meff)
       REAL(RealKind) :: ReacConst, EquiRate
       !
-      REAL(RealKind) :: HighConst(3), LowConst(3)
       REAL(RealKind) :: T(:)
       REAL(RealKind) :: mAir, Meff
       INTEGER :: i, jj, j
@@ -873,6 +872,7 @@
       REAL(RealKind) :: delg0,  k
       REAL(RealKind) :: k0 ,kinf, Pr, logF, c, n, Fcent
       REAL(RealKind) :: TroeConst(4)
+      REAL(RealKind) :: HighConst(3), LowConst(3)
       !
       IF (ReactionSystem(i)%Line3=='low') THEN
         HighConst(:)=ReactionSystem(i)%Constants(:)
@@ -883,23 +883,34 @@
       END IF
       !
       TroeConst(:)=ReactionSystem(i)%TroeConst(:)
-      print*, 'DEBUG::RATES    LOW Const=',LowConst
-      print*, 'DEBUG::RATES    HIGHConst=',HighConst
-      print*, 'DEBUG::RATES    TroeConst=',TroeConst
+      !print*, 'DEBUG::RATES    LOW Const=',LowConst
+      !print*, 'DEBUG::RATES    HIGHConst=',HighConst
+      !print*, 'DEBUG::RATES    TroeConst=',TroeConst
       !
       k0=LowConst(1)*T(1)**LowConst(2)*EXP(-LowConst(3)/R_Const*T(6))
       kinf=HighConst(1)*T(1)**HighConst(2)*EXP(-HighConst(3)/R_Const*T(6))
       !
       Pr=k0/kinf*Meff
       !
+      print*, 'DEBUG::RATES    k0  =',k0
+      print*, 'DEBUG::RATES    kinf=',kinf
+      print*, 'DEBUG::RATES    Meff=',Meff
+      !
       ! hier nochmal nach LIND oder TROE abfragen für H2 O2 nur troe
       ! IF (TROE) THEN
-      Fcent=(1.0d0-TroeConst(1))*EXP(-T(1)/TroeConst(2))+                   &
+      !
+      ! Formel (73) Chemkin Dokumentation
+      Fcent=(ONE-TroeConst(1))*EXP(-T(1)/TroeConst(2)) +                  &
       &      TroeConst(1)*EXP(-T(1)/TroeConst(3))+EXP(-TroeConst(4)*T(6))
+      !
       c=-0.4d0-0.67d0*LOG10(Fcent)
       n=0.75d0-1.27d0*LOG10(Fcent)
       logF=LOG10(Fcent)/(1.0d0 + ((LOG10(Pr)+c)/(n-0.14d0*(LOG10(Pr)+c)))**2)
       k=kinf*(Pr/(1.0d0+Pr))*10.0d0**logF
+      !
+      print*, 'DEBUG::RATES    Pr=',Pr
+      print*, 'DEBUG::RATES    Fcent=',fcent
+      print*, 'DEBUG::RATES    logF =',logF
       !
       IF (ReactionSystem(i)%Line2=='BackReaction') THEN
         ! backward calculated with eq. constant
@@ -911,20 +922,27 @@
           g0=-(highA*(LOG(T(1))-1) + 0.5d0*highB*T(1) + highC*T(2)/6.0d0 + &
           &        highD*T(3)/12.0d0 + 0.05d0*highE*T(4) + highF*T(6) + highG )           ! [-] dim.less
         END WHERE
+        print*, 'DEBUG::RATES  g0=',g0
         !
         delg0=ZERO
         DO jj=BA%RowPtr(i),BA%RowPtr(i+1)-1
           j=BA%ColInd(jj)
           delg0=delg0+BA%Val(jj)*g0(j)      
         END DO
+        print*, 'DEBUG::RATES  delg0=',delg0
         !
         EquiRate=EXP(-delg0)*(PressR*T(1))**sumBAT(i)
         ! backward reaction
         ReacConst=k/EquiRate
+        print*, 'DEBUG::RATES  k=',k
+        print*, 'DEBUG::RATES  keq=',EquiRate
+        print*, 'DEBUG::RATES  ReacKonst=',ReacConst
       ELSE
         EquiRate=ONE
         ReacConst=k
       END IF
+
+      IF (ReactionSystem(i)%Line2=='BackReaction') stop 'pressreaktion'
     END SUBROUTINE PressXCompute
     !
     !
