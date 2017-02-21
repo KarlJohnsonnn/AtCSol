@@ -123,10 +123,10 @@
         ! Last step
         !print*, 'DEBUGG :: k5=',k
         Rate(iReac) = Meff * k
-       ! print*, 'debugg:: i,rate(i) = ', ireac, Rate(ireac)
+        print*, 'debugg:: i,rate(i) = ', ireac, Rate(ireac), DRatedT(ireac)
         IF (combustion) DRatedT(iReac) = DkdT
       END DO
-      !stop
+      stop 'rates_mod'
       TimeRateE=MPI_WTIME()
       TimeRates=TimeRates+(TimeRateE-TimeRateA)
       !
@@ -883,6 +883,9 @@
       END IF
       !
       TroeConst(:)=ReactionSystem(i)%TroeConst(:)
+      print*, 'DEBUG::RATES    LOW Const=',LowConst
+      print*, 'DEBUG::RATES    HIGHConst=',HighConst
+      print*, 'DEBUG::RATES    TroeConst=',TroeConst
       !
       k0=LowConst(1)*T(1)**LowConst(2)*EXP(-LowConst(3)/R_Const*T(6))
       kinf=HighConst(1)*T(1)**HighConst(2)*EXP(-HighConst(3)/R_Const*T(6))
