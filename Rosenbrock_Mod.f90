@@ -373,6 +373,7 @@ MODULE Rosenbrock_Mod
     Rate(:)=ZERO
     !
     y(:nspc)=MAX(ABS(y0(:nspc)),eps)*SIGN(ONE,y0(:nspc))                   ! concentrations =/= 0
+    IF ( combustion ) y(nDIM)=y0(nDIM)
     yNew(:)=y0(:)
     yHat(:)=y0(:)
     !
@@ -390,10 +391,11 @@ MODULE Rosenbrock_Mod
     !********************************************************************************
     !
     ! --- Nessesary for combustion systems
+
+    
     CALL Rates(t,y,Rate,DRatedT)
     Rate(:)=MAX(ABS(Rate(:)),eps)*SIGN(ONE,Rate(:))         ! reaction rates =/= 0
     hy=y(:nspc)/h
-
 
     !print*, 'debug:: ', h , t ,Rate(1:3)
     !print*, 'debug::2',y(1:3)
@@ -408,6 +410,13 @@ MODULE Rosenbrock_Mod
       c_v=c_v/h
       Umol(:)=-Umol(:)*hy(:)
       X=c_v+SUM(DUmoldT(:)*DcDt(:))
+      print*, 'debug     Temparr  :: ',Tarr
+      print*, 'debug     Umol     :: ',Umol
+      print*, 'debug     DUmoldT  :: ',DUmoldT
+      print*, 'debug     c_v      :: ',c_v
+      print*, 'debug     DcDt     :: ',DcDt
+      print*, 'debug     X        :: ',X
+      stop
     END IF
     ! 
     ! --- Update matrix procedure
@@ -432,12 +441,13 @@ MODULE Rosenbrock_Mod
       END IF
     END IF
     !
-    !WRITE(*,*) '----------------------------'
-    !WRITE(*,*) 'debug h, t        :: ', h , t
-    !WRITE(*,*) '      rate(1:3)   :: ', rate(1:3), SUM(rate)
-    !WRITE(*,*) '      conc(1:3)   :: ', y(1:3), SUM(y)
-    !WRITE(*,*) '      sum(Miter)  :: ', SUM(Miter%val)
-    !WRITE(*,*) '      sum(LU)1    :: ', SUM(LU_Miter%val)
+    WRITE(*,*) '----------------------------'
+    WRITE(*,*) 'debug h, t, Temp  :: ', h , t, y(nDIM)
+    WRITE(*,*) '      rate(1:3)   :: ', rate(1:3), SUM(rate)
+    IF(combustion) WRITE(*,*) '   DRatedT(1:3)   :: ', DRatedT(1:3), SUM(DRatedT)
+    WRITE(*,*) '      conc(1:3)   :: ', y(1:3), SUM(y)
+    WRITE(*,*) '      sum(Miter)  :: ', SUM(Miter%val)
+    WRITE(*,*) '      sum(LU)vor  :: ', SUM(LU_Miter%val)
 
     !
     !****************************************************************************************
@@ -454,13 +464,14 @@ MODULE Rosenbrock_Mod
       !
       timerStart=MPI_WTIME()
       CALL SparseLU(LU_Miter)
+      WRITE(*,*) '      sum(LU)nach :: ', SUM(LU_Miter%val)
       timerEnd=MPI_WTIME()
       TimeFac=TimeFac+(timerEnd-timerStart)
     ELSE
       CALL FactorizeCoefMat(Miter%Val)
     END IF
     !
-
+    !stop
     !call printsparse(LU_miter,'*')
     !WRITE(*,*) '      sum(LU)2    :: ', SUM(LU_Miter%val)
     !WRITE(*,*) 
@@ -517,7 +528,7 @@ MODULE Rosenbrock_Mod
         END IF
       END IF
       !
-      !print*, 'debug:: ', 'istage=',iStage,SUM(ABS(fRhs(:)))
+      print*, 'debug:: ', 'istage=',iStage,SUM(ABS(fRhs(:)))
       !
       ! ---  Solve linear System  ---
       !
@@ -540,6 +551,8 @@ MODULE Rosenbrock_Mod
         ELSE
           CALL SolveLinAlg(bb)
           k(:nspc,iStage)=y0(:nspc)*Mumps_Par%RHS(neq+1:NSactNR)
+          IF (combustion) k(nDIM,iStage)=Mumps_Par%RHS(nDIM)
+          print*, 'debug:: ', 'istage=',iStage,k(:,iStage)
         END IF
         TimeSolve=TimeSolve+(MPI_WTIME()-timerStart)
       END IF    

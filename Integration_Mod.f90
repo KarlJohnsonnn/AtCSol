@@ -204,6 +204,7 @@ MODULE Integration_Mod
     
     Rate(:)=MAX(ABS(Rate(:)),eps)*SIGN(ONE,Rate(:))
     y(1:nspc)=MAX(ABS(y(1:nspc)),eps)*SIGN(ONE,y(1:nspc))
+    y0(1:nspc)=MAX(ABS(y0(1:nspc)),eps)*SIGN(ONE,y0(1:nspc))
     !
     ! ----calc values of Jacobian
     TimeJacobianA=MPI_WTIME()
@@ -309,6 +310,7 @@ MODULE Integration_Mod
         failed=.FALSE.                   ! no failed attempts
         !
         ! Rosenbrock Timestep 
+        print*, 'DEBUG::INTEGR     temp=y(end)=',y0(nDim)
         CALL Rosenbrock(  y0            &       ! old concentration
         &               , t             &       ! time
         &               , h             &       ! stepsize
@@ -331,7 +333,7 @@ MODULE Integration_Mod
         IF ( PI_StepSize .AND. Output%nSteps>1 ) THEN
           failed = (error > h*PI_rej%rho*RtolRow)
         ELSE
-          failed = (error > 1.0d0)
+          failed = (error > ONE)
         END IF
         !
         IF (failed) THEN               !failed step

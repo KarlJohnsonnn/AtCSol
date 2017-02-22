@@ -130,16 +130,16 @@ REAL(RealKind) :: tAnf              & ! Model start time
 &                              , ZERO       = 0.d0               &
 &                              , ONE        = 1.d0               &
 &                              , mONE       = -1.d0              &
-&                              , TWO        = 2.d0              &
+&                              , TWO        = 2.d0               &
 &                              , Pi         = 4.0d0*ATAN(1.0d0)  &
-&                              , DR         = Pi / 180.d0        &
-&                              , PiHalf     = 2.0d0*ATAN(1.0d0)  &
-&                              , eps        = EPSILON(1.0d0)     &
+&                              , DR         = Pi / 180.d0        &  
+&                              , PiHalf     = 2.0d0*ATAN(1.0d0)  & 
+&                              , eps        = EPSILON(1.0d0)     &  ! such that 1+eps>1 with working precision
 &                              , epsY       = 1.0d-7             &
-&                              , SI_am      = 1.66053892173d-27  &
-&                              , SI_na      = 6.0221412927d+23   &
-&                              , SI_kB      = 1.380648813d-23    &
-&                              , SI_Gas     = SI_na * SI_kB
+&                              , SI_am      = 1.66053892173d-27  &  ! Atomic mass unit  [kg]  
+&                              , SI_na      = 6.0221412927d+23   &  ! Avogadro's number [1/mol]
+&                              , SI_kB      = 1.380648813d-23    &  ! Bolzmann constant [1/K]
+&                              , SI_Gas     = SI_na * SI_kB         ! Gas constant      [J/mol/K]
 
 !--- Unit Conversion
     INTEGER :: GasUnit, AquaUnit, GasRateUnit
