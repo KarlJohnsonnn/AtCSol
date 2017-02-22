@@ -71,7 +71,7 @@
       !print*, 'debug:: chi,lwc', chi, actLWC
       ! --- Update temperature array
       IF ( combustion ) THEN
-        print*, 'DEBUG::RATES      Temperatur =',y_conc(nDIM)
+        !print*, 'DEBUG::RATES      Temperatur =',y_conc(nDIM)
         CALL UpdateTempArray(T,y_conc(nDIM))
         CALL CalcGibbsFreeEnergie(GFE,T)
         CALL CalcDeltaGibbs(DelGFE)
@@ -130,9 +130,9 @@
         !print*, 'DEBUGG :: k5=',k
         Rate(iReac) = Meff * k
         IF (combustion) DRatedT(iReac) = DkdT
-        print*, 'debugg:: ', ireac, Rate(ireac), DRatedT(ireac)
+        !print*, 'debugg:: ', ireac, Rate(ireac), DRatedT(ireac)
       END DO
-      stop 'rates_mod'
+      !stop 'rates_mod'
       TimeRateE=MPI_WTIME()
       TimeRates=TimeRates+(TimeRateE-TimeRateA)
       !
@@ -924,10 +924,9 @@
         LowConst(:)=ReactionSystem(iR)%Constants(:)
       END IF
       !
-      print*, 'DEBUG::RATES    iReac    =',iR
-      print*, 'DEBUG::RATES    LOW Const=',LowConst
-      print*, 'DEBUG::RATES    HIGHConst=',HighConst
-      print*, 'DEBUG::RATES    TroeConst=',TroeConst
+      !print*, 'DEBUG::RATES    iReac    =',iR
+      !print*, 'DEBUG::RATES    LOW Const=',LowConst
+      !print*, 'DEBUG::RATES    HIGHConst=',HighConst
       !stop
       !
       k0=LowConst(1)*T(1)**LowConst(2)*EXP(-LowConst(3)/R_Const*T(6))
@@ -938,14 +937,14 @@
       ! If Lind reaction
       ReacConst=kinf*Pr
       !
-      print*, 'DEBUG::RATES    k0  =',k0
-      print*, 'DEBUG::RATES    kinf=',kinf
-      print*, 'DEBUG::RATES    Pr  =',Pr
-      stop
+      !print*, 'DEBUG::RATES    k0  =',k0
+      !print*, 'DEBUG::RATES    kinf=',kinf
+      !print*, 'DEBUG::RATES    Pr  =',Pr
 
       ! If Troe reaction
       IF (ALLOCATED(ReactionSystem(iR)%TroeConst)) THEN
         TroeConst(:)=ReactionSystem(iR)%TroeConst(:)
+        !print*, 'DEBUG::RATES    TroeConst=',TroeConst
         ! Formel (73) Chemkin Dokumentation
         Fcent=(ONE-TroeConst(1))*EXP(-T(1)/TroeConst(2)) +                  &
         &      TroeConst(1)*EXP(-T(1)/TroeConst(3))+EXP(-TroeConst(4)*T(6))
@@ -964,16 +963,8 @@
       !print*, 'DEBUG::RATES    logF =',logF
       !
       IF (ReactionSystem(iR)%Line2=='BackReaction') THEN
-        ! backward calculated with eq. constant
-        !
-        !print*, 'DEBUG::RATES  delg0=',delg0
-        !
         EquiRate=EXP(-DelGFE(iR))*(PressR*T(1))**sumBAT(iR)
-        ! backward reaction
         ReacConst=ReacConst/EquiRate
-        !print*, 'DEBUG::RATES  k=',k
-        !print*, 'DEBUG::RATES  keq=',EquiRate
-        !print*, 'DEBUG::RATES  ReacKonst=',ReacConst
       END IF
 
       !IF (ReactionSystem(i)%Line2=='BackReaction') stop 'pressreaktion'
@@ -992,6 +983,7 @@
       REAL(RealKind) :: logF_Troe
       REAL(RealKind) :: DlogF_Troedlog_Pr, Dlog_F_TroedT
       REAL(RealKind) :: DF_PDdT
+      REAL(RealKind) :: DeRdT, DbRdT, DfRdT
 
       REAL(RealKind) :: Dkf0dT, DkfoodT
       REAL(RealKind) :: DlogF_PrdT, DF_PDdT_Lind, DF_PDdT_Troe
@@ -1030,12 +1022,16 @@
         DF_PDdT=DF_PDdT_Lind
       END IF
       !
+      DfRdT=(HighConst(2)+HighConst(3)/R_Const*T(6))*T(6)
+      !
       IF (ReactionSystem(iR)%Line2=='BackReaction') THEN
-        DiffFactor_PD = ( DF_PDdT + TempDiffFactor )
+        DeRdT=-(sumBAT(iR)*T(6)+DDelGFEdT(iR))  
+        TempDiffFactor = DfRdT-DeRdT
       ELSE
-        DiffFactor_PD = ( DF_PDdT + TempDiffFactor )
+        TempDiffFactor = DfRdT
       END IF
       !
+      DiffFactor_PD  = ( DF_PDdT + TempDiffFactor )
       !
       !print*, 'DEBUG::RATES  Dkf0dT   =',Dkf0dT
       !print*, 'DEBUG::RATES  DkfoodT  =',DkfoodT
