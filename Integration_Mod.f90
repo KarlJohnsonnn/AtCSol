@@ -101,8 +101,8 @@ MODULE Integration_Mod
     y(1:nspc)=y_iconc(:)
     !
     IF ( combustion ) THEN
-      y0(nDIM)=280.0d0   ! = 280 [K]
-      y(nDIM)=280.0d0    ! = 280 [K]
+      y0(nDIM)=750.0d0   ! = 750 [K] aus speedchem debug
+      y(nDIM)=750.0d0    ! = 750 [K]
       ALLOCATE(GFE(nspc),DGFEdT(nspc))
       ALLOCATE(DelGFE(neq),DDelGFEdT(neq))
       GFE(:)=ZERO
