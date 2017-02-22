@@ -135,7 +135,11 @@ REAL(RealKind) :: tAnf              & ! Model start time
 &                              , DR         = Pi / 180.d0        &
 &                              , PiHalf     = 2.0d0*ATAN(1.0d0)  &
 &                              , eps        = EPSILON(1.0d0)     &
-&                              , epsY       = 1.0d-7
+&                              , epsY       = 1.0d-7             &
+&                              , SI_am      = 1.66053892173d-27  &
+&                              , SI_na      = 6.0221412927d+23   &
+&                              , SI_kB      = 1.380648813d-23    &
+&                              , SI_Gas     = SI_na * SI_kB
 
 !--- Unit Conversion
     INTEGER :: GasUnit, AquaUnit, GasRateUnit
