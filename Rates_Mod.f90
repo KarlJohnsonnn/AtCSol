@@ -208,7 +208,8 @@
       REAL(RealKind), INTENT(IN), OPTIONAL :: Meff
       REAL(RealKind) :: EqRate,BaRate,FoRate
       !
-      REAL(RealKind) :: k0, kinf, Fcent, logF
+      REAL(RealKind) :: k0, kinf, Fcent, logF, log10_Fcent, log10_Pr
+      REAL(RealKind) :: cnd(3)
       ! calc reaction constant
       ! Skip photochemical reactions at night
       BaRate=ZERO
@@ -271,8 +272,8 @@
         CASE ('TROEMCM')
           CALL TroeMCMCompute(k,ReactionSystem(iReac)%Constants,T(1),mAir)!
         CASE ('PRESSX')
-          CALL PressXCompute(k,k0,kinf,EqRate,Fcent,logF,iReac,T,Meff)
-          CALL DiffPressXCompute(DkdT,k0,kinf,iReac,T,Meff,logF,Fcent)
+          CALL PressXCompute(k,k0,kinf,iReac,T,Meff,cnd,log10_Fcent,log10_Pr)
+          CALL DiffPressXCompute(DkdT,k0,kinf,iReac,T,Meff,cnd,log10_Fcent,log10_Pr)
         CASE ('SPEC1')
           CALL Spec1Compute(k,ReactionSystem(iReac)%Constants,mAir)
         CASE ('SPEC2')
@@ -317,16 +318,14 @@
       END SELECT
     END SUBROUTINE ComputeRateConstant
     !
+    !
     SUBROUTINE ReactionDirection(ReacConst,EquiRate,BackRate,iReac)
       REAL(RealKind) :: ReacConst
       REAL(RealKind) :: EquiRate, Backrate
       INTEGER :: iReac
       !
-      ! backward reaction: k_b = k_b
       IF (ReactionSystem(iReac)%Line2=='BackReaction') THEN
         ReacConst=BackRate
-      !
-      ! forwar reaction: k_f = k_eq * k_b
       ELSE
         ReacConst=EquiRate*BackRate
       END IF
@@ -402,7 +401,7 @@
             STOP 'Unknown FACTOR (error at Rate calc)'
         END SELECT
       ELSE 
-        M=1.0d0
+        M=ONE
       END IF
       !
     END SUBROUTINE CheckThirdBodys
@@ -904,33 +903,32 @@
     !   - Reaction constant
     !--------------------------------------------------------------------------!
     !
-    SUBROUTINE PressXCompute(ReacConst,k0,kinf,EquiRate,Fcent,logF,i,T,Meff)
+    SUBROUTINE PressXCompute(ReacConst,k0,kinf,iR,T,Meff,cnd,log10_Fcent,log10_Pr)
       REAL(RealKind) :: ReacConst, EquiRate
       !
       REAL(RealKind) :: T(:)
       REAL(RealKind) :: Meff
-      INTEGER :: i
+      INTEGER :: iR
+      REAL(RealKind) :: logF_Troe, log10_Fcent, log10_Pr
+      REAL(RealKind) :: cnd(3)
       !
-      REAL(RealKind) :: k0 ,kinf, Pr, logF, c, n, Fcent
+      REAL(RealKind) :: k0 ,kinf, Pr, Fcent
       REAL(RealKind) :: TroeConst(4)
       REAL(RealKind) :: HighConst(3), LowConst(3)
       !
-      IF (ReactionSystem(i)%Line3=='low') THEN
-        HighConst(:)=ReactionSystem(i)%Constants(:)
-        LowConst(:)=ReactionSystem(i)%LowConst(:)
+      IF (ReactionSystem(iR)%Line3=='low') THEN
+        HighConst(:)=ReactionSystem(iR)%Constants(:)
+        LowConst(:)=ReactionSystem(iR)%LowConst(:)
       ELSE
-        HighConst(:)=ReactionSystem(i)%HighConst(:)
-        LowConst(:)=ReactionSystem(i)%Constants(:)
+        HighConst(:)=ReactionSystem(iR)%HighConst(:)
+        LowConst(:)=ReactionSystem(iR)%Constants(:)
       END IF
       !
-      !print*, 'DEBUG::RATES    LOW Const=',LowConst
-      !print*, 'DEBUG::RATES    HIGHConst=',HighConst
-      !print*, 'DEBUG::RATES    TroeConst=',TroeConst
-      print*, 'DEBUG::RATES    i=',i
+      print*, 'DEBUG::RATES    iReac    =',iR
+      print*, 'DEBUG::RATES    LOW Const=',LowConst
+      print*, 'DEBUG::RATES    HIGHConst=',HighConst
+      print*, 'DEBUG::RATES    TroeConst=',TroeConst
       !stop
-      !print*, 'DEBUG::RATES    k0  =',k0
-      !print*, 'DEBUG::RATES    kinf=',kinf
-      !print*, 'DEBUG::RATES    Meff=',Meff
       !
       k0=LowConst(1)*T(1)**LowConst(2)*EXP(-LowConst(3)/R_Const*T(6))
       kinf=HighConst(1)*T(1)**HighConst(2)*EXP(-HighConst(3)/R_Const*T(6))
@@ -940,29 +938,37 @@
       ! If Lind reaction
       ReacConst=kinf*Pr
       !
+      print*, 'DEBUG::RATES    k0  =',k0
+      print*, 'DEBUG::RATES    kinf=',kinf
+      print*, 'DEBUG::RATES    Pr  =',Pr
+      stop
+
       ! If Troe reaction
-      IF (ALLOCATED(ReactionSystem(i)%TroeConst)) THEN
-        TroeConst(:)=ReactionSystem(i)%TroeConst(:)
+      IF (ALLOCATED(ReactionSystem(iR)%TroeConst)) THEN
+        TroeConst(:)=ReactionSystem(iR)%TroeConst(:)
         ! Formel (73) Chemkin Dokumentation
         Fcent=(ONE-TroeConst(1))*EXP(-T(1)/TroeConst(2)) +                  &
         &      TroeConst(1)*EXP(-T(1)/TroeConst(3))+EXP(-TroeConst(4)*T(6))
         !
-        c=-0.4d0-0.67d0*LOG10(Fcent)
-        n=0.75d0-1.27d0*LOG10(Fcent)
-        logF=LOG10(Fcent)/(ONE + ((LOG10(Pr)+c)/(n-0.14d0*(LOG10(Pr)+c)))**TWO)
-        ReacConst=kinf*(Pr/(ONE+Pr))*10.0d0**logF
+        log10_Fcent=LOG10(Fcent)
+        log10_Pr   =LOG10(Pr)
+        cnd(1)=-0.4d0-0.67d0*log10_Fcent    ! will be used for deriv too 
+        cnd(2)=0.75d0-1.27d0*log10_Fcent
+        cnd(3)=0.14d0
+        logF_Troe=log10_Fcent/(ONE + ((log10_Pr+cnd(1))/(cnd(2)-cnd(3)*(log10_Pr+cnd(1))))**TWO)
+        ReacConst=kinf*(Pr/(ONE+Pr))*10.0d0**logF_Troe
         !
       END IF
       !print*, 'DEBUG::RATES    Pr=',Pr
       !print*, 'DEBUG::RATES    Fcent=',fcent
       !print*, 'DEBUG::RATES    logF =',logF
       !
-      IF (ReactionSystem(i)%Line2=='BackReaction') THEN
+      IF (ReactionSystem(iR)%Line2=='BackReaction') THEN
         ! backward calculated with eq. constant
         !
         !print*, 'DEBUG::RATES  delg0=',delg0
         !
-        EquiRate=EXP(-DelGFE(i))*(PressR*T(1))**sumBAT(i)
+        EquiRate=EXP(-DelGFE(iR))*(PressR*T(1))**sumBAT(iR)
         ! backward reaction
         ReacConst=ReacConst/EquiRate
         !print*, 'DEBUG::RATES  k=',k
@@ -974,54 +980,61 @@
     END SUBROUTINE PressXCompute
     !
     !
-    SUBROUTINE DiffPressXCompute(DiffCoef,kf0,kfoo,i,T,Meff,logF_troe,F_cent)
-      REAL(RealKind) :: DiffCoef
-      REAL(RealKind) :: logF_troe, kf0, kfoo, Meff, F_cent
-      REAL(RealKind) :: Dkf0dT, DkfoodT
+    SUBROUTINE DiffPressXCompute(DiffFactor_PD,kf0,kfoo,iR,T,Meff,cnd,log10_Fcent,log10_Pr)
+      REAL(RealKind) :: DiffFactor_PD
+      INTEGER :: iR 
+      REAL(RealKind) :: kf0, kfoo, Meff
+      REAL(RealKind) :: cnd(3)
       REAL(RealKind) :: T(7)
-      INTEGER :: i 
-      REAL(RealKind) :: DF_troedT, DF_linddT
-      REAL(RealKind) :: Pr, DlogFTdPr, DlogFTdT, DlogPrdT
-      REAL(RealKind) :: c, n ,d, l10Prc
+      REAL(RealKind) :: log10_Fcent, log10_Pr
+      !
+      REAL(RealKind) :: TempDiffFactor    ! forward or backward
+      REAL(RealKind) :: logF_Troe
+      REAL(RealKind) :: DlogF_Troedlog_Pr, Dlog_F_TroedT
+      REAL(RealKind) :: DF_PDdT
+
+      REAL(RealKind) :: Dkf0dT, DkfoodT
+      REAL(RealKind) :: DlogF_PrdT, DF_PDdT_Lind, DF_PDdT_Troe
+      REAL(RealKind) :: log10_Prc
+      REAL(RealKind) :: c, n ,d
       !
       REAL(RealKind) :: HighConst(3), LowConst(3)
       !
-      IF (ReactionSystem(i)%Line3=='low') THEN
-        HighConst(:)=ReactionSystem(i)%Constants(:)
-        LowConst(:)=ReactionSystem(i)%LowConst(:)
+      IF (ReactionSystem(iR)%Line3=='low') THEN
+        HighConst(:)=ReactionSystem(iR)%Constants(:)
+        LowConst(:)=ReactionSystem(iR)%LowConst(:)
       ELSE
-        HighConst(:)=ReactionSystem(i)%HighConst(:)
-        LowConst(:)=ReactionSystem(i)%Constants(:)
+        HighConst(:)=ReactionSystem(iR)%HighConst(:)
+        LowConst(:)=ReactionSystem(iR)%Constants(:)
       END IF
       !
-      Pr=kf0/kfoo*Meff
-      c=-0.4d0-0.67d0*LOG10(F_cent)
-      n=0.75d0-1.27d0*LOG10(F_cent)
-      d=0.14d0
-      l10Prc=LOG10(Pr)+c
-      !print*, 'DEBUG::RATES  Pr     =',Pr
-      !
+      ! Lind mechnism also nessesarry for Troe 
       Dkf0dT=kf0*(LowConst(2)+LowConst(3)/R_Const*T(6))*T(6)
       DkfoodT=kfoo*(HighConst(2)+HighConst(3)/R_Const*T(6))*T(6)
       !
-      DlogFTdPr= -TWO*LOG10(F_cent)*l10Prc                  &
-      &          *(n-d*l10Prc)*(n*n-TWO*n*d*l10Prc          &
-      &                         +(d+ONE)*l10Prc*l10Prc)**(-TWO)
+      DF_PDdT_Lind=Meff/(kfoo+kf0*Meff)**TWO*(kfoo*Dkf0dT-kf0*DkfoodT)
       !
-      DlogPrdT=ONE/LOG10(10.0d0)*(ONE/kf0*Dkf0dT+ONE/kfoo*DkfoodT)
-      !
-      DlogFTdT=DlogFTdPr*DlogPrdT
+      IF (ALLOCATED(ReactionSystem(iR)%TroeConst)) THEN
+        ! Troe mechanism
+        DlogF_PrdT=ONE/LOG(10.0d0)*(ONE/kf0*Dkf0dT-ONE/kfoo*DkfoodT)
+        log10_Prc=log10_Pr+cnd(1)
+        DlogF_Troedlog_Pr = -TWO * cnd(2) * log10_Fcent * log10_Prc *                &
+        &                   ( cnd(2)+cnd(3)*log10_Prc ) *                            &
+        &                   ( cnd(2)*cnd(2) -TWO*cnd(2)*cnd(3)*log10_Prc +           &
+        &                     (cnd(3)+ONE)*log10_Prc*log10_Prc             )**(-2.0d0)
 
-      IF (ALLOCATED(ReactionSystem(i)%TroeConst)) THEN
-        DF_troedT=10.0d0**logF_troe * (DF_linddT+LOG10(10.0d0)*DlogFTdT)
-        DiffCoef=DF_troeDT+10.0d0**logF_troe*(HighConst(2)+HighConst(3)/R_Const*T(6))*T(6)
-
+        Dlog_F_TroedT=DlogF_Troedlog_Pr*DlogF_PrdT
+        DF_PDdT_Troe=10.0d0**logF_Troe*(DF_PDdT_Lind+Dlog_F_TroedT)
+        DF_PDdT=DF_PDdT_Troe
       ELSE
-        DF_linddT= Meff/(kfoo+kf0*Meff)**2 * ( kfoo*Dkf0dT - kf0*DkfoodT )
-
+        DF_PDdT=DF_PDdT_Lind
       END IF
       !
-      !
+      IF (ReactionSystem(iR)%Line2=='BackReaction') THEN
+        DiffFactor_PD = ( DF_PDdT + TempDiffFactor )
+      ELSE
+        DiffFactor_PD = ( DF_PDdT + TempDiffFactor )
+      END IF
       !
       !
       !print*, 'DEBUG::RATES  Dkf0dT   =',Dkf0dT
