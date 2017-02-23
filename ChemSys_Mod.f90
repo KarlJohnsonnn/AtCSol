@@ -592,13 +592,13 @@ MODULE Chemsys_Mod
                 DuctsCONSTreac(cntCONST)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
                 &                                                         %Species)
               END DO
-            CASE ('TEMP','TEMP1','TEMP2')
+            CASE ('TEMP','TEMP1','TEMP2','TEMPX')
               DO j=1,SIZE(ReacStruct(i)%Educt)
                 cntTEMP=cntTEMP+1
                 DuctsTEMPreac(cntTEMP)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
                 &                                                         %Species)
               END DO
-            CASE ('TROE','TROEF','TROEQ')
+            CASE ('TROE','TROEF','TROEQ','PRESSX')
               DO j=1,SIZE(ReacStruct(i)%Educt)
                 cntTROE=cntTROE+1
                 DuctsTROEreac(cntTROE)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
@@ -927,11 +927,13 @@ MODULE Chemsys_Mod
     DO iLoop=1,neq
       ! count activ educts in reaction iLoop
       NumActiveEduct=0
+      !print*, 'DEBUG::chemsys    sizeRSe,p=',iloop,SIZE(ReactionSystem(iLoop)%Educt),SIZE(ReactionSystem(iLoop)%Product)
       DO i=1,SIZE(ReactionSystem(iLoop)%Educt)
         SELECT CASE(ReactionSystem(iLoop)%Educt(i)%Type)
           CASE ('Gas','Aqua','Solid','Partic','GAS')
             NumActiveEduct=NumActiveEduct+1
             ActiveEduct(NumActiveEduct)=ReactionSystem(iLoop)%Educt(i)
+          print*, 'debug::chemssys   ActiveEduct(NumActiveEduct)=',ActiveEduct(NumActiveEduct)
         END SELECT
       END DO
       ! count activ products in reaction iLoop
@@ -941,6 +943,7 @@ MODULE Chemsys_Mod
           CASE ('Gas','Aqua','Solid','Partic','GAS')
             NumActiveProduct=NumActiveProduct+1
             ActiveProduct(NumActiveProduct)=ReactionSystem(iLoop)%Product(i)
+          print*, 'debug::chemssys   ActiveProduct(NumActiveProduct)=',ActiveProduct(NumActiveProduct)
         END SELECT
       END DO
       !
@@ -2246,38 +2249,45 @@ MODULE Chemsys_Mod
     ! 
     PositionSpeciesAll=0
     !
-    ! PARTIC
-    IF (Species(1:1)=='p') THEN
-      PositionSpeciesAll=GetHash(ListPartic,TRIM(ADJUSTL(Species))) 
-      IF (PositionSpeciesAll>0) THEN
-        PositionSpeciesAll=PositionSpeciesAll+ntGAS+ntAQUA+ntSOLID         
-      END IF
-    ! 
-    ! AQUA 
-    ELSE IF (Species(1:1)=='a'.OR.SCAN(Species,'pm')>0) THEN
-      PositionSpeciesAll=GetHash(ListAqua,TRIM(ADJUSTL(Species)))
-      IF (PositionSpeciesAll>0) THEN
-        PositionSpeciesAll=PositionSpeciesAll+ntGAS
-      END IF
-    !
-    ! SOLID
-    ELSE IF (Species(1:1)=='s') THEN
-      PositionSpeciesAll=GetHash(ListSolid,TRIM(ADJUSTL(Species)))      
-      IF (PositionSpeciesAll>0) THEN
-        PositionSpeciesAll=PositionSpeciesAll+ntGAS+ntAQUA         
-      END IF
-    !
-    ! NonReac
-    ELSE IF (Species(1:1)=='['.AND.                                  &
-    &        Species(LEN(TRIM(Species)):LEN(TRIM(Species)))==']'.AND.&
-    &        LEN(TRIM(Species))<maxLENinActDuct) THEN
-      PositionSpeciesAll=GetHash(ListNonReac,TRIM(ADJUSTL(Species)))    
-      IF (PositionSpeciesAll>0) THEN
-        PositionSpeciesAll=PositionSpeciesAll+ntGAS+ntAQUA+ntSOLID+ntPart
-      END IF
-    ! GAS
-    ELSE
+    ! Combustion system
+    IF ( combustion ) THEN
+      PositionSpeciesAll=-1
       PositionSpeciesAll=GetHash(ListGas,TRIM(ADJUSTL(Species)))
+      print*,' nummer=',PositionSpeciesAll, TRIM(ADJUSTL(Species))
+    ELSE
+    ! tropospheric system
+      IF (Species(1:1)=='p') THEN
+        PositionSpeciesAll=GetHash(ListPartic,TRIM(ADJUSTL(Species))) 
+        IF (PositionSpeciesAll>0) THEN
+          PositionSpeciesAll=PositionSpeciesAll+ntGAS+ntAQUA+ntSOLID         
+        END IF
+      ! 
+      ! AQUA 
+      ELSE IF (Species(1:1)=='a'.OR.SCAN(Species,'pm')>0) THEN
+        PositionSpeciesAll=GetHash(ListAqua,TRIM(ADJUSTL(Species)))
+        IF (PositionSpeciesAll>0) THEN
+          PositionSpeciesAll=PositionSpeciesAll+ntGAS
+        END IF
+      !
+      ! SOLID
+      ELSE IF (Species(1:1)=='s') THEN
+        PositionSpeciesAll=GetHash(ListSolid,TRIM(ADJUSTL(Species)))      
+        IF (PositionSpeciesAll>0) THEN
+          PositionSpeciesAll=PositionSpeciesAll+ntGAS+ntAQUA         
+        END IF
+      !
+      ! NonReac
+      ELSE IF (Species(1:1)=='['.AND.                                  &
+      &        Species(LEN(TRIM(Species)):LEN(TRIM(Species)))==']'.AND.&
+      &        LEN(TRIM(Species))<maxLENinActDuct) THEN
+        PositionSpeciesAll=GetHash(ListNonReac,TRIM(ADJUSTL(Species)))    
+        IF (PositionSpeciesAll>0) THEN
+          PositionSpeciesAll=PositionSpeciesAll+ntGAS+ntAQUA+ntSOLID+ntPart
+        END IF
+      ! GAS
+      ELSE
+        PositionSpeciesAll=GetHash(ListGas,TRIM(ADJUSTL(Species)))
+      END IF
     END IF
   END FUNCTION PositionSpeciesAll
   !

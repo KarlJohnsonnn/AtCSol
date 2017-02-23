@@ -244,6 +244,7 @@ CONTAINS
     CHARACTER(200)     :: locString
     CHARACTER(200)     :: headline  
     CHARACTER(200)     :: ductstr
+    CHARACTER(200)     :: dummyString
     !
     INTEGER :: i
     INTEGER :: iReac
@@ -282,7 +283,8 @@ CONTAINS
       CASE ('JOULES/MOLE','joules/mole')
         units='JOULES/MOLE'
       CASE DEFAULT
-        STOP ' Wrong units in line reactions'
+        units='CAL/MOLE'
+        WRITE(*,*) ' Using cal/mole '
     END SELECT
     !
     ! first count reations, ...
@@ -293,16 +295,18 @@ CONTAINS
       ! adjust lef
       iLine=ADJUSTL(iLine)
       ! exit cond
-      IF (iLine(1:3)=='END'.OR.iLine(1:3)=='end') EXIT
+      IF ( MAX(INDEX(iLine,'END'),INDEX(iLine,'end'))>0 )  EXIT
       !
+      !print*, 'debug::mockin   iline=',iline
       ! if no exit iReac++
       !          reversible reactions
-      IF (INDEX(iLine,' = ')>0.OR.INDEX(iLine,' <=> ')>0)  iReac=iReac+2
+      IF ( MAX(INDEX(iLine,' = '),INDEX(iLine,' <=> '))>0 )  iReac=iReac+2
       !          irreversible reactions
-      IF (INDEX(iLine,' => ')>0)  iReac=iReac+1
+      IF ( INDEX(iLine,' => ')>0 )  iReac=iReac+1
     END DO
     REWIND UnitReac
     nReak=iReac
+    !print*, 'debug::mockin   nreak=',nreak
     !CALL PrintHashTableCK(ListGas,TableNspc)
     !IF (TableNspc>nSpc) STOP ' More Species in reactin system than declared in species section! '
     !
@@ -323,16 +327,30 @@ CONTAINS
     !
     !
     CALL FindSection(UnitReac,'reactions',headline)
-    iReac=0
-    fPosPlus=0
-    fPosEq=0
-    fPosFw=0
+    iReac     = 0
+    fPosPlus  = 0
+    fPosEq    = 0
+    fPosFw    = 0
+    iLine       = ''
+    dummyString = ''
+    LocString   = ''
     DO
-      ! read next line
-      READ(UnitReac,'(A200)') iLine
-
+      ! exit cond
+      IF ( MAX(INDEX(iLine,'END'),INDEX(iLine,'end'))>0 ) EXIT
+      !IF (iLine(1:3)=='END'.OR.iLine(1:3)=='end') EXIT
+      !
+      IF ( TRIM(ADJUSTL(LocString))==dummyString) THEN
+        ! read next line
+        READ(UnitReac,'(A200)') iLine
+      ELSE
+        iLine=TRIM(ADJUSTL(LocString))
+      END IF
+      !
+      dummyString=TRIM(ADJUSTL(iLine))
+      !print*, 'DEBUG::mo_ckinput   vor skip  iLine=',TRIM(iLine)
       !
       CALL SkipLines(UnitReac,iLine)
+      !print*, 'DEBUG::mo_ckinput   nachskip  iLine=',TRIM(iLine)
       !
       ! adjust left and cut off comments
       IF (INDEX(iLine,'!')>0)  THEN
@@ -340,8 +358,6 @@ CONTAINS
       END IF
       iLine=ADJUSTL(iLine)
       !
-      ! exit cond
-      IF (iLine(1:3)=='END'.OR.iLine(1:3)=='end') EXIT
       !
       ! if no exit iReac++
       !          reversible reactions
@@ -353,44 +369,61 @@ CONTAINS
         iReac=iReac+1
         ReactionSystem(iReac)%Type='GAS'    ! immer gas bei chemkin?
         !
+        ! if  =   or   <=>   reaction
+        IF (fPosEq>0) THEN
+          bR=.TRUE.
+          ReactionSystem(iReac+1)%Type='GAS'    ! immer gas bei chemkin?
+        END IF
+        !
         ! FIRST LINE OF REACTION  ---  Extract Arrhenius Coeff 
-        IF (.NOT.ALLOCATED(ReactionSystem(iReac)%Constants)) ALLOCATE(ReactionSystem(iReac)%Constants(3))
-        IF (.NOT.ALLOCATED(ReactionSystem(iReac+1)%Constants)) ALLOCATE(ReactionSystem(iReac+1)%Constants(3))
+        ALLOCATE(ReactionSystem(iReac)%Constants(3))
+        IF (bR) ALLOCATE(ReactionSystem(iReac+1)%Constants(3))
         LocString=iLine
         DO i=3,1,-1
           LocString=ADJUSTR(LocString)
           iWS=INDEX(LocString,' ',.TRUE.)        ! find first whitespace <--
           READ(LocString(iWS:),'(E10.4)') tmpReal
           ReactionSystem(iReac)%Constants(i)=REAL(tmpReal,KIND=RealKind)
-          ReactionSystem(iReac+1)%Constants(i)=REAL(tmpReal,KIND=RealKind)
+          IF (bR) ReactionSystem(iReac+1)%Constants(i)=REAL(tmpReal,KIND=RealKind)
           LocString=LocString(:iWS)
         END DO
         !
         ! left over string = reaction
         LocString=TRIM(ADJUSTL(LocString))
-        ReactionSystem(iReac)%Line1=LocString               ! save reaction string
+        !
+        IF (fPosEq>0) THEN
+          ReactionSystem(iReac)%Line1=TRIM(ADJUSTL(LocString(1:fPosEq-1)))//' => '// &
+          &                           TRIM(ADJUSTL(LocString(fPosEq+4:)))   ! save reaction string
+          !print*, 'DEBUG::mo_ckinput  hinreaktion = ',iReac,TRIM(ReactionSystem(iReac)%Line1)
+        ELSE
+          ReactionSystem(iReac)%Line1=LocString               ! save reaction string
+        END IF
         !
         nduct=0
         !
         !
-        ! if  =   or   <=>   reaction
-        IF (fPosEq>0) THEN
-          bR=.TRUE.
-          ReactionSystem(iReac+1)%Type='GAS'    ! immer gas bei chemkin?
-        END IF
         !p
         IF (bR) THEN
           ! save reaction string
-          ReactionSystem(iReac+1)%Line1=ADJUSTR(TRIM(LocString(fPosEq+2:)))//' => '// &
-          &                 ADJUSTL(TRIM(LocString(1:fPosEq-1)))
+          ReactionSystem(iReac+1)%Line1=TRIM(ADJUSTL(LocString(fPosEq+4:)))//' => '// &
+          &                             TRIM(ADJUSTL(LocString(1:fPosEq-1)))
+          !print*, 'DEBUG::mo_ckinput  rückrealinks= ',TRIM(ADJUSTL(LocString(fPosEq+4:)))
+          !print*, 'DEBUG::mo_ckinput  rückrearecht= ',TRIM(ADJUSTL(LocString(1:fPosEq-1)))
+          !print*, 'DEBUG::mo_ckinput  rückreaktion= ',iReac+1,TRIM(ReactionSystem(iReac+1)%Line1)
         END IF
         ! extract the constant type by checking the reaction if +m or (+M) appears, and cut M off
+        !print*, 'DEBUG::mo_ckinput getkonst  vor locstr= ',locstring
         CALL GetConstantType(iM,iKlammerM,LocString,ReactionSystem(iReac)%TypeConstant,ReactionSystem(iReac)%Factor)
+        !print*, 'DEBUG::mo_ckinput getkonst nach locstr= ',locstring
         !
         ! count educts and products
         CALL CountDooku(nEducts,nProducts,LocString)
 !----------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------
+        !
+        !print*, ' debug::mockin   iR, nedu,npro, factor=', iReac,neducts,nproducts,ReactionSystem(iReac)%Factor
+
+        !print*, 'DEBUG::mo_ck..    ned,npr=',neducts,nproducts,locstring
         ALLOCATE(ReactionSystem(iReac)%Educt(nEducts))
         IF (bR) ALLOCATE(ReactionSystem(iReac+1)%Educt(nProducts))
         ALLOCATE(ReactionSystem(iReac)%Product(nProducts))
@@ -404,7 +437,7 @@ CONTAINS
         END IF
         !
         fPosEq=INDEX(LocString,'=')
-        ductStr=ADJUSTL(LocString(1:fPosEq-1))
+        ductStr=ADJUSTL(LocString(1:fPosEq-2))
         !
 !----------------------------------------------------------------------------------------------
 ! 
@@ -422,9 +455,11 @@ CONTAINS
           !
           IF (fPosPlus>0) THEN
             ReactionSystem(iReac)%Educt(i)%Species=TRIM(ADJUSTL(ductStr(iNxtSpc:fPosPlus-1)))
+            print*, 'debug::mock..       spc  =  ', TRIM(ADJUSTL(ductStr(iNxtSpc:fPosPlus-1)))
             IF (bR) ReactionSystem(iReac+1)%Product(i)%Species=TRIM(ADJUSTL(ductStr(iNxtSpc:fPosPlus-1)))
           ELSE
             ReactionSystem(iReac)%Educt(i)%Species=TRIM(ADJUSTL(ductStr(iNxtSpc:)))
+            print*, 'debug::mock.. last  spc  =  ', TRIM(ADJUSTL(ductStr(iNxtSpc:)))
             IF (bR) ReactionSystem(iReac+1)%Product(i)%Species=TRIM(ADJUSTL(ductStr(iNxtSpc:)))
           END IF
           !
@@ -445,6 +480,7 @@ CONTAINS
           ductStr=TRIM(ADJUSTL(ductStr(fPosPlus+1:)))  
         END DO
         !
+        !stop
         ! HIER NOCH COLIND FÜR DIE STÖCH MATRIZEN BESTIMMEN EINFACH MIT SPCIND ARBEITEN
         !
         !IF (nEducts>1) THEN
@@ -456,7 +492,7 @@ CONTAINS
         ! PRODUCT SIDE OF REACTION
         !
         !
-        ductStr=ADJUSTL(LocString(fPosEq+1:))
+        ductStr=ADJUSTL(LocString(fPosEq+2:))
         DO i=1,nProducts
           fPosPlus=INDEX(ductStr,'+')
           !
@@ -499,8 +535,11 @@ CONTAINS
           !
           iLine=''
           ! skip empty lines and comment lines
-          CALL SkipLines(UnitReac,iLine)
+
+          !print*, 'DEBUG::mo_ck.. vor    iR,locstr= ',iReac,locstring
+          !CALL SkipLines(UnitReac,iLine)
           LocString=ADJUSTL(iLine)
+          !print*, 'DEBUG::mo_ck.. nach   iR,locstr= ',iReac,locstring
           !
           iKl=INDEX(LocString,'/')
           iKr=INDEX(LocString,'/',.TRUE.)
@@ -605,10 +644,12 @@ CONTAINS
       IF (ReactionSystem(iReac)%Factor=='$+M'.OR.ReactionSystem(iReac)%Factor=='$(+M)') THEN
         iLine=''          ! clear actual line 
         !
+        !print*, 'debug::mockinp    vor line= ',locString
         ! skip empty lines and comment lines and read next line
         CALL SkipLines(UnitReac,iLine)
         !
         LocString=ADJUSTL(iLine)
+        !print*, 'debug::mockinp   nach line= ',locString
         !
         iKl=INDEX(LocString,'/')
         iKr=INDEX(LocString,'/',.TRUE.)

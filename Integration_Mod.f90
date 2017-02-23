@@ -138,6 +138,9 @@ MODULE Integration_Mod
     !----------------------------------------------------------
     ! ----------- Beginning with symbolic phase --------------
     !----------------------------------------------------------
+    !call printsparse(A,'*')
+    !call printsparse(B,'*')
+
     !
     TimeSymbolic=MPI_WTIME()       ! start timer for symb phase
     CALL SymbolicAdd(BA,B,A)       ! symbolic addition:    BA = B + A
