@@ -30,9 +30,10 @@ MODULE Meteo_Mod
    REAL(RealKind) :: mH2O
 
   REAL(RealKind), PARAMETER :: LWCconst=2.0d-8       ! [l/m3] no cloud 
-  REAL(RealKind), PARAMETER :: NCC=1000
+  REAL(RealKind), PARAMETER :: NCC=1000d0
 
-  REAL(RealKind), PARAMETER :: R_const=8.344598 ! [ J / mol / K ] = [ kg * m2 / s2 / mol /K ]
+  !REAL(RealKind), PARAMETER :: R_const=8.344598d0 ! [ J / mol / K ] = [ kg * m2 / s2 / mol /K ]
+  REAL(RealKind), PARAMETER :: R_const=8.3144621d0 ! [ J / mol / K ] = [ kg * m2 / s2 / mol /K ]
   REAL(RealKind) :: PressR=Pres/R_const
 
 !-- more LWC stuff for pseudo function 
