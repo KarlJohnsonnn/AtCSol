@@ -882,12 +882,13 @@
       REAL(RealKind) :: y(:)
       REAL(RealKind) :: DUmoldT(:)
       !
-      INTEGER :: i
+      !INTEGER :: i
       !
-      c_v=0.0d0
-      DO i=1,nspc
-        c_v=c_v+DUmoldT(i)*y(i) !/W(i) für andere einheit
-      END DO
+      c_v = ZERO
+      c_v = SUM( DUmoldT * y )
+      !DO i=1,nspc
+      !  c_v=c_v+DUmoldT(i)*y(i) !/W(i) für andere einheit
+      !END DO
     END SUBROUTINE MassAveMixSpecHeat
     !
     !==========================================================================!
