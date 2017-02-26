@@ -94,7 +94,7 @@
         !
         ! ================ Multiplication with FACTOR====================
         CALL CheckThirdBodys(Meff,y_conc,iReac)
-        !print*, 'DEBUGG :: me=',meff
+        !print*, 'DEBUGG ::iR=    me=',iReac,meff
         !
         ! ====== Compute the rate constant for specific reaction type ===
         CALL ComputeRateConstant(k,DkdT,T,Time,chi,mAir,iReac,y_conc,Meff)
@@ -854,7 +854,7 @@
         !print*, 'DEBUG::RATES       Posspc    =', PositionSpeciesCK(ReactionSystem(i)%TBspc(jj))
         !print*, 'DEBUG::RATES       SpcAlpha  =', ReactionSystem(i)%TBalpha(jj)
         !j=ReactionSystem(i)%TB(jj)
-        j=PositionSpeciesCK(ReactionSystem(i)%TBspc(jj)) ! richtigen index holen, da TB unsortiert eingelesen wurde
+        j=PositionSpeciesAll(ReactionSystem(i)%TBspc(jj)) ! richtigen index holen, da TB unsortiert eingelesen wurde
         Stmp=Stmp+(ONE-ReactionSystem(i)%TBalpha(jj))*y_conc(j)
       END DO
       M=M-Stmp        ! Formel (6) Perini 2012

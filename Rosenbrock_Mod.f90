@@ -353,7 +353,7 @@ MODULE Rosenbrock_Mod
     REAL(RealKind), DIMENSION(nDIM,RCo%nStage) :: k     
     REAL(RealKind), DIMENSION(nDIM)    :: y, yhat, fRhs
     REAL(RealKind), DIMENSION(nspc)    :: hy
-    REAL(RealKind), DIMENSION(nspc)    :: Umol, DUmoldT, DcDt
+    REAL(RealKind), DIMENSION(nspc)    :: Umol, UMat, DUmoldT, DcDt
     REAL(RealKind), DIMENSION(nDIMex)    :: bb
     !
     REAL(RealKind) :: Tarr(8)
@@ -421,12 +421,13 @@ MODULE Rosenbrock_Mod
       print*, 'debug     DUmoldT  :: ',SUM(DUmoldT)
       print*, 'debug     c_v      :: ',c_v
       print*, 'debug     DcDt     :: ',SUM(DcDt)
-      Umol(:)=-Umol(:)*hy(:)
-      DUmoldT=DUmoldT*RCo%ga
-      c_v=c_v/h
-      X=c_v+SUM(DUmoldT(:)*DcDt(:))
+      UMat(:)=-Umol(:)*y0(1:nspc)
+      DRatedT(:)=DRatedT(:)*RCo%ga
+      !c_v=c_v/h
+      !X=c_v+SUM(DUmoldT(:)*DcDt(:))
+      X = ONE + h * RCo%ga * SUM( DUmoldT(:) * DcDt(:) )
       print*, 'debug     X        :: ',X
-      stop
+      !stop
     END IF
     ! 
     ! --- Update matrix procedure
@@ -445,7 +446,7 @@ MODULE Rosenbrock_Mod
       !
       invRate(:)=ONE/Rate(:)
       IF (OrderingStrategie==8) THEN
-        CALL SetLUvaluesEX(LU_Miter,nspc,neq,invRate,hy,DRatedT,Umol,X,LUvalsFix)
+        CALL SetLUvaluesEX(LU_Miter,nspc,neq,invRate,hy,DRatedT,Umol,X,LUvalsFix,LU_Perm)
       ELSE
         CALL Miter_Extended(Miter,nspc,neq,invRate,hy)
       END IF

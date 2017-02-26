@@ -1388,7 +1388,7 @@ MODULE Sparse_Mod
   !
   !
   !
-  SUBROUTINE SetLUvaluesEX(LU,m,n,invrVec,hyVec,KVec,UVec,X,constantValues)
+  SUBROUTINE SetLUvaluesEX(LU,m,n,invrVec,hyVec,KVec,UVec,X,constantValues,Permu)
     !
     ! Set values to block matrix
     TYPE(CSR_Matrix_T), INTENT(INOUT) :: LU  
@@ -1397,6 +1397,8 @@ MODULE Sparse_Mod
     REAL(RealKind), INTENT(IN) :: hyVec(:), UVec(:)
     REAL(RealKind), INTENT(IN) :: constantValues(:)
     REAL(RealKind), INTENT(IN) :: X
+    INTEGER, INTENT(IN) :: Permu(:)
+
     !
     !
     LU%Val(:)=constantValues(:)
@@ -1417,7 +1419,7 @@ MODULE Sparse_Mod
       LU%Val(LU%DiagPtr_C(:))=hyVec(:)  
       LU%Val(LU%ColVectorPtr(:))=KVec(:)
       LU%Val(LU%RowVectorPtr(:))=UVec(:)  
-      LU%Val(LU%Permu(n+m+1))=X
+      LU%Val(Permu(n+m+1))=X
     ELSE
       !          _                            _
       ! miter = | invDiagrVec  |   contvals    |
