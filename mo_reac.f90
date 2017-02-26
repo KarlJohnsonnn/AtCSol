@@ -283,4 +283,7 @@
     REAL(RealKind), ALLOCATABLE :: GFE(:), DGFEdT(:)
     REAL(RealKind), ALLOCATABLE :: DelGFE(:), DDelGFEdT(:)
     !
+    REAL(RealKind), ALLOCATABLE :: MW(:)    ! molecular weight (combustion)
+    REAL(RealKind), ALLOCATABLE :: rMW(:)    !1/ molecular weight (combustion)
+    !
 END MODULE mo_reac

@@ -417,24 +417,28 @@ END SUBROUTINE InitNetCDF
        jt=jt+1
        idx=OutNetcdfSpc(iDiagSpc)
        NaN=ISNAN(y(idx))
-       IF      (OutNetcdfPhase(iDiagSpc)=='a'.AND..NOT.NaN) THEN
-         yout(jt) = y(idx) / (actLWC * mol2part)  ! convert to mol/l water
-         yout(jt+1) = y(idx) / (mol2part) ! convert to mol/m3 air
-         jt=jt+1
-         !
-       ELSE IF (OutNetcdfPhase(iDiagSpc)=='g'.AND..NOT.NaN) THEN
-         yout(jt) = y(idx) / (mol2part) 
-         !
+       IF ( combustion ) THEN
+           yout(jt) = y(idx) 
        ELSE
-         WRITE(*,*) ' '
-         WRITE(*,*) ' '
-         WRITE(*,*) ' '
-         WRITE(*,*) '  Error: Some value is NaN ! '
-         WRITE(*,*) '  -------------------------- '
-         WRITE(*,*) '  spc idx   =  ', idx
-         WRITE(*,*) '  spc name  =  ', y_name(idx)
-         WRITE(*,*) '  spc val   =  ', y(idx)
-         STOP 
+         IF      (OutNetcdfPhase(iDiagSpc)=='a'.AND..NOT.NaN) THEN
+           yout(jt) = y(idx) / (actLWC * mol2part)  ! convert to mol/l water
+           yout(jt+1) = y(idx) / (mol2part) ! convert to mol/m3 air
+           jt=jt+1
+           !
+         ELSE IF (OutNetcdfPhase(iDiagSpc)=='g'.AND..NOT.NaN) THEN
+           yout(jt) = y(idx) / (mol2part) 
+           !
+         ELSE
+           WRITE(*,*) ' '
+           WRITE(*,*) ' '
+           WRITE(*,*) ' '
+           WRITE(*,*) '  Error: Some value is NaN ! '
+           WRITE(*,*) '  -------------------------- '
+           WRITE(*,*) '  spc idx   =  ', idx
+           WRITE(*,*) '  spc name  =  ', y_name(idx)
+           WRITE(*,*) '  spc val   =  ', y(idx)
+           STOP 
+         END IF
        END IF
      END DO
 !-------------------------------------------------------------------------

@@ -933,7 +933,7 @@ MODULE Chemsys_Mod
           CASE ('Gas','Aqua','Solid','Partic','GAS')
             NumActiveEduct=NumActiveEduct+1
             ActiveEduct(NumActiveEduct)=ReactionSystem(iLoop)%Educt(i)
-          print*, 'debug::chemssys   ActiveEduct(NumActiveEduct)=',ActiveEduct(NumActiveEduct)
+            !print*, 'debug::chemssys   ActiveEduct(NumActiveEduct)=',ActiveEduct(NumActiveEduct)
         END SELECT
       END DO
       ! count activ products in reaction iLoop
@@ -943,7 +943,7 @@ MODULE Chemsys_Mod
           CASE ('Gas','Aqua','Solid','Partic','GAS')
             NumActiveProduct=NumActiveProduct+1
             ActiveProduct(NumActiveProduct)=ReactionSystem(iLoop)%Product(i)
-          print*, 'debug::chemssys   ActiveProduct(NumActiveProduct)=',ActiveProduct(NumActiveProduct)
+            !print*, 'debug::chemssys   ActiveProduct(NumActiveProduct)=',ActiveProduct(NumActiveProduct)
         END SELECT
       END DO
       !
@@ -1326,7 +1326,7 @@ MODULE Chemsys_Mod
       !-----------------------------------------
       ! calculate initial aqueus concentrations 
       !-----------------------------------------
-      InitValAct(ntGAS+1:)=1.0d-16
+      InitValAct(ntGAS+1:)=1.0d-20
       DO i=1,SIZE(InitAFrac)
         iPos=PositionSpeciesAll(InitAFrac(i)%Species)
         IF (iPos>0) THEN
@@ -2253,7 +2253,7 @@ MODULE Chemsys_Mod
     IF ( combustion ) THEN
       PositionSpeciesAll=-1
       PositionSpeciesAll=GetHash(ListGas,TRIM(ADJUSTL(Species)))
-      print*,' nummer=',PositionSpeciesAll, TRIM(ADJUSTL(Species))
+      !print*,' nummer=',PositionSpeciesAll, TRIM(ADJUSTL(Species))
     ELSE
     ! tropospheric system
       IF (Species(1:1)=='p') THEN

@@ -127,10 +127,7 @@ REAL(RealKind) :: tAnf              & ! Model start time
 &                              , GasConst_R = 0.082056d0         &   ! [in l*atm/mol/K]
 &                              , hour       = 3600.d0            &
 &                              , secday     = 4.32d04            &
-&                              , ZERO       = 0.d0               &
-&                              , ONE        = 1.d0               &
 &                              , mONE       = -1.d0              &
-&                              , TWO        = 2.d0               &
 &                              , Pi         = 4.0d0*ATAN(1.0d0)  &
 &                              , DR         = Pi / 180.d0        &  
 &                              , PiHalf     = 2.0d0*ATAN(1.0d0)  & 
@@ -140,6 +137,70 @@ REAL(RealKind) :: tAnf              & ! Model start time
 &                              , SI_na      = 6.0221412927d+23   &  ! Avogadro's number [1/mol]
 &                              , SI_kB      = 1.380648813d-23    &  ! Bolzmann constant [1/K]
 &                              , SI_Gas     = SI_na * SI_kB         ! Gas constant      [J/mol/K]
+!
+!--- Real number constants
+  REAL(RealKind), PARAMETER ::   ZERO    =     0.0d0   & 
+&                             ,  ONE     =     1.0d0   & 
+&                             ,  TWO     =     2.0d0  ,   rTWO     =   ONE/tWO     &
+&                             ,  THREE   =     3.0d0  ,   rTHREE   =   ONE/THREE   &
+&                             ,  FOUR    =     4.0d0  ,   rFOUR    =   ONE/FOUR    &
+&                             ,  FIVE    =     5.0d0  ,   rFIVE    =   ONE/FIVE    &
+&                             ,  SIX     =     6.0d0  ,   rSIX     =   ONE/SIX     &
+&                             ,  SEVEN   =     7.0d0  ,   rSEVEN   =   ONE/SEVEN   &
+&                             ,  EIGHT   =     8.0d0  ,   rEIGHT   =   ONE/EIGHT   &
+&                             ,  NINE    =     9.0d0  ,   rNINE    =   ONE/NINE    &
+&                             ,  TEN     =    10.0d0  ,   rTEN     =   ONE/TEN     &
+&                             ,  ELEVN   =    11.0d0  ,   rELEVN   =   ONE/ELEVN   &
+&                             ,  TWELV   =    12.0d0  ,   rTWELV   =   ONE/TWELV
+!
+!--- Orders of magnitude
+  REAL(RealKind), PARAMETER ::   nano    =     1.0d-09    &
+&                             , micro    =     1.0d-06    &
+&                             , milli    =     1.0d-03    &
+&                             , kilo     =     1.0d+03    &
+&                             , mega     =     1.0d+06    &
+&                             , tera     =     1.0d+09
+!
+!--- Natural logarithms
+  REAL(RealKind), PARAMETER ::    ln10   =     LOG(TEN)    &
+&                             ,  rln10   = ONE/LOG(TEN)
+!
+!
+!--- Unit Conversion constants
+!
+!     Pressure
+  REAL(RealKind)      , PARAMETER :: bar_to_dyncm2 = 1.0d06
+  REAL(RealKind)      , PARAMETER :: dyncm2_to_Pa  = 1.0d-01
+  REAL(RealKind)      , PARAMETER :: bar_to_Pa     = 1.0d05
+  REAL(RealKind)      , PARAMETER :: atm_to_Pa     = 101325.0d0
+!
+!     Energy
+  REAL(RealKind)      , PARAMETER :: cal_to_joule  = 4.184d0
+  REAL(RealKind)      , PARAMETER :: joule_to_cal  = ONE / cal_to_joule
+  REAL(RealKind)      , PARAMETER :: joule_to_kcal = milli * joule_to_cal
+  REAL(RealKind)      , PARAMETER :: kcal_to_joule = kilo * cal_to_joule
+  REAL(RealKind)      , PARAMETER :: joule_to_erg  = TEN * mega
+  REAL(RealKind)      , PARAMETER :: erg_to_joule  = rTEN * micro
+!
+!--- Physical constants ********************************************
+
+!     Universal gas constant [J / mol K]
+  REAL(RealKind), PARAMETER :: R         = 8.31446210000000D0     
+  REAL(RealKind), PARAMETER :: rR        = ONE/R
+
+!
+!     Universal gas constant, calorie units [cal / mol K]
+  REAL(RealKind), PARAMETER :: Rcal      = R * joule_to_cal
+  REAL(RealKind), PARAMETER :: rRcal     = ONE/Rcal
+!
+!     Universal gas constant, CGS units [erg /    mol K]
+  REAL(RealKind), PARAMETER :: Rerg      = R * joule_to_erg
+  REAL(RealKind), PARAMETER :: rRerg      = ONE/Rerg
+!
+!     Standard pressure [Pa]
+  REAL(RealKind), PARAMETER :: Patm      = atm_to_Pa
+  REAL(RealKind), PARAMETER :: rPatm     = ONE/Patm
+
 
 !--- Unit Conversion
     INTEGER :: GasUnit, AquaUnit, GasRateUnit

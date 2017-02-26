@@ -48,7 +48,7 @@
       !--------------------------------------------------------------------!
       ! Temporary variables:
       REAL(RealKind) :: chi, actLWC
-      REAL(RealKind) :: T(7)
+      REAL(RealKind) :: T(8)
       REAL(RealKind) :: k    ! tmp buffer for reaction const
       REAL(RealKind) :: DkdT    ! tmp buffer for reaction const
       REAL(RealKind) :: Meff
@@ -202,7 +202,7 @@
     SUBROUTINE ComputeRateConstant(k,DkdT,T,Time,chi,mAir,iReac,y_conc,Meff)
       REAL(RealKind), INTENT(INOUT) :: k, DkdT
       REAL(RealKind), INTENT(IN) :: Time, mAir, chi
-      REAL(RealKind), INTENT(IN) :: T(7)
+      REAL(RealKind), INTENT(IN) :: T(8)
       REAL(RealKind), INTENT(IN) :: y_conc(:)
       INTEGER, INTENT(IN) :: iReac
       REAL(RealKind), INTENT(IN), OPTIONAL :: Meff
@@ -723,11 +723,58 @@
       END DO
     END SUBROUTINE CalcDiffDeltaGibbs
     !
+    !
+    SUBROUTINE scTHERMO(C,H,S,T)
+      !
+      ! IN
+      REAL(RealKind) :: T(8)
+      !
+      ! OUT
+      REAL(RealKind) :: C(nspc)       ! molar heat capacities at constant pressure
+      REAL(RealKind) :: H(nspc)       ! the standardstate molar enthalpy
+      REAL(RealKind) :: S(nspc)       ! standard-state entropy at 298 K
+      !
+      REAL(RealKind) :: dHdT(nspc)    ! Enthaply derivative in dT [J/mol/K^2]
+      REAL(RealKind) :: dGdT(nspc)    ! Gibbs potential derivative in dT [J/mol/K^2]
+      REAL(RealKind) :: dCvdT(nspc)   ! Constant volume specific heat derivative in dT [J/mol/K]
+      
+      WHERE (SwitchTemp>T(1))
+        C = lowA + lowB*T(1) + lowC*T(2) + lowD*T(3) + lowE*T(4)
+        H = lowA + rTWO*lowB*T(1) + rTHREE*lowC*T(2) + rFOUR*lowD*T(3)    &
+        &        + rFIVE*lowE*T(4) + lowF*T(6)
+        S = lowA*T(8) + lowB*T(1) + rTWO*lowC*T(2) + rTHREE*lowD*T(3)     &
+        &        + rFIVE*lowE*T(4) + lowG
+        !
+        dCvdT = R * (highB + TWO*highC*T(1) + THREE*highD*T(2) + FOUR*highE*T(3))
+        !dHdT = R * (highA + highB*T(1) + highC*T(2) + highD*T(3) + highE*T(4))
+        dGdT = - R * (highG + highA*T(8) + highB*T(1) + rTWO*highC*T(2)      &
+        &                   + rTHREE*highD*T(3) +rFOUR*highE*T(4))
+      ELSEWHERE
+        C = highA + highB*T(1) + highC*T(2) + highD*T(3) + highE*T(4)
+        H = highA + rTWO*highB*T(1) + rTHREE*highC*T(2) + rFOUR*highD*T(3)    &
+        &         + rFIVE*highE*T(4) + highF*T(6)
+        S = highA*T(8) + highB*T(1) + rTWO*highC*T(2) + rTHREE*highD*T(3)     &
+        &         + rFIVE*highE*T(4) + highG
+        !
+        dCvdT = R * (highB + TWO*highC*T(1) + THREE*highD*T(2) + FOUR*highE*T(3))
+        !dHdT = R * (highA + highB*T(1) + highC*T(2) + highD*T(3) + highE*T(4))
+        dGdT = - R * (highG + highA*T(8) + highB*T(1) + rTWO*highC*T(2)      &
+        &                   + rTHREE*highD*T(3) +rFOUR*highE*T(4))
+      END WHERE  
+
+      !print*, 'debug::rates    H=',H
+      !print*, 'debug::rates    C=',C
+      !print*, 'debug::rates    S=',S
+
+      !stop
+    END SUBROUTINE scTHERMO
+    !
+    !
     SUBROUTINE TempXComputeCK(ReacConst,EquiRate,ForwRate,Constants,T,iReac)
       REAL(RealKind) :: ReacConst
       REAL(RealKind) :: ForwRate, EquiRate!, BackRate
       REAL(RealKind) :: Constants(:)
-      REAL(RealKind) :: T(7)
+      REAL(RealKind) :: T(:)
       INTEGER :: iReac
       !
       REAL(RealKind) :: g0(nspc)   
@@ -759,7 +806,7 @@
       REAL(RealKind) :: DfRdT, DbRdT, DeRdT
       REAL(RealKind) :: ForwRate, EquiRAte
       REAL(RealKind) :: Constants(:)
-      REAL(RealKind) :: T(7)              ! temperatur array
+      REAL(RealKind) :: T(:)              ! temperatur array
       INTEGER :: iReac
       !
       REAL(RealKind) :: Dg0dT(nspc)       ! in [1/K]
@@ -816,53 +863,61 @@
     !
     SUBROUTINE UpdateTempArray(TempArr,Temp)
       REAL(RealKind) :: Temp
-      REAL(RealKind) :: TempArr(7)
+      REAL(RealKind) :: TempArr(8)
       !
       INTEGER :: i
       !
-      TempArr(1)=Temp                     ! T
+      TempArr(1)=Temp                  ! T
       DO i=2,5
-        TempArr(i)=TempArr(i-1)*Temp      ! T^2 ... T^5
+        TempArr(i)=TempArr(i-1)*Temp   ! T^2 ... T^5
       END DO
-      TempArr(6)=1.0d0/Temp               ! 1/T
-      TempArr(7)=1.0d0/TempArr(2)         ! 1/T^2
+      TempArr(6)=ONE/Temp              ! 1/T
+      TempArr(7)=ONE/TempArr(2)        ! 1/T^2
+      TempArr(8)=LOG(Temp)             ! ln(T)
     END SUBROUTINE UpdateTempArray
     !
     !
     SUBROUTINE SpcInternalEnergy(Umol,T)
       REAL(RealKind) :: Umol(nspc)        ! Species internal energy in [J/mol]
-      REAL(RealKind) :: T(7)
+      REAL(RealKind) :: T(:)
       !  
       !
       WHERE (SwitchTemp>T(1))
-        Umol=((lowA-1.0d0)*T(1) + 0.5d0*lowB*T(2) + lowC*T(3)/3.0d0 & 
-        &                + 0.25d0*lowD*T(4) + 0.2d0*lowE*T(5) + lowF)
+        Umol=((lowA-ONE)*T(1) + rTWO*lowB*T(2) + rTHREE*lowC*T(3)   & 
+        &                + rFOUR*lowD*T(4) + rFIVE*lowE*T(5) + lowF )
       ELSEWHERE
-        Umol=((highA-1.0d0)*T(1) + 0.5d0*highB*T(2) + highC*T(3)/3.0d0 & 
-        &                + 0.25d0*highD*T(4) + 0.2d0*highE*T(5) + highF)
+        Umol=((highA-ONE)*T(1) + rTWO*highB*T(2) + rTHREE*highC*T(3)   & 
+        &                + rFOUR*highD*T(4) + rFIVE*highE*T(5) + highF )
       END WHERE
-      Umol=Umol*R_const
+      Umol=Umol*R
+       !print*, 'DEBUG::ratesmod    switchtemp= und T(1)==',switchtemp, T(1)
+       !print*, 'DEBUG::ratesmod    R_const=',R
+       !print*, 'DEBUG::ratesmod    UMol=', Umol
     END SUBROUTINE SpcInternalEnergy
     !
-    !
+    !----------------------------------------------------------
+    !--- Species nondimensional constant volume specific heats
+    !----------------------------------------------------------
     SUBROUTINE DiffSpcInternalEnergy(DUmoldT,T)
-      REAL(RealKind) :: DUmoldT(nspc)     ! derivative of Species internal energyin [J/mol/K], (constant volume specific heat)
-      REAL(RealKind) :: T(7)                      
+      REAL(RealKind) :: DUmoldT(nspc)     ! derivative of Species internal energyin [J/mol/K]
+      REAL(RealKind) :: T(:)                      
       !
       WHERE (SwitchTemp>T(1))
-        DUmoldT=((lowA-1.0d0) + lowB*T(1) + lowC*T(2) & 
-        &                + lowD*T(3) + lowE*T(4) )
+        DUmoldT=(lowA + lowB*T(1) + lowC*T(2)  & 
+        &             + lowD*T(3) + lowE*T(4)) 
       ELSEWHERE
-        DUmoldT=((highA-1.0d0) + highB*T(1) + highC*T(2) & 
-        &                + highD*T(3) + highE*T(4) )
+        DUmoldT=(highA + highB*T(1) + highC*T(2)  & 
+        &              + highD*T(3) + highE*T(4))  
       END WHERE
-      DUmoldT=DUmoldT*R_const
+      !print*, 'DEBUG::ratesmod    dumoldt=',DUmoldT
+      !stop
+      DUmoldT=DUmoldT
     END SUBROUTINE DiffSpcInternalEnergy
     !
     !
     SUBROUTINE Diff2SpcInternalEnergy(D2UmoldT2,T)
       REAL(RealKind) :: D2UmoldT2(nspc)     !Constant volume specific heat’s derivative [J/mol/K2] 
-      REAL(RealKind) :: T(7)                      
+      REAL(RealKind) :: T(:)                      
       !
       WHERE (SwitchTemp>T(1))
         D2UmoldT2=(lowB + 2.0d0*lowC*T(1) & 
@@ -871,24 +926,28 @@
         D2UmoldT2=(highB + 2.0d0*highC*T(1) & 
         &                + 3.0d0*highD*T(2) + 4.0d0*highE*T(3) )
       END WHERE
-      D2UmoldT2=D2UmoldT2*R_const
+      D2UmoldT2=D2UmoldT2*R
     END SUBROUTINE Diff2SpcInternalEnergy
     !
     !is the mass average mixture specific  heat at constant volume,
-    SUBROUTINE MassAveMixSpecHeat(c_v,T,y,DUmoldT)
+    SUBROUTINE MassAveMixSpecHeat(c_v,T,Conc,DUmoldT)
       REAL(RealKind) :: c_v
       !
       REAL(RealKind) :: T(:)
-      REAL(RealKind) :: y(:)
+      REAL(RealKind) :: Conc(:)
       REAL(RealKind) :: DUmoldT(:)
       !
       !INTEGER :: i
       !
-      c_v = ZERO
-      c_v = SUM( DUmoldT * y )
-      !DO i=1,nspc
-      !  c_v=c_v+DUmoldT(i)*y(i) !/W(i) für andere einheit
-      !END DO
+      print*, 'DEBUG::rates    ta=',t
+      print*, 'DEBUG::rates  DUmoldT=',SUM(dumoldt)
+      print*, 'DEBUG::rates  rMW=',SUM(rmw)
+      print*, 'DEBUG::rates  y=',SUM(conc)
+      !print*, 'DEBUG::rates   uMW=',uMW
+      !stop
+      !
+      !--- Mixture averaged mass value [J/kg/K]
+      c_v = kilo * R * SUM( Conc * DUmoldT * rMW )
     END SUBROUTINE MassAveMixSpecHeat
     !
     !==========================================================================!
@@ -977,7 +1036,7 @@
       INTEGER :: iR 
       REAL(RealKind) :: kf0, kfoo, Meff
       REAL(RealKind) :: cnd(3)
-      REAL(RealKind) :: T(7)
+      REAL(RealKind) :: T(8)
       REAL(RealKind) :: log10_Fcent, log10_Pr
       !
       REAL(RealKind) :: TempDiffFactor    ! forward or backward

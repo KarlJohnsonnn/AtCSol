@@ -14,7 +14,7 @@ PROGRAM Main_ChemKin
   USE Rosenbrock_Mod
   USE mo_control
   USE mo_unirnk
-  USE mo_reac, ONLY: nspc,combustion
+  USE mo_reac, ONLY: nspc,combustion, MW, rMW
   USE mo_MPI
   USE mo_IO
   USE mo_ckinput
@@ -30,9 +30,11 @@ PROGRAM Main_ChemKin
   CHARACTER(80) :: neuTolR=''
   CHARACTER(80) :: neuTolA=''
   CHARACTER(80) :: neuROW=''
+  CHARACTER(16) :: tmpchar0
   REAL(RealKind) :: h 
   REAL(RealKind), PARAMETER :: HR=3600.0d0
-  INTEGER :: i_error
+  REAL(RealKind) :: tmpMW0
+  INTEGER :: i_error, linc
   !
   !
   !================================================================
@@ -94,6 +96,19 @@ PROGRAM Main_ChemKin
     CALL Read_Species(ChemFile,969)
     CALL Read_Reaction(ChemFile,969)
     CALL Read_ThermoData(SwitchTemp,DataFile,696,nspc)
+    print*, 'djfhalskdjhfaisdh ', nspc,TRIM(ChemFile)//'.mw'
+    OPEN(UNIT=998,FILE=TRIM(ChemFile)//'.mw',STATUS='UNKNOWN')
+    ALLOCATE(MW(nspc),rMW(nspc))
+    MW=ZERO
+    DO i=1,nspc
+      READ(998,*) tmpChar0, tmpMW0
+      MW(PositionSpeciesAll(tmpChar0))=REAL(tmpMW0,RealKind)
+    END DO
+    rMW(:)=ONE/MW(:)
+    DO i=1,nspc
+      print*, 'debug:: main    ',i, MW(i),rMW(i)
+    END DO
+    CLOSE(linc)
     !
     CALL PrintHeadSpecies(ChemFile,89)
     CALL PrintSpecies(ListGas2,89)

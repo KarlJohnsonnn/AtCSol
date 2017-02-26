@@ -356,9 +356,17 @@ MODULE Rosenbrock_Mod
     REAL(RealKind), DIMENSION(nspc)    :: Umol, DUmoldT, DcDt
     REAL(RealKind), DIMENSION(nDIMex)    :: bb
     !
-    REAL(RealKind) :: Tarr(7)
+    REAL(RealKind) :: Tarr(8)
     REAL(RealKind) :: Rate(neq)
     REAL(RealKind) :: DRatedT(neq)        
+    REAL(RealKind) :: C(nspc)       ! molar heat capacities at constant pressure
+    REAL(RealKind) :: H_e(nspc)       ! the standardstate molar enthalpy
+    REAL(RealKind) :: S(nspc)       ! standard-state entropy at 298 K
+    !
+    REAL(RealKind) :: dHdT(nspc)    ! Enthaply derivative in dT [J/mol/K^2]
+    REAL(RealKind) :: dGdT(nspc)    ! Gibbs potential derivative in dT [J/mol/K^2]
+    REAL(RealKind) :: dCvdT(nspc)   ! Constant volume specific heat derivative in dT [J/mol/K]
+      
     REAL(RealKind) :: invRate(neq)
     REAL(RealKind) :: tt
     REAL(RealKind) :: c_v ! mass average mixture specific heat at constant volume
@@ -402,19 +410,21 @@ MODULE Rosenbrock_Mod
     !
     IF ( combustion ) THEN
       CALL UpdateTempArray(Tarr,y0(nDIM))
+      CALL scTHERMO(C,H_e,S,Tarr)
       CALL SpcInternalEnergy(Umol,Tarr)
       CALL DiffSpcInternalEnergy(DUmoldT,Tarr)
       CALL MassAveMixSpecHeat(c_v,Tarr,y0(:nspc),DUmoldT)
       CALL DiffConcDt(BAT,Rate,DcDt)
+      print*, 'debug     Temparr  :: ',Tarr
+      print*, 'debug     y0       :: ',SUM(Y0(1:nspc))
+      print*, 'debug     Umol     :: ',SUM(Umol)
+      print*, 'debug     DUmoldT  :: ',SUM(DUmoldT)
+      print*, 'debug     c_v      :: ',c_v
+      print*, 'debug     DcDt     :: ',SUM(DcDt)
+      Umol(:)=-Umol(:)*hy(:)
       DUmoldT=DUmoldT*RCo%ga
       c_v=c_v/h
-      Umol(:)=-Umol(:)*hy(:)
       X=c_v+SUM(DUmoldT(:)*DcDt(:))
-      print*, 'debug     Temparr  :: ',Tarr
-      print*, 'debug     Umol     :: ',Umol
-      print*, 'debug     DUmoldT  :: ',DUmoldT
-      print*, 'debug     c_v      :: ',c_v
-      print*, 'debug     DcDt     :: ',DcDt
       print*, 'debug     X        :: ',X
       stop
     END IF

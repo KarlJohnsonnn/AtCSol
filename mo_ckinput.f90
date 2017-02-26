@@ -67,7 +67,7 @@ CONTAINS
     CHARACTER(6)  :: RefDataCode(nSpc)
     CHARACTER(2)  :: Atoms(nSpc,4)
     INTEGER       :: nAtoms(nSpc,4)
-    REAL(8)       :: TempRange(nSpc,2)
+    REAL(8)       :: TempRange(nSpc,3)
     REAL(8)       :: MolMass(nSpc)
     CHARACTER(1)  :: Phase(nSpc)
     REAL(8)       :: ta,tb,tc,td,te,tf,tg
@@ -115,7 +115,8 @@ CONTAINS
             !
             TempRange(i,1)=REAL(ta,KIND=RealKind)
             TempRange(i,2)=REAL(tb,KIND=RealKind)
-            ThermSwitchTemp(i)=TempRange(i,2)
+            TempRange(i,3)=REAL(tc,KIND=RealKind)
+            ThermSwitchTemp(i)=TempRange(i,3)
             MolMass(i)=REAL(tc,KIND=RealKind)
           CASE ('2')
             READ(iLine,2) ta,tb,tc,td,te,n
@@ -455,11 +456,11 @@ CONTAINS
           !
           IF (fPosPlus>0) THEN
             ReactionSystem(iReac)%Educt(i)%Species=TRIM(ADJUSTL(ductStr(iNxtSpc:fPosPlus-1)))
-            print*, 'debug::mock..       spc  =  ', TRIM(ADJUSTL(ductStr(iNxtSpc:fPosPlus-1)))
+            !print*, 'debug::mock..       spc  =  ', TRIM(ADJUSTL(ductStr(iNxtSpc:fPosPlus-1)))
             IF (bR) ReactionSystem(iReac+1)%Product(i)%Species=TRIM(ADJUSTL(ductStr(iNxtSpc:fPosPlus-1)))
           ELSE
             ReactionSystem(iReac)%Educt(i)%Species=TRIM(ADJUSTL(ductStr(iNxtSpc:)))
-            print*, 'debug::mock.. last  spc  =  ', TRIM(ADJUSTL(ductStr(iNxtSpc:)))
+            !print*, 'debug::mock.. last  spc  =  ', TRIM(ADJUSTL(ductStr(iNxtSpc:)))
             IF (bR) ReactionSystem(iReac+1)%Product(i)%Species=TRIM(ADJUSTL(ductStr(iNxtSpc:)))
           END IF
           !
@@ -737,6 +738,9 @@ CONTAINS
       ind=ind+1
     END DO
     !
+    IF(ALLOCATED(indM))DEALLOCATE(indM)
+    IF(ALLOCATED(spcM)) DEALLOCATE(spcM)
+    IF(ALLOCATED(aM)) DEALLOCATE(aM)
     ALLOCATE(indM(ind))
     ALLOCATE(spcM(ind))
     ALLOCATE(aM(ind))
