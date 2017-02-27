@@ -418,7 +418,7 @@ END SUBROUTINE InitNetCDF
        idx=OutNetcdfSpc(iDiagSpc)
        NaN=ISNAN(y(idx))
        IF ( combustion ) THEN
-           yout(jt) = y(idx) 
+           yout(jt) = y(idx) / 1.d-6        ! [mol/cm3] to [mol/m3]
        ELSE
          IF      (OutNetcdfPhase(iDiagSpc)=='a'.AND..NOT.NaN) THEN
            yout(jt) = y(idx) / (actLWC * mol2part)  ! convert to mol/l water
