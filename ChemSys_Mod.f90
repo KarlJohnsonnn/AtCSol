@@ -64,6 +64,7 @@ MODULE Chemsys_Mod
     INTEGER                         :: nActEd=0  , nActPro=0
     INTEGER                         :: NumConst=0
     INTEGER                         :: HenrySpc=0
+    LOGICAL                         :: TBextra=.FALSE.
     INTEGER, ALLOCATABLE            :: TB(:)
     CHARACTER(100), ALLOCATABLE     :: TBspc(:)
     REAL(RealKind), ALLOCATABLE     :: TBalpha(:)
@@ -1593,11 +1594,12 @@ MODULE Chemsys_Mod
       IF (Back)   EXIT
       !
       iPos=PositionSpeciesAll(SpeciesName)
+      !print*, ' debug hallo hallo', TRIM(SpeciesName), c1, back, iPos
       IF (iPos>0) THEN
         IF (SpeciesName(1:1)=='[') THEN
           InAct(iPos-nspc)=c1
         ELSE
-          iPos=PositionSpeciesAll(SpeciesName)
+          !iPos=PositionSpeciesAll(SpeciesName)
           GASact(iPos)=c1
        END IF
       END IF
