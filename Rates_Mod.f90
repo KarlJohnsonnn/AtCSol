@@ -847,17 +847,21 @@
       !
       !print*, 'DEBUG::RATES   Meeffsize =', SIZE(ReactionSystem(i)%TB)
       M=SUM(y_conc)
-      Stmp=ZERO
-      DO jj=1,SIZE(ReactionSystem(i)%TB)
-        !print*, 'DEBUG::RATES       TB        =', ReactionSystem(i)%TB(jj)
-        !print*, 'DEBUG::RATES       TBspc     =', ReactionSystem(i)%TBspc(jj)
-        !print*, 'DEBUG::RATES       Posspc    =', PositionSpeciesCK(ReactionSystem(i)%TBspc(jj))
-        !print*, 'DEBUG::RATES       SpcAlpha  =', ReactionSystem(i)%TBalpha(jj)
-        !j=ReactionSystem(i)%TB(jj)
-        j=PositionSpeciesAll(ReactionSystem(i)%TBspc(jj)) ! richtigen index holen, da TB unsortiert eingelesen wurde
-        Stmp=Stmp+(ONE-ReactionSystem(i)%TBalpha(jj))*y_conc(j)
-      END DO
-      M=M-Stmp        ! Formel (6) Perini 2012
+      IF (ReactionSystem(i)%TBExtra) THEN
+        Stmp=ZERO
+        DO jj=1,SIZE(ReactionSystem(i)%TB)
+          !print*, 'DEBUG::RATES       iReac,SIZE=', i,SIZE(ReactionSystem(i)%TB)
+          !print*, 'DEBUG::RATES       TB        =', ReactionSystem(i)%TB(jj)
+          !print*, 'DEBUG::RATES       TBspc     =', ReactionSystem(i)%TBspc(jj)
+          !print*, 'DEBUG::RATES       Posspc    =', PositionSpeciesCK(ReactionSystem(i)%TBspc(jj))
+          !print*, 'DEBUG::RATES       SpcAlpha  =', ReactionSystem(i)%TBalpha(jj)
+          !
+          !j=PositionSpeciesAll(ReactionSystem(i)%TBspc(jj)) ! richtigen index holen, da TB unsortiert eingelesen wurde
+          j=ReactionSystem(i)%TB(jj) ! richtiger index jetzt vorhanden (in MAIN zugeordnet)
+          Stmp=Stmp+(ONE-ReactionSystem(i)%TBalpha(jj))*y_conc(j)
+        END DO
+        M=M-Stmp        ! Formel (6) Perini 2012
+      END IF
     END SUBROUTINE ThirdBodyCompute
     !
     !
@@ -911,7 +915,7 @@
       END WHERE
       !print*, 'DEBUG::ratesmod    dumoldt=',DUmoldT
       !stop
-      DUmoldT=DUmoldT
+      DUmoldT=DUmoldT-ONE       ! speedchem SCmodule.f ~2618
     END SUBROUTINE DiffSpcInternalEnergy
     !
     !
@@ -929,6 +933,17 @@
       D2UmoldT2=D2UmoldT2*R
     END SUBROUTINE Diff2SpcInternalEnergy
     !
+    !
+    SUBROUTINE AvgReactorPressure(avgPress,T,Conc)
+      !OUT
+      REAL(RealKind) :: avgPress
+      !IN
+      REAL(RealKind), INTENT(IN) :: T(:)
+      REAL(RealKind), INTENT(IN) :: Conc(:)
+      !
+      avgPress = kilo * SCrho * R * T(1) * SUM(Conc(:) * rMW(:))
+    END SUBROUTINE AvgReactorPressure
+    !
     !is the mass average mixture specific  heat at constant volume,
     SUBROUTINE MassAveMixSpecHeat(c_v,T,Conc,DUmoldT)
       REAL(RealKind) :: c_v
@@ -937,17 +952,22 @@
       REAL(RealKind) :: Conc(:)
       REAL(RealKind) :: DUmoldT(:)
       !
-      !INTEGER :: i
+      INTEGER :: i
+      INTEGER :: scPermutation(nspc)
       !
-      print*, 'DEBUG::rates    ta=',t
-      print*, 'DEBUG::rates  DUmoldT=',SUM(dumoldt)
-      print*, 'DEBUG::rates  rMW=',SUM(rmw)
-      print*, 'DEBUG::rates  y=',SUM(conc)
+      !print*, 'DEBUG::rates    ta=',t
       !print*, 'DEBUG::rates   uMW=',uMW
       !stop
       !
       !--- Mixture averaged mass value [J/kg/K]
       c_v = kilo * R * SUM( Conc * DUmoldT * rMW )
+      !print*, 'DEBUG::speedchem     kilo,R,SUM(Y,CvuR,uMW)=',kilo,R, SUM(Conc),SUM(dumoldt),SUM(rMW)
+      !scPermutation=(/26,28,25,18,21,17,20,29,22,24,19,27,15,13,23,12,14,16,1,2,3,4,5,6,7,9,10,11,8/)
+      !DO i=1,nspc
+      !  WRITE(987,*) conc(scPermutation(i)),MW(scPermutation(i)),rMW(scPermutation(i))
+      !END DO
+      !print*, 'debug     c_v       :: ',c_v
+      !stop
     END SUBROUTINE MassAveMixSpecHeat
     !
     !==========================================================================!
