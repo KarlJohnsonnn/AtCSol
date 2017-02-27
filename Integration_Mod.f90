@@ -12,6 +12,7 @@ MODULE Integration_Mod
   USE mo_control
   USE mo_IO
   USE mo_reac
+  USE mo_ckinput, ONLY: rhoY
   USE Sparse_Mod, ONLY: A,B,BA,BAT
   USE Sparse2_Mod
   USE Chemsys_Mod
@@ -109,6 +110,9 @@ MODULE Integration_Mod
       DGFEdT(:)=ZERO
       DelGFE(:)=ZERO
       DDelGFEdT(:)=ZERO
+      SCpress=2.0d05     ! erc_nheptane case 1 from speedchem
+      CALL rhoY(y0(1:nspc),y0(nDIM))  ! Initialising reactor density
+      print*, 'DEBUG::INTEGRmod  initstuff    ', SCrho, SCpress, y0(nDIM)
     END IF
     !
     !
@@ -207,7 +211,7 @@ MODULE Integration_Mod
     
     Rate(:)=MAX(ABS(Rate(:)),eps)*SIGN(ONE,Rate(:))
     y(1:nspc)=MAX(ABS(y(1:nspc)),eps)*SIGN(ONE,y(1:nspc))
-    y0(1:nspc)=MAX(ABS(y0(1:nspc)),eps)*SIGN(ONE,y0(1:nspc))
+    !y0(1:nspc)=MAX(ABS(y0(1:nspc)),eps)*SIGN(ONE,y0(1:nspc))
     !
     ! ----calc values of Jacobian
     TimeJacobianA=MPI_WTIME()
