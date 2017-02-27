@@ -286,4 +286,8 @@
     REAL(RealKind), ALLOCATABLE :: MW(:)    ! molecular weight (combustion)
     REAL(RealKind), ALLOCATABLE :: rMW(:)    !1/ molecular weight (combustion)
     !
+    ! more speedchem stuff
+    REAL(RealKind) :: SCpress   ! initial initial reactor pressure [Pa]
+    REAL(RealKind) :: SCrho     ! reactor density
+    !
 END MODULE mo_reac
