@@ -25,7 +25,7 @@ PROGRAM Main_ChemKin
   CHARACTER(80) :: Filename0=''        ! *.run file
   !
   REAL(RealKind) :: Atol(2)
-  INTEGER :: i,nSchwefel
+  INTEGER :: i,j,nSchwefel
   CHARACTER(80) :: constH=''
   CHARACTER(80) :: neuTolR=''
   CHARACTER(80) :: neuTolA=''
@@ -34,6 +34,7 @@ PROGRAM Main_ChemKin
   REAL(RealKind) :: h 
   REAL(RealKind), PARAMETER :: HR=3600.0d0
   REAL(RealKind) :: tmpMW0
+  REAL(RealKind), ALLOCATABLE :: X0(:)
   INTEGER :: i_error, linc
   !
   !
@@ -96,7 +97,8 @@ PROGRAM Main_ChemKin
     CALL Read_Species(ChemFile,969)
     CALL Read_Reaction(ChemFile,969)
     CALL Read_ThermoData(SwitchTemp,DataFile,696,nspc)
-    print*, 'djfhalskdjhfaisdh ', nspc,TRIM(ChemFile)//'.mw'
+    !
+    !--- Read molecular mass
     OPEN(UNIT=998,FILE=TRIM(ChemFile)//'.mw',STATUS='UNKNOWN')
     ALLOCATE(MW(nspc),rMW(nspc))
     MW=ZERO
@@ -105,9 +107,10 @@ PROGRAM Main_ChemKin
       MW(PositionSpeciesAll(tmpChar0))=REAL(tmpMW0,RealKind)
     END DO
     rMW(:)=ONE/MW(:)
-    DO i=1,nspc
-      print*, 'debug:: main    ',i, MW(i),rMW(i)
-    END DO
+    !DO i=1,nspc
+    !  print*, 'debug:: main    ',i, MW(i),rMW(i)
+    !END DO
+    
     CLOSE(linc)
     !
     CALL PrintHeadSpecies(ChemFile,89)
@@ -116,11 +119,26 @@ PROGRAM Main_ChemKin
     CALL PrintReactions(ReactionSystem,89,.TRUE.)       ! .TRUE. in 3rd agument for chemkin input file
     CALL PrintFinalReactions(89)
     !
-    ALLOCATE(InitValAct(ntGas),y_e(ntGas))
+    !ALLOCATE(InitValAct(ntGas),y_e(ntGas))
+    ALLOCATE(X0(ntGas),InitValAct(ntGas),y_e(ntGas))
+    X0=ZERO           ! mass fraction 
+    InitValAct=ZERO   ! mole fraction
     ALLOCATE(InitValKat(ntKat))
-    CALL Read_GASini(InitFile,InitValAct,InitValKat)
+    !CALL Read_GASini(InitFile,InitValAct,InitValKat)
+    CALL Read_GASini(InitFile,X0,InitValKat)
     CALL Read_EMISS(InitFile,y_e)
     CALL GetSpeciesNames(ChemFile,y_name)
+    !CALL MassFr_to_MoleFr(InitValAct,X0)
+    CALL MoleFr_to_MassFr(InitValAct,X0)
+    !
+    !--- richtigen index holen, da TB unsortiert eingelesen
+    DO i=1,neq
+      IF (ALLOCATED(ReactionSystem(i)%TB)) THEN
+        DO j=1,SIZE(ReactionSystem(i)%TB)
+          ReactionSystem(i)%TB(j)=PositionSpeciesAll(ReactionSystem(i)%TBspc(j)) 
+        END DO
+      END IF
+    END DO
   ELSE
     IF (MPI_ID==0) WRITE(*,*) ' ---->  Fix Temperature'
     Time_Read=MPI_WTIME()
