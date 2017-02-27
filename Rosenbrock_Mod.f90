@@ -372,6 +372,8 @@ MODULE Rosenbrock_Mod
     REAL(RealKind) :: c_v ! mass average mixture specific heat at constant volume
     REAL(RealKind) :: X
     !
+    ! fuer verlgeich mit speedchem, andere spc reihenfolge
+    INTEGER :: scPermutation(nspc)
     !
     INTEGER :: iStage, jStage, i, rPtr          ! increments
     !
@@ -384,6 +386,9 @@ MODULE Rosenbrock_Mod
     IF ( combustion ) y(nDIM)=y0(nDIM)
     yNew(:)=y0(:)
     yHat(:)=y0(:)
+     !print*, 'debug     y0        :: ',Y0(1:nspc)
+     !print*, 'debug     y        :: ',Y(1:nspc)
+     !stop
     !
     !IF (PRESENT(Temp)) yNew(Temp_ind)=y0(Temp_ind)
     !
@@ -409,24 +414,33 @@ MODULE Rosenbrock_Mod
     !print*, 'debug::2',y(1:3)
     !
     IF ( combustion ) THEN
+      ! spc perutation aus speedchem fuer reakdtionssystem ERC_nheptane
+      scPermutation=(/26,28,25,18,21,17,20,29,22,24,19,27,15,13,23,12,14,16,1,2,3,4,5,6,7,9,10,11,8/)
       CALL UpdateTempArray(Tarr,y0(nDIM))
+      CALL AvgReactorPressure(SCpress,Tarr,y0(1:nspc))
       CALL scTHERMO(C,H_e,S,Tarr)
       CALL SpcInternalEnergy(Umol,Tarr)
       CALL DiffSpcInternalEnergy(DUmoldT,Tarr)
       CALL MassAveMixSpecHeat(c_v,Tarr,y0(:nspc),DUmoldT)
       CALL DiffConcDt(BAT,Rate,DcDt)
-      print*, 'debug     Temparr  :: ',Tarr
-      print*, 'debug     y0       :: ',SUM(Y0(1:nspc))
-      print*, 'debug     Umol     :: ',SUM(Umol)
-      print*, 'debug     DUmoldT  :: ',SUM(DUmoldT)
-      print*, 'debug     c_v      :: ',c_v
-      print*, 'debug     DcDt     :: ',SUM(DcDt)
+      print*, 'debug     Temparr=  ',Tarr
+      print*, 'debug        time=  ',t
+      print*, 'debug         c_v=  ',c_v
+      print*, 'debug         SCP=  ',SCpress
+      print*, 'debug     SUM(y0)=  ',SUM(Y0(1:nspc))
+      print*, 'debug   SUM(Umol)=  ',SUM(Umol)
+      !print*, 'debug  DUmoldT=Cv/R :: ',SUM(DUmoldT)
+      !print*, 'debug     1/MW      :: ',SUM(rMW)
+      print*, 'debug   SUM(DcDt)=  ',SUM(DcDt)
       UMat(:)=-Umol(:)*y0(1:nspc)
       DRatedT(:)=DRatedT(:)*RCo%ga
       !c_v=c_v/h
       !X=c_v+SUM(DUmoldT(:)*DcDt(:))
       X = ONE + h * RCo%ga * SUM( DUmoldT(:) * DcDt(:) )
-      print*, 'debug     X        :: ',X
+      print*, 'debug          X         :: ',X
+      !
+      stop 'rosenbrock mod'
+      
       !stop
     END IF
     ! 
@@ -452,13 +466,13 @@ MODULE Rosenbrock_Mod
       END IF
     END IF
     !
-    WRITE(*,*) '----------------------------'
-    WRITE(*,*) 'debug h, t, Temp  :: ', h , t, y(nDIM)
-    WRITE(*,*) '      rate(1:3)   :: ', rate(1:3), SUM(rate)
-    IF(combustion) WRITE(*,*) '   DRatedT(1:3)   :: ', DRatedT(1:3), SUM(DRatedT)
-    WRITE(*,*) '      conc(1:3)   :: ', y(1:3), SUM(y)
-    WRITE(*,*) '      sum(Miter)  :: ', SUM(Miter%val)
-    WRITE(*,*) '      sum(LU)vor  :: ', SUM(LU_Miter%val)
+    !WRITE(*,*) '----------------------------'
+    !WRITE(*,*) 'debug h, t, Temp  :: ', h , t, y(nDIM)
+    !WRITE(*,*) '      rate(1:3)   :: ', rate(1:3), SUM(rate)
+    !IF(combustion) WRITE(*,*) '   DRatedT(1:3)   :: ', DRatedT(1:3), SUM(DRatedT)
+    !WRITE(*,*) '      conc(1:3)   :: ', y(1:3), SUM(y)
+    !WRITE(*,*) '      sum(Miter)  :: ', SUM(Miter%val)
+    !WRITE(*,*) '      sum(LU)vor  :: ', SUM(LU_Miter%val)
 
     !
     !****************************************************************************************
@@ -475,14 +489,12 @@ MODULE Rosenbrock_Mod
       !
       timerStart=MPI_WTIME()
       CALL SparseLU(LU_Miter)
-      WRITE(*,*) '      sum(LU)nach :: ', SUM(LU_Miter%val)
+      !WRITE(*,*) '      sum(LU)nach :: ', SUM(LU_Miter%val)
       timerEnd=MPI_WTIME()
       TimeFac=TimeFac+(timerEnd-timerStart)
     ELSE
       CALL FactorizeCoefMat(Miter%Val)
     END IF
-    !
-    !stop
     !call printsparse(LU_miter,'*')
     !WRITE(*,*) '      sum(LU)2    :: ', SUM(LU_Miter%val)
     !WRITE(*,*) 
