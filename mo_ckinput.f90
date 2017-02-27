@@ -7,11 +7,11 @@ MODULE mo_ckinput
   &                    , ListSolid, ListPartic, ListNonReac, ReactionSystem &
   &                    , UnitGas, UnitAqua, ListGas2, Species_T             &
   &                    , ListToHashTable, HashTableToList, SortList         &
-  &                    , PositionSpeciesGas
+  &                    , PositionSpeciesGas,PositionSpeciesAll
   !
   USE mo_reac, ONLY: ntGas, ntAqua, ntSolid, ntPart, ntKat, neq, nspc, nReak&
   &                    , nreakgas,  nreakgconst, nreakgphoto, nreakgspec    &
-  &                    , nreakgtemp, nreakgtroe, nDIM                       &
+  &                    , nreakgtemp, nreakgtroe, nDIM, SCpress, SCrho       &
   &                    , lowA,lowB,lowC,lowD,lowE,lowF,lowG                 &
   &                    , highA,highB,highC,highD,highE,highF,highG
   USE NetCDF_Mod
@@ -657,11 +657,13 @@ CONTAINS
         !
         ! extract 3rd body species and alpha values
         IF (iKL>0) THEN
+          ReactionSystem(iReac)%TBextra=.TRUE.
           CALL ComputeThirdBody(  ReactionSystem(iReac)%TB      &
           &                     , ReactionSystem(iReac)%TBspc   &
           &                     , ReactionSystem(iReac)%TBalpha &
           &                     , LocString)
           IF (bR) THEN
+            ReactionSystem(iReac+1)%TBextra=.TRUE.
             ALLOCATE(ReactionSystem(iReac+1)%TB(SIZE(ReactionSystem(iReac)%TB)))
             ALLOCATE(ReactionSystem(iReac+1)%TBspc(SIZE(ReactionSystem(iReac)%TB)))
             ALLOCATE(ReactionSystem(iReac+1)%TBalpha(SIZE(ReactionSystem(iReac)%TB)))
@@ -729,6 +731,7 @@ CONTAINS
     REAL(RealKind) :: tmp
     ind=0
     locLine=Line
+    !print*, 'DEBUG::ckINput             locline=    ', locline
     DO
       IF (locLine=='') EXIT
       kl1=INDEX(locLine,'/')
@@ -751,22 +754,83 @@ CONTAINS
       ind=ind+1
       kl1=INDEX(locLine,'/')
       kl2=INDEX(locLine(kl1+1:),'/')
+      !
+      !indM(ind)=PositionSpeciesAll(locLine(1:kl1-1))   ! liste noch nicht sortiert!
+      indM(ind)=-1
+      spcM(ind)=ADJUSTL(TRIM(locLine(1:kl1-1)))
+      READ(locLine(kl1+1:kl1+kl2-1),'(E12.6)') tmp
+      aM(ind)=REAL(tmp,KIND=RealKind)
+      !
       !print*, 'DEBUG::ckINput_____________'
       !print*, 'DEBUG::ckINpt                  ind=    ', ind
       !print*, 'DEBUG::ckINput             locline=    ', locline
       !print*, 'DEBUG::ckINput              species=   ', locLine(1:kl1-1)
       !print*, 'DEBUG::ckINput  posspc(unsortiert) =   ', PositionSpeciesGas(locLine(1:kl1-1))
       !print*, 'DEBUG::ckINput        locline(kl1:)=   ', locline(kl1+1:)
+      !print*, 'DEBUG::ckINput            indM(ind)=   ',  indM(ind)
+      !print*, 'DEBUG::ckINput            spcM(ind)=   ',  spcM(ind)
+      !print*, 'DEBUG::ckINput              aM(ind)=   ',  aM(ind)
       !print*, 'DEBUG::ckINput_____________'
-      !
-      indM(ind)=PositionSpeciesGas(locLine(1:kl1-1))
-      spcM(ind)=locLine(1:kl1-1)
-      READ(locLine(kl1+1:kl1+kl2-1),'(E12.6)') tmp
-      aM(ind)=REAL(tmp,KIND=RealKind)
-      !
       locLine=ADJUSTL(locLine(kl1+kl2+1:))
     END DO
   END SUBROUTINE ComputeThirdBody
+  !
+  !
+  !    ***************************************************************
+  !    **                                                           **
+  !    **    Computing mass fractions based on mole fractions      **
+  !    **                                             (SpeedCHEM)   **   
+  !    ***************************************************************
+  SUBROUTINE MoleFr_to_MassFr(MaF,MoF)
+    !OUT
+    REAL(RealKind), ALLOCATABLE :: MaF(:)
+    !IN
+    REAL(RealKind), INTENT(IN)  :: MoF(:)     ! Mass fraction 
+    !TEMP
+    REAL(RealKind) :: avgMW
+    INTEGER :: scPermutation(nspc)
+    !
+    !--- Computing average mixture molecular weight [g/mol]
+    avgMW=SUM(MoF(:)*MW(:)) 
+    !
+    !--- Computing mass fractions
+    MaF(:)=MW(:)*MoF(:)/avgMW
+  END SUBROUTINE MoleFr_to_MassFr
+  !
+  !    ***************************************************************
+  !    **                                                           **
+  !    **     Computing mole fractions based on mass fractions      **
+  !    **                                             (SpeedCHEM)   **   
+  !    ***************************************************************
+  SUBROUTINE MassFr_to_MoleFr(MoF,MaF)
+    !OUT
+    REAL(RealKind), ALLOCATABLE :: MoF(:)
+    !IN
+    REAL(RealKind), INTENT(IN)  :: MaF(:)     ! Mass fraction 
+    !TEMP
+    REAL(RealKind) :: ravgMW
+    !
+    !--- Computing reciprocal of average mixture molecular weight [g/mol]
+    ravgMW=ONE/SUM(MaF(:)*rMW(:)) 
+    !
+    !--- Computing mole fractions
+    MoF(:)=rMW(:)*MaF(:)*ravgMW
+  END SUBROUTINE MassFr_to_MoleFr
+  !
+  !
+  !    **************************************************************
+  !    **                                                          **
+  !    **         Computing average mixture density [kg/m^3]       **
+  !    **                                            (SpeedCHEM)   **
+  !    **************************************************************
+  SUBROUTINE rhoY(Conc,T0)
+    REAL(RealKind), INTENT(IN) :: Conc(:)
+    REAL(RealKind), INTENT(IN) :: T0
+    !
+    !--- Density value [kg/m3] !NB: pressure SCP must be initialised!
+    !                    =1/R   =1/T    
+    SCrho=milli*SCpress*rR*(ONE/T0)*SUM(Conc/SUM(Conc*rMW))
+  END SUBROUTINE rhoY
   !
   !
   SUBROUTINE GetConstantType(idxM,idxM2,String,ConstType,Factor)
