@@ -26,20 +26,23 @@
     REAL(RealKind) :: fac_exp=1.0d0, fac_A=1.0d0
     Integer :: iDat=010619
     !
+    !
+    REAL(RealKind) :: rFacEq      ! factor nessesary for equilibrium constant
+    !
     CONTAINS
     !
     !
     !======================================================================!
     !      Calculate the Rates for current concentraions and time
     !======================================================================!
-    SUBROUTINE Rates(Time,y_conc,Rate,DRatedT)
+    SUBROUTINE Rates(Time,y_in,Rate,DRatedT)
       !--------------------------------------------------------------------!
       ! Input: 
       !   - Time
       !   - y_conc
 !     REAL(RealKind), INTENT(IN) :: Time
       REAL(RealKind) :: Time
-      REAL(RealKind), INTENT(IN) :: y_conc(nDIM)
+      REAL(RealKind), INTENT(IN) :: y_in(nDIM)
       !--------------------------------------------------------------------!
       ! Output:
       !   - Rate vector
@@ -47,6 +50,7 @@
       REAL(RealKind) :: DRatedT(neq)
       !--------------------------------------------------------------------!
       ! Temporary variables:
+      REAL(RealKind) :: y_conc(nDIM)
       REAL(RealKind) :: chi, actLWC
       REAL(RealKind) :: T(8)
       REAL(RealKind) :: k    ! tmp buffer for reaction const
@@ -55,7 +59,11 @@
       INTEGER :: iReac, ii, j
       ! 
       ! DEBUGGING
+      REAL(RealKind) :: debRKonst
       INTEGER :: cnt
+      !
+      ! combustion
+      REAL(RealKind) :: dCtot_dY(nspc)
       !
       !==================================================================!
       !===============calc rate for ReactionSystem=======================!
@@ -75,13 +83,21 @@
       IF ( combustion ) THEN
         !print*, 'DEBUG::RATES      Temperatur =',y_conc(nDIM)
         cnt=1
+        !--- Species concentrations [mol/cm3]
+        dCtot_dY(:)    = milli * SCrho * rMW(:)
+        y_conc(1:nspc) = dCtot_dY(:) * y_in(1:nspc) 
+        y_conc(nDIM)   = y_in(nDIM) 
+        !
         CALL UpdateTempArray(T,y_conc(nDIM))
-        CALL CalcGibbsFreeEnergie(GFE,T)
+        CALL GibbsFreeEnergie(GFE,T)
         CALL CalcDeltaGibbs(DelGFE)
+        rFacEq = mega * R * T(1) * rPatm
+        !
         CALL CalcDiffGibbsFreeEnergie(DGFEdT,T)
         CALL CalcDiffDeltaGibbs(DDelGFEdT)
       ELSE
         T(1)=Temp    ! = 280 [K]
+        y_conc(:)=y_in(:)
       END IF
       !
       ! --- compute rate of all reactions (gas,henry,aqua,diss)
@@ -96,12 +112,13 @@
         END IF
         !
         ! ================ Multiplication with FACTOR====================
-        CALL CheckThirdBodys(Meff,y_conc,iReac)
+        CALL EffectiveMolecularity(Meff,y_conc(1:nspc),iReac)
         !print*, 'DEBUGG ::iR=    me=',iReac,meff
         !
         ! ====== Compute the rate constant for specific reaction type ===
         CALL ComputeRateConstant(k,DkdT,T,Time,chi,mAir,iReac,y_conc,Meff)
         !print*, 'DEBUGG :: k1=',k
+        debRKonst=k
         !IF(MOD(iReac,2)/=0) print*, 'debug::rates   k=',iReac,k
         !
         ! ========= Multiplication with Inactiv (passiv) Educts ===========
@@ -121,20 +138,30 @@
         !print*, 'DEBUGG :: k4=',k
         !
         ! ======================== Build rate =============================
-        DO j=A%RowPtr(iReac),A%RowPtr(iReac+1)-1
-          IF ( A%Val(j)==ONE ) THEN
-            k=k*y_conc(A%ColInd(j))
-          ELSE IF ( A%Val(j)==TWO ) THEN
-            k=k*y_conc(A%ColInd(j))*ABS(y_conc(A%ColInd(j)))
-          ELSE
-            k=k*y_conc(A%ColInd(j))**A%Val(j)
-          END IF  
-        END DO
+        IF      ( ALL(A%Val(A%ColInd(A%RowPtr(iReac):A%RowPtr(iReac+1)-1))==ONE) ) THEN
+          Rate(iReac)=PRODUCT(y_conc(A%ColInd(A%RowPtr(iReac):A%RowPtr(iReac+1)-1)))
+          !
+        !ELSE IF ( ANY(A%Val(A%ColInd(A%RowPtr(iReac):A%RowPtr(iReac+1)-1))==TWO)  THEN
+        !  Rate(iReac)=PRODUCT(y_conc(A%ColInd(A%RowPtr(iReac):A%RowPtr(iReac+1)-1))  &
+        !  &           *ABS(y_conc(A%ColInd(A%RowPtr(iReac):A%RowPtr(iReac+1)-1))))
+        ELSE
+          Rate(iReac)=PRODUCT(y_conc(A%ColInd(A%RowPtr(iReac):A%RowPtr(iReac+1)-1))  &
+          &           **A%Val(A%RowPtr(iReac):A%RowPtr(iReac+1)-1))
+        END IF  
+        !DO j=A%RowPtr(iReac),A%RowPtr(iReac+1)-1
+        !  IF ( A%Val(j)==ONE ) THEN
+        !    k=k*y_conc(A%ColInd(j))
+        !  ELSE IF ( A%Val(j)==TWO ) THEN
+        !    k=k*y_conc(A%ColInd(j))*ABS(y_conc(A%ColInd(j)))
+        !  ELSE
+        !    k=k*y_conc(A%ColInd(j))**A%Val(j)
+        !  END IF  
+        !END DO
         ! Last step
         !print*, 'DEBUGG :: k5=',k
-        Rate(iReac) = Meff * k
+        !print*, 'DEBUG::SCmodule   i,  k,  q =', iReac, k, Rate(iReac)
+        Rate(iReac) = Meff * k * Rate(iReac)
         IF (combustion) DRatedT(iReac) = DkdT
-        !print*, 'debugg:: ', ireac, Rate(ireac), DRatedT(ireac)
       END DO
       stop 'rates_mod'
       TimeRateE=MPI_WTIME()
@@ -362,17 +389,20 @@
     !=====================================================================!
     ! ===  Multiplication with FACTOR
     !=====================================================================!
-    SUBROUTINE CheckThirdBodys(M,y_conc,iReac)
+    SUBROUTINE EffectiveMolecularity(M,Conc,iReac)
+      !OUT
       REAL(RealKind), INTENT(OUT) :: M
-      REAL(RealKind), INTENT(IN)    :: y_conc(:)
+      !IN
+      REAL(RealKind), INTENT(IN)    :: Conc(:)
       INTEGER, INTENT(IN) :: iReac
+      !TEMP
       INTEGER :: i
       !
       !print*, 'debugg ro2=',SUM(y_conc(RO2))
-      !DO i=1,1201
-      !  WRITE(334,*) RO2(i)
       !END DO
       !stop
+      !
+      !
       IF (ReactionSystem(iReac)%Factor(1:1)=='$') THEN
         SELECT CASE (ReactionSystem(iReac)%Factor)
           CASE ('$H2')
@@ -388,17 +418,19 @@
           CASE ('$H2O')
             M=(mH2O**fac_exp)*fac_A
           CASE ('$RO2')
-            M=SUM(y_conc(RO2))
+            M=SUM(Conc(RO2))
           CASE ('$O2O2')
-            M=(((mO2*mair)**2)**fac_exp)*fac_A
+            M=(((mO2*mair)**TWO)**fac_exp)*fac_A
           CASE ('$aH2O')
             !k=k*aH2OmolperL*actLWC*mol2part
           CASE ('$RO2aq')
-            M=SUM(y_conc(RO2aq))
-          CASE ('$+M')
-            CALL ThirdBodyCompute(M,iReac,y_conc)
-          CASE ('$(+M)')
-            CALL ThirdBodyCompute(M,iReac,y_conc)
+            M=SUM(Conc(RO2aq))
+          CASE ('$+M','$(+M)')
+            M=SUM(Conc)
+            IF (ReactionSystem(iReac)%TBExtra) THEN
+              M = M - SUM(  (ONE-ReactionSystem(iReac)%TBalpha(:))  &
+              &              * Conc(ReactionSystem(iReac)%TB(:))    )
+            END IF
           CASE DEFAULT
             WRITE(*,*) 'Reaction: ',iReac
             CALL FinishMPI()
@@ -408,7 +440,7 @@
         M=ONE
       END IF
       !
-    END SUBROUTINE CheckThirdBodys
+    END SUBROUTINE EffectiveMolecularity
     !
     !=========================================================================!
     !                  calculate sun 
@@ -670,7 +702,10 @@
     END SUBROUTINE Temp4Compute
     !
     !
-    SUBROUTINE CalcGibbsFreeEnergie(Gibbs,T)
+    !   ***************************************************************
+    !   ** Species nondimensional gibbs potentials                   **
+    !   ***************************************************************
+    SUBROUTINE GibbsFreeEnergie(Gibbs,T)
       REAL(RealKind) :: Gibbs(:)
       REAL(RealKind) :: T(:)
       !
@@ -682,15 +717,14 @@
         Gibbs = highA*(ONE-T(8)) - rTWO*highB*T(1) - rSIX*highC*T(2)         &
         &        - rTWELV*highD*T(3) - rTWENTY*highE*T(4) + highF*T(6) - highG 
       END WHERE
-      print*, 'DEBUG::CHEM     Gibbs=',Gibbs(scPermutation)
-      stop
-    END SUBROUTINE CalcGibbsFreeEnergie
+    END SUBROUTINE GibbsFreeEnergie
     !
     !
     SUBROUTINE CalcDiffGibbsFreeEnergie(DGibbsdT,T)
       REAL(RealKind) :: DGibbsdT(:)
       REAL(RealKind) :: T(:)
       !
+      DGibbsdT(:)=ZERO
       WHERE (SwitchTemp>T(1))
         DGibbsdT=-(lowA*T(6) + 0.5d0*lowB + lowC*T(1)/3.0d0 +            &
         &              0.25d0*lowD*T(2) + 0.2d0*lowE*T(3) + lowF*T(7) )
@@ -707,12 +741,11 @@
       INTEGER :: iR, jS, jj
       !
       DelGibbs(:)=ZERO         
-      DO iR=1,BA%m
-        DO jj=BA%RowPtr(iR),BA%RowPtr(iR+1)-1
-          jS=BA%ColInd(jj)
-          DelGibbs(iR)=DelGibbs(iR)+BA%Val(jj)*GFE(jS)      
-        END DO
-      END DO
+      !
+      FORALL (iR=1:BA%m)
+        DelGibbs(iR) = DelGibbs(iR) + SUM(BA%Val(BA%RowPtr(iR):BA%RowPtr(iR+1)-1) &
+        &              * GFE(BA%ColInd(BA%RowPtr(iR):BA%RowPtr(iR+1)-1)))
+      END FORALL
     END SUBROUTINE CalcDeltaGibbs
     !
     SUBROUTINE CalcDiffDeltaGibbs(DiffDelGibbs)
@@ -776,41 +809,45 @@
     END SUBROUTINE scTHERMO
     !
     !
-    SUBROUTINE TempXComputeCK(k,K_eq,k_f,Constants,T,iReac)
-      REAL(RealKind) :: k
-      REAL(RealKind) :: k_f, K_eq!, BackRate
-      REAL(RealKind) :: Constants(:)
-      REAL(RealKind) :: T(:)
-      INTEGER :: iReac
-      !
-      REAL(RealKind) :: g0(nspc)   
-      REAL(RealKind) :: delg0
-      INTEGER :: jj,j
+    SUBROUTINE TempXComputeCK(k,rK_eq,k_f,Constants,T,iReac)
+      !OUT:
+      REAL(RealKind) :: k               ! Reaction rate constant
+      REAL(RealKind) :: k_f             ! Forward rate constant
+      REAL(RealKind) :: rK_eq           ! reciprocal Equilibrium rate constant
+      !IN:
+      REAL(RealKind) :: Constants(:)    ! Arrhenius parameter A,b,E_a
+      REAL(RealKind) :: T(:)            ! Temperature array SIZE=8
+      INTEGER :: iReac                  
+      !TEMP:
       REAL(RealKind) :: rRcT
+      !DEBUG:
+      REAL(RealKind) :: kb
       !
       rRcT=rRcal*T(6)
       !
       IF (ReactionSystem(iReac)%Line2=='BackReaction') THEN
         IF (ReactionSystem(iReac)%Line3=='rev'.OR.ReactionSystem(iReac)%Line3=='REV') THEN
           ! backward constant calculated explicitly reaction
-          k = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT) ! speedchem
+          k    = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT) ! speedchem
         ELSE
           ! backward without extra coef, equiv constant nessesarry
-          k_f = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT)  ! speedchem
-          K_eq =EXP(-DelGFE(iReac))*(PressR*T(6))**sumBAT(iReac)
-          k=k_f/K_eq
+          k_f   = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT)  ! speedchem
+          rK_eq = EXP(+DelGFE(iReac)) * rFacEq**sumBAT(iReac)
+          k     = k_f*rK_eq
+          kb    = k_f*rK_eq
         END IF
       ELSE
         ! forward rate constant and eq. constant classical calculation
-        k_f = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT)  ! speedchem
-        K_eq =EXP(-DelGFE(iReac))*(PressR*T(6))**sumBAT(iReac)
-        k=k_f
+        k_f   = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT)  ! speedchem
+        rK_eq = EXP(+DelGFE(iReac)) * rFacEq**sumBAT(iReac)
+        kb    = k_f*rK_eq
+        k     = k_f
       END IF
         IF(MOD(iReac,2)/=0) THEN
-          print*, 'DEBUGG ::  iR=    Tarr=',iReac,T
+        !  print*, 'DEBUGG ::  iR=    Tarr=',iReac,T
           print*, 'DEBUGG ::    constants=',ReactionSystem(iReac)%Constants
-          print*, 'DEBUGG :: k_f=    K_eq=',k_f, K_eq
-          print*,
+          print*, 'DEBUGG :: k_f=    K_eq=',iReac,k_f, rK_eq,kb
+          print*, 
         END IF
     END SUBROUTINE TempXComputeCK
     !
