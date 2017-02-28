@@ -55,7 +55,6 @@
       INTEGER :: iReac, ii, j
       ! 
       ! DEBUGGING
-      INTEGER :: scPermutation(nspc)
       INTEGER :: cnt
       !
       !==================================================================!
@@ -76,7 +75,6 @@
       IF ( combustion ) THEN
         !print*, 'DEBUG::RATES      Temperatur =',y_conc(nDIM)
         cnt=1
-        scPermutation=(/26,28,25,18,21,17,20,29,22,24,19,27,15,13,23,12,14,16,1,2,3,4,5,6,7,9,10,11,8/)
         CALL UpdateTempArray(T,y_conc(nDIM))
         CALL CalcGibbsFreeEnergie(GFE,T)
         CALL CalcDeltaGibbs(DelGFE)
@@ -104,12 +102,6 @@
         ! ====== Compute the rate constant for specific reaction type ===
         CALL ComputeRateConstant(k,DkdT,T,Time,chi,mAir,iReac,y_conc,Meff)
         !print*, 'DEBUGG :: k1=',k
-        IF(MOD(iReac,2)/=0) THEN
-          cnt=cnt+1
-          print*, 'DEBUGG ::iR=    me=    k=',iReac,TRIM(ReactionSystem(iReac)%Line1),k,T(6),T(8)
-          print*, 'DEBUGG ::      constants=',ReactionSystem(iReac)%Constants
-          print*,
-        END IF
         !IF(MOD(iReac,2)/=0) print*, 'debug::rates   k=',iReac,k
         !
         ! ========= Multiplication with Inactiv (passiv) Educts ===========
@@ -684,12 +676,14 @@
       !
       Gibbs(:)=ZERO
       WHERE (SwitchTemp>T(1))
-        Gibbs=-(lowA*(LOG(T(1))-1) + 0.5d0*lowB*T(1) + lowC*T(2)/6.0d0 +    &
-        &        lowD*T(3)/12.0d0 + 0.05d0*lowE*T(4) + lowF*T(6) + lowG )
+        Gibbs = lowA*(ONE-T(8)) - rTWO*lowB*T(1) - rSIX*lowC*T(2)        &
+        &        - rTWELV*lowD*T(3) - rTWENTY*lowE*T(4) + lowF*T(6) - lowG 
       ELSEWHERE
-        Gibbs=-(highA*(LOG(T(1))-1) + 0.5d0*highB*T(1) + highC*T(2)/6.0d0 + &
-        &        highD*T(3)/12.0d0 + 0.05d0*highE*T(4) + highF*T(6) + highG )
+        Gibbs = highA*(ONE-T(8)) - rTWO*highB*T(1) - rSIX*highC*T(2)         &
+        &        - rTWELV*highD*T(3) - rTWENTY*highE*T(4) + highF*T(6) - highG 
       END WHERE
+      print*, 'DEBUG::CHEM     Gibbs=',Gibbs(scPermutation)
+      stop
     END SUBROUTINE CalcGibbsFreeEnergie
     !
     !
@@ -782,9 +776,9 @@
     END SUBROUTINE scTHERMO
     !
     !
-    SUBROUTINE TempXComputeCK(ReacConst,EquiRate,ForwRate,Constants,T,iReac)
-      REAL(RealKind) :: ReacConst
-      REAL(RealKind) :: ForwRate, EquiRate!, BackRate
+    SUBROUTINE TempXComputeCK(k,K_eq,k_f,Constants,T,iReac)
+      REAL(RealKind) :: k
+      REAL(RealKind) :: k_f, K_eq!, BackRate
       REAL(RealKind) :: Constants(:)
       REAL(RealKind) :: T(:)
       INTEGER :: iReac
@@ -798,21 +792,26 @@
       !
       IF (ReactionSystem(iReac)%Line2=='BackReaction') THEN
         IF (ReactionSystem(iReac)%Line3=='rev'.OR.ReactionSystem(iReac)%Line3=='REV') THEN
-          ! backward with backwardcoeffs reaction
-          ReacConst=Constants(1)*T(1)**Constants(2)*EXP(-Constants(3)*T(6))
-          !print*, 'DEBUG::RATES   revConst=',Constants
+          ! backward constant calculated explicitly reaction
+          k = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT) ! speedchem
         ELSE
           ! backward without extra coef, equiv constant nessesarry
-          ForwRate =Constants(1)*T(1)**Constants(2)*EXP(-Constants(3)*T(6))
-          EquiRate =EXP(-DelGFE(iReac))*(PressR*T(6))**sumBAT(iReac)
-          ReacConst=ForwRate/EquiRate
+          k_f = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT)  ! speedchem
+          K_eq =EXP(-DelGFE(iReac))*(PressR*T(6))**sumBAT(iReac)
+          k=k_f/K_eq
         END IF
       ELSE
-        !ForwRate =Constants(1)*T(1)**Constants(2)*EXP(-Constants(3)*T(6))
-        ForwRate = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT)
-        EquiRate =EXP(-DelGFE(iReac))*(PressR*T(6))**sumBAT(iReac)
-        ReacConst=ForwRate
+        ! forward rate constant and eq. constant classical calculation
+        k_f = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT)  ! speedchem
+        K_eq =EXP(-DelGFE(iReac))*(PressR*T(6))**sumBAT(iReac)
+        k=k_f
       END IF
+        IF(MOD(iReac,2)/=0) THEN
+          print*, 'DEBUGG ::  iR=    Tarr=',iReac,T
+          print*, 'DEBUGG ::    constants=',ReactionSystem(iReac)%Constants
+          print*, 'DEBUGG :: k_f=    K_eq=',k_f, K_eq
+          print*,
+        END IF
     END SUBROUTINE TempXComputeCK
     !
     !
