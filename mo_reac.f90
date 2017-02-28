@@ -290,4 +290,5 @@
     REAL(RealKind) :: SCpress   ! initial initial reactor pressure [Pa]
     REAL(RealKind) :: SCrho     ! reactor density
     !
+    INTEGER :: scPermutation(29)
 END MODULE mo_reac

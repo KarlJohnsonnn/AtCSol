@@ -151,7 +151,8 @@ REAL(RealKind) :: tAnf              & ! Model start time
 &                             ,  NINE    =     9.0d0  ,   rNINE    =   ONE/NINE    &
 &                             ,  TEN     =    10.0d0  ,   rTEN     =   ONE/TEN     &
 &                             ,  ELEVN   =    11.0d0  ,   rELEVN   =   ONE/ELEVN   &
-&                             ,  TWELV   =    12.0d0  ,   rTWELV   =   ONE/TWELV
+&                             ,  TWELV   =    12.0d0  ,   rTWELV   =   ONE/TWELV   &
+&                             , TWENTY   =    20.0d0  ,   rTWENTY  =   ONE/TWENTY
 !
 !--- Orders of magnitude
   REAL(RealKind), PARAMETER ::   nano    =     1.0d-09    &
