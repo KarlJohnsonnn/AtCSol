@@ -54,6 +54,9 @@
       REAL(RealKind) :: Meff
       INTEGER :: iReac, ii, j
       ! 
+      ! DEBUGGING
+      INTEGER :: scPermutation(nspc)
+      INTEGER :: cnt
       !
       !==================================================================!
       !===============calc rate for ReactionSystem=======================!
@@ -72,6 +75,8 @@
       ! --- Update temperature array
       IF ( combustion ) THEN
         !print*, 'DEBUG::RATES      Temperatur =',y_conc(nDIM)
+        cnt=1
+        scPermutation=(/26,28,25,18,21,17,20,29,22,24,19,27,15,13,23,12,14,16,1,2,3,4,5,6,7,9,10,11,8/)
         CALL UpdateTempArray(T,y_conc(nDIM))
         CALL CalcGibbsFreeEnergie(GFE,T)
         CALL CalcDeltaGibbs(DelGFE)
@@ -99,6 +104,13 @@
         ! ====== Compute the rate constant for specific reaction type ===
         CALL ComputeRateConstant(k,DkdT,T,Time,chi,mAir,iReac,y_conc,Meff)
         !print*, 'DEBUGG :: k1=',k
+        IF(MOD(iReac,2)/=0) THEN
+          cnt=cnt+1
+          print*, 'DEBUGG ::iR=    me=    k=',iReac,TRIM(ReactionSystem(iReac)%Line1),k,T(6),T(8)
+          print*, 'DEBUGG ::      constants=',ReactionSystem(iReac)%Constants
+          print*,
+        END IF
+        !IF(MOD(iReac,2)/=0) print*, 'debug::rates   k=',iReac,k
         !
         ! ========= Multiplication with Inactiv (passiv) Educts ===========
         CALL CheckInactEducts(k,iReac,actLWC)
@@ -132,7 +144,7 @@
         IF (combustion) DRatedT(iReac) = DkdT
         !print*, 'debugg:: ', ireac, Rate(ireac), DRatedT(ireac)
       END DO
-      !stop 'rates_mod'
+      stop 'rates_mod'
       TimeRateE=MPI_WTIME()
       TimeRates=TimeRates+(TimeRateE-TimeRateA)
       !
@@ -780,7 +792,9 @@
       REAL(RealKind) :: g0(nspc)   
       REAL(RealKind) :: delg0
       INTEGER :: jj,j
+      REAL(RealKind) :: rRcT
       !
+      rRcT=rRcal*T(6)
       !
       IF (ReactionSystem(iReac)%Line2=='BackReaction') THEN
         IF (ReactionSystem(iReac)%Line3=='rev'.OR.ReactionSystem(iReac)%Line3=='REV') THEN
@@ -794,7 +808,8 @@
           ReacConst=ForwRate/EquiRate
         END IF
       ELSE
-        ForwRate =Constants(1)*T(1)**Constants(2)*EXP(-Constants(3)*T(6))
+        !ForwRate =Constants(1)*T(1)**Constants(2)*EXP(-Constants(3)*T(6))
+        ForwRate = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT)
         EquiRate =EXP(-DelGFE(iReac))*(PressR*T(6))**sumBAT(iReac)
         ReacConst=ForwRate
       END IF
@@ -962,7 +977,6 @@
       !--- Mixture averaged mass value [J/kg/K]
       c_v = kilo * R * SUM( Conc * DUmoldT * rMW )
       !print*, 'DEBUG::speedchem     kilo,R,SUM(Y,CvuR,uMW)=',kilo,R, SUM(Conc),SUM(dumoldt),SUM(rMW)
-      !scPermutation=(/26,28,25,18,21,17,20,29,22,24,19,27,15,13,23,12,14,16,1,2,3,4,5,6,7,9,10,11,8/)
       !DO i=1,nspc
       !  WRITE(987,*) conc(scPermutation(i)),MW(scPermutation(i)),rMW(scPermutation(i))
       !END DO
