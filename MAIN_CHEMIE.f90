@@ -14,7 +14,7 @@ PROGRAM Main_ChemKin
   USE Rosenbrock_Mod
   USE mo_control
   USE mo_unirnk
-  USE mo_reac, ONLY: nspc,combustion, MW, rMW
+  USE mo_reac, ONLY: nspc,combustion, MW, rMW, scPermutation
   USE mo_MPI
   USE mo_IO
   USE mo_ckinput
@@ -139,6 +139,8 @@ PROGRAM Main_ChemKin
         END DO
       END IF
     END DO
+    ! debug speedchem reihenfolge der species für besseres debuggen
+    scPermutation=(/26,28,25,18,21,17,20,29,22,24,19,27,15,13,23,12,14,16,1,2,3,4,5,6,7,9,10,11,8/)
   ELSE
     IF (MPI_ID==0) WRITE(*,*) ' ---->  Fix Temperature'
     Time_Read=MPI_WTIME()
