@@ -9,11 +9,12 @@ MODULE mo_ckinput
   &                    , ListToHashTable, HashTableToList, SortList         &
   &                    , PositionSpeciesGas,PositionSpeciesAll
   !
-  USE mo_reac, ONLY: ntGas, ntAqua, ntSolid, ntPart, ntKat, neq, nspc, nReak&
+  USE mo_reac,     ONLY: ntGas, ntAqua, ntSolid, ntPart, ntKat, neq, nspc, nReak&
   &                    , nreakgas,  nreakgconst, nreakgphoto, nreakgspec    &
   &                    , nreakgtemp, nreakgtroe, nDIM, SCpress, SCrho       &
   &                    , lowA,lowB,lowC,lowD,lowE,lowF,lowG                 &
   &                    , highA,highB,highC,highD,highE,highF,highG
+  USE mo_control,  ONLY: Rcal
   USE NetCDF_Mod
   !
   IMPLICIT NONE
@@ -383,7 +384,7 @@ CONTAINS
         DO i=3,1,-1
           LocString=ADJUSTR(LocString)
           iWS=INDEX(LocString,' ',.TRUE.)        ! find first whitespace <--
-          READ(LocString(iWS:),'(E10.4)') tmpReal
+          READ(LocString(iWS:),*) tmpReal
           ReactionSystem(iReac)%Constants(i)=REAL(tmpReal,KIND=RealKind)
           IF (bR) ReactionSystem(iReac+1)%Constants(i)=REAL(tmpReal,KIND=RealKind)
           LocString=LocString(:iWS)
