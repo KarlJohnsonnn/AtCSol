@@ -207,6 +207,7 @@ MODULE Rosenbrock_Mod
     IF ( combustion ) THEN
       ThresholdStepSizeControl(nDIM)=ATolTemp/RTolROW
       ATolAll(nDIM)=ATolTemp
+      print*, 'debug:: tols    ', ThresholdStepSizeControl(nDIM),ATolAll(nDIM)
     END IF
     ! Test that Tspan is internally consistent.
     IF ( Tspan(1)>=Tspan(2) ) THEN
@@ -249,15 +250,15 @@ MODULE Rosenbrock_Mod
   !==========================================================
   !   Calculates an initial stepsize based on 2. deriv.
   !==========================================================
-  SUBROUTINE InitialStepSize(h,hmin,absh,Jac,Rate,t,y,pow)
+  SUBROUTINE InitialStepSize(h,hmin,absh,Jac,Rate,t,Y,pow)
     !------------------------------------------------- 
     ! Input:
     !        - public variables
     !        - Tspan 
-    !        - y0  ( initial vector )
+    !        - Y0  ( initial vector )
     !        - Jacobian matrix
     REAL(RealKind), INTENT(IN) :: t, pow
-    REAL(RealKind), INTENT(IN) :: y(nspc)
+    REAL(RealKind), INTENT(IN) :: Y(nspc)
     TYPE(CSR_Matrix_T), INTENT(IN) :: Jac
     REAL(RealKind) :: Rate(neq)
     REAL(RealKind) :: DRatedT(neq)     ! part. derv. rate over temperatur vector
@@ -273,101 +274,88 @@ MODULE Rosenbrock_Mod
     REAL(RealKind) :: tdel, rh
     REAL(RealKind), DIMENSION(nspc) ::  wt, DfDt, Tmp, f1, zeros
     REAL(RealKind) :: sqrteps=SQRT(eps)
-    !
-    zeros=ZERO    
-    !
-    ! hmin is a small number such that t + hmin is clearly different from t in
+
+    zeros = ZERO    
+
+    ! hmin is a small number such that t + hmin is clearlY different from t in
     ! the working precision, but with this definition, it is 0 if t = 0.
-    hmin=minStp
-    !
-    !print*,'debug:: in ', SUM(ABS(y))
-    !---- Compute an initial step size h using yp=y'(t) 
-    CALL MatVecMult(BAT,Rate,y_e,f0)
-    wt=MAX(ABS(y),ThresholdStepSizeControl(1:nspc))
-    rh=(1.25D0*MAXVAL(ABS(f0(:)/wt(:))))/(RTolRow**pow)
-    !
-    !print*,'debug:: pw,nspcm', RTolRow**pow, nspc
-    !print*,
-    !print*, 'debug:: SUM(wt),rh,sum(f0)', sum(ABS(wt)) , rh, SUM(ABS(f0))
-    absh=MIN(maxStp,Tspan(2)-Tspan(1))
-    IF (absh*rh>1.0D0) THEN
-      absh=1.0D0/rh
-    END IF
-    !
-    !---- Compute y''(t) and a better initial step size
-    h=absh
-    tdel=(t+MIN(sqrteps*MAX(ABS(t),ABS(t+h)),absh))-t
-    !print*, 'debug:: tdel=     ', tdel, t+tdel
-    !
-    CALL Rates((t+tdel),y,Rate,DRatedT)
-    Output%nRateEvals=Output%nRateEvals+1
-    !
-    !print*, 'debug:: sumzzz(bat,rate,yem,f1)=     ', SUM(BAT%Val),SUM(Rate),SUM(y_e)
-    CALL MatVecMult(BAT,Rate,y_e,f1)
-    !print*, 'debug:: sum(f1)=     ', SUM(f1), SIZE(BAT%VAL),SIZE(rate),SIZE(y_e)
-    !
-    !stop 'stop'
-    DfDt=(f1-f0)/tdel
-    CALL MatVecMult(Jac,f0,zeros,Tmp)
-    DfDt=DfDt+Tmp
-    !
-    rh=1.25D0*SQRT(0.5d0*MAXVAL(ABS(DfDt/wt)))/(RTolRow**pow)
-    !
-    absh=MIN(maxStp,Tspan(2)-Tspan(1))
-    IF (absh*rh>1.0d0) THEN
-      absh=1.0D0/rh
-    END IF
-    absh=MAX(absh,hmin)
-    !print*, 'debug:: h, absh', h, absh
-    !stop
+    hmin  = minStp
+
+    !---- Compute an initial step size h using Yp=Y'(t) 
+    CALL MatVecMult( BAT , Rate , Y_e , f0 )
+    wt    = MAX( ABS(Y) , ThresholdStepSizeControl(1:nspc) )
+    rh    = ( 1.25D0 * MAXVAL( ABS(f0(:)/wt(:)) ) )/(RTolRow**pow)
+    absh  = MIN( maxStp , Tspan(2)-Tspan(1) )
+    IF ( absh * rh > ONE )  absh = ONE / rh
+
+    !---- Compute Y''(t) and a better initial step size
+    h     = absh
+    !tdel  = ( t + MIN( sqrteps * MAX( ABS(t) , ABS(t+h) ) , absh ) ) - t
+    tdel  = t + MIN( sqrteps * MAX( ABS(t) , ABS(t+h) ) , absh )
+
+    CALL Rates( t+tdel , Y , Rate , DRatedT )
+    Output%nRateEvals = Output%nRateEvals + 1
+
+    CALL MatVecMult( BAT , Rate , Y_e , f1 )
+ 
+    DfDt  = ( f1 - f0 ) / tdel
+    CALL MatVecMult( Jac , f0 , zeros , Tmp )
+    DfDt  = DfDt  + Tmp
+  
+    rh    = 1.25D0  * SQRT( rTOW * MAXVAL( ABS(DfDt/wt) ) ) / RTolRow**pow
+   
+    absh  = MIN( maxStp , Tspan(2)-Tspan(1) )
+    IF ( absh * rh > ONE )  absh = ONE / rh
+    absh  = MAX( absh , hmin )
+    
   END SUBROUTINE InitialStepSize
   !
   !
   !=========================================================================
   !    Subroutine Rosenbrock-Method universal for classic and extended case
   !=========================================================================
-  SUBROUTINE Rosenbrock(y0,t,h,RCo,err,errind,yNew)
+  SUBROUTINE Rosenbrock(Y0,t,h,RCo,err,errind,YNew)
     !--------------------------------------------------------
     ! Input:
-    !   - y0............. actual concentrations y 
+    !   - Y0............. actual concentrations Y 
     !   - t.............. time
     !   - h.............. step size
     !   - RCo............ Rosenbrock method
     !   - Temp........... actual Temperatur (optional for combustion)
     !
-    REAL(RealKind), INTENT(IN) :: y0(:)
+    REAL(RealKind), INTENT(IN) :: Y0(:)
     REAL(RealKind), INTENT(IN) :: t, h
     TYPE(RosenbrockMethod_T)   :: RCo
     !--------------------------------------------------------
     ! Output:
-    !   - ynew........... new concentratinos 
+    !   - Ynew........... new concentratinos 
     !   - err............ error calc with embedded formula.
     !   - TempNew........ new temperature (optional for combustion)
     !
-    REAL(RealKind), INTENT(INOUT) :: yNew(:)
-    REAL(RealKind), INTENT(OUT) :: err
-    INTEGER       , INTENT(OUT) :: errind(1,1)
+    REAL(RealKind), INTENT(INOUT) :: YNew(:)
+    REAL(RealKind), INTENT(OUT)   :: err
+    INTEGER       , INTENT(OUT)   :: errind(1,1)
     !-------------------------------------------------------
-    ! Temporary variables:
+    ! TemporarY variables:
     !
     REAL(RealKind), DIMENSION(nDIM,RCo%nStage) :: k     
-    REAL(RealKind), DIMENSION(nDIM)    :: y, yhat, fRhs
-    REAL(RealKind), DIMENSION(nspc)    :: hy
-    REAL(RealKind), DIMENSION(nspc)    :: Umol, UMat, DUmoldT, DcDt
-    REAL(RealKind), DIMENSION(nDIMex)    :: bb
+    REAL(RealKind), DIMENSION(nDIM)            :: Y, Yhat, fRhs
+    REAL(RealKind), DIMENSION(nspc)            :: Umol, UMat, DUmoldT, DcDt
+    REAL(RealKind), DIMENSION(nDIMex)          :: bb
     !
     REAL(RealKind) :: Tarr(8)
     REAL(RealKind) :: Rate(neq)
     REAL(RealKind) :: DRatedT(neq)        
     REAL(RealKind) :: C(nspc)       ! molar heat capacities at constant pressure
-    REAL(RealKind) :: H_e(nspc)       ! the standardstate molar enthalpy
-    REAL(RealKind) :: S(nspc)       ! standard-state entropy at 298 K
+    REAL(RealKind) :: H_e(nspc)       ! the standardstate molar enthalpY
+    REAL(RealKind) :: S(nspc)       ! standard-state entropY at 298 K
     !
-    REAL(RealKind) :: dHdT(nspc)    ! Enthaply derivative in dT [J/mol/K^2]
+    REAL(RealKind) :: dHdT(nspc)    ! EnthaplY derivative in dT [J/mol/K^2]
     REAL(RealKind) :: dGdT(nspc)    ! Gibbs potential derivative in dT [J/mol/K^2]
     REAL(RealKind) :: dCvdT(nspc)   ! Constant volume specific heat derivative in dT [J/mol/K]
       
-    REAL(RealKind) :: invRate(neq)
+    REAL(RealKind) :: rRate(neq)
+    REAL(RealKind) :: Yrh(nspc)
     REAL(RealKind) :: tt
     REAL(RealKind) :: c_v ! mass average mixture specific heat at constant volume
     REAL(RealKind) :: X
@@ -375,22 +363,22 @@ MODULE Rosenbrock_Mod
     ! fuer verlgeich mit speedchem, andere spc reihenfolge
     INTEGER :: scPermutation(nspc)
     !
-    INTEGER :: iStage, jStage, i, rPtr          ! increments
+    INTEGER :: iStg, jStg, i, rPtr          ! increments
     !
     ! Initial settings
-    k(:,:)=ZERO
-    fRhs(:)=ZERO
-    Rate(:)=ZERO
+    k(:,:)    = ZERO
+    fRhs(:)   = ZERO
+    Rate(:)   = ZERO
     !
-    y(:nspc)=MAX(ABS(y0(:nspc)),eps)*SIGN(ONE,y0(:nspc))                   ! concentrations =/= 0
-    IF ( combustion ) y(nDIM)=y0(nDIM)
-    yNew(:)=y0(:)
-    yHat(:)=y0(:)
-     !print*, 'debug     y0        :: ',Y0(1:nspc)
-     !print*, 'debug     y        :: ',Y(1:nspc)
+    Y(:nspc)  = MAX( ABS(Y0(:nspc)) , eps ) * SIGN( ONE , Y0(:nspc) )  ! concentrations =/= 0
+    IF ( combustion ) Y(nDIM) = Y0(nDIM)
+    YNew(:)   = Y0(:)
+    YHat(:)   = Y0(:)
+     !print*, 'debug     Y0        :: ',Y0(1:nspc)
+     !print*, 'debug     Y        :: ',Y(1:nspc)
      !stop
     !
-    !IF (PRESENT(Temp)) yNew(Temp_ind)=y0(Temp_ind)
+    !IF (PRESENT(Temp)) YNew(Temp_ind)=Y0(Temp_ind)
     !
     !
     !********************************************************************************
@@ -403,74 +391,77 @@ MODULE Rosenbrock_Mod
     !
     !********************************************************************************
     !
-    ! --- Nessesary for combustion systems
+    ! --- NessesarY for combustion sYstems
 
-    
-    CALL Rates(t,y,Rate,DRatedT)
-    Rate(:)=MAX(ABS(Rate(:)),eps)*SIGN(ONE,Rate(:))         ! reaction rates =/= 0
-    hy=y(:nspc)/h
+
+    CALL Rates( t, Y, Rate, DRatedT )
+    Rate(:)   = MAX( ABS(Rate(:)) , eps) * SIGN( ONE , Rate(:) )    ! reaction rates =/= 0
+    Yrh       = Y0(:nspc) / h
 
     !print*, 'debug:: ', h , t ,Rate(1:3)
-    !print*, 'debug::2',y(1:3)
+    !print*, 'debug::2',Y(1:3)
     !
     IF ( combustion ) THEN
-      ! spc perutation aus speedchem fuer reakdtionssystem ERC_nheptane
+      ! spc perutation aus speedchem fuer reakdtionssYstem ERC_nheptane
       scPermutation=(/26,28,25,18,21,17,20,29,22,24,19,27,15,13,23,12,14,16,1,2,3,4,5,6,7,9,10,11,8/)
-      CALL UpdateTempArray(Tarr,y0(nDIM))
-      CALL AvgReactorPressure(SCpress,Tarr,y0(1:nspc))
-      CALL scTHERMO(C,H_e,S,Tarr)
-      CALL SpcInternalEnergy(Umol,Tarr)
-      CALL DiffSpcInternalEnergy(DUmoldT,Tarr)
-      CALL MassAveMixSpecHeat(c_v,Tarr,y0(:nspc),DUmoldT)
-      CALL DiffConcDt(BAT,Rate,DcDt)
+      !CALL scTHERMO               ( C       , H_e   , S          ,Tarr)
+      !
+      !                             OUT:      IN:
+      CALL UpdateTempArraY        ( Tarr    , Y0(nDIM) )
+      CALL AvgReactorPressure     ( SCpress , Tarr  , Y0(:nspc)  )
+      CALL SpcInternalEnergY      ( Umol    , Tarr)
+      CALL DiffSpcInternalEnergY  ( DUmoldT , Tarr)
+      CALL MassAveMixSpecHeat     ( c_v     , Tarr  , Y0(:nspc) , DUmoldT)
+      CALL DiffConcDt             ( DcDt    , BAT   , Rate )
+      UMat(:)     = -Umol(:)    * Y0(:nspc)
+      DRatedT(:)  = DRatedT(:)  * RCo%ga
+      X = ONE + h * RCo%ga * SUM( DUmoldT(:) * DcDt(:) )
+      !
+      !
       print*, 'debug     Temparr=  ',Tarr
       print*, 'debug        time=  ',t
       print*, 'debug         c_v=  ',c_v
       print*, 'debug         SCP=  ',SCpress
-      print*, 'debug     SUM(y0)=  ',SUM(Y0(1:nspc))
+      print*, 'debug     SUM(Y0)=  ',SUM(Y0(1:nspc))
       print*, 'debug   SUM(Umol)=  ',SUM(Umol)
       !print*, 'debug  DUmoldT=Cv/R :: ',SUM(DUmoldT)
       !print*, 'debug     1/MW      :: ',SUM(rMW)
       print*, 'debug   SUM(DcDt)=  ',SUM(DcDt)
-      UMat(:)=-Umol(:)*y0(1:nspc)
-      DRatedT(:)=DRatedT(:)*RCo%ga
-      !c_v=c_v/h
-      !X=c_v+SUM(DUmoldT(:)*DcDt(:))
-      X = ONE + h * RCo%ga * SUM( DUmoldT(:) * DcDt(:) )
       print*, 'debug          X         :: ',X
       !
-      stop 'rosenbrock mod'
-      
-      !stop
+      !
     END IF
-    ! 
+   
     ! --- Update matrix procedure
-    IF ( solveLA=='cl') THEN
-      !
+    IF ( CLASSIC ) THEN
+    
       ! classic case needs to calculate the Jacobian first
-      TimeJacobianA=MPI_WTIME()
-      CALL Miter_Classic(BAT,A,Rate,y,h,RCo%ga,Miter)
-      TimeJac=TimeJac+(MPI_WTIME()-TimeJacobianA)
-      Output%npds=Output%npds+1
-      !
+      TimeJacobianA = MPI_WTIME()
+      CALL Miter_Classic( BAT , A , Rate , Y , h , RCo%ga , Miter )
+      TimeJac       = TimeJac     + (MPI_WTIME()-TimeJacobianA)
+      Output%npds   = Output%npds + 1
+
       IF (OrderingStrategie==8) THEN
-        CALL SetLUvaluesCL(LU_Miter,Miter,LU_Perm)
+        CALL SetLUvaluesCL( LU_Miter , Miter , LU_Perm )
       END IF
-    ELSE !IF ( solveLA=='ex') THEN
-      !
-      invRate(:)=ONE/Rate(:)
-      IF (OrderingStrategie==8) THEN
-        CALL SetLUvaluesEX(LU_Miter,nspc,neq,invRate,hy,DRatedT,Umol,X,LUvalsFix,LU_Perm)
+
+    ELSE !IF ( EXTENDED )
+     
+      rRate(:)  = ONE / Rate(:)
+      IF ( OrderingStrategie==8 ) THEN
+        CALL SetLUvaluesEX  ( LU_Miter  , nspc , neq , rRate      , Yrh       &
+        &                   , DRatedT   , Umol , X   , LUvalsFix  , LU_Perm   )
       ELSE
-        CALL Miter_Extended(Miter,nspc,neq,invRate,hy)
+        CALL Miter_Extended ( Miter     , nspc , neq , rRate      , Yrh )
       END IF
+
     END IF
     !
     !WRITE(*,*) '----------------------------'
-    !WRITE(*,*) 'debug h, t, Temp  :: ', h , t, y(nDIM)
+    !WRITE(*,*) 'debug h, t, Temp  :: ', h , t, Y(nDIM)
     !WRITE(*,*) '      rate(1:3)   :: ', rate(1:3), SUM(rate)
     !IF(combustion) WRITE(*,*) '   DRatedT(1:3)   :: ', DRatedT(1:3), SUM(DRatedT)
-    !WRITE(*,*) '      conc(1:3)   :: ', y(1:3), SUM(y)
+    !WRITE(*,*) '      conc(1:3)   :: ', Y(1:3), SUM(Y)
     !WRITE(*,*) '      sum(Miter)  :: ', SUM(Miter%val)
     !WRITE(*,*) '      sum(LU)vor  :: ', SUM(LU_Miter%val)
 
@@ -485,19 +476,13 @@ MODULE Rosenbrock_Mod
     !****************************************************************************************
     !
     ! --- LU - Decomposition ---
+    timerStart  = MPI_WTIME()
     IF (OrderingStrategie==8) THEN
-      !
-      timerStart=MPI_WTIME()
-      CALL SparseLU(LU_Miter)
-      !WRITE(*,*) '      sum(LU)nach :: ', SUM(LU_Miter%val)
-      timerEnd=MPI_WTIME()
-      TimeFac=TimeFac+(timerEnd-timerStart)
+      CALL SparseLU( LU_Miter )
     ELSE
-      CALL FactorizeCoefMat(Miter%Val)
+      CALL MumpsLU( Miter%Val )
     END IF
-    !call printsparse(LU_miter,'*')
-    !WRITE(*,*) '      sum(LU)2    :: ', SUM(LU_Miter%val)
-    !WRITE(*,*) 
+    TimeFac     = TimeFac + (MPI_WTIME()-timerStart)
     !
     !****************************************************************************************
     !   ____    ___ __        __          _____  _                    ____   _               
@@ -508,85 +493,114 @@ MODULE Rosenbrock_Mod
     !                                                                                |_|    
     !****************************************************************************************
     !
-    DO iStage=1,RCo%nStage
-      IF ( iStage==1 ) THEN
-        IF ( solveLA=='ex' ) THEN
-          bb(:neq)=mONE
-          bb(neq+1:NSactNR)=y_e(:)
+    LOOP_n_STAGES:  DO iStg = 1 , RCo%nStage
+
+      IF ( iStg==1 ) THEN
+
+        IF ( EXTENDED ) THEN
+          bb( 1      : neq )          = mONE    ! = -1.0d0
+          bb( neq+1  : nsr )          = Y_e(:)  ! emission
+          IF ( combustion ) bb(nDIM)  = ZERO    ! =  0.0d0
         END IF
-        IF (combustion) bb(nDIMex)=ZERO
-      ELSE
-        tt=t+RCo%Asum(iStage)*h
-        y=y0
-        DO jStage=1,iStage
-          y=y+RCo%a(iStage,jStage)*k(:,jStage)
+
+      ELSE ! iStage > 1 ==> Update time and concentration
+
+        tt  = t + RCo%Asum(iStg) * h
+        Y   = Y0
+        DO jStg=1,iStg
+          Y = Y + RCo%a(iStg,jStg) * k(:,jStg)
         END DO
-        !
-        ! Update Rates at  (t + SumA*h) , and  (y + A*)k
-        CALL Rates(tt,y,Rate,DRatedT)
+        
+        ! Update Rates at  (t + SumA*h) , and  (Y + A*)k
+        CALL Rates( tt , Y , Rate , DRatedT )
+
       END IF
-      !print*, 'debug :: stage, rates=',iStage,Rate(1:5)
-      !
-      !
-      IF ( solveLA=='cl') THEN
-        CALL MatVecMult(BAT,Rate,y_e,fRhs)           
-        fRhs=h*fRhs
-        DO jStage=1,iStage-1
-          fRhs=fRhs+RCo%C(iStage,jStage)*k(:,jStage)
+      
+      !--- Calculate the right hand side of the linear System
+      IF ( CLASSIC ) THEN
+
+        CALL MatVecMult( BAT , Rate , Y_e , fRhs )           
+        fRhs = h * fRhs
+
+        DO jStg = 1 , iStg-1
+          fRhs  = fRhs + RCo%C(iStg,jStg) * k(:,jStg)
         END DO
-      ELSE 
-        IF (iStage/=1) THEN
-          bb(:neq)=-invRate(:)*Rate(:)
-          fRhs=ZERO
-          bb(nDIMex)=ZERO
-          DO jStage=1,iStage-1
-            fRhs(1:nspc)=fRhs(1:nspc)+RCo%C(iStage,jStage)*k(1:nspc,jStage)
-            IF (combustion) THEN
-              bb(nDIMex) = bb(nDIMex)  +  RCo%C(iStage,jStage)                  &
-              &          * ( c_v*k(nDIM,jStage) - SUM(Umol(:)*k(1:nspc,jStage)) )
-            END IF
+
+      ELSE !IF ( EXTENDED ) 
+
+        IF ( iStg/=1 ) THEN
+
+          bb(:neq)    = -rRate(:)*Rate(:)
+          fRhs(:)     = ZERO
+          bb(nDIMex)  = ZERO
+
+          DO jStg = 1 , iStg-1
+            fRhs(:nspc)   = fRhs(:nspc) + RCo%C(iStg,jStg)*k(:nspc,jStg)
+            IF (combustion)                                                  &
+              bb(nDIMex)  = bb(nDIMex)  + RCo%C(iStg,jStg)*(c_v*k(nDIM,jStg) &
+              &                         - SUM( Umol(:)*k(:nspc,jStg)) )
           END DO
-          bb(neq+1:NSactNR)=fRhs(1:nspc)/h+y_e(:)
-          IF (combustion) bb(nDIMex)=bb(nDIMex)/h
+
+          bb(neq+1:nsr) = fRhs(:nspc) / h + Y_e(:)
+          IF (combustion) bb(nDIMex) = bb(nDIMex) / h
+
         END IF
+
       END IF
       !
-      print*, 'debug:: ', 'istage=',iStage,SUM(ABS(fRhs(:)))
+      print*, 'debug:: ', 'istage=',iStg,SUM(ABS(fRhs(:)))
       !
-      ! ---  Solve linear System  ---
+      ! ---  Solve linear SYstem  ---
       !
-      IF (OrderingStrategie==8) THEN  
-        timerStart=MPI_WTIME()
-        IF ( solveLA=='cl') THEN
-          CALL SolveSparse(LU_Miter,fRhs)
-          k(:,iStage)=fRhs(:)
-        ELSE
-          CALL SolveSparse(LU_Miter,bb)
-          k(:,iStage)=y0(:)*bb(neq+1:)
+      timerStart  = MPI_WTIME()
+      IF ( OrderingStrategie==8 ) THEN  
+
+        IF ( CLASSIC ) THEN
+
+          CALL SolveSparse( LU_Miter , fRhs )
+          k(:,iStg) = fRhs(:)
+
+        ELSE !IF ( EXTENDED )
+
+          CALL SolveSparse( LU_Miter , bb)
+          k(1:nspc,iStg) = Y0(1:nspc) * bb(neq+1:nsr)
+          IF ( combustion ) k(nDIM,iStg) = bb(nDIM)
+
         END IF
-        TimeSolve=TimeSolve+(MPI_WTIME()-timerStart)
-        !print*, 'debug:: ', 'istage=',iStage,SUM(ABS(fRhs(:)))
+        !print*, 'debug:: ', 'istage=',iStg,SUM(ABS(fRhs(:)))
+
       ELSE
-        timerStart=MPI_WTIME()
-        IF ( solveLA=='cl') THEN
-          CALL SolveLinAlg(fRhs)
-          k(:,iStage)=Mumps_Par%RHS(:)    
-        ELSE
-          CALL SolveLinAlg(bb)
-          k(:nspc,iStage)=y0(:nspc)*Mumps_Par%RHS(neq+1:NSactNR)
-          IF (combustion) k(nDIM,iStage)=Mumps_Par%RHS(nDIM)
-          print*, 'debug:: ', 'istage=',iStage,k(:,iStage)
+
+        IF ( CLASSIC ) THEN
+
+          CALL MumpsSolve( fRhs )
+          k( 1 : nDIM , iStg ) = Mumps_Par%RHS(:)    
+
+        ELSE !IF ( EXTENDED )
+
+          CALL MumpsSolve( bb )
+          k( 1 : nspc , iStg ) = Y0(:nspc) * Mumps_Par%RHS(neq+1:nsr)
+          IF ( combustion )   k(nDIM,iStg) = Mumps_Par%RHS(nDIM)
+
         END IF
-        TimeSolve=TimeSolve+(MPI_WTIME()-timerStart)
+
       END IF    
-    END DO
-      !call dropout
+      TimeSolve   = TimeSolve + (MPI_WTIME()-timerStart)
+
+
+    END DO  LOOP_n_STAGES
+
+    !call dropout
     !  
-    DO jStage=1,RCo%nStage
-      ynew(:)=ynew(:)+RCo%m(jStage)*k(:,jStage)! new y vector
-      yhat(:)=yhat(:)+RCo%me(jStage)*k(:,jStage)! embedded formula for err calc ord-1
+    !--- Update Concentrations (Temperatur)
+    DO jStg = 1 , RCo%nStage
+      Ynew(:) = Ynew(:) + RCo%m(jStg) * k(:,jStg)! new Y vector
+      Yhat(:) = Yhat(:) + RCo%me(jStg) * k(:,jStg)! embedded formula for err calc ord-1
     END DO
     !
+    do istg=1,ndim
+      print*,'debug::   y0  yn  yh  k ', Y0(istg),Ynew(isTg),yHat(istg) , k(istg,:)
+    end do
     !***********************************************************************************************
     !   _____                           _____       _    _                    __               
     !  | ____| _ __  _ __  ___   _ __  | ____| ___ | |_ (_) _ __ ___    __ _ | |_  (_)  ___   _ __  
@@ -595,7 +609,7 @@ MODULE Rosenbrock_Mod
     !  |_____||_|   |_|   \___/ |_|    |_____||___/ \__||_||_| |_| |_| \__,_| \__| |_| \___/ |_| |_|
     !                                                                                              
     !***********************************************************************************************
-    CALL ERROR(err,errind,ynew,yhat,y0,ATolAll,RTolROW,t)
+    CALL ERROR(err,errind,Ynew,Yhat,Y0,ATolAll,RTolROW,t)
     !
   END SUBROUTINE Rosenbrock
 END MODULE Rosenbrock_Mod
