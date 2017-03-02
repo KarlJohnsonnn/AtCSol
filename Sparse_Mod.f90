@@ -1662,19 +1662,23 @@ MODULE Sparse_Mod
   !
   !
   ! Matrix*Vector1+Vector2 (rhs)
-  SUBROUTINE DiffConcDt(A,Vec1,DcDt)
+  SUBROUTINE DiffConcDt(DcDt,A,Vec1)
+    !IN
     TYPE(CSR_Matrix_T), INTENT(IN) :: A
     REAL(RealKind), INTENT(IN) :: Vec1(:)
+    !OUT
     REAL(RealKind), DIMENSION(A%n), INTENT(OUT) :: DcDt
     REAL(RealKind) :: Tmp
     INTEGER :: i,jj
     !
     DO i=1,A%m
-      Tmp=ZERO
-      DO jj=A%RowPtr(i),A%RowPtr(i+1)-1
-        Tmp=Tmp+A%Val(jj)*Vec1(A%ColInd(jj))
-      END DO
-      DcDt(i)=Tmp
+      !Tmp=ZERO
+      !DO jj=A%RowPtr(i),A%RowPtr(i+1)-1
+      !  Tmp=Tmp+A%Val(jj)*Vec1(A%ColInd(jj))
+      !END DO
+      !DcDt(i)=Tmp
+      DcDt(i) = SUM(  A%Val(A%RowPtr(i):A%RowPtr(i+1)-1 )         &
+      &               * Vec1(A%ColInd(A%RowPtr(i):A%RowPtr(i+1)-1)))
     END DO
   END SUBROUTINE DiffConcDt
   !
@@ -1688,13 +1692,9 @@ MODULE Sparse_Mod
     INTEGER :: i,jj
     !
     DO i=1,A%m
-      Tmp=ZERO
-      DO jj=A%RowPtr(i),A%RowPtr(i+1)-1
-        Tmp=Tmp+A%Val(jj)*Vec1(A%ColInd(jj))
-        !print*, 'debug:: A,V=',A%Val(jj),Vec1(A%ColInd(jj))
-      END DO
-      Rhs(i)=Tmp+Vec2(i)
-      !print*, 'debug:: tmp=',rhs(i)
+      Rhs(i) = SUM(  A%Val(A%RowPtr(i):A%RowPtr(i+1)-1 )              &
+      &               * Vec1(A%ColInd(A%RowPtr(i):A%RowPtr(i+1)-1)))  &
+      &         + Vec2(i)
     END DO
     !write(343,*) '-----------',SIZE(A%val)
     !do i=1,SIZE(A%val)
