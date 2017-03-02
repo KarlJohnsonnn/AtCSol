@@ -85,7 +85,8 @@
 !
 !--- Control Parameter
 &               ,OrderingStrategie      & ! MUMPS ordering strategie
-&               ,ParOrdering             ! MUMPS ordering type for parallel symbolic phase
+&               ,ParOrdering            & ! MUMPS ordering type for parallel symbolic phase
+&               ,CLASSIC,EXTENDED 
    
 !-----------------------------------------------------------------
       IMPLICIT NONE
@@ -212,6 +213,9 @@
 !
 !--- Read NUMERICS namelist
       READ(15,NUMERICS)
+
+      IF ( solveLA=='cl' ) CLASSIC  = .TRUE.
+      IF ( solveLA=='ex' ) EXTENDED = .TRUE.
 !
 !-----------------------------------------------------------------
 !---  Linear Algebra

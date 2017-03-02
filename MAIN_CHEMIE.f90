@@ -197,7 +197,7 @@ PROGRAM Main_ChemKin
   Timer_Start=MPI_WTIME()
   Atol=(/AtolGas,AtolAqua/)
   ! 
-  NSactNR=nspc+neq
+  nsr=nspc+neq
   IF ( combustion ) THEN
     nDIM=nspc+1
     nDIMcl=nspc+1

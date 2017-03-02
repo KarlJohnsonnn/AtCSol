@@ -163,7 +163,7 @@
         Rate(iReac) = Meff * k * Rate(iReac)
         IF (combustion) DRatedT(iReac) = DkdT
       END DO
-      stop 'rates_mod'
+      !stop 'rates_mod'
       TimeRateE=MPI_WTIME()
       TimeRates=TimeRates+(TimeRateE-TimeRateA)
       !
@@ -187,7 +187,6 @@
       REAL(RealKind) :: term_accom
       REAL(RealKind) :: kmt
       !
-      REAL(RealKind), PARAMETER :: drittel=1.0d0/3.0d0
       !
       !---------------------------------------------------------------------------
       term_diff =y_c1(ReactionSystem(iReac)%HenrySpc)                       ! diffusion term
@@ -195,11 +194,11 @@
       !--------------------------------------------------------------------------!
       !
       ! Compute new wet radius for droplett class iFrac
-      SPEK(1)%wetRadius=(3.0d0/4.0d0/PI*actLWC/SPEK(1)%Number)**(drittel)
+      SPEK(1)%wetRadius=(THREE/FOUR/PI*actLWC/SPEK(1)%Number)**(rTHREE)
       !
       !--  mass transfer coefficient
-      IF (term_diff.ne.0.0d0)  THEN   
-        kmt = 1.0d0/(term_diff*SPEK(1)%wetRadius*SPEK(1)%wetRadius &
+      IF ( term_diff /= ZERO )  THEN   
+        kmt = ONE/(term_diff*SPEK(1)%wetRadius*SPEK(1)%wetRadius &
         &                           + term_accom*SPEK(1)%wetRadius  )
       ELSE
         kmt = dkmt
@@ -207,11 +206,11 @@
       !
       ! direaction GasSpecies-->AquaSpecies
       IF (ReactionSystem(iReac)%direction=='GA') THEN  
-        k=kmt*actLWC*1.d-3 ! orginal
+        k = milli * kmt * actLWC ! orginal
         !
       ! direaction AquaSpecies-->GasSpecies  
       ELSE 
-        k=kmt/(k*GasConst_R*Temp)   !()=HenryConst*GasConstant*Temperatur
+        k = kmt / ( k * GasConst_R * Temp)   !()=HenryConst*GasConstant*Temperatur
       END IF
     END SUBROUTINE HenryMassTransferCoef
     !
@@ -820,35 +819,31 @@
       INTEGER :: iReac                  
       !TEMP:
       REAL(RealKind) :: rRcT
-      !DEBUG:
-      REAL(RealKind) :: kb
       !
       rRcT=rRcal*T(6)
       !
       IF (ReactionSystem(iReac)%Line2=='BackReaction') THEN
         IF (ReactionSystem(iReac)%Line3=='rev'.OR.ReactionSystem(iReac)%Line3=='REV') THEN
           ! backward constant calculated explicitly reaction
-          k    = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT) ! speedchem
+          k     = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT) ! speedchem
         ELSE
           ! backward without extra coef, equiv constant nessesarry
           k_f   = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT)  ! speedchem
           rK_eq = EXP(+DelGFE(iReac)) * rFacEq**sumBAT(iReac)
           k     = k_f*rK_eq
-          kb    = k_f*rK_eq
         END IF
       ELSE
         ! forward rate constant and eq. constant classical calculation
         k_f   = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT)  ! speedchem
         rK_eq = EXP(+DelGFE(iReac)) * rFacEq**sumBAT(iReac)
-        kb    = k_f*rK_eq
         k     = k_f
       END IF
-        IF(MOD(iReac,2)/=0) THEN
-        !  print*, 'DEBUGG ::  iR=    Tarr=',iReac,T
-          print*, 'DEBUGG ::    constants=',ReactionSystem(iReac)%Constants
-          print*, 'DEBUGG :: k_f=    K_eq=',iReac,k_f, rK_eq,kb
-          print*, 
-        END IF
+        !IF(MOD(iReac,2)/=0) THEN
+          !print*, 'DEBUGG ::  iR=    Tarr=',iReac,T
+          !print*, 'DEBUGG ::    constants=',ReactionSystem(iReac)%Constants
+          !print*, 'DEBUGG :: k_f=    K_eq=',iReac,k_f, rK_eq,kb
+          !print*, 
+        !END IF
     END SUBROUTINE TempXComputeCK
     !
     !
