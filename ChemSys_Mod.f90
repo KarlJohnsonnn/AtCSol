@@ -163,7 +163,7 @@ MODULE Chemsys_Mod
   INTEGER ::  NumberReactionsPartic=0            &
   &         , NumberReactionsMicro=0             
   !
-  INTEGER :: NSactNR                        ! # activ species + all Reactions
+  INTEGER :: nsr                        ! # activ species + all Reactions
   !
   INTEGER :: UnitGas=0
   INTEGER :: UnitAqua=0
