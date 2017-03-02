@@ -200,7 +200,7 @@ SUBROUTINE InitMumps(A,givenPermutaion)
   !CALL dropout   
 END SUBROUTINE InitMumps
 
-SUBROUTINE FactorizeCoefMat(DiagVal)
+SUBROUTINE MumpsLU(DiagVal)
   REAL(RealKind), INTENT(IN) :: DiagVal(:)
   !
   INTEGER :: i, idx_R, idx_D!, idx_C
@@ -231,14 +231,8 @@ SUBROUTINE FactorizeCoefMat(DiagVal)
   !call dropout
   !
   Mumps_Par%JOB=2
-  timerStart=MPI_WTime()
   CALL DMUMPS(Mumps_Par)
-  timerEnd=MPI_WTime()
-  TimeFac=TimeFac+(timerEnd-timerStart)
-  !IF (Mumps_Par%MyId==0) THEN
-  !  WRITE(*,'(A25,3X,F12.6)') 'Time DMUMPS Factorize',timefact
-  !END IF
-END SUBROUTINE FactorizeCoefMat
+END SUBROUTINE MumpsLU
 
 SUBROUTINE Factorize(loc_Rate,loc_Conc)
   REAL(RealKind), INTENT(IN) :: loc_Rate(:), loc_Conc(:)
@@ -276,7 +270,7 @@ SUBROUTINE Factorize(loc_Rate,loc_Conc)
   !END IF
 END SUBROUTINE Factorize
 
-SUBROUTINE SolveLinAlg(Rhs)
+SUBROUTINE MumpsSolve(Rhs)
   REAL(RealKind) :: Rhs(:)
 
   Mumps_Par%JOB=3
@@ -289,5 +283,5 @@ SUBROUTINE SolveLinAlg(Rhs)
   !IF (Mumps_Par%MyId==0) THEN
   !  WRITE(*,*) 'Time DMUMPS Solve',tEnd-tStart
   !END IF
-END SUBROUTINE SolveLinAlg
+END SUBROUTINE MumpsSolve
 END MODULE Factorisation_Mod

@@ -55,13 +55,13 @@ MODULE Rosenbrock_Mod
 
   TYPE Out
     REAL(RealKind), ALLOCATABLE :: y(:)    ! y-vector at Tend
-    INTEGER :: nsteps=0                    ! # succ. steps
-    INTEGER :: nfailed=0                   ! # failed steps
-    INTEGER :: nRateEvals=0                ! # Rate evaluation
-    INTEGER :: npds=0                      ! # Jacobian evaluation
-    INTEGER :: ndecomps=0                  ! # LU factorisation
-    INTEGER :: nsolves=0                   ! # solved lin algebra
-    REAL(RealKind) :: Ttimestep=0.0d0  ! mean Time for one ROW step
+    INTEGER :: nsteps     = 0              ! # succ. steps
+    INTEGER :: nfailed    = 0              ! # failed steps
+    INTEGER :: nRateEvals = 0              ! # Rate evaluation
+    INTEGER :: npds       = 0              ! # Jacobian evaluation
+    INTEGER :: ndecomps   = 0              ! # LU factorisation
+    INTEGER :: nsolves    = 0              ! # solved lin algebra
+    REAL(RealKind) :: Ttimestep = 0.0d0  ! mean Time for one ROW step
   END TYPE Out
   TYPE(Out) :: Output
 
@@ -302,7 +302,7 @@ MODULE Rosenbrock_Mod
     CALL MatVecMult( Jac , f0 , zeros , Tmp )
     DfDt  = DfDt  + Tmp
   
-    rh    = 1.25D0  * SQRT( rTOW * MAXVAL( ABS(DfDt/wt) ) ) / RTolRow**pow
+    rh    = 1.25D0  * SQRT( rTWO * MAXVAL( ABS(DfDt/wt) ) ) / RTolRow**pow
    
     absh  = MIN( maxStp , Tspan(2)-Tspan(1) )
     IF ( absh * rh > ONE )  absh = ONE / rh
@@ -361,7 +361,6 @@ MODULE Rosenbrock_Mod
     REAL(RealKind) :: X
     !
     ! fuer verlgeich mit speedchem, andere spc reihenfolge
-    INTEGER :: scPermutation(nspc)
     !
     INTEGER :: iStg, jStg, i, rPtr          ! increments
     !
@@ -391,8 +390,6 @@ MODULE Rosenbrock_Mod
     !
     !********************************************************************************
     !
-    ! --- NessesarY for combustion sYstems
-
 
     CALL Rates( t, Y, Rate, DRatedT )
     Rate(:)   = MAX( ABS(Rate(:)) , eps) * SIGN( ONE , Rate(:) )    ! reaction rates =/= 0
@@ -425,7 +422,6 @@ MODULE Rosenbrock_Mod
       print*, 'debug     SUM(Y0)=  ',SUM(Y0(1:nspc))
       print*, 'debug   SUM(Umol)=  ',SUM(Umol)
       !print*, 'debug  DUmoldT=Cv/R :: ',SUM(DUmoldT)
-      !print*, 'debug     1/MW      :: ',SUM(rMW)
       print*, 'debug   SUM(DcDt)=  ',SUM(DcDt)
       print*, 'debug          X         :: ',X
       !
@@ -490,7 +486,7 @@ MODULE Rosenbrock_Mod
     !  | |_) || | | |\ \ /\ / /   _____    | |  | || '_ ` _ \  / _ \ \___ \ | __|/ _ \| '_ \ 
     !  |  _ < | |_| | \ V  V /   |_____|   | |  | || | | | | ||  __/  ___) || |_|  __/| |_) |
     !  |_| \_\ \___/   \_/\_/              |_|  |_||_| |_| |_| \___| |____/  \__|\___|| .__/ 
-    !                                                                                |_|    
+    !                                                                                 |_|    
     !****************************************************************************************
     !
     LOOP_n_STAGES:  DO iStg = 1 , RCo%nStage
@@ -530,7 +526,6 @@ MODULE Rosenbrock_Mod
 
         IF ( iStg/=1 ) THEN
 
-          bb(:neq)    = -rRate(:)*Rate(:)
           fRhs(:)     = ZERO
           bb(nDIMex)  = ZERO
 
@@ -541,7 +536,8 @@ MODULE Rosenbrock_Mod
               &                         - SUM( Umol(:)*k(:nspc,jStg)) )
           END DO
 
-          bb(neq+1:nsr) = fRhs(:nspc) / h + Y_e(:)
+          bb( 1      : neq ) = -rRate(:) * Rate(:)
+          bb( neq+1  : nsr ) = fRhs(:nspc) / h + Y_e(:)
           IF (combustion) bb(nDIMex) = bb(nDIMex) / h
 
         END IF
@@ -553,17 +549,17 @@ MODULE Rosenbrock_Mod
       ! ---  Solve linear SYstem  ---
       !
       timerStart  = MPI_WTIME()
-      IF ( OrderingStrategie==8 ) THEN  
+      SOLVE_LINEAR_SYSTEM: IF ( OrderingStrategie==8 ) THEN  
 
         IF ( CLASSIC ) THEN
 
           CALL SolveSparse( LU_Miter , fRhs )
-          k(:,iStg) = fRhs(:)
+          k( 1:nspc , iStg ) = fRhs(:)
 
         ELSE !IF ( EXTENDED )
 
           CALL SolveSparse( LU_Miter , bb)
-          k(1:nspc,iStg) = Y0(1:nspc) * bb(neq+1:nsr)
+          k( 1:nspc , iStg ) = Y0(:nspc) * bb(neq+1:nsr)
           IF ( combustion ) k(nDIM,iStg) = bb(nDIM)
 
         END IF
@@ -574,24 +570,22 @@ MODULE Rosenbrock_Mod
         IF ( CLASSIC ) THEN
 
           CALL MumpsSolve( fRhs )
-          k( 1 : nDIM , iStg ) = Mumps_Par%RHS(:)    
+          k( 1:nDIM , iStg ) = Mumps_Par%RHS(:)    
 
         ELSE !IF ( EXTENDED )
 
           CALL MumpsSolve( bb )
-          k( 1 : nspc , iStg ) = Y0(:nspc) * Mumps_Par%RHS(neq+1:nsr)
-          IF ( combustion )   k(nDIM,iStg) = Mumps_Par%RHS(nDIM)
+          k( 1:nspc , iStg ) = Y0(:nspc) * Mumps_Par%RHS(neq+1:nsr)
+          IF ( combustion ) k(nDIM,iStg) = Mumps_Par%RHS(nDIM)
 
         END IF
 
-      END IF    
+      END IF SOLVE_LINEAR_SYSTEM
       TimeSolve   = TimeSolve + (MPI_WTIME()-timerStart)
-
 
     END DO  LOOP_n_STAGES
 
-    !call dropout
-    !  
+    
     !--- Update Concentrations (Temperatur)
     DO jStg = 1 , RCo%nStage
       Ynew(:) = Ynew(:) + RCo%m(jStg) * k(:,jStg)! new Y vector
@@ -609,7 +603,7 @@ MODULE Rosenbrock_Mod
     !  |_____||_|   |_|   \___/ |_|    |_____||___/ \__||_||_| |_| |_| \__,_| \__| |_| \___/ |_| |_|
     !                                                                                              
     !***********************************************************************************************
-    CALL ERROR(err,errind,Ynew,Yhat,Y0,ATolAll,RTolROW,t)
+    CALL ERROR( err , errind , Ynew , Yhat , Y0 , ATolAll , RTolROW , t )
     !
   END SUBROUTINE Rosenbrock
 END MODULE Rosenbrock_Mod
