@@ -86,6 +86,7 @@ MODULE Integration_Mod
     ! 
     INTEGER :: iBar=-1              ! waitbar increment
     INTEGER :: i
+    LOGICAL :: Bar=.FALSE.
     !
     ! for NetCDF
     INTEGER :: iStpNetCDF 
@@ -102,21 +103,25 @@ MODULE Integration_Mod
     y(1:nspc)=y_iconc(:)
     !
     IF ( combustion ) THEN
-      y0(nDIM)=750.0d0   ! = 750 [K] aus speedchem debug
-      y(nDIM)=750.0d0    ! = 750 [K]
+      !--- initial temperature
+      y0(nDIM)      = 750.0d0   ! = 750 [K] aus speedchem debug
+      y(nDIM)       = 750.0d0    ! = 750 [K]
+      
+      !--- malloc gibbs energy, derivates
       ALLOCATE(GFE(nspc),DGFEdT(nspc))
       ALLOCATE(DelGFE(neq),DDelGFEdT(neq))
-      GFE(:)=ZERO
-      DGFEdT(:)=ZERO
-      DelGFE(:)=ZERO
-      DDelGFEdT(:)=ZERO
-      SCpress=2.0d05     ! erc_nheptane case 1 from speedchem
+      GFE        = ZERO
+      DGFEdT     = ZERO
+      DelGFE     = ZERO
+      DDelGFEdT  = ZERO
+      SCpress    = 2.0d05     ! erc_nheptane case 1 from speedchem
       CALL rhoY(y0(1:nspc),y0(nDIM))  ! Initialising reactor density
       print*, 'DEBUG::INTEGRmod  initstuff    ', SCrho, SCpress, y0(nDIM)
     END IF
     !
     !
     IF (MPI_ID==0) THEN
+      IF ( Ladebalken==1 ) Bar = .TRUE.
       WRITE(*,*) '  Initial values:   '
       WRITE(*,*)
       WRITE(*,'(A34,2X,E23.14,A13)')  '      sum initval (gaseous)    = ', SUM(y0(1:ntGas)), '  [molec/cm3] '
@@ -200,14 +205,9 @@ MODULE Integration_Mod
     TimeSymbolic=MPI_WTIME()-TimeSymbolic   ! stop timer for symbolic matrix calculations
     IF (MPI_ID==0) WRITE(*,*) '  SYMBOLIC PHASE................ done'
     !
-    !  
     !
-    t=Tspan(1)
     CALL Rates(Tspan(1),y0,Rate,DRatedT)      ! Calculate first reaction rates
-    dummyrate(:)=Rate(:)
 
-    !print*, 'debug :: roargs srate,sy  ', SUM(Rate), SUM(y0)
-    !stop
     
     Rate(:)=MAX(ABS(Rate(:)),eps)*SIGN(ONE,Rate(:))
     y(1:nspc)=MAX(ABS(y(1:nspc)),eps)*SIGN(ONE,y(1:nspc))
@@ -224,7 +224,7 @@ MODULE Integration_Mod
     IF (MPI_ID==0.AND.MatrixPrint) CALL SaveMatricies(A,B,BAT,Miter,LU_Miter,BSP)
     !
     !---- calculate a first stepsize based on 2nd deriv.
-    CALL InitialStepSize(h,hmin,absh,Jac_C,dummyrate,t,y(1:nspc),RCo%pow)
+    CALL InitialStepSize(h,hmin,absh,Jac_C,Rate,Tspan(1),y(1:nspc),RCo%pow)
     !CALL InitialStepSize(h,hmin,absh,Jac_C,Rate,t,y(1:nspc),RCo%pow)
     ! 
     !call printsparse(Jac_C,'*')
@@ -282,15 +282,15 @@ MODULE Integration_Mod
     !
     ! Set PI Parameter
     ! set for normal case
-    PI_norm%Kp=0.13d0
-    PI_norm%KI=1.0d0/15.0d0        
-    PI_norm%ThetaMAX=2.0d0         
-    PI_norm%rho=1.2d0 
+    PI_norm%Kp        = 0.13d0
+    PI_norm%KI        = ONE/15.0d0        
+    PI_norm%ThetaMAX  = TWO         
+    PI_norm%rho       = 1.2d0 
     ! set for rejected case
-    PI_rej%Kp=0.0d0
-    PI_rej%KI=1.0d0/5.0d0        
-    PI_rej%ThetaMAX=2.0d0        
-    PI_rej%rho=1.2d0 
+    PI_rej%Kp         = ZERO
+    PI_rej%KI         = rFIVE        
+    PI_rej%ThetaMAX   = TWO        
+    PI_rej%rho        = 1.2d0 
     !===============================================================================
     !=================================THE MAIN LOOP=================================
     !===============================================================================
@@ -298,23 +298,24 @@ MODULE Integration_Mod
     IF (MPI_ID==0) WRITE(*,*) '  Start Integration............. '
     IF (MPI_ID==0) WRITE(*,*) ' '
     !
-    tnew=0.0d0
+    t     = Tspan(1)
+    tnew  = Tspan(1)
     !
     DO 
       !
-      absh=MIN(maxStp,MAX(minStp,absh))
-      h=absh
+      absh  = MIN( maxStp, MAX( minStp , absh ) )
+      h     = absh
       !
       !-- Stretch the step if within 5% of tfinal-t.
-      IF (1.05*absh>=Tspan(2)-t) THEN
-        h=Tspan(2)-t
-        absh=ABS(h)
-        done=.TRUE.
+      IF ( 1.05 * absh >= Tspan(2) - t ) THEN
+        h     = Tspan(2)-t
+        absh  = ABS(h)
+        done  = .TRUE.
       END IF
       DO                                ! Evaluate the formula.
         !
         !-- LOOP FOR ADVANCING ONE STEP.
-        failed=.FALSE.                   ! no failed attempts
+        failed  = .FALSE.                   ! no failed attempts
         !
         ! Rosenbrock Timestep 
         print*, 'DEBUG::INTEGR     temp=y(end)=',y0(nDim)
@@ -326,15 +327,15 @@ MODULE Integration_Mod
         &               , errind        &       ! max error component
         &               , y             )       ! new concentration 
         !
-        tnew=t+h
+        tnew  = t + h
         !
         IF (done) THEN
-          tnew=Tspan(2)         ! Hit end point exactly.
-          h=tnew-t                        ! Purify h.
+          tnew  = Tspan(2)         ! Hit end point exactly.
+          h     = tnew-t                        ! Purify h.
         END IF
-        Output%ndecomps=Output%ndecomps+1
-        Output%nRateEvals=Output%nRateEvals+RCo%nStage
-        Output%nSolves=Output%nSolves+RCo%nStage
+        Output%ndecomps   = Output%ndecomps   + 1
+        Output%nRateEvals = Output%nRateEvals + RCo%nStage
+        Output%nSolves    = Output%nSolves    + RCo%nStage
         !
         !
         IF ( PI_StepSize .AND. Output%nSteps>1 ) THEN
@@ -349,42 +350,41 @@ MODULE Integration_Mod
           ! the next step or the next try at taking this step, as the case may be,
           ! and use 0.8 of this value to avoid failures.
           !
-          Output%nfailed=Output%nfailed+1
-          IF (absh<=hmin) THEN
+          Output%nfailed  = Output%nfailed+1
+          IF ( absh <= hmin ) THEN
             WRITE(*,*) ' Stepsize to small: ', h
             CALL FinishMPI()
             STOP '....Integration_Mod '
           END IF
           !
-          IF (PI_StepSize .AND. Output%nSteps>1) THEN
-            CALL PI_StepsizeControl(absh,RtolRow,error,errorOld,h,hOld,PI_rej,RCo)
+          IF ( PI_StepSize .AND. Output%nSteps>1  ) THEN
+            CALL  PI_StepsizeControl(absh,RtolRow,error,errorOld,h,hOld,PI_rej,RCo)
           ELSE
-            absh=MAX(hmin,absh*MAX(0.1d0,0.8d0*(1.0d0/error)**RCo%pow))
-            !absh=MIN(Args%hmax,absh)
+            absh  = MAX( hmin , absh * MAX( rTEN , 0.8d0 * (ONE/error)**RCo%pow) )
           END IF
-          h=absh
-          done=.FALSE.
+          h     = absh
+          done  = .FALSE.
         ELSE                            !succ. step
           EXIT
         END IF
       END DO
-      Output%nsteps=Output%nsteps+1
+      Output%nsteps = Output%nsteps+1
       !
-      tmp_ta=t-Tspan(1)
+      tmp_ta = t - Tspan(1)
       !
       !SPEK(1)%wetRadius=(3.0d0/4.0d0/PI*actLWC/SPEK(1)%Number)**(1.0d0/3.0d0)
       !print*, t, y(Positionspeciesall('OH')), SPEK(1)%wetRadius
       !
       IF ( (tmp_ta >= StpNetCDF*iStpNetCDF) )  THEN
-        iStpNetCDF=iStpNetCDF+1
+        iStpNetCDF  = iStpNetCDF+1
         IF ( (MPI_ID==0) .AND. (NetCdfPrint) ) THEN !.AND.t>10.0d0) THEN
-          zen=Zenith(t)
+          zen = Zenith(t)
           IF ( ntAqua > 0 ) THEN
-            actLWC=pseudoLWC(t)
-            wetRad=(3.0d0/4.0d0/PI*actLWC/SPEK(1)%Number)**(1.0d0/3.0d0)*1.0d-1
+            actLWC  = pseudoLWC(t)
+            wetRad  = (THREE/rFOUR/PI*actLWC/SPEK(1)%Number)**(rTHREE)*1.0d-1
           END IF
           ! save data in NetCDF File
-          TimeNetCDFA=MPI_WTIME()
+          TimeNetCDFA = MPI_WTIME()
           CALL SetOutputNCDF(  y,    yNcdf, t ,  actLWC)
           !
           CALL StepNetCDF   ( t                                &
@@ -400,44 +400,44 @@ MODULE Integration_Mod
           &                 , SUM(y(iDiag_Schwefel))           &
           &                 , error                            )
           !
-          TimeNetCDFA=MPI_WTIME()-TimeNetCDFA
-          TimeNetCDF=TimeNetCDF+TimeNetCDFA
+          TimeNetCDF  = TimeNetCDF  + (MPI_WTIME() - TimeNetCDFA)
         END IF
       END IF
       !
       !-- Call progress bar.
-      IF (MPI_ID==0.AND.Ladebalken==1.AND.tmp_ta>=iBar*tmp_tb) THEN
+      IF ( Bar .AND. tmp_ta>=iBar*tmp_tb ) THEN
         iBar=iBar+1
         CALL Progress(iBar)
       END IF
       !
       !-- Termination condition for the main loop.
-      IF (done) EXIT
+      IF ( done ) EXIT
       !
       !-- If there were no failures compute a new h.
-      IF (PI_StepSize) THEN
+      IF ( PI_StepSize ) THEN
         CALL PI_StepsizeControl(absh,RtolRow,error,errorOld,h,hOld,PI_norm,RCo)
       ELSE
-        tmp=1.25d0*(error)**RCo%pow
-        IF (2.0d0*tmp>1.0d0) THEN
-          absh=absh/tmp
+        tmp = 1.25d0  * error**RCo%pow
+        IF ( TWO * tmp > ONE ) THEN
+          absh  = absh / tmp
         ELSE
-          absh=2.0d0*absh
+          absh  = absh * TWO
         END IF
       END IF
       !
       !-- Advance the integration one step.
-      t=tnew
-      y0=y
+      t   = tnew
+      y0  = y
       !
       !-- for PI stepsize control
-      errorOld=error
-      hOld=h
+      errorOld  = error
+      hOld      = h
     END DO  ! MAIN LOOP
-    TimeIntegrationE=MPI_WTIME()
+    TimeIntegrationE  = MPI_WTIME()
     !
-    IF (OrderingStrategie<8) THEN
-      mumps_par%JOB=-2
+    ! DEALLOCATE Mumps instance
+    IF (  OrderingStrategie<8 ) THEN
+      mumps_par%JOB = -2
       CALL DMUMPS( mumps_par )
     END IF
     !
