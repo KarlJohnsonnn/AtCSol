@@ -230,6 +230,11 @@ REAL(RealKind) :: tAnf              & ! Model start time
     INTEGER, ALLOCATABLE ::  IndOutImp(:,:)     ! start and end fraction indices
     REAL(RealKind), ALLOCATABLE ::  OutImp(:,:)        ! boundary radii of impactor stages
 !
+!-- logicals for classic or extended matrix case
+    LOGICAL :: CLASSIC  = .FALSE.
+    LOGICAL :: EXTENDED = .FALSE.
+    
+
 
  END MODULE mo_control
 
