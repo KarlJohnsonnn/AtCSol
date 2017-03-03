@@ -30,12 +30,12 @@ PROGRAM Main_ChemKin
   CHARACTER(80) :: neuTolR=''
   CHARACTER(80) :: neuTolA=''
   CHARACTER(80) :: neuROW=''
-  CHARACTER(16) :: tmpchar0
+  CHARACTER(16) :: tmpchar0='-'
   REAL(RealKind) :: h 
   REAL(RealKind), PARAMETER :: HR=3600.0d0
   REAL(RealKind) :: tmpMW0
   REAL(RealKind), ALLOCATABLE :: X0(:)
-  INTEGER :: i_error, linc
+  INTEGER :: i_error, linc, STAT
   !
   !
   !================================================================
@@ -93,17 +93,26 @@ PROGRAM Main_ChemKin
     IF (MPI_ID==0) WRITE(*,*) ' ---->  Solve Gas Energy Equation '
     combustion=.TRUE.
     Time_Read=MPI_WTIME()
-    CALL Read_Elements(ChemFile,969)
-    CALL Read_Species(ChemFile,969)
-    CALL Read_Reaction(ChemFile,969)
-    CALL Read_ThermoData(SwitchTemp,DataFile,696,nspc)
+    CALL Read_Elements    ( ChemFile    , 969 )
+    CALL Read_Species     ( ChemFile    , 969 )
+    CALL Read_Reaction    ( ChemFile    , 969 )
+    CALL Read_ThermoData  ( SwitchTemp  , DataFile , 696 , nspc )
     !
+    CALL PrintHeadSpecies   ( ChemFile    , 89 ) 
+    CALL PrintSpecies       ( ListGas2    , 89 )
+    CALL PrintHeadReactions ( 89 )
+    CALL PrintReactions     ( ReactionSystem , 89 , .TRUE. )       ! .TRUE. in 3rd agument for chemkin input file
+    CALL PrintFinalReactions( 89 )
+    !
+
     !--- Read molecular mass
     OPEN(UNIT=998,FILE=TRIM(ChemFile)//'.mw',STATUS='UNKNOWN')
     ALLOCATE(MW(nspc),rMW(nspc))
     MW=ZERO
-    DO i=1,nspc
-      READ(998,*) tmpChar0, tmpMW0
+    !DO i=1,nspc
+    DO
+      READ(998,*,IOSTAT=STAT) tmpChar0, tmpMW0
+      IF ( STAT<0 ) EXIT
       MW(PositionSpeciesAll(tmpChar0))=REAL(tmpMW0,RealKind)
     END DO
     rMW(:)=ONE/MW(:)
@@ -112,12 +121,6 @@ PROGRAM Main_ChemKin
     !END DO
     
     CLOSE(linc)
-    !
-    CALL PrintHeadSpecies(ChemFile,89)
-    CALL PrintSpecies(ListGas2,89)
-    CALL PrintHeadReactions(89)
-    CALL PrintReactions(ReactionSystem,89,.TRUE.)       ! .TRUE. in 3rd agument for chemkin input file
-    CALL PrintFinalReactions(89)
     !
     !ALLOCATE(InitValAct(ntGas),y_e(ntGas))
     ALLOCATE(X0(ntGas),InitValAct(ntGas),y_e(ntGas))
