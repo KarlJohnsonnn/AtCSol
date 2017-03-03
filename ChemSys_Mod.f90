@@ -934,7 +934,7 @@ MODULE Chemsys_Mod
       NumActiveEduct=0
       DO i=1,SIZE(ReactionSystem(iLoop)%Educt)
         SELECT CASE(ReactionSystem(iLoop)%Educt(i)%Type)
-          CASE ('Gas','Aqua','Solid','Partic','GAS')
+          CASE ('Gas','Aqua','Solid','Partic','GAS','SOLID','AQUA')
             NumActiveEduct=NumActiveEduct+1
             ActiveEduct(NumActiveEduct)=ReactionSystem(iLoop)%Educt(i)
         END SELECT
@@ -943,7 +943,7 @@ MODULE Chemsys_Mod
       NumActiveProduct=0
       DO i=1,SIZE(ReactionSystem(iLoop)%Product)
         SELECT CASE(ReactionSystem(iLoop)%Product(i)%Type)
-          CASE ('Gas','Aqua','Solid','Partic','GAS')
+          CASE ('Gas','Aqua','Solid','Partic','GAS','SOLID','AQUA')
             NumActiveProduct=NumActiveProduct+1
             ActiveProduct(NumActiveProduct)=ReactionSystem(iLoop)%Product(i)
         END SELECT
