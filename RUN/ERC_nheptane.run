@@ -1,0 +1,29 @@
+ &SCENARIO
+  BSP         = 'ERC_nheptane'
+  Ladebalken  = 0
+  ErrorLog    = 0
+  matrixPrint = .false.  
+  NetCdfPrint = .false.
+ /END
+ &FILES
+  ChemFile = 'ckCHEM/ERC_nheptane/ERC_nheptane'
+  DataFile = 'ckCHEM/ERC_nheptane/ERC_nheptane.dat'
+  InitFile = 'ckCHEM/ERC_nheptane/ERC_nheptane.ini'
+ /END
+ &TIMES
+  tAnf    = 0.0d0
+  tEnd    = 1.0d0
+  minStp  = 1.0d-45
+  maxStp  = 1.0d-02
+/END
+ &NUMERICS
+  RtolROW   = 1.0d-4
+  AtolGas   = 1.0d-15
+  AtolTemp  = 1.0d-1
+  Error_Est = 2
+  solveLA   = 'ex'  
+  RosenbrockMethod = 'METHODS/TSRosWRodas3.fort'
+ /END
+ &ORDERING
+  OrderingStrategie  = 8
+ /END

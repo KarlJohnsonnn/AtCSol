@@ -1,0 +1,43 @@
+ &SCENARIO
+  BSP = 'Minerals'                    ! Name der NetCDF Output-Datei
+  pHSet = 1                        ! berechne pH Wert zu Beginn
+  LWCLevelmin = 2.0d-8            ! minimaler LWC Wert [l/cm3]
+  LWCLevelmax = 3.0d-4            ! maximaler LWC Wert [l/cm3]
+  constLWC = 1                     ! 0 = konstanter LWC wert, 0 /= pseudo LWC funktion wird benutzt
+  Ladebalken = 1                   ! 0 = kein ladebalken, 0 /= ladebalken aktiv
+  ErrorLog = 0                      ! 0 = no error output, 0 /= error output direkt auf bildschirm
+  MatrixPrint = .false.            ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
+  NetCdfPrint = .true.            ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
+ /END
+ &FILES
+  ChemFile = 'CHEM/Minerals'             ! .sys Datei (ohne .sys angeben!)
+  DataFile = 'DAT/Urban.dat'           ! .dat Datei (für RO2, RO2aqua Summen)
+  InitFile = 'INI/Minerals.ini'          ! .ini Datei (Anfangswerte gas/flüssig), Diagnose spc
+  MetFile  = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)
+ /END
+ &TIMES
+  tAnf=0.0d0                          ! Startzeit Integration
+  tEnd=86400.0d0                      ! Endzeit   Integration
+  Dust    = 0.5d0                     ! Zenith Berechnung       (Staub)
+  idate   = 010621                    ! ---------''---------    (Datum: YYMMDD)
+  rlat    = 45.d0                     ! ---------''---------    (Breitengrad)
+  rlon    =  0.d0                     ! ---------''---------    (Längengrad)
+  minStp  = 1.0d-30                   ! minimale Schrittweite für Integration
+  maxStp  = 50.0d0                    ! maximale Schrittweite für Integration
+  StpNetCDF = -1.0d0                  ! save after StpNetCDF seconds, if < 0.0d0 save every timestep 
+/END
+ &NUMERICS
+  RtolROW  = 1.0d-1                             ! rel. Toleranz für Rosenbrock-Wanner Fehlersteuerung
+  AtolGas  = 1.0d-2                             ! abs. Toleranzen für gasförmige Stoffe 
+  AtolAqua = 1.0d-2                             ! abs. Toleranzen für aquatische Stoffe
+  PI_StepSize = .false.
+  solveLA = 'cl'                                ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
+  RosenbrockMethod = 'METHODS/TSRosW2P.fort'   ! 'METHODS/Ros34PW3.fort'    ! Rosenbrock-Wanner Verfahrenskoeffizienten
+  ImpEuler = 0                                  ! 0=kein impliziter Euler, 1=impliziter Euler (kein ROW!!)
+ /END
+ &ORDERING
+  OrderingStrategie  = 8                   ! 8=Markowitz(SparseLU) , 1,..,7=Mumps Orderings  
+  ParOrdering = -1
+ /END
+ &ENTRAIN
+ /END

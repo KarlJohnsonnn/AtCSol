@@ -673,6 +673,7 @@ MODULE Chemsys_Mod
                 cntSTEMP=cntSTEMP+1
                 DuctsSTEMPreac(cntSTEMP)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
                 &                                                         %Species)
+              print*, 'DEBUGG::: solid   ', DuctsSTEMPreac(cntSTEMP)
               END DO
             CASE ('SPECIAL')
               DO j=1,SIZE(ReacStruct(i)%Educt)

@@ -167,6 +167,7 @@ MODULE mo_IO
     INTEGER, ALLOCATABLE :: InvPermu(:)
     INTEGER              :: mUnit
     CHARACTER(50)        :: mName
+    INTEGER              :: i
     !
     !
     IF (MPI_ID==0) THEN
