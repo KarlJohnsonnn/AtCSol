@@ -112,7 +112,7 @@ PROGRAM Main_ChemKin
     !DO i=1,nspc
     DO
       READ(998,*,IOSTAT=STAT) tmpChar0, tmpMW0
-      IF ( STAT<0 ) EXIT
+      IF ( STAT > 0 ) EXIT
       MW(PositionSpeciesAll(tmpChar0))=REAL(tmpMW0,RealKind)
     END DO
     rMW(:)=ONE/MW(:)

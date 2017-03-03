@@ -1153,6 +1153,10 @@ MODULE Chemsys_Mod
       IF (ALLOCATED(tmpColA)) DEALLOCATE(tmpColA)
       IF (ALLOCATED(tmpValA)) DEALLOCATE(tmpValA)
     END DO
+
+    A%nnz=A%RowPtr(A%m+1)-1
+    B%nnz=B%RowPtr(B%m+1)-1
+
   END SUBROUTINE PrintReactions
   !
   !

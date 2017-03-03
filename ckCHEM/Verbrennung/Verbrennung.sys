@@ -1,0 +1,11 @@
+!Mechanism imported from chem.bin                                                
+elements
+ h c n
+end
+species
+  nc7h16 h h2 c7h15-2
+end
+
+reactions
+nc7h16+h <=> h2+c7h15-2                  4.380000E+07       2.00      4759.4836285384772E+00
+end

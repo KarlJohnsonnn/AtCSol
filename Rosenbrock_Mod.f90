@@ -357,7 +357,7 @@ MODULE Rosenbrock_Mod
     REAL(RealKind) :: rRate(neq)
     REAL(RealKind) :: Yrh(nspc)
     REAL(RealKind) :: tt
-    REAL(RealKind) :: c_v ! mass average mixture specific heat at constant volume
+    REAL(RealKind) :: cv ! mass average mixture specific heat at constant volume
     REAL(RealKind) :: X
     !
     ! fuer verlgeich mit speedchem, andere spc reihenfolge
@@ -373,8 +373,8 @@ MODULE Rosenbrock_Mod
     IF ( combustion ) Y(nDIM) = Y0(nDIM)
     YNew(:)   = Y0(:)
     YHat(:)   = Y0(:)
-     !print*, 'debug     Y0        :: ',Y0(1:nspc)
-     !print*, 'debug     Y        :: ',Y(1:nspc)
+     print*, 'debug     Y0        :: ',Y0(1:nspc)
+     print*, 'debug     Y        :: ',Y(1:nspc)
      !stop
     !
     !IF (PRESENT(Temp)) YNew(Temp_ind)=Y0(Temp_ind)
@@ -393,7 +393,7 @@ MODULE Rosenbrock_Mod
 
     CALL Rates( t, Y, Rate, DRatedT )
     Rate(:)   = MAX( ABS(Rate(:)) , eps) * SIGN( ONE , Rate(:) )    ! reaction rates =/= 0
-    Yrh       = Y0(:nspc) / h
+    Yrh(:)    = Y(:nspc) / h          ! do not change from Y(:nspc) to Y0(:nspc) !!
 
     !print*, 'debug:: ', h , t ,Rate(1:3)
     !print*, 'debug::2',Y(1:3)
@@ -404,11 +404,11 @@ MODULE Rosenbrock_Mod
       !CALL scTHERMO               ( C       , H_e   , S          ,Tarr)
       !
       !                             OUT:      IN:
-      CALL UpdateTempArraY        ( Tarr    , Y0(nDIM) )
+      CALL UpdateTempArray        ( Tarr    , Y0(nDIM) )
       CALL AvgReactorPressure     ( SCpress , Tarr  , Y0(:nspc)  )
-      CALL SpcInternalEnergY      ( Umol    , Tarr)
-      CALL DiffSpcInternalEnergY  ( DUmoldT , Tarr)
-      CALL MassAveMixSpecHeat     ( c_v     , Tarr  , Y0(:nspc) , DUmoldT)
+      CALL InternalEnergy         ( Umol    , Tarr)
+      CALL DiffSpcInternalEnergy  ( DUmoldT , Tarr)
+      CALL MassAveMixSpecHeat     ( cv     , Tarr  , Y0(:nspc) , DUmoldT)
       CALL DiffConcDt             ( DcDt    , BAT   , Rate )
       UMat(:)     = -Umol(:)    * Y0(:nspc)
       DRatedT(:)  = DRatedT(:)  * RCo%ga
@@ -417,14 +417,15 @@ MODULE Rosenbrock_Mod
       !
       print*, 'debug     Temparr=  ',Tarr
       print*, 'debug        time=  ',t
-      print*, 'debug         c_v=  ',c_v
+      print*, 'debug         cv=  ',cv
       print*, 'debug         SCP=  ',SCpress
       print*, 'debug     SUM(Y0)=  ',SUM(Y0(1:nspc))
       print*, 'debug   SUM(Umol)=  ',SUM(Umol)
-      !print*, 'debug  DUmoldT=Cv/R :: ',SUM(DUmoldT)
+      print*, 'debug  DUmoldT=Cv/R :: ',SUM(DUmoldT)
       print*, 'debug   SUM(DcDt)=  ',SUM(DcDt)
       print*, 'debug          X         :: ',X
       !
+      stop
       !
     END IF
    
@@ -445,21 +446,28 @@ MODULE Rosenbrock_Mod
      
       rRate(:)  = ONE / Rate(:)
       IF ( OrderingStrategie==8 ) THEN
+      call printsparse(LU_Miter,'*')
         CALL SetLUvaluesEX  ( LU_Miter  , nspc , neq , rRate      , Yrh       &
         &                   , DRatedT   , Umol , X   , LUvalsFix  , LU_Perm   )
+      call printsparse(LU_Miter,'*')
+      stop
       ELSE
         CALL Miter_Extended ( Miter     , nspc , neq , rRate      , Yrh )
       END IF
+      !do istg=1,SIZE(LU_MITER%val)
+         !print*, 'DEBUGG::: LU_Miter Values=  ',LU_Miter%Val(istg),LU_Miter
+
+      !END DO
 
     END IF
     !
-    !WRITE(*,*) '----------------------------'
-    !WRITE(*,*) 'debug h, t, Temp  :: ', h , t, Y(nDIM)
-    !WRITE(*,*) '      rate(1:3)   :: ', rate(1:3), SUM(rate)
+    WRITE(*,*) '----------------------------'
+    WRITE(*,*) 'debug h, t, Temp  :: ', h , t, Y(nDIM)
+    WRITE(*,*) '      rate(1:3)   :: ', rate(1:2), SUM(rate)
     !IF(combustion) WRITE(*,*) '   DRatedT(1:3)   :: ', DRatedT(1:3), SUM(DRatedT)
-    !WRITE(*,*) '      conc(1:3)   :: ', Y(1:3), SUM(Y)
-    !WRITE(*,*) '      sum(Miter)  :: ', SUM(Miter%val)
-    !WRITE(*,*) '      sum(LU)vor  :: ', SUM(LU_Miter%val)
+    WRITE(*,*) '      conc(1:3)   :: ', Y(1:2), SUM(Y)
+    WRITE(*,*) '      sum(Miter)  :: ', SUM(Miter%val)
+    WRITE(*,*) '      sum(LU)vor  :: ', SUM(LU_Miter%val)
 
     !
     !****************************************************************************************
@@ -532,7 +540,7 @@ MODULE Rosenbrock_Mod
           DO jStg = 1 , iStg-1
             fRhs(:nspc)   = fRhs(:nspc) + RCo%C(iStg,jStg)*k(:nspc,jStg)
             IF (combustion)                                                  &
-              bb(nDIMex)  = bb(nDIMex)  + RCo%C(iStg,jStg)*(c_v*k(nDIM,jStg) &
+              bb(nDIMex)  = bb(nDIMex)  + RCo%C(iStg,jStg)*(cv*k(nDIM,jStg) &
               &                         - SUM( Umol(:)*k(:nspc,jStg)) )
           END DO
 
@@ -544,7 +552,7 @@ MODULE Rosenbrock_Mod
 
       END IF
       !
-      print*, 'debug:: ', 'istage=',iStg,SUM(ABS(fRhs(:)))
+      !print*, 'debug:: ', 'istage=',iStg,SUM(ABS(fRhs(:)))
       !
       ! ---  Solve linear SYstem  ---
       !
@@ -561,6 +569,10 @@ MODULE Rosenbrock_Mod
           CALL SolveSparse( LU_Miter , bb)
           k( 1:nspc , iStg ) = Y0(:nspc) * bb(neq+1:nsr)
           IF ( combustion ) k(nDIM,iStg) = bb(nDIM)
+          
+          print*,'debug::   k ', bb 
+          print*,'debug::   nspc=',nspc,nDIM
+
 
         END IF
         !print*, 'debug:: ', 'istage=',iStg,SUM(ABS(fRhs(:)))
@@ -585,6 +597,7 @@ MODULE Rosenbrock_Mod
 
     END DO  LOOP_n_STAGES
 
+          stop
     
     !--- Update Concentrations (Temperatur)
     DO jStg = 1 , RCo%nStage

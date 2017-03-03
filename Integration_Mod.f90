@@ -104,8 +104,8 @@ MODULE Integration_Mod
     !
     IF ( combustion ) THEN
       !--- initial temperature
-      y0(nDIM)      = 750.0d0   ! = 750 [K] aus speedchem debug
-      y(nDIM)       = 750.0d0    ! = 750 [K]
+      y0(nDIM)      = 750.0d0     ! = 750 [K] aus speedchem debug
+      y(nDIM)       = 750.0d0     ! = 750 [K]
       
       !--- malloc gibbs energy, derivates
       ALLOCATE(GFE(nspc),DGFEdT(nspc))
@@ -114,8 +114,8 @@ MODULE Integration_Mod
       DGFEdT     = ZERO
       DelGFE     = ZERO
       DDelGFEdT  = ZERO
-      SCpress    = 2.0d05     ! erc_nheptane case 1 from speedchem
-      CALL rhoY(y0(1:nspc),y0(nDIM))  ! Initialising reactor density
+      SCpress    = 2.0d05                 ! erc_nheptane case 1 from speedchem
+      CALL rhoY( y0(1:nspc) , y0(nDIM) )  ! Initialising reactor density
       print*, 'DEBUG::INTEGRmod  initstuff    ', SCrho, SCpress, y0(nDIM)
     END IF
     !
@@ -139,10 +139,10 @@ MODULE Integration_Mod
     !END IF
     !
     !---- Check input parameters 
-    CALL CheckInputParameters(Tspan,Atol,RtolROW)
+    CALL CheckInputParameters( Tspan , Atol , RtolROW )
     !
     !---- Get Rosenbrock Parameters
-    CALL SetRosenbrockMethod(RCo,method)  
+    CALL SetRosenbrockMethod( RCo , method )  
     !
     !----------------------------------------------------------
     ! ----------- Beginning with symbolic phase --------------
@@ -156,6 +156,9 @@ MODULE Integration_Mod
     CALL SparseAdd(BA,B,A,'-')     ! numeric subtraction:  BA = B - A
     CALL TransposeSparse(BAT,BA)   ! transpose BA:        BAT = Transpose(BA) 
     !  
+
+    !call printsparse(A,'*')
+    !call printsparse(B,'*')
     !call printsparse(BAT,'*')
     !stop
     ! we need to calculate the Jacobian for both versions 'cl' and 'ex' to
@@ -165,9 +168,9 @@ MODULE Integration_Mod
     !
     ! Set symbolic structure of iteration matrix for Row-Method
     IF ( vers=='cl') THEN
-      CALL BuildSymbolicClassicMatrix(Miter,Jac_C,RCo%ga)
+      CALL BuildSymbolicClassicMatrix(  Miter , Jac_C   , RCo%ga )
     ELSE
-      CALL BuildSymbolicExtendedMatrix(Miter,A,BAT,RCo%ga)
+      CALL BuildSymbolicExtendedMatrix( Miter , A , BAT , RCo%ga ) 
     END IF
     !
     ! Choose ordering/factorisation strategie and do symb LU fact

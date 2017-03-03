@@ -1338,7 +1338,7 @@ MODULE Sparse_Mod
         &       (/  i  , A%m + A%ColInd(A%RowPtr(i):(A%RowPtr(i+1)-1))    , nBig /)
 
         EX%Val(EX%RowPtr(i):EX%RowPtr(i+1)-1)    =                                & 
-        &       (/ ONE , g*A%Val(A%ColInd(A%RowPtr(i):(A%RowPtr(i+1)-1))) ,  ONE /)
+        &       (/ -99.d0 , g*A%Val(A%ColInd(A%RowPtr(i):(A%RowPtr(i+1)-1))) ,  ONE /)
      
         ! set pointers for better access 
         EX%DiagPtr(i)       = EX%RowPtr(i)
@@ -1383,7 +1383,7 @@ MODULE Sparse_Mod
       &         (/ BAT%ColInd(BAT%RowPtr(i):(BAT%RowPtr(i+1)-1)) , A%m+i /)
 
       EX%Val(EX%RowPtr(A%m+i):EX%RowPtr(A%m+i+1)-1)     =                 &
-      &         (/ BAT%Val(BAT%RowPtr(i):(BAT%RowPtr(i+1)-1))    ,  ONE  /)
+      &         (/ BAT%Val(BAT%RowPtr(i):(BAT%RowPtr(i+1)-1))    ,  -99.d0  /)
      
       EX%DiagPtr(i+A%m)   = EX%RowPtr(A%m+i+1)-1
       EX%DiagPtr_C(i)     = EX%RowPtr(A%m+i+1)-1
@@ -1402,7 +1402,7 @@ MODULE Sparse_Mod
       EX%RowPtr(mBig+1)=EX%RowPtr(mBig)+A%n+1
       
       EX%ColInd(EX%RowPtr(mBig):EX%RowPtr(mBig+1)-1) = [( i , i = BAT%n+1 , BAT%n+A%n+1 )]
-      EX%Val(EX%RowPtr(mBig):EX%RowPtr(mBig+1)-1)     = ONE
+      EX%Val(EX%RowPtr(mBig):EX%RowPtr(mBig+1)-1)     = -99.d0
       EX%RowVectorPtr(:) = [( i , i = BAT%n+1 , BAT%n+A%n+1 )]
 
       !EX%ColInd(EX%RowPtr(mBig):EX%RowPtr(mBig+1)-1)=tmpColInd(:)
@@ -1412,6 +1412,7 @@ MODULE Sparse_Mod
       !FORALL( i=1:A%n+1 )  tmpColInd(i)=BAT%n+i
       !EX%RowVectorPtr(:)=tmpColInd(1:A%n)
     END IF
+    !call printsparse(EX , '*')
   !
   END SUBROUTINE BuildSymbolicExtendedMatrix
   !

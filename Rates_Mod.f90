@@ -784,7 +784,7 @@
         &        + rFIVE*lowE*T(4) + lowG
         !
         dCvdT = R * (highB + TWO*highC*T(1) + THREE*highD*T(2) + FOUR*highE*T(3))
-        !dHdT = R * (highA + highB*T(1) + highC*T(2) + highD*T(3) + highE*T(4))
+        dHdT = R * (highA + highB*T(1) + highC*T(2) + highD*T(3) + highE*T(4))
         dGdT = - R * (highG + highA*T(8) + highB*T(1) + rTWO*highC*T(2)      &
         &                   + rTHREE*highD*T(3) +rFOUR*highE*T(4))
       ELSEWHERE
@@ -795,7 +795,7 @@
         &         + rFIVE*highE*T(4) + highG
         !
         dCvdT = R * (highB + TWO*highC*T(1) + THREE*highD*T(2) + FOUR*highE*T(3))
-        !dHdT = R * (highA + highB*T(1) + highC*T(2) + highD*T(3) + highE*T(4))
+        dHdT = R * (highA + highB*T(1) + highC*T(2) + highD*T(3) + highE*T(4))
         dGdT = - R * (highG + highA*T(8) + highB*T(1) + rTWO*highC*T(2)      &
         &                   + rTHREE*highD*T(3) +rFOUR*highE*T(4))
       END WHERE  
@@ -883,85 +883,59 @@
     END SUBROUTINE DiffTempXComputeCK
     ! 
     !
-    SUBROUTINE ThirdBodyCompute(M,i,y_conc)
-      REAL(RealKind) :: M
-      REAL(RealKind) :: y_conc(nspc)
-      INTEGER :: i        !iReac
-      !
-      INTEGER :: j, jj
-      REAL(RealKind) :: Stmp
-      !
-      !print*, 'DEBUG::RATES   Meeffsize =', SIZE(ReactionSystem(i)%TB)
-      M=SUM(y_conc)
-      IF (ReactionSystem(i)%TBExtra) THEN
-        Stmp=ZERO
-        DO jj=1,SIZE(ReactionSystem(i)%TB)
-          !print*, 'DEBUG::RATES       iReac,SIZE=', i,SIZE(ReactionSystem(i)%TB)
-          !print*, 'DEBUG::RATES       TB        =', ReactionSystem(i)%TB(jj)
-          !print*, 'DEBUG::RATES       TBspc     =', ReactionSystem(i)%TBspc(jj)
-          !print*, 'DEBUG::RATES       Posspc    =', PositionSpeciesCK(ReactionSystem(i)%TBspc(jj))
-          !print*, 'DEBUG::RATES       SpcAlpha  =', ReactionSystem(i)%TBalpha(jj)
-          !
-          !j=PositionSpeciesAll(ReactionSystem(i)%TBspc(jj)) ! richtigen index holen, da TB unsortiert eingelesen wurde
-          j=ReactionSystem(i)%TB(jj) ! richtiger index jetzt vorhanden (in MAIN zugeordnet)
-          Stmp=Stmp+(ONE-ReactionSystem(i)%TBalpha(jj))*y_conc(j)
-        END DO
-        M=M-Stmp        ! Formel (6) Perini 2012
-      END IF
-    END SUBROUTINE ThirdBodyCompute
-    !
-    !
-    SUBROUTINE UpdateTempArray(TempArr,Temp)
-      REAL(RealKind) :: Temp
+    SUBROUTINE UpdateTempArray(TempArr,Temperature)
+      REAL(RealKind) :: Temperature 
       REAL(RealKind) :: TempArr(8)
       !
       INTEGER :: i
       !
-      TempArr(1)=Temp                  ! T
+      TempArr(1)    = Temperature                ! T
       DO i=2,5
-        TempArr(i)=TempArr(i-1)*Temp   ! T^2 ... T^5
+        TempArr(i)  = TempArr(i-1)*Temperature   ! T^2 ... T^5
       END DO
-      TempArr(6)=ONE/Temp              ! 1/T
-      TempArr(7)=ONE/TempArr(2)        ! 1/T^2
-      TempArr(8)=LOG(Temp)             ! ln(T)
+      TempArr(6)    = ONE / Temperature          ! 1/T
+      TempArr(7)    = ONE / TempArr(2)           ! 1/T^2
+      TempArr(8)    = LOG(Temperature)           ! ln(T)
     END SUBROUTINE UpdateTempArray
     !
     !
-    SUBROUTINE SpcInternalEnergy(Umol,T)
-      REAL(RealKind) :: Umol(nspc)        ! Species internal energy in [J/mol]
+    !-------------------------------------------------------------------------
+    !---  Species internal energies in moles [J/mol]  
+    !-------------------------------------------------------------------------
+    SUBROUTINE InternalEnergy(Umol,T)
+      !OUT
+      REAL(RealKind) :: Umol(nspc)   
+      !IN
       REAL(RealKind) :: T(:)
       !  
       !
       WHERE (SwitchTemp>T(1))
-        Umol=((lowA-ONE)*T(1) + rTWO*lowB*T(2) + rTHREE*lowC*T(3)   & 
+        Umol  = ( (lowA-ONE)*T(1) + rTWO*lowB*T(2) + rTHREE*lowC*T(3)      & 
         &                + rFOUR*lowD*T(4) + rFIVE*lowE*T(5) + lowF )
       ELSEWHERE
-        Umol=((highA-ONE)*T(1) + rTWO*highB*T(2) + rTHREE*highC*T(3)   & 
+        Umol  = ( (highA-ONE)*T(1) + rTWO*highB*T(2) + rTHREE*highC*T(3)   & 
         &                + rFOUR*highD*T(4) + rFIVE*highE*T(5) + highF )
       END WHERE
-      Umol=Umol*R
-       !print*, 'DEBUG::ratesmod    switchtemp= und T(1)==',switchtemp, T(1)
-       !print*, 'DEBUG::ratesmod    R_const=',R
-       !print*, 'DEBUG::ratesmod    UMol=', Umol
-    END SUBROUTINE SpcInternalEnergy
+      Umol    = Umol * R
+    END SUBROUTINE InternalEnergy
     !
-    !----------------------------------------------------------
-    !--- Species nondimensional constant volume specific heats
-    !----------------------------------------------------------
-    SUBROUTINE DiffSpcInternalEnergy(DUmoldT,T)
-      REAL(RealKind) :: DUmoldT(nspc)     ! derivative of Species internal energyin [J/mol/K]
+    !-----------------------------------------------------------------------
+    !--- Derivatives of specific heats at constant volume in moles [J/mol/K]
+    !-----------------------------------------------------------------------
+    SUBROUTINE DiffSpcInternalEnergy(DCvdT,T)
+      !OUT
+      REAL(RealKind) :: DCvdT(nspc)   
+      !IN
       REAL(RealKind) :: T(:)                      
       !
       WHERE (SwitchTemp>T(1))
-        DUmoldT=(lowA + lowB*T(1) + lowC*T(2)  & 
-        &             + lowD*T(3) + lowE*T(4)) 
+        DCvdT=(lowA + lowB*T(1) + lowC*T(2)     & 
+        &           + lowD*T(3) + lowE*T(4)) 
       ELSEWHERE
-        DUmoldT=(highA + highB*T(1) + highC*T(2)  & 
-        &              + highD*T(3) + highE*T(4))  
+        DCvdT=(highA + highB*T(1) + highC*T(2)  & 
+        &            + highD*T(3) + highE*T(4))  
       END WHERE
-      !print*, 'DEBUG::ratesmod    dumoldt=',DUmoldT
-      !stop
-      DUmoldT=DUmoldT-ONE       ! speedchem SCmodule.f ~2618
+      DCvdT=DCvdT-ONE       ! speedchem SCmodule.f ~2618
     END SUBROUTINE DiffSpcInternalEnergy
     !
     !
@@ -991,22 +965,24 @@
     END SUBROUTINE AvgReactorPressure
     !
     !is the mass average mixture specific  heat at constant volume,
-    SUBROUTINE MassAveMixSpecHeat(c_v,T,Conc,DUmoldT)
-      REAL(RealKind) :: c_v
+    SUBROUTINE MassAveMixSpecHeat(cv,T,Conc,DUmoldT)
+      REAL(RealKind) :: cv
       !
       REAL(RealKind) :: T(:)
       REAL(RealKind) :: Conc(:)
       REAL(RealKind) :: DUmoldT(:)
       !
-      INTEGER :: i
-      INTEGER :: scPermutation(nspc)
       !
-      !print*, 'DEBUG::rates    ta=',t
-      !print*, 'DEBUG::rates   uMW=',uMW
+      !print*, 'DEBUG::rates       ta=',t
+      !print*, 'DEBUG::rates      uMW=',rMW
+      !print*, 'DEBUG::rates       MW=',MW
+      !print*, 'DEBUG::rates  DUmolDT=',DUmoldT
+      !print*, 'DEBUG::rates     conc=',Conc
       !stop
       !
       !--- Mixture averaged mass value [J/kg/K]
-      c_v = kilo * R * SUM( Conc * DUmoldT * rMW )
+
+      cv = kilo * R * SUM( Conc * DUmoldT * rMW )
       !print*, 'DEBUG::speedchem     kilo,R,SUM(Y,CvuR,uMW)=',kilo,R, SUM(Conc),SUM(dumoldt),SUM(rMW)
       !DO i=1,nspc
       !  WRITE(987,*) conc(scPermutation(i)),MW(scPermutation(i)),rMW(scPermutation(i))
