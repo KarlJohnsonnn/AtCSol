@@ -397,6 +397,9 @@ MODULE Rosenbrock_Mod
 
     !print*, 'debug:: ', h , t ,Rate(1:3)
     !print*, 'debug::2',Y(1:3)
+    print*, 'debug::  bat'
+    call printsparse(BAT,'*')
+    print*, 'debug:: rate=',Rate
     !
     IF ( combustion ) THEN
       ! spc perutation aus speedchem fuer reakdtionssYstem ERC_nheptane
