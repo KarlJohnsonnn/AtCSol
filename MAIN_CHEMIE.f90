@@ -104,15 +104,12 @@ PROGRAM Main_ChemKin
     CALL PrintReactions     ( ReactionSystem , 89 , .TRUE. )       ! .TRUE. in 3rd agument for chemkin input file
     CALL PrintFinalReactions( 89 )
     !
-
-    print*, '3debug:: bval(4)    ',B%Val(4)
     !--- Read molecular mass
     OPEN(UNIT=998,FILE=TRIM(ChemFile)//'.mw',STATUS='UNKNOWN')
     ALLOCATE(MW(nspc),rMW(nspc))
     MW=ZERO
     !DO i=1,nspc
     DO
-      print*, '4debug:: bval(4)    ',B%Val(4)
       READ(998,*,IOSTAT=STAT) tmpChar0, tmpMW0
       IF ( STAT > 0 ) EXIT
       IF ( PositionSpeciesAll(tmpChar0) > 0 ) THEN
@@ -120,7 +117,6 @@ PROGRAM Main_ChemKin
       END IF
     END DO
     rMW(:)=ONE/MW(:)
-    print*, '5debug:: bval(4)    ',B%Val(4)
     !DO i=1,nspc
     !  print*, 'debug:: main    ',i, MW(i),rMW(i)
     !END DO

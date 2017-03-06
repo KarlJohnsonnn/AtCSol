@@ -189,8 +189,8 @@
       !
       !
       !---------------------------------------------------------------------------
-      term_diff =y_c1(ReactionSystem(iReac)%HenrySpc)                       ! diffusion term
-      term_accom=y_c2(ReactionSystem(iReac)%HenrySpc)/SQRT(Temp)            ! accom term
+      term_diff   = y_c1(ReactionSystem(iReac)%HenrySpc)               ! diffusion term
+      term_accom  = y_c2(ReactionSystem(iReac)%HenrySpc) / SQRT(Temp)  ! accom term
       !--------------------------------------------------------------------------!
       !
       ! Compute new wet radius for droplett class iFrac
@@ -741,10 +741,15 @@
       !
       DelGibbs(:)=ZERO         
       !
-      FORALL (iR=1:BA%m)
+      DO iR=1,neq
         DelGibbs(iR) = DelGibbs(iR) + SUM(BA%Val(BA%RowPtr(iR):BA%RowPtr(iR+1)-1) &
         &              * GFE(BA%ColInd(BA%RowPtr(iR):BA%RowPtr(iR+1)-1)))
-      END FORALL
+      END DO
+
+      !FORALL (iR=1:BA%m)
+      !  DelGibbs(iR) = DelGibbs(iR) + SUM(BA%Val(BA%RowPtr(iR):BA%RowPtr(iR+1)-1) &
+      !  &              * GFE(BA%ColInd(BA%RowPtr(iR):BA%RowPtr(iR+1)-1)))
+      !END FORALL
     END SUBROUTINE CalcDeltaGibbs
     !
     SUBROUTINE CalcDiffDeltaGibbs(DiffDelGibbs)
@@ -838,11 +843,15 @@
         rK_eq = EXP(+DelGFE(iReac)) * rFacEq**sumBAT(iReac)
         k     = k_f
       END IF
-        !IF(MOD(iReac,2)/=0) THEN
-          !print*, 'DEBUGG ::  iR=    Tarr=',iReac,T
-          !print*, 'DEBUGG ::    constants=',ReactionSystem(iReac)%Constants
-          !print*, 'DEBUGG :: k_f=    K_eq=',iReac,k_f, rK_eq,kb
-          !print*, 
+        !IF(MOD(iReac,2)==0) THEN
+        !  print*, 'DEBUGG ::  iR=    Tarr=', iReac,T
+        !  print*, 'DEBUGG ::    constants=', ReactionSystem(iReac)%Constants
+        !  print*, 'DEBUGG ::       delgfe=', DelGFE
+        !  print*, 'DEBUGG ::       rfaceq=', rFaceq
+        !  print*, 'DEBUGG ::sumBAT(iReac)=', sumBAT
+
+        !  print*, 'DEBUGG :: k_f=    K_eq=', k_f, rK_eq
+        !  print*, 
         !END IF
     END SUBROUTINE TempXComputeCK
     !

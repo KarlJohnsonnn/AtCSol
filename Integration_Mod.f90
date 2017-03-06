@@ -147,9 +147,8 @@ MODULE Integration_Mod
     !----------------------------------------------------------
     ! ----------- Beginning with symbolic phase --------------
     !----------------------------------------------------------
-    !call printsparse(A,'*')
-    !call printsparse(B,'*')
-
+    !call printsparsematrix(A,'A')
+    !call printsparsematrix(B,'B')
     !
     TimeSymbolic=MPI_WTIME()       ! start timer for symb phase
     CALL SymbolicAdd(BA,B,A)       ! symbolic addition:    BA = B + A
@@ -157,10 +156,8 @@ MODULE Integration_Mod
     CALL TransposeSparse(BAT,BA)   ! transpose BA:        BAT = Transpose(BA) 
     !  
 
-    !call printsparse(A,'*')
-    !call printsparse(B,'*')
-    !call printsparse(BAT,'*')
-    !stop
+    !call printsparsematrix(BA,'BA')
+    !call printsparsematrix(BAT,'BAT')
     ! we need to calculate the Jacobian for both versions 'cl' and 'ex' to
     ! calculate an initial stepsize based on 2nd derivative (copy of MATLABs ode23s)
     !

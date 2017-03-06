@@ -36,11 +36,11 @@ MODULE Sparse_Mod
     INTEGER               :: m=0, n=0, nnz=0
     INTEGER, ALLOCATABLE  :: RowPtr(:)
     INTEGER, ALLOCATABLE  :: ColInd(:)
-    INTEGER, POINTER      :: DiagPtr(:)                   
-    INTEGER, POINTER      :: DiagPtr_R(:)                   
-    INTEGER, POINTER      :: DiagPtr_C(:)
-    INTEGER, POINTER      :: RowVectorPtr(:)             ! for combustion matrix
-    INTEGER, POINTER      :: ColVectorPtr(:)             ! for combustion matrix
+    INTEGER, POINTER      :: DiagPtr(:)=>NULL()                   
+    INTEGER, POINTER      :: DiagPtr_R(:)=>NULL()                   
+    INTEGER, POINTER      :: DiagPtr_C(:)=>NULL()
+    INTEGER, POINTER      :: RowVectorPtr(:)=>NULL()             ! for combustion matrix
+    INTEGER, POINTER      :: ColVectorPtr(:)=>NULL()            ! for combustion matrix
     INTEGER, POINTER      :: Permu(:)=>NULL()
     INTEGER, POINTER      :: InvPer(:)=>NULL()
     REAL(RealKind), ALLOCATABLE :: Val(:)
@@ -1571,7 +1571,6 @@ MODULE Sparse_Mod
   END SUBROUTINE PrintRhs
   !
   !
-  !
   ! PRINT SPARSE MATRIX (compressed Row format)
   SUBROUTINE PrintSparseMatrix(A,FileName)
     TYPE(CSR_Matrix_T), INTENT(IN) :: A
@@ -1579,18 +1578,17 @@ MODULE Sparse_Mod
     !
     INTEGER :: i,j,jj
     !
-    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName))//'.SparseMat',STATUS='UNKNOWN')
     !
-    WRITE(99,*) A%m
-    WRITE(99,*) SIZE(A%ColInd)
+    WRITE(*,*) 'Sparse Matrix: ', FileName
+    WRITE(*,*) 'dimension:     ', A%m,A%n
+    WRITE(*,*) 'nonzeros:      ', SIZE(A%ColInd)
     ! 
     DO i=1,A%m
       DO jj=A%RowPtr(i),A%RowPtr(i+1)-1
         j=A%ColInd(jj)
-        WRITE(99,'(1X,I5,1X,I5,10X,E23.14)') i,j,A%Val(jj)
+        WRITE(*,'(1X,I5,1X,I5,10X,E23.14)') i,j,A%Val(jj)
       END DO
     END DO
-    CLOSE(99)
   END SUBROUTINE PrintSparseMatrix
   !
   !

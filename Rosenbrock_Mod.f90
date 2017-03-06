@@ -207,7 +207,7 @@ MODULE Rosenbrock_Mod
     IF ( combustion ) THEN
       ThresholdStepSizeControl(nDIM)=ATolTemp/RTolROW
       ATolAll(nDIM)=ATolTemp
-      print*, 'debug:: tols    ', ThresholdStepSizeControl(nDIM),ATolAll(nDIM)
+      print*, 'debug:: tolgas=', AtolAll(1:ntGas),'  tolTemp=',ATolAll(nDIM)
     END IF
     ! Test that Tspan is internally consistent.
     IF ( Tspan(1)>=Tspan(2) ) THEN
@@ -373,9 +373,6 @@ MODULE Rosenbrock_Mod
     IF ( combustion ) Y(nDIM) = Y0(nDIM)
     YNew(:)   = Y0(:)
     YHat(:)   = Y0(:)
-     print*, 'debug     Y0        :: ',Y0(1:nspc)
-     print*, 'debug     Y        :: ',Y(1:nspc)
-     !stop
     !
     !IF (PRESENT(Temp)) YNew(Temp_ind)=Y0(Temp_ind)
     !
@@ -397,9 +394,9 @@ MODULE Rosenbrock_Mod
 
     !print*, 'debug:: ', h , t ,Rate(1:3)
     !print*, 'debug::2',Y(1:3)
-    print*, 'debug::  bat'
-    call printsparse(BAT,'*')
-    print*, 'debug:: rate=',Rate
+    !print*, 'debug::  bat'
+    !call printsparse(BAT,'*')
+    !print*, 'debug:: rate=',Rate
     !
     IF ( combustion ) THEN
       ! spc perutation aus speedchem fuer reakdtionssYstem ERC_nheptane
@@ -413,22 +410,22 @@ MODULE Rosenbrock_Mod
       CALL DiffSpcInternalEnergy  ( DUmoldT , Tarr)
       CALL MassAveMixSpecHeat     ( cv     , Tarr  , Y0(:nspc) , DUmoldT)
       CALL DiffConcDt             ( DcDt    , BAT   , Rate )
-      UMat(:)     = -Umol(:)    * Y0(:nspc)
+      UMat(:)     = -( Umol(:)  * Y0(:nspc)  * rMW(:) )
       DRatedT(:)  = DRatedT(:)  * RCo%ga
       X = ONE + h * RCo%ga * SUM( DUmoldT(:) * DcDt(:) )
       !
       !
-      print*, 'debug     Temparr=  ',Tarr
-      print*, 'debug        time=  ',t
-      print*, 'debug         cv=  ',cv
-      print*, 'debug         SCP=  ',SCpress
-      print*, 'debug     SUM(Y0)=  ',SUM(Y0(1:nspc))
-      print*, 'debug   SUM(Umol)=  ',SUM(Umol)
-      print*, 'debug  DUmoldT=Cv/R :: ',SUM(DUmoldT)
-      print*, 'debug   SUM(DcDt)=  ',SUM(DcDt)
-      print*, 'debug          X         :: ',X
+      !print*, 'debug     Temparr=  ',Tarr
+      !print*, 'debug        time=  ',t
+      !print*, 'debug         cv=  ',cv
+      !print*, 'debug         SCP=  ',SCpress
+      !print*, 'debug     SUM(Y0)=  ',SUM(Y0(1:nspc))
+      !print*, 'debug   SUM(Umol)=  ',SUM(Umol)
+      !print*, 'debug  DUmoldT=Cv/R :: ',SUM(DUmoldT)
+      !print*, 'debug   SUM(DcDt)=  ',SUM(DcDt)
+      !print*, 'debug          X         :: ',X
       !
-      stop
+      !stop
       !
     END IF
    
@@ -449,11 +446,8 @@ MODULE Rosenbrock_Mod
      
       rRate(:)  = ONE / Rate(:)
       IF ( OrderingStrategie==8 ) THEN
-      call printsparse(LU_Miter,'*')
         CALL SetLUvaluesEX  ( LU_Miter  , nspc , neq , rRate      , Yrh       &
         &                   , DRatedT   , Umol , X   , LUvalsFix  , LU_Perm   )
-      call printsparse(LU_Miter,'*')
-      stop
       ELSE
         CALL Miter_Extended ( Miter     , nspc , neq , rRate      , Yrh )
       END IF
@@ -461,6 +455,7 @@ MODULE Rosenbrock_Mod
          !print*, 'DEBUGG::: LU_Miter Values=  ',LU_Miter%Val(istg),LU_Miter
 
       !END DO
+      !call printsparsematrix(LU_Miter,'LU_Miter')
 
     END IF
     !
@@ -491,6 +486,8 @@ MODULE Rosenbrock_Mod
     END IF
     TimeFac     = TimeFac + (MPI_WTIME()-timerStart)
     !
+    print*, 'debug:: ', ' neq nsr ndim = ',neq,nsr,nDIMex
+
     !****************************************************************************************
     !   ____    ___ __        __          _____  _                    ____   _               
     !  |  _ \  / _ \\ \      / /         |_   _|(_) _ __ ___    ___  / ___| | |_  ___  _ __  
@@ -507,7 +504,7 @@ MODULE Rosenbrock_Mod
         IF ( EXTENDED ) THEN
           bb( 1      : neq )          = mONE    ! = -1.0d0
           bb( neq+1  : nsr )          = Y_e(:)  ! emission
-          IF ( combustion ) bb(nDIM)  = ZERO    ! =  0.0d0
+          IF ( combustion ) bb(nDIMex)  = ZERO    ! =  0.0d0
         END IF
 
       ELSE ! iStage > 1 ==> Update time and concentration
@@ -551,13 +548,14 @@ MODULE Rosenbrock_Mod
           bb( neq+1  : nsr ) = fRhs(:nspc) / h + Y_e(:)
           IF (combustion) bb(nDIMex) = bb(nDIMex) / h
 
+          print*, 'debug:: ', 'istage, vor   bb = ',iStg,bb
         END IF
 
       END IF
       !
       !print*, 'debug:: ', 'istage=',iStg,SUM(ABS(fRhs(:)))
       !
-      ! ---  Solve linear SYstem  ---
+      ! ---  solve LGS  ---
       !
       timerStart  = MPI_WTIME()
       SOLVE_LINEAR_SYSTEM: IF ( OrderingStrategie==8 ) THEN  
@@ -573,10 +571,8 @@ MODULE Rosenbrock_Mod
           k( 1:nspc , iStg ) = Y0(:nspc) * bb(neq+1:nsr)
           IF ( combustion ) k(nDIM,iStg) = bb(nDIM)
           
-          print*,'debug::   k ', bb 
-          print*,'debug::   nspc=',nspc,nDIM
-
-
+          print*, 'debug:: ', 'istage, nach  bb = ',iStg,bb
+          
         END IF
         !print*, 'debug:: ', 'istage=',iStg,SUM(ABS(fRhs(:)))
 
@@ -600,7 +596,8 @@ MODULE Rosenbrock_Mod
 
     END DO  LOOP_n_STAGES
 
-          stop
+    !CALL MPI_BARRIER(MPI_COMM_WORLD,MPIErr)
+    !stop 'rosenbrockmod'
     
     !--- Update Concentrations (Temperatur)
     DO jStg = 1 , RCo%nStage
@@ -608,9 +605,9 @@ MODULE Rosenbrock_Mod
       Yhat(:) = Yhat(:) + RCo%me(jStg) * k(:,jStg)! embedded formula for err calc ord-1
     END DO
     !
-    do istg=1,ndim
-      print*,'debug::   y0  yn  yh  k ', Y0(istg),Ynew(isTg),yHat(istg) , k(istg,:)
-    end do
+    !do istg=1,ndim
+    !  print*,'debug::   y0  yn  yh  k ', Y0(istg),Ynew(isTg),yHat(istg) , k(istg,:)
+    !end do
     !***********************************************************************************************
     !   _____                           _____       _    _                    __               
     !  | ____| _ __  _ __  ___   _ __  | ____| ___ | |_ (_) _ __ ___    __ _ | |_  (_)  ___   _ __  

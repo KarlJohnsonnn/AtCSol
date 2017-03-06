@@ -1055,7 +1055,7 @@ MODULE Chemsys_Mod
     B%Val=ZERO
     !
     ALLOCATE(sumBAT(A%m))
-    sumBAT=0.0d0
+    sumBAT=ZERO
     !
     DO iLoop=1,neq
       NumActiveEduct=0
@@ -1156,7 +1156,7 @@ MODULE Chemsys_Mod
 
     A%nnz=A%RowPtr(A%m+1)-1
     B%nnz=B%RowPtr(B%m+1)-1
-
+  
   END SUBROUTINE PrintReactions
   !
   !
