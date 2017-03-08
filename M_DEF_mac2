@@ -12,8 +12,7 @@ CC   = mpicc
 #OPTL = -O3 -Wunused  
 
 OPT_O =  -O3 -fdefault-real-8 -fdefault-double-8 -Wunused 
-OPT_D =  -O3 -Warray-bounds -Wextra -fbacktrace -ffpe-trap=zero -fimplicit-none  -fcheck=all
-#OPT_D =  -Og -Warray-bounds -Wextra -fbacktrace -ffpe-trap=zero -fimplicit-none  -fcheck=all
+OPT_D =  -Og -Warray-bounds -Wextra -fbacktrace -ffpe-trap=zero -fimplicit-none  -fcheck=all
 
 #OP=-Wl,--start-group
 OP=
