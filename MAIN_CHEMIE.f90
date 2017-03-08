@@ -125,15 +125,17 @@ PROGRAM Main_ChemKin
     !
     !ALLOCATE(InitValAct(ntGas),y_e(ntGas))
     ALLOCATE(X0(ntGas),InitValAct(ntGas),y_e(ntGas))
-    X0=ZERO           ! mass fraction 
-    InitValAct=ZERO   ! mole fraction
+    X0=ZERO           ! mole fraction 
+    InitValAct=ZERO   ! mol/m3 
     ALLOCATE(InitValKat(ntKat))
     !CALL Read_GASini(InitFile,InitValAct,InitValKat)
     CALL Read_GASini(InitFile,X0,InitValKat)
     CALL Read_EMISS(InitFile,y_e)
     CALL GetSpeciesNames(ChemFile,y_name)
     !CALL MassFr_to_MoleFr(InitValAct,X0)
-    CALL MoleFr_to_MassFr(InitValAct,X0)
+    !CALL MoleFr_to_MassFr(InitValAct,X0)
+    !
+    CALL MoleFr_to_MoleVol(InitValAct,X0,2.0d0)
     !
     !--- richtigen index holen, da TB unsortiert eingelesen
     DO i=1,neq
