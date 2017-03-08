@@ -61,6 +61,7 @@
       ! DEBUGGING
       REAL(RealKind) :: debRKonst
       INTEGER :: cnt
+      REAL(RealKind) :: q=0.0d0
       !
       ! combustion
       REAL(RealKind) :: dCtot_dY(nspc)
@@ -95,6 +96,8 @@
         !
         CALL CalcDiffGibbsFreeEnergie(DGFEdT,T)
         CALL CalcDiffDeltaGibbs(DDelGFEdT)
+          !print*, 'debug::rates      gibbs=',GFE(scpermutation)
+          !print*, 'debug::rates exp(+dG0)=',exp(+delgfe)
       ELSE
         T(1)=Temp    ! = 280 [K]
         y_conc(:)=y_in(:)
@@ -159,10 +162,17 @@
         !END DO
         ! Last step
         !print*, 'DEBUGG :: k5=',k
-        !print*, 'DEBUG::SCmodule   i,  k,  q =', iReac, k, Rate(iReac)
+        !print*, 'DEBUG::   i,  k, produkt  =', iReac, k, Rate(iReac), Meff
         Rate(iReac) = Meff * k * Rate(iReac)
         IF (combustion) DRatedT(iReac) = DkdT
+        !IF (MOD(iReac,2)==0) THEN
+        !  q=q+Rate(iReac)
+        !ELSE
+        !  q=q-Rate(iReac)
+        !END IF
       END DO
+        !print*,'        q = ',q
+        !stop
       !stop 'rates_mod'
       TimeRateE=MPI_WTIME()
       TimeRates=TimeRates+(TimeRateE-TimeRateA)
@@ -827,15 +837,23 @@
       !
       rRcT=rRcal*T(6)
       !
+              !print*, 'DEBUGG :: reactstring      ',TRIM(ReactionSystem(iReac)%Line1)
+              !print*, 'DEBUGG :: reactstring      ',TRIM(ReactionSystem(iReac)%Line2)
+              !print*, 'debug:: balkfbl sgliuha          ', DelGFE(10),sumbat(10)
+              !print*, 'debug:: balkfbl sgliuha          ', delgfe
+              !stop
       IF (ReactionSystem(iReac)%Line2=='BackReaction') THEN
         IF (ReactionSystem(iReac)%Line3=='rev'.OR.ReactionSystem(iReac)%Line3=='REV') THEN
           ! backward constant calculated explicitly reaction
           k     = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT) ! speedchem
         ELSE
           ! backward without extra coef, equiv constant nessesarry
+
+          !print*, 'DEBUGG ::rates    i,delGFE(i)=',ireac,DelGFE(iReac)
+
           k_f   = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT)  ! speedchem
-          rK_eq = EXP(+DelGFE(iReac)) * rFacEq**sumBAT(iReac)
-          k     = k_f*rK_eq
+          rK_eq = EXP(-DelGFE(iReac)) * rFacEq**(-sumBAT(iReac))
+          k     = k_f * rK_eq
         END IF
       ELSE
         ! forward rate constant and eq. constant classical calculation
@@ -843,6 +861,15 @@
         rK_eq = EXP(+DelGFE(iReac)) * rFacEq**sumBAT(iReac)
         k     = k_f
       END IF
+          !IF (ireac<=neq) THEN
+          !  IF(MOD(iReac,2)/=0) THEN
+          !    print*, 'DEBUGG :: ireac, k    k_f   K_eq=',iReac, k,k_f, rK_eq,sumbat(iReac)
+          !  ELSE
+          !    print*, 'DEBUGG :: ireac, k    k_f   K_eq=',iReac, k,k_f, rK_eq,sumbat(iReac)
+          !  END IF
+          !    print*, 
+          !  IF(ireac==neq) stop
+          !END IF
         !IF(MOD(iReac,2)==0) THEN
         !  print*, 'DEBUGG ::  iR=    Tarr=', iReac,T
         !  print*, 'DEBUGG ::    constants=', ReactionSystem(iReac)%Constants
@@ -970,7 +997,14 @@
       REAL(RealKind), INTENT(IN) :: T(:)
       REAL(RealKind), INTENT(IN) :: Conc(:)
       !
-      avgPress = kilo * SCrho * R * T(1) * SUM(Conc(:) * rMW(:))
+      !  [Pa]   =  [J/mol/K]   [K]    [mol/m3]
+      avgPress  =  R    *  T(1) * SUM(Conc(:))
+      !
+      !  [Pa]   = [kg/m3]  [J/mol/K]   [K]    [mol/m3]
+      !avgPress  =  SCrho  *  R    *  T(1) * SUM(Conc(:))
+      !
+      !  [Pa]   = 1.e3  [kg/m3]  [J/mol/K]   [K]    [???]
+      !avgPress = kilo * SCrho * R * T(1) * SUM(Conc(:) * rMW(:))
     END SUBROUTINE AvgReactorPressure
     !
     !is the mass average mixture specific  heat at constant volume,
@@ -991,7 +1025,10 @@
       !
       !--- Mixture averaged mass value [J/kg/K]
 
-      cv = kilo * R * SUM( Conc * DUmoldT * rMW )
+      !cv = kilo * R * SUM( Conc * DUmoldT * rMW )
+      !
+
+      cv = R * SUM( Conc * DUmoldT)
       !print*, 'DEBUG::speedchem     kilo,R,SUM(Y,CvuR,uMW)=',kilo,R, SUM(Conc),SUM(dumoldt),SUM(rMW)
       !DO i=1,nspc
       !  WRITE(987,*) conc(scPermutation(i)),MW(scPermutation(i)),rMW(scPermutation(i))
