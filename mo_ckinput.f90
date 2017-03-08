@@ -779,6 +779,28 @@ CONTAINS
   !
   !    ***************************************************************
   !    **                                                           **
+  !    **    Computing molar volumes   based on mole fractions      **
+  !    **                                             (SpeedCHEM)   **   
+  !    ***************************************************************
+  SUBROUTINE MoleFr_to_MoleVol(MoMa,MoF,rho0)
+    !OUT
+    REAL(RealKind), ALLOCATABLE :: MoMa(:)
+    !IN
+    REAL(RealKind), INTENT(IN)  :: MoF(:)     ! Mole fraction 
+    REAL(RealKind), INTENT(IN)  :: rho0
+    !TEMP
+    REAL(RealKind) :: avgMW
+    INTEGER :: scPermutation(nspc)
+    !
+    !--- Computing mole mass in [mol/m3] 
+    !
+    !         1e3    [g/g]  1/[g/mol]  [kg/m3]
+    !
+    MoMa(:) = kilo * MoF(:) * rMW(:) * rho0
+  END SUBROUTINE MoleFr_to_MoleVol
+  !
+  !    ***************************************************************
+  !    **                                                           **
   !    **    Computing mass fractions based on mole fractions      **
   !    **                                             (SpeedCHEM)   **   
   !    ***************************************************************
@@ -830,7 +852,9 @@ CONTAINS
     !
     !--- Density value [kg/m3] !NB: pressure SCP must be initialised!
     !                    =1/R   =1/T    
-    SCrho=milli*SCpress*rR*(ONE/T0)*SUM(Conc/SUM(Conc*rMW))
+    !SCrho=milli*SCpress*rR*(ONE/T0)*SUM(Conc/SUM(Conc*rMW))
+
+    SCrho=milli*SCpress*rR*(ONE/T0)*SUM(Conc/SUM(Conc))
   END SUBROUTINE rhoY
   !
   !
