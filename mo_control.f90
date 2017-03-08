@@ -135,7 +135,7 @@ REAL(RealKind) :: tAnf              & ! Model start time
 &                              , epsY       = 1.0d-7             &
 &                              , SI_am      = 1.66053892173d-27  &  ! Atomic mass unit  [kg]  
 &                              , SI_na      = 6.0221412927d+23   &  ! Avogadro's number [1/mol]
-&                              , SI_kB      = 1.380648813d-23    &  ! Bolzmann constant [1/K]
+&                              , SI_kB      = 1.380648813d-23    &  ! Bolzmann constant [J/K]
 &                              , SI_Gas     = SI_na * SI_kB         ! Gas constant      [J/mol/K]
 !
 !--- Real number constants

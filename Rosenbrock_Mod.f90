@@ -16,6 +16,7 @@ MODULE Rosenbrock_Mod
   USE Rates_Mod
   USE mo_control
   USE mo_reac
+  USE mo_ckinput
   IMPLICIT NONE
   !
   !
@@ -207,7 +208,6 @@ MODULE Rosenbrock_Mod
     IF ( combustion ) THEN
       ThresholdStepSizeControl(nDIM)=ATolTemp/RTolROW
       ATolAll(nDIM)=ATolTemp
-      print*, 'debug:: tolgas=', AtolAll(1:ntGas),'  tolTemp=',ATolAll(nDIM)
     END IF
     ! Test that Tspan is internally consistent.
     IF ( Tspan(1)>=Tspan(2) ) THEN
@@ -340,7 +340,8 @@ MODULE Rosenbrock_Mod
     !
     REAL(RealKind), DIMENSION(nDIM,RCo%nStage) :: k     
     REAL(RealKind), DIMENSION(nDIM)            :: Y, Yhat, fRhs
-    REAL(RealKind), DIMENSION(nspc)            :: Umol, UMat, DUmoldT, DcDt
+    !REAL(RealKind), DIMENSION(nspc)            :: Umol, UMat, dUdT, DcDt
+    REAL(RealKind), DIMENSION(nspc)            :: U, UMat, dUdT, DcDt
     REAL(RealKind), DIMENSION(nDIMex)          :: bb
     !
     REAL(RealKind) :: Tarr(8)
@@ -399,28 +400,29 @@ MODULE Rosenbrock_Mod
     !print*, 'debug:: rate=',Rate
     !
     IF ( combustion ) THEN
-      ! spc perutation aus speedchem fuer reakdtionssYstem ERC_nheptane
-      scPermutation=(/26,28,25,18,21,17,20,29,22,24,19,27,15,13,23,12,14,16,1,2,3,4,5,6,7,9,10,11,8/)
-      !CALL scTHERMO               ( C       , H_e   , S          ,Tarr)
-      !
       !                             OUT:      IN:
-      CALL UpdateTempArray        ( Tarr    , Y0(nDIM) )
-      CALL AvgReactorPressure     ( SCpress , Tarr  , Y0(:nspc)  )
-      CALL InternalEnergy         ( Umol    , Tarr)
-      CALL DiffSpcInternalEnergy  ( DUmoldT , Tarr)
-      CALL MassAveMixSpecHeat     ( cv     , Tarr  , Y0(:nspc) , DUmoldT)
+      CALL UpdateTempArray        ( Tarr    , Y0(nDIM) )                      ! Temerature in [K]
+      !
+      ! JANAF polynomials 
+      CALL InternalEnergy         ( U       , Tarr)                           ! U internal energy
+      CALL DiffSpcInternalEnergy  ( dUdT    , Tarr)                           ! derivative of U rep. to Temperature
+
+      CALL pressureHOT            ( Press   , Y0(:nspc) , Tarr(1)  )          ! pressure in [Pa]
+
+      CALL MassAveMixSpecHeat     ( cv      , Y0(:nspc) , dUdT )
+
       CALL DiffConcDt             ( DcDt    , BAT   , Rate )
-      UMat(:)     = -( Umol(:)  * Y0(:nspc)  )
+      UMat(:)     = -( U(:)     * Y0(:nspc)  )
       DRatedT(:)  = DRatedT(:)  * RCo%ga
-      X = ONE + h * RCo%ga * SUM( DUmoldT(:) * DcDt(:) )
+      X = ONE + h * RCo%ga * SUM( dUdT(:) * DcDt(:) )
       !
       !
       print*, 'debug     Temparr=  ',Tarr
       print*, 'debug        time=  ',t
       print*, 'debug          cv=  ',cv
-      print*, 'debug         SCP=  ',SCpress
+      print*, 'debug         SCP=  ',Press
       print*, 'debug     SUM(Y0)=  ',SUM(Y0(1:nspc))
-      print*, 'debug   SUM(Umol)=  ',SUM(Umol)
+      print*, 'debug   SUM(Umol)=  ',SUM(U)
       print*, 'debug   SUM(DcDt)=  ',SUM(DcDt)
       print*, 'debug          X =  ',X
       !
@@ -446,7 +448,7 @@ MODULE Rosenbrock_Mod
       rRate(:)  = ONE / Rate(:)
       IF ( OrderingStrategie==8 ) THEN
         CALL SetLUvaluesEX  ( LU_Miter  , nspc , neq , rRate      , Yrh       &
-        &                   , DRatedT   , Umol , X   , LUvalsFix  , LU_Perm   )
+        &                   , DRatedT   , U    , X   , LUvalsFix  , LU_Perm   )
       ELSE
         CALL Miter_Extended ( Miter     , nspc , neq , rRate      , Yrh )
       END IF
@@ -465,6 +467,7 @@ MODULE Rosenbrock_Mod
     WRITE(*,*) '      conc(1:3)   :: ', Y(1:2), SUM(Y)
     WRITE(*,*) '      sum(Miter)  :: ', SUM(Miter%val)
     WRITE(*,*) '      sum(LU)vor  :: ', SUM(LU_Miter%val)
+    WRITE(*,*)
 
     !
     !****************************************************************************************
@@ -541,7 +544,7 @@ MODULE Rosenbrock_Mod
             fRhs(:nspc)   = fRhs(:nspc) + RCo%C(iStg,jStg)*k(:nspc,jStg)
             IF (combustion)                                                  &
               bb(nDIMex)  = bb(nDIMex)  + RCo%C(iStg,jStg)*(cv*k(nDIM,jStg) &
-              &                         - SUM( Umol(:)*k(:nspc,jStg)) )
+              &                         - SUM( U(:) * k(:nspc,jStg)) )
           END DO
 
           bb( 1      : neq ) = -rRate(:) * Rate(:)
@@ -603,6 +606,7 @@ MODULE Rosenbrock_Mod
       Yhat(:) = Yhat(:) + RCo%me(jStg) * k(:,jStg)! embedded formula for err calc ord-1
     END DO
     !
+    print*, ''
     do istg=1,ndim
       print*,'debug::   y0  yn    ', Y0(istg),Ynew(iStg)
     end do
