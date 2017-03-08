@@ -410,24 +410,23 @@ MODULE Rosenbrock_Mod
       CALL DiffSpcInternalEnergy  ( DUmoldT , Tarr)
       CALL MassAveMixSpecHeat     ( cv     , Tarr  , Y0(:nspc) , DUmoldT)
       CALL DiffConcDt             ( DcDt    , BAT   , Rate )
-      UMat(:)     = -( Umol(:)  * Y0(:nspc)  * rMW(:) )
+      UMat(:)     = -( Umol(:)  * Y0(:nspc)  )
       DRatedT(:)  = DRatedT(:)  * RCo%ga
       X = ONE + h * RCo%ga * SUM( DUmoldT(:) * DcDt(:) )
       !
       !
-      !print*, 'debug     Temparr=  ',Tarr
-      !print*, 'debug        time=  ',t
-      !print*, 'debug         cv=  ',cv
-      !print*, 'debug         SCP=  ',SCpress
-      !print*, 'debug     SUM(Y0)=  ',SUM(Y0(1:nspc))
-      !print*, 'debug   SUM(Umol)=  ',SUM(Umol)
-      !print*, 'debug  DUmoldT=Cv/R :: ',SUM(DUmoldT)
-      !print*, 'debug   SUM(DcDt)=  ',SUM(DcDt)
-      !print*, 'debug          X         :: ',X
+      print*, 'debug     Temparr=  ',Tarr
+      print*, 'debug        time=  ',t
+      print*, 'debug          cv=  ',cv
+      print*, 'debug         SCP=  ',SCpress
+      print*, 'debug     SUM(Y0)=  ',SUM(Y0(1:nspc))
+      print*, 'debug   SUM(Umol)=  ',SUM(Umol)
+      print*, 'debug   SUM(DcDt)=  ',SUM(DcDt)
+      print*, 'debug          X =  ',X
       !
       !stop
       !
-    END IF
+   END IF
    
     ! --- Update matrix procedure
     IF ( CLASSIC ) THEN
@@ -505,6 +504,7 @@ MODULE Rosenbrock_Mod
           bb( 1      : neq )          = mONE    ! = -1.0d0
           bb( neq+1  : nsr )          = Y_e(:)  ! emission
           IF ( combustion ) bb(nDIMex)  = ZERO    ! =  0.0d0
+          print*, 'debug:: ', 'istage, vor   bb = ',iStg,bb(1:5)
         END IF
 
       ELSE ! iStage > 1 ==> Update time and concentration
@@ -548,7 +548,7 @@ MODULE Rosenbrock_Mod
           bb( neq+1  : nsr ) = fRhs(:nspc) / h + Y_e(:)
           IF (combustion) bb(nDIMex) = bb(nDIMex) / h
 
-          print*, 'debug:: ', 'istage, vor   bb = ',iStg,bb
+          print*, 'debug:: ', 'istage, vor   bb = ',iStg,bb(1:5)
         END IF
 
       END IF
@@ -571,7 +571,7 @@ MODULE Rosenbrock_Mod
           k( 1:nspc , iStg ) = Y0(:nspc) * bb(neq+1:nsr)
           IF ( combustion ) k(nDIM,iStg) = bb(nDIM)
           
-          print*, 'debug:: ', 'istage, nach  bb = ',iStg,bb
+          print*, 'debug:: ', 'istage, nach  bb = ',iStg,bb(1:5)
           
         END IF
         !print*, 'debug:: ', 'istage=',iStg,SUM(ABS(fRhs(:)))
@@ -596,8 +596,6 @@ MODULE Rosenbrock_Mod
 
     END DO  LOOP_n_STAGES
 
-    !CALL MPI_BARRIER(MPI_COMM_WORLD,MPIErr)
-    !stop 'rosenbrockmod'
     
     !--- Update Concentrations (Temperatur)
     DO jStg = 1 , RCo%nStage
@@ -605,9 +603,9 @@ MODULE Rosenbrock_Mod
       Yhat(:) = Yhat(:) + RCo%me(jStg) * k(:,jStg)! embedded formula for err calc ord-1
     END DO
     !
-    !do istg=1,ndim
-    !  print*,'debug::   y0  yn  yh  k ', Y0(istg),Ynew(isTg),yHat(istg) , k(istg,:)
-    !end do
+    do istg=1,ndim
+      print*,'debug::   y0  yn    ', Y0(istg),Ynew(iStg)
+    end do
     !***********************************************************************************************
     !   _____                           _____       _    _                    __               
     !  | ____| _ __  _ __  ___   _ __  | ____| ___ | |_ (_) _ __ ___    __ _ | |_  (_)  ___   _ __  
@@ -618,5 +616,7 @@ MODULE Rosenbrock_Mod
     !***********************************************************************************************
     CALL ERROR( err , errind , Ynew , Yhat , Y0 , ATolAll , RTolROW , t )
     !
+    CALL MPI_BARRIER(MPI_COMM_WORLD,MPIErr)
+    stop 'rosenbrockmod'
   END SUBROUTINE Rosenbrock
 END MODULE Rosenbrock_Mod
