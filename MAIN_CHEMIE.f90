@@ -29,7 +29,6 @@ PROGRAM Main_ChemKin
   CHARACTER(80)   :: constH   = ''
   REAL(RealKind)  :: h 
   REAL(RealKind), PARAMETER     :: HR=3600.0d0
-  REAL(RealKind), ALLOCATABLE   :: X0(:)
   INTEGER         :: i_error, linc, STAT
   !
   ! use other ROS methode or tolerance
@@ -42,62 +41,65 @@ PROGRAM Main_ChemKin
   REAL(RealKind)  :: tmpMW0
   INTEGER         :: tmpPos    
 
+  ! convertion from mole to mass to conc
+  REAL(RealKind), ALLOCATABLE   :: MoleFrac(:)
+  REAL(RealKind), ALLOCATABLE   :: MassFrac(:)
   !
   !================================================================
   !===                     MAIN Programm
   !================================================================
-  !
+
   !----------------------------------------------------------------
   ! ---  Initialize MPI library 
   CALL StartMPI()
-  !
+
   !----------------------------------------------------------------
   ! --- Print the program logo  
   CALL Logo()
-  !
+
   !----------------------------------------------------------------
   ! --- Read run control parameters (which runfile)
-  CALL getarg(1,FileName0)             
-  IF (FileName0=='')   THEN
+  CALL getarg( 1 , FileName0 )             
+  IF ( FileName0 == '' ) THEN
     WRITE(*,*) 'Input RUNFilename:'
     READ(*,*)   FileName0
   END IF
-  FileName0=TRIM(ADJUSTL(FileName0))
-  !
-  !
-  !
+  FileName0 = TRIM(ADJUSTL(FileName0))
+
   !================================================================
   !===                     Initialization
   !================================================================
   !
   !----------------------------------------------------------------
   ! --- Read run-file
-  CALL InitRun(FileName0)
-  IF (MPI_ID==0) WRITE(*,*) '  Initialize run-file .......... done'
+  CALL InitRun( FileName0 )
+  IF ( MPI_ID == 0 ) WRITE(*,*) '  Initialize run-file .......... done'
   !
   !----------------------------------------------------------------
   ! --- Initialize all reaction types
   CALL InitNReacType()
   !
-  Tspan=(/tAnf , tEnd/)
-  !
+  Tspan = (/ tAnf , tEnd /)
+ 
   !----------------------------------------------------------------
   ! --- set cloud intervall
-  LWCBounds(1)=0.0d0*HR
-  LWCBounds(2)=LWCBounds(1) + 1.d0*HR
-  LWCBounds(3)=LWCBounds(2) + 0.25d0*HR
-  LWCBounds(4)=LWCBounds(3) + 9.5d0*HR
-  LWCBounds(5)=LWCBounds(4) + 0.25d0*HR
-  LWCBounds(6)=LWCBounds(5) + 1.d0*HR
+  LWCBounds(1) = tAnf * HR
+  LWCBounds(2) = LWCBounds(1) + 1.00d0  * HR
+  LWCBounds(3) = LWCBounds(2) + 0.25d0  * HR
+  LWCBounds(4) = LWCBounds(3) + 9.50d0  * HR
+  LWCBounds(5) = LWCBounds(4) + 0.25d0  * HR
+  LWCBounds(6) = LWCBounds(5) + 1.00d0  * HR
+
   !----------------------------------------------------------------
   !  --- read the .sys data, save coefs in sparse matrix
-  Time_Read=MPI_WTIME()
-  OPEN(UNIT=89,FILE=ADJUSTL(TRIM(ChemFile))//'.chem',STATUS='UNKNOWN')
-  IF (MPI_ID==0) WRITE(*,'(A38)',ADVANCE='NO') '  Read sys-file ................ done'
-  IF (ChemFile(1:2)=='ck') THEN
-    ! *)
-    IF (MPI_ID==0) WRITE(*,*) ' ---->  Solve Gas Energy Equation '
-    combustion=.TRUE.
+  Time_Read = MPI_WTIME()
+  OPEN ( UNIT=89 , FILE=ADJUSTL(TRIM(ChemFile))//'.chem' , STATUS='UNKNOWN' )
+  IF ( MPI_ID == 0 ) WRITE( * , '(A38)' , ADVANCE='NO' ) '  Read sys-file ................     '
+
+  IF ( ChemFile(1:2) == 'ck' ) THEN
+    
+    IF ( MPI_ID == 0 ) WRITE(*,*) ' ---->  Solve Gas Energy Equation '
+    combustion  = .TRUE.
     CALL Read_Elements    ( ChemFile    , 969 )
     CALL Read_Species     ( ChemFile    , 969 )
     CALL Read_Reaction    ( ChemFile    , 969 )
@@ -121,24 +123,28 @@ PROGRAM Main_ChemKin
       tmpPos  = PositionSpeciesAll( tmpChar0 )
       IF ( tmpPos > 0 ) MW(tmpPos) = REAL( tmpMW0 , RealKind )
     END DO
+
     rMW(:) = ONE / MW(:)
+
     CLOSE ( 998 )
     !
     !
     !ALLOCATE(InitValAct(ntGas),y_e(ntGas))
-    ALLOCATE( X0(ntGas) , InitValAct(ntGas) , y_e(ntGas) )
+    ALLOCATE( MoleFrac(ntGas)   , MassFrac(ntGas) )
+    ALLOCATE( InitValAct(ntGas) , y_e(ntGas) )
     ALLOCATE( InitValKat(ntKat) )
-    X0          = ZERO           ! mole fraction 
-    InitValAct  = ZERO   ! mol/m3 
+    MoleFrac    = ZERO           ! mole fraction 
+    MassFrac    = ZERO           ! mole fraction 
+    InitValAct  = ZERO           ! mol/m3 
 
-    CALL Read_GASini    ( InitFile , X0 , InitValKat )
+    Press = 2.0d+5               ! initial pressure
+
+    CALL Read_GASini    ( InitFile , MoleFrac , InitValKat )
     CALL Read_EMISS     ( InitFile , y_e )
     CALL GetSpeciesNames( ChemFile , y_name )
-    !CALL MassFr_to_MoleFr(InitValAct,X0)
-    !CALL MoleFr_to_MassFr(InitValAct,X0)
-    !
-    CALL MoleFr_to_MoleVol( InitValAct , X0 , 2.0d0 )
-    !
+
+    CALL MoleFr_To_Conc( InitValAct , MoleFrac , 750.0d0 )
+
     !--- richtigen index holen, da TB unsortiert eingelesen
     DO i = 1 , neq
       IF (ALLOCATED(ReactionSystem(i)%TB)) THEN
@@ -152,17 +158,19 @@ PROGRAM Main_ChemKin
   ELSE
     IF ( MPI_ID==0 ) WRITE(*,*) ' ---->  Fix Temperature'
     CALL ReadSystem( ChemFile )
-    !   
+  
     !----------------------------------------------------------------
     ! ---  build the coeficient matrices and write .chem
     CALL PrintHeadSpecies ( ChemFile      , 89 )
-    CALL PrintSpecies     ( ListGas2      , 89 )
-    CALL PrintSpecies     ( ListAqua2     , 89 )
-    CALL PrintSpecies     ( ListSolid2    , 89 ) 
-    CALL PrintSpecies     ( ListPartic2   , 89 )
-    CALL PrintSpecies     ( ListNonReac2  , 89 )
+
+    IF ( ntGas    > 0 ) CALL PrintSpecies( ListGas2      , 89 )
+    IF ( ntAqua   > 0 ) CALL PrintSpecies( ListAqua2     , 89 )
+    IF ( ntSolid  > 0 ) CALL PrintSpecies( ListSolid2    , 89 ) 
+    IF ( ntPart   > 0 ) CALL PrintSpecies( ListPartic2   , 89 )
+    IF ( ntKat    > 0 ) CALL PrintSpecies( ListNonReac2  , 89 )
+
     CALL PrintHeadReactions( 89 )
-    ! 
+   
     !----------------------------------------------------------------
     ! --- Build the reaction system
     CALL AllListsToArray  ( ReactionSystem     &
@@ -175,11 +183,10 @@ PROGRAM Main_ChemKin
     ! --- print reactions and build A, B and (B-A) structure
     CALL PrintReactions   ( ReactionSystem , 89 )
     CALL PrintFinalReactions( 89 )
-    !
+
     !----------------------------------------------------------------
     ! --- Input of initial data and thermodynamic properties
     CALL InputChemicalData( InitFile , DataFile , MetFile )
-    ! 
   END IF
   CLOSE(89)
 
