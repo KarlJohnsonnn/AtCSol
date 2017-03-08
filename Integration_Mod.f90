@@ -70,6 +70,7 @@ MODULE Integration_Mod
     ! 
     REAL(RealKind) :: y0(nDIM)
     REAL(RealKind) :: y(nDIM)       ! current y vector
+    REAL(RealKind) :: Y_mol(nspc)       ! current y vector
     !
     REAL(RealKind) :: t             ! current time
     REAL(RealKind) :: Rate(neq) , dummyrate(neq)    ! rate vector
@@ -110,13 +111,13 @@ MODULE Integration_Mod
       !--- malloc gibbs energy, derivates
       ALLOCATE(GFE(nspc),DGFEdT(nspc))
       ALLOCATE(DelGFE(neq),DDelGFEdT(neq))
-      GFE        = ZERO
-      DGFEdT     = ZERO
-      DelGFE     = ZERO
-      DDelGFEdT  = ZERO
-      SCpress    = 2.0d05                 ! erc_nheptane case 1 from speedchem
+      GFE        =  ZERO
+      DGFEdT     =  ZERO
+      DelGFE     =  ZERO
+      DDelGFEdT  =  ZERO
+      SCpress    =  2.0d05                 ! erc_nheptane case 1 from speedchem
       CALL rhoY( y0(1:nspc) , y0(nDIM) )  ! Initialising reactor density
-      print*, 'DEBUG::INTEGRmod  initstuff    ', SCrho, SCpress, y0(nDIM)
+      print*, 'DEBUG::INTEGRmod  scrho,scp,temp0    ', SCrho, SCpress, y0(nDIM)
     END IF
     !
     !
