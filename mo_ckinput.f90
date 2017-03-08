@@ -11,7 +11,7 @@ MODULE mo_ckinput
   !
   USE mo_reac,     ONLY: ntGas, ntAqua, ntSolid, ntPart, ntKat, neq, nspc, nReak&
   &                    , nreakgas,  nreakgconst, nreakgphoto, nreakgspec    &
-  &                    , nreakgtemp, nreakgtroe, nDIM, SCpress, SCrho       &
+  &                    , nreakgtemp, nreakgtroe, nDIM, Press, rho           &
   &                    , lowA,lowB,lowC,lowD,lowE,lowF,lowG                 &
   &                    , highA,highB,highC,highD,highE,highF,highG
   USE mo_control,  ONLY: Rcal
@@ -782,42 +782,63 @@ CONTAINS
   !    **    Computing molar volumes   based on mole fractions      **
   !    **                                             (SpeedCHEM)   **   
   !    ***************************************************************
-  SUBROUTINE MoleFr_to_MoleVol(MoMa,MoF,rho0)
+  SUBROUTINE MoleFr_To_Conc(Conc,Mole,T)
     !OUT
-    REAL(RealKind), ALLOCATABLE :: MoMa(:)
+    REAL(RealKind), ALLOCATABLE :: Conc(:)
     !IN
-    REAL(RealKind), INTENT(IN)  :: MoF(:)     ! Mole fraction 
-    REAL(RealKind), INTENT(IN)  :: rho0
+    REAL(RealKind), INTENT(IN)  :: Mole(:)     ! Mole fraction 
+    REAL(RealKind), INTENT(IN)  :: T
     !TEMP
-    REAL(RealKind) :: avgMW
-    INTEGER :: scPermutation(nspc)
+    REAL(RealKind) :: rT
     !
-    !--- Computing mole mass in [mol/m3] 
+    ! Reciprocal of temperature [1/K]
+    rT = ONE/T
+
+    Conc = micro * Press * rR * rT * Mole / SUM( Mole )
+
+  END SUBROUTINE MoleFr_To_Conc
+  !
+  !
+  !    ***************************************************************
+  !    **                                                           **
+  !    **    Computing concentration based on mass fractions        **
+  !    **                                             (SpeedCHEM)   **   
+  !    ***************************************************************
+  SUBROUTINE MassFr_To_Conc(Conc,Mass,T)
+    !OUT
+    REAL(RealKind), ALLOCATABLE :: Conc(:)     ! Concentration  [mol/cm3]
+    !IN
+    REAL(RealKind), INTENT(IN)  :: Mass(:)     ! Mass fraction  [g/g]
+    REAL(RealKind), INTENT(IN)  :: T
+    !TEMP
+    REAL(RealKind) :: rT
     !
-    !         1e3    [g/g]  1/[g/mol]  [kg/m3]
-    !
-    MoMa(:) = kilo * MoF(:) * rMW(:) * rho0
-  END SUBROUTINE MoleFr_to_MoleVol
+    ! Reciprocal of temperature [1/K]
+    rT = ONE/T
+
+    ! Concentration in mole units [mol/m3]
+    Conc  = Press * rR * rT * (Mass*rMW) / SUM( Mass*rMW )
+
+  END SUBROUTINE MassFr_To_Conc
   !
   !    ***************************************************************
   !    **                                                           **
   !    **    Computing mass fractions based on mole fractions      **
   !    **                                             (SpeedCHEM)   **   
   !    ***************************************************************
-  SUBROUTINE MoleFr_to_MassFr(MaF,MoF)
+  SUBROUTINE MoleFr_to_MassFr(Mass,Mole)
     !OUT
-    REAL(RealKind), ALLOCATABLE :: MaF(:)
+    REAL(RealKind), ALLOCATABLE :: Mass(:)  ! Mass fraction [g/g]
     !IN
-    REAL(RealKind), INTENT(IN)  :: MoF(:)     ! Mass fraction 
+    REAL(RealKind), INTENT(IN)  :: Mole(:)  ! Mole fraction  [mol/mol]
     !TEMP
     REAL(RealKind) :: avgMW
-    INTEGER :: scPermutation(nspc)
     !
     !--- Computing average mixture molecular weight [g/mol]
-    avgMW=SUM(MoF(:)*MW(:)) 
+    avgMW = SUM( Mole * MW )  
     !
-    !--- Computing mass fractions
-    MaF(:)=MW(:)*MoF(:)/avgMW
+    !--- Computing mass fractions [g/g]
+    Mass  = MW * Mole / avgMW
   END SUBROUTINE MoleFr_to_MassFr
   !
   !    ***************************************************************
@@ -825,19 +846,19 @@ CONTAINS
   !    **     Computing mole fractions based on mass fractions      **
   !    **                                             (SpeedCHEM)   **   
   !    ***************************************************************
-  SUBROUTINE MassFr_to_MoleFr(MoF,MaF)
+  SUBROUTINE MassFr_to_MoleFr(Mole,Mass)
     !OUT
-    REAL(RealKind), ALLOCATABLE :: MoF(:)
+    REAL(RealKind), ALLOCATABLE :: Mole(:)
     !IN
-    REAL(RealKind), INTENT(IN)  :: MaF(:)     ! Mass fraction 
+    REAL(RealKind), INTENT(IN)  :: Mass(:)     ! Mass fraction 
     !TEMP
     REAL(RealKind) :: ravgMW
     !
     !--- Computing reciprocal of average mixture molecular weight [g/mol]
-    ravgMW=ONE/SUM(MaF(:)*rMW(:)) 
+    ravgMW = ONE / SUM( Mass * rMW ) 
     !
-    !--- Computing mole fractions
-    MoF(:)=rMW(:)*MaF(:)*ravgMW
+    !--- Computing mole fractions [mol/mol]
+    Mole   = rMW * Mass * ravgMW
   END SUBROUTINE MassFr_to_MoleFr
   !
   !
@@ -846,17 +867,46 @@ CONTAINS
   !    **         Computing average mixture density [kg/m^3]       **
   !    **                                            (SpeedCHEM)   **
   !    **************************************************************
-  SUBROUTINE rhoY(Conc,T0)
-    REAL(RealKind), INTENT(IN) :: Conc(:)
-    REAL(RealKind), INTENT(IN) :: T0
+  SUBROUTINE rhoY(rho,Conc,T)
+    !IN
+    REAL(RealKind), INTENT(IN) :: Conc(:)   ! in [mol/m3]
+    REAL(RealKind), INTENT(IN) :: T         ! in [K]
+    !OUT
+    REAL(RealKind) :: rho
     !
-    !--- Density value [kg/m3] !NB: pressure SCP must be initialised!
-    !                    =1/R   =1/T    
-    !SCrho=milli*SCpress*rR*(ONE/T0)*SUM(Conc/SUM(Conc*rMW))
-
-    SCrho=milli*SCpress*rR*(ONE/T0)*SUM(Conc/SUM(Conc))
+    !--- Density value [kg/m3]
+    rho = kilo * SUM( Conc * MW ) 
   END SUBROUTINE rhoY
   !
+  !
+  !    **************************************************************
+  !    **                                                          **
+  !    **          Computing average reactor pressure [Pa]         **
+  !    **                                            (SpeedCHEM)   **
+  !    **************************************************************
+  SUBROUTINE pressureHOT(pressure,Conc,T) 
+  !IN
+  REAL(RealKind), INTENT(IN) :: Conc(:)
+  REAL(RealKind), INTENT(IN) :: T
+  !OUT
+  REAL(RealKind) :: pressure
+  
+  pressure  = SUM( Conc ) * T * R 
+ 
+  END SUBROUTINE pressureHOT
+  !
+  !
+  !is the mass average mixture specific  heat at constant volume,
+  SUBROUTINE MassAveMixSpecHeat(cv,Conc,dUdT)
+    !IN
+    REAL(RealKind) :: Conc(:)
+    REAL(RealKind) :: dUdT(:)
+    !OUT
+    REAL(RealKind) :: cv
+
+    cv = R * SUM( Conc * dUdT)
+  END SUBROUTINE MassAveMixSpecHeat
+  ! 
   !
   SUBROUTINE GetConstantType(idxM,idxM2,String,ConstType,Factor)
     INTEGER, INTENT(OUT) :: idxM,idxM2

@@ -85,7 +85,7 @@
         !print*, 'DEBUG::RATES      Temperatur =',y_conc(nDIM)
         cnt=1
         !--- Species concentrations [mol/cm3]
-        dCtot_dY(:)    = milli * SCrho * rMW(:)
+        dCtot_dY(:)    = milli * rho * rMW(:)
         y_conc(1:nspc) = dCtot_dY(:) * y_in(1:nspc) 
         y_conc(nDIM)   = y_in(nDIM) 
         !
@@ -989,55 +989,6 @@
       D2UmoldT2=D2UmoldT2*R
     END SUBROUTINE Diff2SpcInternalEnergy
     !
-    !
-    SUBROUTINE AvgReactorPressure(avgPress,T,Conc)
-      !OUT
-      REAL(RealKind) :: avgPress
-      !IN
-      REAL(RealKind), INTENT(IN) :: T(:)
-      REAL(RealKind), INTENT(IN) :: Conc(:)
-      !
-      !  [Pa]   =  [J/mol/K]   [K]    [mol/m3]
-      avgPress  =  R    *  T(1) * SUM(Conc(:))
-      !
-      !  [Pa]   = [kg/m3]  [J/mol/K]   [K]    [mol/m3]
-      !avgPress  =  SCrho  *  R    *  T(1) * SUM(Conc(:))
-      !
-      !  [Pa]   = 1.e3  [kg/m3]  [J/mol/K]   [K]    [???]
-      !avgPress = kilo * SCrho * R * T(1) * SUM(Conc(:) * rMW(:))
-    END SUBROUTINE AvgReactorPressure
-    !
-    !is the mass average mixture specific  heat at constant volume,
-    SUBROUTINE MassAveMixSpecHeat(cv,T,Conc,DUmoldT)
-      REAL(RealKind) :: cv
-      !
-      REAL(RealKind) :: T(:)
-      REAL(RealKind) :: Conc(:)
-      REAL(RealKind) :: DUmoldT(:)
-      !
-      !
-      !print*, 'DEBUG::rates       ta=',t
-      !print*, 'DEBUG::rates      uMW=',rMW
-      !print*, 'DEBUG::rates       MW=',MW
-      !print*, 'DEBUG::rates  DUmolDT=',DUmoldT
-      !print*, 'DEBUG::rates     conc=',Conc
-      !stop
-      !
-      !--- Mixture averaged mass value [J/kg/K]
-
-      !cv = kilo * R * SUM( Conc * DUmoldT * rMW )
-      !
-
-      cv = R * SUM( Conc * DUmoldT)
-      !print*, 'DEBUG::speedchem     kilo,R,SUM(Y,CvuR,uMW)=',kilo,R, SUM(Conc),SUM(dumoldt),SUM(rMW)
-      !DO i=1,nspc
-      !  WRITE(987,*) conc(scPermutation(i)),MW(scPermutation(i)),rMW(scPermutation(i))
-      !END DO
-      !print*, 'debug     c_v       :: ',c_v
-      !stop
-    END SUBROUTINE MassAveMixSpecHeat
-    !
-    !==========================================================================!
     !===  Special reactions for Gas Phase Chemistry 
     !===  (Check: current%str_type = 'GAS' in ReadChem, nfra=1)
     !==========================================================================!
