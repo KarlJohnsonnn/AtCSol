@@ -98,6 +98,7 @@ MODULE Integration_Mod
     LOGICAL :: failed
     !
     INTEGER :: i_error
+    CHARACTER(14) :: fmt0
     !
     !
     y0(1:nspc)=y_iconc(:)
@@ -115,9 +116,9 @@ MODULE Integration_Mod
       DGFEdT     =  ZERO
       DelGFE     =  ZERO
       DDelGFEdT  =  ZERO
-      SCpress    =  2.0d05                 ! erc_nheptane case 1 from speedchem
-      CALL rhoY( y0(1:nspc) , y0(nDIM) )  ! Initialising reactor density
-      print*, 'DEBUG::INTEGRmod  scrho,scp,temp0    ', SCrho, SCpress, y0(nDIM)
+      Press      =  2.0d05                 ! erc_nheptane case 1 from speedchem
+      CALL rhoY( rho , y0(1:nspc) , y0(nDIM) )  ! Initialising reactor density
+      print*, 'DEBUG::INTEGRmod  scrho,scp,temp0    ', rho, Press, y0(nDIM)
     END IF
     !
     !
@@ -125,9 +126,11 @@ MODULE Integration_Mod
       IF ( Ladebalken==1 ) Bar = .TRUE.
       WRITE(*,*) '  Initial values:   '
       WRITE(*,*)
-      WRITE(*,'(A34,2X,E23.14,A13)')  '      sum initval (gaseous)    = ', SUM(y0(1:ntGas)), '  [molec/cm3] '
-      WRITE(*,'(A34,2X,E23.14,A13)')  '      sum initval (aqueous)    = ', SUM(y0(ntGas+1:nspc)), '  [molec/cm3] '
-      WRITE(*,'(A34,2X,E23.14,A13)')  '      sum emissions (gaseous)  = ', SUM(y_e), '  [molec/cm3] '
+      fmt0 = '  [molec/cm3] '
+      IF ( combustion) fmt0 = '  [mol/m3]    '
+      WRITE(*,'(A34,2X,E23.14,A13)')  '      sum initval (gaseous)    = ', SUM(y0(1:ntGas)),      fmt0
+      WRITE(*,'(A34,2X,E23.14,A13)')  '      sum initval (aqueous)    = ', SUM(y0(ntGas+1:nspc)), fmt0
+      WRITE(*,'(A34,2X,E23.14,A13)')  '      sum emissions (gaseous)  = ', SUM(y_e),              fmt0
       WRITE(*,*)
     END IF
     !
