@@ -101,8 +101,8 @@ MODULE Integration_Mod
     CHARACTER(14) :: fmt0
     !
     !
-    y0(1:nspc)=y_iconc(:)
-    y(1:nspc)=y_iconc(:)
+    y0(1:nspc)  = y_iconc(:)
+    y(1:nspc)   = y_iconc(:)
     !
     IF ( combustion ) THEN
       !--- initial temperature
@@ -116,7 +116,6 @@ MODULE Integration_Mod
       DGFEdT     =  ZERO
       DelGFE     =  ZERO
       DDelGFEdT  =  ZERO
-      Press      =  2.0d05                 ! erc_nheptane case 1 from speedchem
       CALL rhoY( rho , y0(1:nspc) , y0(nDIM) )  ! Initialising reactor density
       print*, 'DEBUG::INTEGRmod  scrho,scp,temp0    ', rho, Press, y0(nDIM)
     END IF
