@@ -566,6 +566,7 @@ CONTAINS
         ! print backreaction
         IF (bR) THEN
           ReactionSystem(iReac+1)%Line2='BackReaction'
+          ReactionSystem(iReac+1)%bR=.TRUE.
         END IF
       END IF ! Reaction => or ( = or <=> )
       !
@@ -886,10 +887,10 @@ CONTAINS
   !    **************************************************************
   SUBROUTINE pressureHOT(pressure,Conc,T) 
   !IN
-  REAL(RealKind), INTENT(IN) :: Conc(:)
-  REAL(RealKind), INTENT(IN) :: T
+  REAL(RealKind), INTENT(IN) :: Conc(:)   ! in [mol/m3] 
+  REAL(RealKind), INTENT(IN) :: T         ! in [K]
   !OUT
-  REAL(RealKind) :: pressure
+  REAL(RealKind) :: pressure              ! in [Pa] 
   
   pressure  = SUM( Conc ) * T * R 
  
@@ -899,12 +900,16 @@ CONTAINS
   !is the mass average mixture specific  heat at constant volume,
   SUBROUTINE MassAveMixSpecHeat(cv,Conc,dUdT)
     !IN
-    REAL(RealKind) :: Conc(:)
-    REAL(RealKind) :: dUdT(:)
+    REAL(RealKind) :: Conc(:)           ! in [mol/m3]
+    REAL(RealKind) :: dUdT(:)           ! in [J/mol/K]
     !OUT
-    REAL(RealKind) :: cv
+    REAL(RealKind) :: cv                ! in [J/kg/K]
+    !TEMP
+    REAL(RealKind) :: ravgConc
 
-    cv = R * SUM( Conc * dUdT)
+    ravgConc = ONE / SUM( Conc * MW )  
+
+    cv = kilo * SUM( Conc * dUdT ) * ravgConc
   END SUBROUTINE MassAveMixSpecHeat
   ! 
   !
