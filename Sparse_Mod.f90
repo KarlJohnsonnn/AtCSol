@@ -1443,7 +1443,7 @@ MODULE Sparse_Mod
       !         |--------------+--------------+------|
       ! miter = |   BAT_Mat    |  Diag_1_nS   |      |
       !         !--------------+--------------+------|
-      !         |_             |    -U^TD_c   |   1 _|
+      !         |_             |    -U^TD_c   |   X _|
       !
       LU%Val(LU%DiagPtr_R(:))=invrVec(:)  
       LU%Val(LU%DiagPtr_C(:))=hyVec(:)  
