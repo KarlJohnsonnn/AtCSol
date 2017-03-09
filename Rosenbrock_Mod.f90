@@ -340,8 +340,8 @@ MODULE Rosenbrock_Mod
     !
     REAL(RealKind), DIMENSION(nDIM,RCo%nStage) :: k     
     REAL(RealKind), DIMENSION(nDIM)            :: Y, Yhat, fRhs
-    !REAL(RealKind), DIMENSION(nspc)            :: Umol, UMat, dUdT, DcDt
-    REAL(RealKind), DIMENSION(nspc)            :: U, UMat, dUdT, DcDt
+    !REAL(RealKind), DIMENSION(nspc)            :: Umol, UMat, dUdT, dCdt
+    REAL(RealKind), DIMENSION(nspc)            :: U, UMat, dUdT, dCdt
     REAL(RealKind), DIMENSION(nDIMex)          :: bb
     !
     REAL(RealKind) :: Tarr(8)
@@ -401,20 +401,26 @@ MODULE Rosenbrock_Mod
     !
     IF ( combustion ) THEN
       !                             OUT:      IN:
-      CALL UpdateTempArray        ( Tarr    , Y0(nDIM) )                      ! Temerature in [K]
-      !
-      ! JANAF polynomials 
-      CALL InternalEnergy         ( U       , Tarr)                           ! U internal energy
-      CALL DiffSpcInternalEnergy  ( dUdT    , Tarr)                           ! derivative of U rep. to Temperature
+      CALL UpdateTempArray        ( Tarr    , Y0(nDIM) )       
+      
+      ! Compute species internal energies in moles [J/mol/K]
+      CALL InternalEnergy         ( U       , Tarr)             
 
-      CALL pressureHOT            ( Press   , Y0(:nspc) , Tarr(1)  )          ! pressure in [Pa]
-
+      ! Specific heat [J/mol/K]
+      CALL DiffSpcInternalEnergy  ( dUdT    , Tarr)              
+      
+      ! Compute system pressure [Pa]
+      CALL pressureHOT            ( Press   , Y0(:nspc) , Tarr(1)  )  
+      
+      ! Average mixture properties, constant volume specific heats [J/kg/K]
       CALL MassAveMixSpecHeat     ( cv      , Y0(:nspc) , dUdT )
 
-      CALL DiffConcDt             ( DcDt    , BAT   , Rate )
-      UMat(:)     = -( U(:)     * Y0(:nspc)  )
-      DRatedT(:)  = DRatedT(:)  * RCo%ga
-      X = ONE + h * RCo%ga * SUM( dUdT(:) * DcDt(:) )
+      ! Computing molar concentration rate of change imposing mass consv. [mol/m3/s]
+      CALL DiffConcDt             ( dCdt    , BAT   , Rate )
+
+      UMat     = - U * Yrh
+      dRatedT  = dRatedT * RCo%ga
+      X = cv/h + RCo%ga * SUM( dUdT * dCdt )
       !
       !
       print*, 'debug     Temparr=  ',Tarr
@@ -423,7 +429,7 @@ MODULE Rosenbrock_Mod
       print*, 'debug         SCP=  ',Press
       print*, 'debug     SUM(Y0)=  ',SUM(Y0(1:nspc))
       print*, 'debug   SUM(Umol)=  ',SUM(U)
-      print*, 'debug   SUM(DcDt)=  ',SUM(DcDt)
+      print*, 'debug   SUM(dCdt)=  ',SUM(dCdt)
       print*, 'debug          X =  ',X
       !
       !stop
@@ -445,7 +451,7 @@ MODULE Rosenbrock_Mod
 
     ELSE !IF ( EXTENDED )
      
-      rRate(:)  = ONE / Rate(:)
+      rRate  = ONE / Rate
       IF ( OrderingStrategie==8 ) THEN
         CALL SetLUvaluesEX  ( LU_Miter  , nspc , neq , rRate      , Yrh       &
         &                   , DRatedT   , U    , X   , LUvalsFix  , LU_Perm   )
@@ -464,7 +470,7 @@ MODULE Rosenbrock_Mod
     WRITE(*,*) 'debug h, t, Temp  :: ', h , t, Y(nDIM)
     WRITE(*,*) '      rate(1:3)   :: ', rate(1:2), SUM(rate)
     !IF(combustion) WRITE(*,*) '   DRatedT(1:3)   :: ', DRatedT(1:3), SUM(DRatedT)
-    WRITE(*,*) '      conc(1:3)   :: ', Y(1:2), SUM(Y)
+    WRITE(*,*) '      conc(1:3)   :: ', Y(1:4), SUM(Y)
     WRITE(*,*) '      sum(Miter)  :: ', SUM(Miter%val)
     WRITE(*,*) '      sum(LU)vor  :: ', SUM(LU_Miter%val)
     WRITE(*,*)
@@ -488,7 +494,6 @@ MODULE Rosenbrock_Mod
     END IF
     TimeFac     = TimeFac + (MPI_WTIME()-timerStart)
     !
-    print*, 'debug:: ', ' neq nsr ndim = ',neq,nsr,nDIMex
 
     !****************************************************************************************
     !   ____    ___ __        __          _____  _                    ____   _               
@@ -507,7 +512,7 @@ MODULE Rosenbrock_Mod
           bb( 1      : neq )          = mONE    ! = -1.0d0
           bb( neq+1  : nsr )          = Y_e(:)  ! emission
           IF ( combustion ) bb(nDIMex)  = ZERO    ! =  0.0d0
-          print*, 'debug:: ', 'istage, vor   bb = ',iStg,bb(1:5)
+          print*, 'debug:: ', 'istage, vor solve   bb = ',iStg,bb(:)
         END IF
 
       ELSE ! iStage > 1 ==> Update time and concentration
@@ -517,6 +522,7 @@ MODULE Rosenbrock_Mod
         DO jStg=1,iStg
           Y = Y + RCo%a(iStg,jStg) * k(:,jStg)
         END DO
+        WRITE(*,*) '      conc(:),summe   :: ',istg, Y(:), SUM(Y(1:4))
         
         ! Update Rates at  (t + SumA*h) , and  (Y + A*)k
         CALL Rates( tt , Y , Rate , DRatedT )
@@ -551,7 +557,7 @@ MODULE Rosenbrock_Mod
           bb( neq+1  : nsr ) = fRhs(:nspc) / h + Y_e(:)
           IF (combustion) bb(nDIMex) = bb(nDIMex) / h
 
-          print*, 'debug:: ', 'istage, vor   bb = ',iStg,bb(1:5)
+          print*, 'debug:: ', 'istage, vor solve   bb = ',iStg,bb(:)
         END IF
 
       END IF
@@ -574,10 +580,9 @@ MODULE Rosenbrock_Mod
           k( 1:nspc , iStg ) = Y0(:nspc) * bb(neq+1:nsr)
           IF ( combustion ) k(nDIM,iStg) = bb(nDIM)
           
-          print*, 'debug:: ', 'istage, nach  bb = ',iStg,bb(1:5)
+          print*, 'debug:: ', 'istage, nach solve  bb = ',iStg,bb(:)
           
         END IF
-        !print*, 'debug:: ', 'istage=',iStg,SUM(ABS(fRhs(:)))
 
       ELSE
 
@@ -621,6 +626,6 @@ MODULE Rosenbrock_Mod
     CALL ERROR( err , errind , Ynew , Yhat , Y0 , ATolAll , RTolROW , t )
     !
     CALL MPI_BARRIER(MPI_COMM_WORLD,MPIErr)
-    stop 'rosenbrockmod'
+    !stop 'rosenbrockmod'
   END SUBROUTINE Rosenbrock
 END MODULE Rosenbrock_Mod
