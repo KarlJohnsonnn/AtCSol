@@ -52,6 +52,7 @@ MODULE Chemsys_Mod
     CHARACTER(LenLine)  :: Line1           &
     &                    , Line2=''        &  ! Line2 = BackReaction if nessessary
     &                    , Line3=''
+    LOGICAL             :: bR=.FALSE.       ! logical for reverse reaction
     CHARACTER(LenName)  :: Factor
     CHARACTER(2)        :: direction
     REAL(RealKind)      :: SumAqCoef     
@@ -2732,6 +2733,7 @@ MODULE Chemsys_Mod
             ReacStruct(i)%TypeConstant=Current%TypeConstant
             ReacStruct(i)%Line1=Current%Line1
             ReacStruct(i)%Line2='BackReaction'
+            ReacStruct(i)%bR=.TRUE.
             ReacStruct(i)%Line3=Current%Line3
             ReacStruct(i)%Factor=Current%Factor
             !
