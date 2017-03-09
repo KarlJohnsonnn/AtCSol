@@ -44,6 +44,10 @@
 &               ,Error_Est         &
 &               ,ErrorLog          &
 
+!--- REAL : combustion stuff
+&               ,Temperature0      &
+&               ,Pressure0         &
+
 !-----------------------------------------------------------------
 !---  Times
 !-----------------------------------------------------------------
@@ -97,9 +101,10 @@
 !
 !-----------------------------------------------------------------
 !--- NAMELISTS
-      NAMELIST /SCENARIO/  Bsp,                                          &
-&               LwcLevelmin, LwcLevelmax, Ladebalken,  pHSet,            &
-&               constLWC, ErrorLog, MatrixPrint, NetCdfPrint
+      NAMELIST /SCENARIO/  Bsp,                                            &
+&               LwcLevelmin, LwcLevelmax, Ladebalken,  pHSet,              &
+&               constLWC, ErrorLog, MatrixPrint, NetCdfPrint, Temperature0,&
+&               Pressure0
 !
       NAMELIST /FILES/  MetFile, ChemFile, InitFile, DataFile, NetcdfFileName, &
 &               MetUnit, ChemUnit, InitUnit, DataUnit
@@ -139,6 +144,8 @@
       ErrorLog  = 0 
       MatrixPrint = .FALSE.       ! 0 = Print no matrix, 0 /= Print all matrices -> no simulation
       NetCdfPrint = .FALSE.
+      Temperature0= 750.0d0
+      Pressure0   = 2.0d5
 
 !--- Read SCENARIO namelist
       READ(15,SCENARIO)

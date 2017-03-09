@@ -50,6 +50,9 @@ REAL(RealKind) :: tAnf              & ! Model start time
 &               , tEnd              & ! Model end time
 &               , StpNetcdf           ! Time step for Netcdf output
 !
+!--- Initial temperature and pressure for combustion mechanisms
+      REAL(RealKind) :: Temperature0
+      REAL(RealKind) :: Pressure0  
 
 !---  Photolysis
       INTEGER :: iDate               ! Current date
