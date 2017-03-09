@@ -137,13 +137,13 @@ PROGRAM Main_ChemKin
     MassFrac    = ZERO           ! mole fraction 
     InitValAct  = ZERO           ! mol/m3 
 
-    Press = 2.0d+5               ! initial pressure
+    Press = Pressure0               ! initial pressure
 
     CALL Read_GASini    ( InitFile , MoleFrac , InitValKat )
     CALL Read_EMISS     ( InitFile , y_e )
     CALL GetSpeciesNames( ChemFile , y_name )
 
-    CALL MoleFr_To_Conc( InitValAct , MoleFrac , 750.0d0 )
+    CALL MoleFr_To_Conc( InitValAct , MoleFrac , Temperature0 )
 
     !--- richtigen index holen, da TB unsortiert eingelesen
     DO i = 1 , neq

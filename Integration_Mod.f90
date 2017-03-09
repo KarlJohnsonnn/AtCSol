@@ -106,8 +106,8 @@ MODULE Integration_Mod
     !
     IF ( combustion ) THEN
       !--- initial temperature
-      y0(nDIM)      = 750.0d0     ! = 750 [K] aus speedchem debug
-      y(nDIM)       = 750.0d0     ! = 750 [K]
+      y0(nDIM)      = Temperature0     ! = 750 [K] aus speedchem debug
+      y(nDIM)       = Temperature0     ! = 750 [K]
       
       !--- malloc gibbs energy, derivates
       ALLOCATE(GFE(nspc),DGFEdT(nspc))
