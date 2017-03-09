@@ -35,14 +35,14 @@
     !======================================================================!
     !      Calculate the Rates for current concentraions and time
     !======================================================================!
-    SUBROUTINE Rates(Time,y_in,Rate,DRatedT)
+    SUBROUTINE Rates(Time,Y_in,Rate,DRatedT)
       !--------------------------------------------------------------------!
       ! Input: 
       !   - Time
       !   - y_conc
 !     REAL(RealKind), INTENT(IN) :: Time
       REAL(RealKind) :: Time
-      REAL(RealKind), INTENT(IN) :: y_in(nDIM)
+      REAL(RealKind), INTENT(IN) :: Y_in(nDIM)
       !--------------------------------------------------------------------!
       ! Output:
       !   - Rate vector
@@ -54,6 +54,7 @@
       REAL(RealKind) :: chi, actLWC
       REAL(RealKind) :: T(8)
       REAL(RealKind) :: k    ! tmp buffer for reaction const
+      REAL(RealKind) :: Prod, AquaFac
       REAL(RealKind) :: DkdT    ! tmp buffer for reaction const
       REAL(RealKind) :: Meff
       INTEGER :: iReac, ii, j
@@ -64,114 +65,99 @@
       REAL(RealKind) :: q=0.0d0
       !
       ! combustion
-      REAL(RealKind) :: dCtot_dY(nspc)
+      REAL(RealKind) :: ravgConc(nspc)
+      REAL(RealKind) :: Temp_in
       !
       !==================================================================!
-      !===============calc rate for ReactionSystem=======================!
-      !
-      TimeRateA=MPI_WTIME()
-      !
-      Rate=ZERO
-      DRatedT=ZERO
+      !===============calc rates for ReactionSystem======================!
+      !==================================================================!
+     
+      TimeRateA = MPI_WTIME()
+      
+      Rate    = ZERO
+      DRatedT = ZERO
+
       ! --- Compute zenith for photo reactions
-      chi=Zenith(Time)
-      ! 
+      chi     = Zenith(Time)
+     
       ! --- Compute the liquid water content 
-      actLWC=pseudoLWC(Time)
-      !
-      !print*, 'debug:: chi,lwc', chi, actLWC
-      ! --- Update temperature array
+      actLWC  = pseudoLWC(Time)
+      
       IF ( combustion ) THEN
-        !print*, 'DEBUG::RATES      Temperatur =',y_conc(nDIM)
-        cnt=1
-        !--- Species concentrations [mol/cm3]
-        dCtot_dY(:)    = milli * rho * rMW(:)
-        y_conc(1:nspc) = dCtot_dY(:) * y_in(1:nspc) 
-        y_conc(nDIM)   = y_in(nDIM) 
+        
+        Temp_in  = Y_in(nDIM)
+        !IF (.NOT. Temp_in > ZERO) STOP ' Temperatur not > 0 '
+        
+        !--- Concentration
+        y_conc(1:nspc) = Y_in(1:nspc)
+        !--- Temperature
+        y_conc(nDIM)   = Temp_in 
         !
-        CALL UpdateTempArray(T,y_conc(nDIM))
-        CALL GibbsFreeEnergie(GFE,T)
-        CALL CalcDeltaGibbs(DelGFE)
+        CALL UpdateTempArray ( T   , Temp_in )
+        CALL GibbsFreeEnergie( GFE , T )
+        CALL CalcDeltaGibbs  ( DelGFE )
         rFacEq = mega * R * T(1) * rPatm
         !
-        CALL CalcDiffGibbsFreeEnergie(DGFEdT,T)
-        CALL CalcDiffDeltaGibbs(DDelGFEdT)
-          !print*, 'debug::rates      gibbs=',GFE(scpermutation)
-          !print*, 'debug::rates exp(+dG0)=',exp(+delgfe)
+        CALL CalcDiffGibbsFreeEnergie( DGFEdT , T )
+        CALL CalcDiffDeltaGibbs( DDelGFEdT )
+
       ELSE
+
         T(1)=Temp    ! = 280 [K]
-        y_conc(:)=y_in(:)
+        y_conc(:)=Y_in(:)
+
       END IF
-      !
+
+      print*,
       ! --- compute rate of all reactions (gas,henry,aqua,diss)
-      !print*, MPI_ID, '--loc_rateCnt= ',loc_rateCnt
-      !print*, MPI_ID, '--loc_ratePtr= ',loc_ratePtr(:)
-      !print*, 'debugg:: i,        rate(i),          Diffcoefrate(i) '
-      DO ii=1,loc_rateCnt
-        IF (MPI_np>1.AND.ParOrdering>=0) THEN
-          iReac=loc_RatePtr(ii)
+      LOOP_OVER_ALL_REACTIONS: DO ii = 1 , loc_rateCnt
+        
+        ! if more than one processor is used split rate calculation
+        IF ( MPI_np>1 .AND. ParOrdering>=0 )  THEN
+          iReac = loc_RatePtr(ii)
         ELSE
-          iReac=ii
+          iReac = ii
         END IF
-        !
-        ! ================ Multiplication with FACTOR====================
-        CALL EffectiveMolecularity(Meff,y_conc(1:nspc),iReac)
-        !print*, 'DEBUGG ::iR=    me=',iReac,meff
-        !
+       
+        ! ====== Computing effective molecularity 
+        CALL EffectiveMolecularity( Meff , y_conc(1:nspc) , iReac , actLWC )
+        
         ! ====== Compute the rate constant for specific reaction type ===
-        CALL ComputeRateConstant(k,DkdT,T,Time,chi,mAir,iReac,y_conc,Meff)
-        !print*, 'DEBUGG :: k1=',k
-        debRKonst=k
-        !IF(MOD(iReac,2)/=0) print*, 'debug::rates   k=',iReac,k
-        !
-        ! ========= Multiplication with Inactiv (passiv) Educts ===========
-        CALL CheckInactEducts(k,iReac,actLWC)
-        !print*, 'DEBUGG :: k2=',k
-        !
-        ! ===== mult with (LWC^SUM(EductsCoefs)^-1) for correct dim units =============
-        IF (ReactionSystem(iReac)%Type=='DISS'.OR.ReactionSystem(iReac)%Type=='AQUA') THEN
-          CALL AquaDimLWC(k,iReac,actLWC)
-        END IF
-        !print*, 'DEBUGG :: k3=',k
-        !
-        ! === Calc the coefficient for Gas->Aqua or Aqua->Gas Reactions ===
-        IF (ReactionSystem(iReac)%Type=='HENRY') THEN
-          CALL HenryMassTransferCoef(k,T(1),Time,iReac,actLWC)
-        END IF
-        !print*, 'DEBUGG :: k4=',k
-        !
-        ! ======================== Build rate =============================
-        IF      ( ALL(A%Val(A%ColInd(A%RowPtr(iReac):A%RowPtr(iReac+1)-1))==ONE) ) THEN
-          Rate(iReac)=PRODUCT(y_conc(A%ColInd(A%RowPtr(iReac):A%RowPtr(iReac+1)-1)))
-          !
-        !ELSE IF ( ANY(A%Val(A%ColInd(A%RowPtr(iReac):A%RowPtr(iReac+1)-1))==TWO)  THEN
-        !  Rate(iReac)=PRODUCT(y_conc(A%ColInd(A%RowPtr(iReac):A%RowPtr(iReac+1)-1))  &
-        !  &           *ABS(y_conc(A%ColInd(A%RowPtr(iReac):A%RowPtr(iReac+1)-1))))
-        ELSE
-          Rate(iReac)=PRODUCT(y_conc(A%ColInd(A%RowPtr(iReac):A%RowPtr(iReac+1)-1))  &
-          &           **A%Val(A%RowPtr(iReac):A%RowPtr(iReac+1)-1))
-        END IF  
-        !DO j=A%RowPtr(iReac),A%RowPtr(iReac+1)-1
-        !  IF ( A%Val(j)==ONE ) THEN
-        !    k=k*y_conc(A%ColInd(j))
-        !  ELSE IF ( A%Val(j)==TWO ) THEN
-        !    k=k*y_conc(A%ColInd(j))*ABS(y_conc(A%ColInd(j)))
-        !  ELSE
-        !    k=k*y_conc(A%ColInd(j))**A%Val(j)
-        !  END IF  
-        !END DO
-        ! Last step
-        !print*, 'DEBUGG :: k5=',k
-        !print*, 'DEBUG::   i,  k, produkt  =', iReac, k, Rate(iReac), Meff
-        Rate(iReac) = Meff * k * Rate(iReac)
+        CALL ComputeRateConstant( k , DkdT , T , Time , chi , mAir , iReac , y_conc , Meff )
+
+        AQUATIC_REACTIONS: IF ( ntAqua > 0 ) THEN
+          IF      ( ReactionSystem(iReac)%Type == 'DISS' .OR. &
+          &         ReactionSystem(iReac)%Type == 'AQUA' ) THEN
+            ! ===== correct unit of concentrations
+            AquaFac = ONE / ( (actLWC*mol2part)**ReactionSystem(iReac)%SumAqCoef )
+            k       = k * AquaFac
+          ELSE IF ( ReactionSystem(iReac)%Type == 'HENRY' ) THEN
+            !=== Compute Henry mass transfer coefficient
+            CALL MassTransfer( k , T(1) , Time , iReac , actLWC )
+          END IF
+
+        END IF AQUATIC_REACTIONS
+  
+        ! === Calculate the product of concentrations 
+        Prod = ONE
+        DO j=A%RowPtr(iReac),A%RowPtr(iReac+1)-1
+          IF      ( A%Val(j) == ONE ) THEN
+            Prod = Prod * y_conc(A%ColInd(j))
+          ELSE IF ( A%Val(j) == TWO ) THEN
+            Prod = Prod * y_conc(A%ColInd(j))*ABS(y_conc(A%ColInd(j)))
+          ELSE
+            Prod = Prod * y_conc(A%ColInd(j))**A%Val(j)
+          END IF  
+        END DO
+       
+        Rate(iReac) = Meff * k * Prod
         IF (combustion) DRatedT(iReac) = DkdT
-        !IF (MOD(iReac,2)==0) THEN
-        !  q=q+Rate(iReac)
-        !ELSE
-        !  q=q-Rate(iReac)
-        !END IF
-      END DO
-        !print*,'        q = ',q
+        print*, 'DEBUG::   i, Meff,  k,  produkt, Rate  =', iReac, Meff, k, Prod, Rate(iReac)
+
+      END DO LOOP_OVER_ALL_REACTIONS
+      print*,
+      
+
         !stop
       !stop 'rates_mod'
       TimeRateE=MPI_WTIME()
@@ -188,7 +174,7 @@
     !=====================================================================!
     ! === Converts the mass for Henry reactions Gas->Aqua , Aqua->Gas
     !=====================================================================!
-    SUBROUTINE HenryMassTransferCoef(k,Temp,Time,iReac,actLWC)
+    SUBROUTINE MassTransfer(k,Temp,Time,iReac,actLWC)
       REAL(RealKind) :: k
       REAL(RealKind) :: Temp, Time, actLWC
       INTEGER :: iReac
@@ -222,7 +208,7 @@
       ELSE 
         k = kmt / ( k * GasConst_R * Temp)   !()=HenryConst*GasConstant*Temperatur
       END IF
-    END SUBROUTINE HenryMassTransferCoef
+    END SUBROUTINE MassTransfer
     !
     !=======================================================================!
     ! Compute the correct unit dimension for higher order aqueous reactions 
@@ -364,45 +350,22 @@
       REAL(RealKind) :: EquiRate, Backrate
       INTEGER :: iReac
       !
-      IF (ReactionSystem(iReac)%Line2=='BackReaction') THEN
-        ReacConst=BackRate
+      IF ( ReactionSystem(iReac)%bR ) THEN
+        ReacConst = BackRate
       ELSE
-        ReacConst=EquiRate*BackRate
+        ReacConst = EquiRate * BackRate
       END IF
     END SUBROUTINE ReactionDirection   
     !
     !=====================================================================!
-    ! ==  Multiplication with passiv species
-    !========================================================passiv species
-    SUBROUTINE CheckInactEducts(k,iReac,actLWC)
-      REAL(RealKind), INTENT(INOUT) :: k
-      INTEGER, INTENT(IN) :: iReac
-      REAL(RealKind), INTENT(IN) :: actLWC
-      !
-      IF (ReactionSystem(iReac)%nInActEd/=0) THEN
-        SELECT CASE (ReactionSystem(iReac)%InActEductSpc(1))
-          CASE ('[H2O]')
-            k=k*H2O
-          CASE ('[N2]')
-            k=k*N2
-          CASE ('[O2]')
-            k=k*O2
-          CASE ('[aH2O]')
-            k=k*aH2OmolperL*actLWC*mol2part
-          CASE DEFAULT
-            !STOP
-        END SELECT
-      END IF
-    END SUBROUTINE CheckInactEducts
-    !
-    !=====================================================================!
     ! ===  Multiplication with FACTOR
     !=====================================================================!
-    SUBROUTINE EffectiveMolecularity(M,Conc,iReac)
+    SUBROUTINE EffectiveMolecularity(M,Conc,iReac,LWC)
       !OUT
       REAL(RealKind), INTENT(OUT) :: M
       !IN
-      REAL(RealKind), INTENT(IN)    :: Conc(:)
+      REAL(RealKind), INTENT(IN)  :: Conc(:)
+      REAL(RealKind), INTENT(IN)  :: LWC
       INTEGER, INTENT(IN) :: iReac
       !TEMP
       INTEGER :: i
@@ -413,6 +376,7 @@
       !
       !
       IF (ReactionSystem(iReac)%Factor(1:1)=='$') THEN
+
         SELECT CASE (ReactionSystem(iReac)%Factor)
           CASE ('$H2')
             M=((mH2*mair)**fac_exp)*fac_A
@@ -445,6 +409,22 @@
             CALL FinishMPI()
             STOP 'Unknown FACTOR (error at Rate calc)'
         END SELECT
+
+      ELSE IF (ReactionSystem(iReac)%nInActEd/=0) THEN
+
+        SELECT CASE (ReactionSystem(iReac)%InActEductSpc(1))
+          CASE ('[H2O]')
+            M=H2O
+          CASE ('[N2]')
+            M=N2
+          CASE ('[O2]')
+            M=O2
+          CASE ('[aH2O]')
+            M=aH2OmolperL*LWC*mol2part
+          CASE DEFAULT
+            !STOP
+        END SELECT
+
       ELSE 
         M=ONE
       END IF
@@ -938,40 +918,39 @@
     !-------------------------------------------------------------------------
     !---  Species internal energies in moles [J/mol]  
     !-------------------------------------------------------------------------
-    SUBROUTINE InternalEnergy(Umol,T)
+    SUBROUTINE InternalEnergy(U,T)
       !OUT
-      REAL(RealKind) :: Umol(nspc)   
+      REAL(RealKind) :: U(nspc)   
       !IN
       REAL(RealKind) :: T(:)
-      !  
-      !
+      
       WHERE (SwitchTemp>T(1))
-        Umol  = ( (lowA-ONE)*T(1) + rTWO*lowB*T(2) + rTHREE*lowC*T(3)      & 
-        &                + rFOUR*lowD*T(4) + rFIVE*lowE*T(5) + lowF )
+        U  = (  (lowA-ONE)*T(1) + rTWO*lowB*T(2)  + rTHREE*lowC*T(3)    & 
+        &     + rFOUR*lowD*T(4) + rFIVE*lowE*T(5) + lowF )
       ELSEWHERE
-        Umol  = ( (highA-ONE)*T(1) + rTWO*highB*T(2) + rTHREE*highC*T(3)   & 
-        &                + rFOUR*highD*T(4) + rFIVE*highE*T(5) + highF )
+        U  = (  (highA-ONE)*T(1) + rTWO*highB*T(2)  + rTHREE*highC*T(3) & 
+        &     + rFOUR*highD*T(4) + rFIVE*highE*T(5) + highF )
       END WHERE
-      Umol    = Umol * R
+      U    = U * R
     END SUBROUTINE InternalEnergy
     !
     !-----------------------------------------------------------------------
     !--- Derivatives of specific heats at constant volume in moles [J/mol/K]
     !-----------------------------------------------------------------------
-    SUBROUTINE DiffSpcInternalEnergy(DCvdT,T)
+    SUBROUTINE DiffSpcInternalEnergy(dUdT,T)
       !OUT
-      REAL(RealKind) :: DCvdT(nspc)   
+      REAL(RealKind) :: dUdT(nspc)   
       !IN
       REAL(RealKind) :: T(:)                      
       !
       WHERE (SwitchTemp>T(1))
-        DCvdT=(lowA + lowB*T(1) + lowC*T(2)     & 
-        &           + lowD*T(3) + lowE*T(4)) 
+        dUdT  = (lowA + lowB*T(1) + lowC*T(2)     & 
+        &             + lowD*T(3) + lowE*T(4)) 
       ELSEWHERE
-        DCvdT=(highA + highB*T(1) + highC*T(2)  & 
-        &            + highD*T(3) + highE*T(4))  
+        dUdT  = (highA + highB*T(1) + highC*T(2)  & 
+        &              + highD*T(3) + highE*T(4))  
       END WHERE
-      DCvdT=DCvdT-ONE       ! speedchem SCmodule.f ~2618
+      dUdT  = (dUdT - ONE) * R       ! speedchem SCmodule.f ~2618
     END SUBROUTINE DiffSpcInternalEnergy
     !
     !
