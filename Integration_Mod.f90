@@ -116,8 +116,10 @@ MODULE Integration_Mod
       DGFEdT     =  ZERO
       DelGFE     =  ZERO
       DDelGFEdT  =  ZERO
-      CALL rhoY( rho , y0(1:nspc) , y0(nDIM) )  ! Initialising reactor density
+      CALL rhoY( rho , y0(1:nspc) )  ! Initialising reactor density
       print*, 'DEBUG::INTEGRmod  scrho,scp,temp0    ', rho, Press, y0(nDIM)
+      !print*, 'DEBUG:: conc         ', y_iconc(scpermutation)
+      !stop
     END IF
     !
     !
@@ -126,10 +128,13 @@ MODULE Integration_Mod
       WRITE(*,*) '  Initial values:   '
       WRITE(*,*)
       fmt0 = '  [molec/cm3] '
-      IF ( combustion) fmt0 = '  [mol/m3]    '
+      IF ( combustion ) fmt0 = '  [mol/cm3]   '
       WRITE(*,'(A34,2X,E23.14,A13)')  '      sum initval (gaseous)    = ', SUM(y0(1:ntGas)),      fmt0
       WRITE(*,'(A34,2X,E23.14,A13)')  '      sum initval (aqueous)    = ', SUM(y0(ntGas+1:nspc)), fmt0
       WRITE(*,'(A34,2X,E23.14,A13)')  '      sum emissions (gaseous)  = ', SUM(y_e),              fmt0
+      IF ( combustion ) THEN
+        WRITE(*,'(A34,2X,E23.14,A13)') '          Initial Temperature  = ', Temperature0
+      END IF
       WRITE(*,*)
     END IF
     !
