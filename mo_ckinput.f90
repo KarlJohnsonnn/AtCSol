@@ -75,7 +75,7 @@ CONTAINS
     REAL(8)       :: H0_29815R(nspc)
     REAL(8),ALLOCATABLE :: ThermSwitchTemp(:)
     !
-    INTEGER :: i,j,n
+    INTEGER :: i,j,n, cnt
     INTEGER :: idxWhiteSpace
     INTEGER :: ALLOC_ERR
     CHARACTER(18) :: tSpcName
@@ -92,9 +92,11 @@ CONTAINS
     ALLOCATE(ThermSwitchTemp(nspc))
     !
     i=0
+    cnt=0
     DO
       !
       READ(UnitThermo,'(A80)') iLine
+      iLine = ADJUSTL(iLine)
       IF (iLine(1:3)=='END'.OR.iLine(1:3)=='end') EXIT
       !
       IF (THERMO.OR.TRIM(ADJUSTL(iLine))=='thermo'.OR.TRIM(ADJUSTL(iLine))=='THERMO') THEN
@@ -106,19 +108,26 @@ CONTAINS
             ! hier statt inkrem. i speziesnummer suchen
             tSpcName=TRIM(ADJUSTL(tSpcName))
             i=PositionSpeciesGas(tSpcName(1:INDEX(tSpcName,' ')-1))
-            !
-            READ(iLine,1) tSpcName,RefDataCode(i),(Atoms(i,j),    &
-            &             nAtoms(i,j),j=1,4),Phase(i),ta,tb,tc,n
-            idxWhiteSpace=INDEX(tSpcName,' ')
-            !
-            WRITE(Species(i),*) tSpcName(1:idxWhiteSpace-1)
-            WRITE(SpeciesInfo(i),*) tSpcName(idxWhiteSpace:)
-            !
-            TempRange(i,1)=REAL(ta,KIND=RealKind)
-            TempRange(i,2)=REAL(tb,KIND=RealKind)
-            TempRange(i,3)=REAL(tc,KIND=RealKind)
-            ThermSwitchTemp(i)=TempRange(i,3)
-            MolMass(i)=REAL(tc,KIND=RealKind)
+            IF ( i <= 0 ) THEN
+              READ(UnitThermo,'(A80)') iLine
+              READ(UnitThermo,'(A80)') iLine
+              READ(UnitThermo,'(A80)') iLine
+            ELSE
+              cnt=cnt+1
+              !
+              READ(iLine,1) tSpcName,RefDataCode(i),(Atoms(i,j),    &
+              &             nAtoms(i,j),j=1,4),Phase(i),ta,tb,tc,n
+              idxWhiteSpace=INDEX(tSpcName,' ')
+              !
+              WRITE(Species(i),*) tSpcName(1:idxWhiteSpace-1)
+              WRITE(SpeciesInfo(i),*) tSpcName(idxWhiteSpace:)
+              !
+              TempRange(i,1)=REAL(ta,KIND=RealKind)
+              TempRange(i,2)=REAL(tb,KIND=RealKind)
+              TempRange(i,3)=REAL(tc,KIND=RealKind)
+              ThermSwitchTemp(i)=TempRange(i,3)
+              MolMass(i)=REAL(tc,KIND=RealKind)
+            END IF
           CASE ('2')
             READ(iLine,2) ta,tb,tc,td,te,n
             highA(i)=REAL(ta,KIND=RealKind)
@@ -146,6 +155,10 @@ CONTAINS
       END IF
     END DO
     CALL CloseFile(UnitThermo,DatThermo(1:INDEX(DatThermo,'.')-1),'dat')
+    IF ( cnt /= nspc ) THEN
+      WRITE(*,*) '    Some species are missing in thermodynamic data (*.dat)'
+      STOP 'mo_ckinput'
+    END IF
   END SUBROUTINE Read_Thermodata
   !
   !
@@ -868,10 +881,9 @@ CONTAINS
   !    **         Computing average mixture density [kg/m^3]       **
   !    **                                            (SpeedCHEM)   **
   !    **************************************************************
-  SUBROUTINE rhoY(rho,Conc,T)
+  SUBROUTINE rhoY(rho,Conc)
     !IN
-    REAL(RealKind), INTENT(IN) :: Conc(:)   ! in [mol/m3]
-    REAL(RealKind), INTENT(IN) :: T         ! in [K]
+    REAL(RealKind), INTENT(IN) :: Conc(:)   ! in [mol/cm3]
     !OUT
     REAL(RealKind) :: rho
     !
@@ -887,29 +899,29 @@ CONTAINS
   !    **************************************************************
   SUBROUTINE pressureHOT(pressure,Conc,T) 
   !IN
-  REAL(RealKind), INTENT(IN) :: Conc(:)   ! in [mol/m3] 
+  REAL(RealKind), INTENT(IN) :: Conc(:)   ! in [mol/cm3] 
   REAL(RealKind), INTENT(IN) :: T         ! in [K]
   !OUT
   REAL(RealKind) :: pressure              ! in [Pa] 
   
-  pressure  = SUM( Conc ) * T * R 
+  pressure  = mega * SUM( Conc ) * T * R 
  
   END SUBROUTINE pressureHOT
   !
   !
   !is the mass average mixture specific  heat at constant volume,
-  SUBROUTINE MassAveMixSpecHeat(cv,Conc,dUdT)
+  SUBROUTINE MassAveMixSpecHeat(cvmixture,Conc,dUdT)
     !IN
-    REAL(RealKind) :: Conc(:)           ! in [mol/m3]
+    REAL(RealKind) :: Conc(:)           ! in [mol/cm3]
     REAL(RealKind) :: dUdT(:)           ! in [J/mol/K]
     !OUT
-    REAL(RealKind) :: cv                ! in [J/kg/K]
+    REAL(RealKind) :: cvmixture         ! in [J/kg/K]
     !TEMP
     REAL(RealKind) :: ravgConc
 
-    ravgConc = ONE / SUM( Conc * MW )  
+    ravgConc  = ONE / SUM( Conc * MW )  
 
-    cv = kilo * SUM( Conc * dUdT ) * ravgConc
+    cvmixture = kilo * R * SUM( Conc * dUdT ) * ravgConc
   END SUBROUTINE MassAveMixSpecHeat
   ! 
   !
