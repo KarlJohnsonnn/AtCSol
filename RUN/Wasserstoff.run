@@ -8,6 +8,8 @@
   ErrorLog    = 0
   matrixPrint = .false.  
   NetCdfPrint = .false.
+  Temperature0= 300.0d0
+  Pressure0   = 2.0d+5
  /END
  &FILES
   ChemFile = 'ckCHEM/Wasserstoff/Wasserstoff'
@@ -18,13 +20,13 @@
   tAnf    = 0.0d0
   tEnd    = 1.0d+03
   Dust    = 0.5d0
-  minStp  = 1.0d-25
-  maxStp  = 25.d0
+  minStp  = 1.0d-45
+  maxStp  = 1.0d-1
 /END
  &NUMERICS
   RtolROW   = 1.0d-4
-  AtolGas   = 1.0d-5
-  AtolTemp  = 1.0d-5
+  AtolGas   = 1.0d-15
+  AtolTemp  = 1.0d-1
   Error_Est = 2
   solveLA   = 'ex'  
   ImpEuler  = 0
