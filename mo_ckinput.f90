@@ -80,79 +80,102 @@ CONTAINS
     INTEGER :: ALLOC_ERR
     CHARACTER(18) :: tSpcName
     LOGICAL :: THERMO=.FALSE.
+
+    REAL(RealKind) :: thin1, thin2, thin3
+    REAL(RealKind) :: ThermoIntervall(3)
+
+
+    CHARACTER(1) :: rNumber='-'
+    CHARACTER(4) :: dstr='----'
     !
     ! FORMATS
     1 FORMAT(A18,A6,4(A2,I3),A1,2F10.3,F13.7,A1,I1) 
-    2 FORMAT(5E15.8,I1)
+    2 FORMAT(5(E15.8),I1)
+    4 FORMAT(4(E15.8),I1)
     !
     !
     CALL OpenFile(UnitThermo,DatThermo(1:INDEX(DatThermo,'.')-1),'dat')
     ALLOCATE(lowA(nspc),lowB(nspc),lowC(nspc),lowD(nspc),lowE(nspc),lowF(nspc),lowG(nspc),STAT=ALLOC_ERR)
     ALLOCATE(highA(nspc),highB(nspc),highC(nspc),highD(nspc),highE(nspc),highF(nspc),highG(nspc),STAT=ALLOC_ERR)
     ALLOCATE(ThermSwitchTemp(nspc))
+    REWIND(UnitThermo)
     !
     i=0
     cnt=0
+    ! find thermo and read 3 temp values
+    DO
+      READ(UnitThermo,*) iLine
+      IF ( MAXVAL(INDEX(iLine,(/'THERMO','thermo'/))) > 0 ) THEN
+        READ(UnitThermo,*) thin1, thin2, thin3
+        ThermoIntervall(1)  = REAL(thin1,RealKind)
+        ThermoIntervall(2)  = REAL(thin2,RealKind)
+        ThermoIntervall(3)  = REAL(thin3,RealKind)
+        EXIT
+      END IF
+    END DO
+
     DO
       !
       READ(UnitThermo,'(A80)') iLine
-      iLine = ADJUSTL(iLine)
-      IF (iLine(1:3)=='END'.OR.iLine(1:3)=='end') EXIT
-      !
-      IF (THERMO.OR.TRIM(ADJUSTL(iLine))=='thermo'.OR.TRIM(ADJUSTL(iLine))=='THERMO') THEN
-        IF (.NOT.THERMO) THERMO=.TRUE.
-        SELECT CASE (iLine(80:80))
-          CASE ('1')
-            !i=i+1
-            READ(iLine,1) tSpcName
-            ! hier statt inkrem. i speziesnummer suchen
-            tSpcName=TRIM(ADJUSTL(tSpcName))
-            i=PositionSpeciesGas(tSpcName(1:INDEX(tSpcName,' ')-1))
-            IF ( i <= 0 ) THEN
-              READ(UnitThermo,'(A80)') iLine
-              READ(UnitThermo,'(A80)') iLine
-              READ(UnitThermo,'(A80)') iLine
-            ELSE
-              cnt=cnt+1
-              !
-              READ(iLine,1) tSpcName,RefDataCode(i),(Atoms(i,j),    &
-              &             nAtoms(i,j),j=1,4),Phase(i),ta,tb,tc,n
-              idxWhiteSpace=INDEX(tSpcName,' ')
-              !
-              WRITE(Species(i),*) tSpcName(1:idxWhiteSpace-1)
-              WRITE(SpeciesInfo(i),*) tSpcName(idxWhiteSpace:)
-              !
-              TempRange(i,1)=REAL(ta,KIND=RealKind)
-              TempRange(i,2)=REAL(tb,KIND=RealKind)
-              TempRange(i,3)=REAL(tc,KIND=RealKind)
-              ThermSwitchTemp(i)=TempRange(i,3)
-              MolMass(i)=REAL(tc,KIND=RealKind)
-            END IF
-          CASE ('2')
-            READ(iLine,2) ta,tb,tc,td,te,n
-            highA(i)=REAL(ta,KIND=RealKind)
-            highB(i)=REAL(tb,KIND=RealKind)
-            highC(i)=REAL(tc,KIND=RealKind)
-            highD(i)=REAL(td,KIND=RealKind)
-            highE(i)=REAL(te,KIND=RealKind)
-          CASE ('3')
-            READ(iLine,2) tf,tg,ta,tb,tc,n
-            highF(i)=REAL(tf,KIND=RealKind)
-            highG(i)=REAL(tg,KIND=RealKind)
-            lowA(i)=REAL(ta,KIND=RealKind)
-            lowB(i)=REAL(tb,KIND=RealKind)
-            lowC(i)=REAL(tc,KIND=RealKind)
-          CASE ('4')
-            READ(iLine,2) td,te,tf,tg,ta,n
-            lowD(i)=REAL(td,KIND=RealKind)
-            lowE(i)=REAL(te,KIND=RealKind)
-            lowF(i)=REAL(tf,KIND=RealKind)
-            lowG(i)=REAL(tg,KIND=RealKind)
-            H0_29815R(i)=REAL(ta,KIND=RealKind)
-          CASE DEFAULT
-            CONTINUE
-        END SELECT
+      iLine = ADJUSTR(iLine)
+
+      rNumber = '-'
+      IF ( SCAN(iLine(80:80),'1234') > 0 ) THEN
+        rNumber = iLine(80:80)
       END IF
+
+      IF ( MAXVAL(INDEX(iLine,(/'END','end'/))) > 0 ) EXIT
+      !
+      SELECT CASE (rNumber)
+        CASE ('1')
+          READ(iLine,1) tSpcName
+          i=PositionSpeciesAll(tSpcName(1:INDEX(tSpcName,' ')-1))
+
+         IF ( i <= 0 ) THEN
+           READ(UnitThermo,*) iLine
+           READ(UnitThermo,*) iLine
+           READ(UnitThermo,*) iLine
+         ELSE
+           cnt=cnt+1
+           !
+           READ(iLine,1) tSpcName,RefDataCode(i),(Atoms(i,j),  &
+           &       nAtoms(i,j),j=1,4),Phase(i),ta,tb,tc,n
+           idxWhiteSpace=INDEX(tSpcName,' ')
+           !
+           WRITE(Species(i),*) tSpcName(1:idxWhiteSpace-1)
+           WRITE(SpeciesInfo(i),*) tSpcName(idxWhiteSpace:)
+           !
+           TempRange(i,1)=REAL(ta,KIND=RealKind)
+           TempRange(i,2)=REAL(tb,KIND=RealKind)
+           TempRange(i,3)=REAL(tc,KIND=RealKind)
+           ThermSwitchTemp(i)=TempRange(i,3)
+           MolMass(i)=REAL(tc,KIND=RealKind)
+         END IF
+       CASE ('2')
+         READ(iLine,2) ta,tb,tc,td,te,n
+         highA(i)=REAL(ta,KIND=RealKind)
+         highB(i)=REAL(tb,KIND=RealKind)
+         highC(i)=REAL(tc,KIND=RealKind)
+         highD(i)=REAL(td,KIND=RealKind)
+         highE(i)=REAL(te,KIND=RealKind)
+       CASE ('3')
+         READ(iLine,2) tf,tg,ta,tb,tc,n
+         highF(i)=REAL(tf,KIND=RealKind)
+         highG(i)=REAL(tg,KIND=RealKind)
+         lowA(i)=REAL(ta,KIND=RealKind)
+         lowB(i)=REAL(tb,KIND=RealKind)
+         lowC(i)=REAL(tc,KIND=RealKind)
+       CASE ('4')
+        !READ(iLine,4) td,te,tf,tg,ta,n
+        READ(iLine,4) td,te,tf,tg,n
+        lowD(i)=REAL(td,KIND=RealKind)
+        lowE(i)=REAL(te,KIND=RealKind)
+        lowF(i)=REAL(tf,KIND=RealKind)
+        lowG(i)=REAL(tg,KIND=RealKind)
+       ! H0_29815R(i)=REAL(ta,KIND=RealKind)
+       CASE DEFAULT
+        CONTINUE
+      END SELECT
     END DO
     CALL CloseFile(UnitThermo,DatThermo(1:INDEX(DatThermo,'.')-1),'dat')
     IF ( cnt /= nspc ) THEN
@@ -201,6 +224,7 @@ CONTAINS
       END IF
     END DO
     CALL CloseFile(UnitReac,DataReac(1:LEN(DataReac)-4),'sys')
+
   END SUBROUTINE Read_Elements
   !
   !
