@@ -1405,12 +1405,6 @@ MODULE Sparse_Mod
       EX%Val(EX%RowPtr(mBig):EX%RowPtr(mBig+1)-1)     = -99.d0
       EX%RowVectorPtr(:) = [( i , i = BAT%n+1 , BAT%n+A%n+1 )]
 
-      !EX%ColInd(EX%RowPtr(mBig):EX%RowPtr(mBig+1)-1)=tmpColInd(:)
-      !EX%Val(EX%RowPtr(mBig):EX%RowPtr(mBig+1)-2)     = ONE
-      !EX%Val(EX%RowPtr(mBig+1)-1)                     = ONE
-      !ALLOCATE(tmpColInd(A%n+1))
-      !FORALL( i=1:A%n+1 )  tmpColInd(i)=BAT%n+i
-      !EX%RowVectorPtr(:)=tmpColInd(1:A%n)
     END IF
     !call printsparse(EX , '*')
   !
@@ -1447,14 +1441,16 @@ MODULE Sparse_Mod
       !
       LU%Val(LU%DiagPtr_R(:))=invrVec(:)  
       LU%Val(LU%DiagPtr_C(:))=hyVec(:)  
-      LU%Val(LU%ColVectorPtr(:))=KVec(:)
-      LU%Val(LU%RowVectorPtr(:))=UVec(:)  
+      LU%Val(LU%ColVectorPtr(:))=zero
+      !LU%Val(LU%ColVectorPtr(:))=KVec(:)
+      !LU%Val(LU%RowVectorPtr(:))=UVec(:)  
+      LU%Val(LU%RowVectorPtr(:))=zero
       LU%Val(Permu(n+m+1))=X
     ELSE
       !          _                            _
-      ! miter = | invDiagrVec  |   contvals    |
+      ! miter = | invDiagrVec  |    g*alpha    |
       !         |--------------+---------------|
-      !         |_  contvals   |  DiagyVec/h  _|
+      !         |_  BAT_Mat    |  DiagyVec/h  _|
       !
       LU%Val(LU%DiagPtr_R(:))=invrVec(:)
       LU%Val(LU%DiagPtr_C(:))=hyVec(:)
