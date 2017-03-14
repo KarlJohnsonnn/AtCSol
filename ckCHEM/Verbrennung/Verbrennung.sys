@@ -3,9 +3,10 @@ elements
  h c n
 end
 species
-  nc7h16 h h2 c7h15-2
+  nc7h16 h h2 c7h15-2 h2o oh
 end
 
 reactions
 nc7h16+h <=> h2+c7h15-2                  4.380000E+07       2.00      4759.4836285384772E+00
+nc7h16+oh <=> h2o+c7h15-2                9.700000E+09       1.30      1689.8166664348796E+00
 end
