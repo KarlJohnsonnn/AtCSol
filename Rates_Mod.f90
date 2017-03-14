@@ -96,10 +96,14 @@
         CALL UpdateTempArray ( T   , Temp_in )
         CALL GibbsFreeEnergie( GFE , T )
         CALL CalcDeltaGibbs  ( DelGFE )
-        rFacEq = mega * R * T(1) * rPatm
+        rFacEq = mega * R * T(1) * rPatm  ! in [cm3/mol]
+        !rFacEq =  R * T(1) * rPatm      ! in [m3/mol]
         !
         CALL CalcDiffGibbsFreeEnergie( DGFEdT , T )
         CALL CalcDiffDeltaGibbs( DDelGFEdT )
+        DO ii=1,nspc
+          print*, 'DEBUG::  gfe =', gfe(ii), TRIM(y_name(ii)), switchtemp(ii)
+        END DO
 
       ELSE
 
@@ -260,7 +264,7 @@
           CALL Temp4Compute(k,ReactionSystem(iReac)%Constants,T(1))
         CASE ('TEMPX')
           CALL TempXComputeCK(k,EqRate,FoRate,ReactionSystem(iReac)%Constants,T,iReac)
-          CALL DiffTempXComputeCK(DkdT,EqRate,FoRate,ReactionSystem(iReac)%Constants,T,iReac)
+          CALL DiffTempXComputeCK(DkdT,ReactionSystem(iReac)%Constants,T,iReac)
         CASE ('ASPEC1')
           CALL Aspec1Compute(k,ReactionSystem(iReac)%Constants,T(1),y_conc)
         CASE ('ASPEC2')
@@ -400,6 +404,7 @@
             M=SUM(Conc(RO2aq))
           CASE ('$+M','$(+M)')
             M=SUM(Conc)
+            !print*, 'debug:: conc in [mol/cm3]=  ',Conc(scpermutation)
             IF (ReactionSystem(iReac)%TBExtra) THEN
               M = M - SUM(  (ONE-ReactionSystem(iReac)%TBalpha(:))  &
               &              * Conc(ReactionSystem(iReac)%TB(:))    )
@@ -732,8 +737,8 @@
       DelGibbs(:)=ZERO         
       !
       DO iR=1,neq
-        DelGibbs(iR) = DelGibbs(iR) + SUM(BA%Val(BA%RowPtr(iR):BA%RowPtr(iR+1)-1) &
-        &              * GFE(BA%ColInd(BA%RowPtr(iR):BA%RowPtr(iR+1)-1)))
+        DelGibbs(iR) = DelGibbs(iR) - SUM(BA%Val(BA%RowPtr(iR):BA%RowPtr(iR+1)-1) &
+        &                        * GFE(BA%ColInd(BA%RowPtr(iR):BA%RowPtr(iR+1)-1)))
       END DO
 
       !FORALL (iR=1:BA%m)
@@ -815,58 +820,38 @@
       !TEMP:
       REAL(RealKind) :: rRcT
       !
-      rRcT=rRcal*T(6)
-      !
-              !print*, 'DEBUGG :: reactstring      ',TRIM(ReactionSystem(iReac)%Line1)
-              !print*, 'DEBUGG :: reactstring      ',TRIM(ReactionSystem(iReac)%Line2)
-              !print*, 'debug:: balkfbl sgliuha          ', DelGFE(10),sumbat(10)
-              !print*, 'debug:: balkfbl sgliuha          ', delgfe
-              !stop
-      IF (ReactionSystem(iReac)%Line2=='BackReaction') THEN
-        IF (ReactionSystem(iReac)%Line3=='rev'.OR.ReactionSystem(iReac)%Line3=='REV') THEN
-          ! backward constant calculated explicitly reaction
-          k     = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT) ! speedchem
-        ELSE
-          ! backward without extra coef, equiv constant nessesarry
+      !DEBUG
+      REAL(RealKind) :: K_eq
 
-          !print*, 'DEBUGG ::rates    i,delGFE(i)=',ireac,DelGFE(iReac)
 
-          k_f   = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT)  ! speedchem
-          rK_eq = EXP(-DelGFE(iReac)) * rFacEq**(-sumBAT(iReac))
-          k     = k_f * rK_eq
-        END IF
+      rRcT  = rRcal*T(6)
+
+      ! forward reaction rate
+      k_f   = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT) ! speedchem
+              
+      IF ( .NOT.  ReactionSystem(iReac)%bR ) THEN
+        k   = k_f
       ELSE
-        ! forward rate constant and eq. constant classical calculation
-        k_f   = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT)  ! speedchem
-        rK_eq = EXP(+DelGFE(iReac)) * rFacEq**sumBAT(iReac)
-        k     = k_f
-      END IF
-          !IF (ireac<=neq) THEN
-          !  IF(MOD(iReac,2)/=0) THEN
-          !    print*, 'DEBUGG :: ireac, k    k_f   K_eq=',iReac, k,k_f, rK_eq,sumbat(iReac)
-          !  ELSE
-          !    print*, 'DEBUGG :: ireac, k    k_f   K_eq=',iReac, k,k_f, rK_eq,sumbat(iReac)
-          !  END IF
-          !    print*, 
-          !  IF(ireac==neq) stop
-          !END IF
-        !IF(MOD(iReac,2)==0) THEN
-        !  print*, 'DEBUGG ::  iR=    Tarr=', iReac,T
-        !  print*, 'DEBUGG ::    constants=', ReactionSystem(iReac)%Constants
-        !  print*, 'DEBUGG ::       delgfe=', DelGFE
-        !  print*, 'DEBUGG ::       rfaceq=', rFaceq
-        !  print*, 'DEBUGG ::sumBAT(iReac)=', sumBAT
+        ! backward without extra coef, equiv constant nessesarry
+        ! compute inverse equiv. constant
+        ! K_eq = exp( -delta_g 0) * ( p_atm/(RT ))^( SUM(b-a)) 
 
-        !  print*, 'DEBUGG :: k_f=    K_eq=', k_f, rK_eq
-        !  print*, 
-        !END IF
+        !rK_eq = EXP(+DelGFE(iReac)) * rFacEq**(sumBAT(iReac))
+        !K_eq = EXP(-DelGFE(iReac)) * (ONE/rFacEq)**(sumBAT(iReac))
+
+        rK_eq = EXP(+DelGFE(iReac)) * rFacEq**(-sumBAT(iReac))
+        k     = k_f * rK_eq
+        print*,
+        print*, 'DEBUG:: rates     rK_eq, k_f, f   ',rK_eq, k_f, k
+        print*, 'DEBUG:: rates     iReac,  delgfe(i)     ',ireac,delgfe(ireac), rFacEq, sumBAT(iReac) 
+      END IF
+        
     END SUBROUTINE TempXComputeCK
     !
     !
-    SUBROUTINE DiffTempXComputeCK(Dkcoef,EquiRate,ForwRate,Constants,T,iReac)
+    SUBROUTINE DiffTempXComputeCK(Dkcoef,Constants,T,iReac)
       REAL(RealKind) :: Dkcoef
       REAL(RealKind) :: DfRdT, DbRdT, DeRdT
-      REAL(RealKind) :: ForwRate, EquiRAte
       REAL(RealKind) :: Constants(:)
       REAL(RealKind) :: T(:)              ! temperatur array
       INTEGER :: iReac
@@ -875,21 +860,20 @@
       REAL(RealKind) :: Ddelg0dT
       INTEGER :: jj, i
       REAL(RealKind) :: Tmp
+      !TEMP
+      REAL(RealKind) :: rRcT
+
+      rRcT  = rRcal*T(6)
       !
-      !hier ?????????????
-      !???????
+      DfRdT = T(6)*(Constants(2)+Constants(3)*rRcT)    ! (21) Perini
+      !
+      DeRdT = -sumBAT(iReac)*T(6) -DDelGFEdT(iReac)   ! (23) Perini
       !
       !
-      DfRdT=T(6)*(Constants(2)+Constants(3)*T(6))    ! (21) Perini
-      !
-      DeRdT=-(sumBAT(iReac)*T(6)+DDelGFEdT(iReac))   ! (23) Perini
-      !
-      DbRdT=(DfRdT-DeRdT)          ! (22) Perini   umgestellt
-      !
-      IF (ReactionSystem(iReac)%Line3=='rev') THEN
-        Dkcoef=DbRdT
+      IF ( .NOT.  ReactionSystem(iReac)%bR ) THEN
+        Dkcoef = DfRdT
       ELSE   
-        Dkcoef=DfRdT
+        Dkcoef = DfRdT - DeRdT
       END IF
       !print*, 'DEBUG::RATES       Ddelg0dT  =', DDelGFEdT(iReac)
       !print*, 'DEBUG::RATES       DfRdT     =', DfRdT
@@ -950,7 +934,7 @@
         dUdT  = (highA + highB*T(1) + highC*T(2)  & 
         &              + highD*T(3) + highE*T(4))  
       END WHERE
-      dUdT  = (dUdT - ONE) * R       ! speedchem SCmodule.f ~2618
+      dUdT = (dUdT - ONE)        ! speedchem SCmodule.f ~2618
     END SUBROUTINE DiffSpcInternalEnergy
     !
     !

@@ -415,12 +415,13 @@ MODULE Rosenbrock_Mod
       ! Average mixture properties, constant volume specific heats [J/kg/K]
       CALL MassAveMixSpecHeat     ( cv      , Y0(:nspc) , dUdT )
 
-      ! Computing molar concentration rate of change imposing mass consv. [mol/m3/s]
+      ! Computing molar concentration rate of change imposing mass consv. [mol/cm3/s]
       CALL DiffConcDt             ( dCdt    , BAT   , Rate )
 
       UMat     = - U * Yrh
       dRatedT  = dRatedT * RCo%ga
-      X = cv/h + RCo%ga * SUM( dUdT * dCdt )
+      X = cv/h !+ RCo%ga * SUM( dUdT * dCdt )
+      !X = cv/h + RCo%ga * SUM( dUdT * dCdt )
       !
       !
       print*, 'debug     Temparr=  ',Tarr
@@ -431,6 +432,7 @@ MODULE Rosenbrock_Mod
       print*, 'debug   SUM(Umol)=  ',SUM(U)
       print*, 'debug   SUM(dCdt)=  ',SUM(dCdt)
       print*, 'debug          X =  ',X
+      print*, 'debug    U(b-a)r =  ',SUM(U*dCdt)/cv
       !
       !stop
       !
@@ -522,7 +524,7 @@ MODULE Rosenbrock_Mod
         DO jStg=1,iStg
           Y = Y + RCo%a(iStg,jStg) * k(:,jStg)
         END DO
-        WRITE(*,*) '      conc(:),summe   :: ',istg, Y(:), SUM(Y(1:4))
+        WRITE(*,*) '      conc(:)   :: ',istg, Y(:)
         
         ! Update Rates at  (t + SumA*h) , and  (Y + A*)k
         CALL Rates( tt , Y , Rate , DRatedT )
@@ -549,13 +551,13 @@ MODULE Rosenbrock_Mod
           DO jStg = 1 , iStg-1
             fRhs(:nspc)   = fRhs(:nspc) + RCo%C(iStg,jStg)*k(:nspc,jStg)
             IF (combustion)                                                  &
-              bb(nDIMex)  = bb(nDIMex)  + RCo%C(iStg,jStg)*(cv*k(nDIM,jStg) &
-              &                         - SUM( U(:) * k(:nspc,jStg)) )
+              bb(nDIMex)  = bb(nDIMex)  + RCo%C(iStg,jStg)*(k(nDIM,jStg) )!&
+              !&                         - SUM( U(:) * k(:nspc,jStg)) )
           END DO
 
           bb( 1      : neq ) = -rRate(:) * Rate(:)
-          bb( neq+1  : nsr ) = fRhs(:nspc) / h + Y_e(:)
-          IF (combustion) bb(nDIMex) = bb(nDIMex) / h
+          bb( neq+1  : nsr ) = cv/h * fRhs(:nspc) + Y_e(:)
+          IF (combustion) bb(nDIMex) = cv/h * bb(nDIMex)
 
           print*, 'debug:: ', 'istage, vor solve   bb = ',iStg,bb(:)
         END IF
@@ -626,6 +628,7 @@ MODULE Rosenbrock_Mod
     CALL ERROR( err , errind , Ynew , Yhat , Y0 , ATolAll , RTolROW , t )
     !
     CALL MPI_BARRIER(MPI_COMM_WORLD,MPIErr)
-    !stop 'rosenbrockmod'
+    print*,'debug::   error      ', err
+    stop 'rosenbrockmod'
   END SUBROUTINE Rosenbrock
 END MODULE Rosenbrock_Mod
