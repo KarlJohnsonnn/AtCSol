@@ -103,13 +103,14 @@ PROGRAM Main_ChemKin
     CALL Read_Elements    ( ChemFile    , 969 )
     CALL Read_Species     ( ChemFile    , 969 )
     CALL Read_Reaction    ( ChemFile    , 969 )
-    CALL Read_ThermoData  ( SwitchTemp  , DataFile , 696 , nspc )
     !
     CALL PrintHeadSpecies   ( ChemFile    , 89 ) 
     CALL PrintSpecies       ( ListGas2    , 89 )
     CALL PrintHeadReactions ( 89 )
     CALL PrintReactions     ( ReactionSystem , 89 , .TRUE. )       ! .TRUE. in 3rd agument for chemkin input file
     CALL PrintFinalReactions( 89 )
+
+    CALL Read_ThermoData  ( SwitchTemp  , DataFile , 696 , nspc )
    
     !--- Read molecular mass
     OPEN ( UNIT=998 , FILE=TRIM(ChemFile)//'.mw' , STATUS='UNKNOWN' )
@@ -135,7 +136,7 @@ PROGRAM Main_ChemKin
     ALLOCATE( InitValKat(ntKat) )
     MoleFrac    = ZERO           ! mole fraction 
     MassFrac    = ZERO           ! mole fraction 
-    InitValAct  = ZERO           ! mol/m3 
+    InitValAct  = ZERO           ! mol/cm3 
 
     Press = Pressure0               ! initial pressure
 
@@ -143,6 +144,7 @@ PROGRAM Main_ChemKin
     CALL Read_EMISS     ( InitFile , y_e )
     CALL GetSpeciesNames( ChemFile , y_name )
 
+    ! convert from mole fraction to [mol/cm3]
     CALL MoleFr_To_Conc( InitValAct , MoleFrac , Temperature0 )
 
     !--- richtigen index holen, da TB unsortiert eingelesen
