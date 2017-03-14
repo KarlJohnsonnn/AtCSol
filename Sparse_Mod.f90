@@ -1441,10 +1441,10 @@ MODULE Sparse_Mod
       !
       LU%Val(LU%DiagPtr_R(:))=invrVec(:)  
       LU%Val(LU%DiagPtr_C(:))=hyVec(:)  
-      LU%Val(LU%ColVectorPtr(:))=zero
-      !LU%Val(LU%ColVectorPtr(:))=KVec(:)
-      !LU%Val(LU%RowVectorPtr(:))=UVec(:)  
-      LU%Val(LU%RowVectorPtr(:))=zero
+      LU%Val(LU%ColVectorPtr(:))=KVec(:)
+      LU%Val(LU%RowVectorPtr(:))=UVec(:)  
+      !LU%Val(LU%RowVectorPtr(:))=zero
+      !LU%Val(LU%ColVectorPtr(:))=zero
       LU%Val(Permu(n+m+1))=X
     ELSE
       !          _                            _
