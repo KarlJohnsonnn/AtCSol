@@ -68,11 +68,12 @@ MODULE Integration_Mod
     !
     INTEGER, ALLOCATABLE :: InvPermu(:)
     ! 
-    REAL(RealKind) :: y0(nDIM)
-    REAL(RealKind) :: y(nDIM)       ! current y vector
+    REAL(RealKind) :: Y0(nDIM)
+    REAL(RealKind) :: Y(nDIM)       ! current y vector
     REAL(RealKind) :: Y_mol(nspc)       ! current y vector
     !
     REAL(RealKind) :: t             ! current time
+    REAL(RealKind) :: StartTimer
     REAL(RealKind) :: Rate(neq) , dummyrate(neq)    ! rate vector
     REAL(RealKind) :: DRatedT(neq)     ! part. derv. rate over temperatur vector
     REAL(RealKind) :: h, hmin, absh, tnew, tmp, hOld
@@ -91,7 +92,7 @@ MODULE Integration_Mod
     !
     ! for NetCDF
     INTEGER :: iStpNetCDF 
-    INTEGER :: tncdf_ind
+    INTEGER :: itime_NetCDF
     REAL(RealKind), ALLOCATABLE :: yNcdf(:)     ! current output vector
     !
     LOGICAL :: done=.FALSE.
@@ -101,25 +102,23 @@ MODULE Integration_Mod
     CHARACTER(14) :: fmt0
     !
     !
-    y0(1:nspc)  = y_iconc(:)
-    y(1:nspc)   = y_iconc(:)
+    Y0(1:nspc)  = y_iconc(:)
+    Y(1:nspc)   = y_iconc(:)
     !
     IF ( combustion ) THEN
       !--- initial temperature
-      y0(nDIM)      = Temperature0     ! = 750 [K] aus speedchem debug
-      y(nDIM)       = Temperature0     ! = 750 [K]
+      Y0(nDIM)      = Temperature0     ! = 750 [K] aus speedchem debug
+      Y(nDIM)       = Temperature0     ! = 750 [K]
       
       !--- malloc gibbs energy, derivates
-      ALLOCATE(GFE(nspc),DGFEdT(nspc))
-      ALLOCATE(DelGFE(neq),DDelGFEdT(neq))
+      ALLOCATE( GFE(nspc)   , DGFEdT(nspc)   )
+      ALLOCATE( DelGFE(neq) , DDelGFEdT(neq) )
       GFE        =  ZERO
       DGFEdT     =  ZERO
       DelGFE     =  ZERO
       DDelGFEdT  =  ZERO
-      CALL rhoY( rho , y0(1:nspc) )  ! Initialising reactor density
-      print*, 'DEBUG::INTEGRmod  scrho,scp,temp0    ', rho, Press, y0(nDIM)
-      !print*, 'DEBUG:: conc         ', y_iconc(scpermutation)
-      !stop
+      CALL rhoY( rho , Y0(1:nspc) )  ! Initialising reactor density
+      print*, 'DEBUG::INTEGRmod  scrho,scp,temp0    ', rho, Press, Y0(nDIM)
     END IF
     !
     !
@@ -129,13 +128,15 @@ MODULE Integration_Mod
       WRITE(*,*)
       fmt0 = '  [molec/cm3] '
       IF ( combustion ) fmt0 = '  [mol/cm3]   '
-      WRITE(*,'(A34,2X,E23.14,A13)')  '      sum initval (gaseous)    = ', SUM(y0(1:ntGas)),      fmt0
-      WRITE(*,'(A34,2X,E23.14,A13)')  '      sum initval (aqueous)    = ', SUM(y0(ntGas+1:nspc)), fmt0
-      WRITE(*,'(A34,2X,E23.14,A13)')  '      sum emissions (gaseous)  = ', SUM(y_e),              fmt0
+      WRITE(*,'(A34,2X,E23.14,A13)')  '      sum initval (gaseous)    = ', SUM(Y0(1:ntGas)),      fmt0
+      WRITE(*,'(A34,2X,E23.14,A13)')  '      sum initval (aqueous)    = ', SUM(Y0(ntGas+1:nspc)), fmt0
+      WRITE(*,'(A34,2X,E23.14,A13)')  '      sum emissions (gaseous)  = ', SUM(Y_e),              fmt0
       IF ( combustion ) THEN
         WRITE(*,'(A34,2X,E23.14,A13)') '          Initial Temperature  = ', Temperature0
       END IF
       WRITE(*,*)
+    ELSE
+      NetCdfPrint = .FALSE.
     END IF
     !
     !IF (MPI_np<2) THEN
@@ -158,10 +159,10 @@ MODULE Integration_Mod
     !call printsparsematrix(A,'A')
     !call printsparsematrix(B,'B')
     !
-    TimeSymbolic=MPI_WTIME()       ! start timer for symb phase
-    CALL SymbolicAdd(BA,B,A)       ! symbolic addition:    BA = B + A
-    CALL SparseAdd(BA,B,A,'-')     ! numeric subtraction:  BA = B - A
-    CALL TransposeSparse(BAT,BA)   ! transpose BA:        BAT = Transpose(BA) 
+    StartTimer = MPI_WTIME()            ! start timer for symb phase
+    CALL SymbolicAdd( BA , B , A )      ! symbolic addition:    BA = B + A
+    CALL SparseAdd  ( BA , B , A, '-')  ! numeric subtraction:  BA = B - A
+    CALL TransposeSparse( BAT , BA )    ! transpose BA:        BAT = Transpose(BA) 
     !  
 
     !call printsparsematrix(BA,'BA')
@@ -169,7 +170,7 @@ MODULE Integration_Mod
     ! we need to calculate the Jacobian for both versions 'cl' and 'ex' to
     ! calculate an initial stepsize based on 2nd derivative (copy of MATLABs ode23s)
     !
-    CALL SymbolicMult(BAT,A,Jac_C)   ! symbolic mult for Jacobian Jac = [ BAT * Ones_nR * A * Ones_nS ]
+    CALL SymbolicMult( BAT , A , Jac_C )   ! symbolic mult for Jacobian Jac = [ BAT * Ones_nR * A * Ones_nS ]
     !
     ! Set symbolic structure of iteration matrix for Row-Method
     IF ( vers=='cl') THEN
@@ -183,112 +184,107 @@ MODULE Integration_Mod
     IF ( OrderingStrategie<8 .OR. ParOrdering>=0 ) THEN 
       ! Use MUMPS to factorise and solve     
       ! Convert compressed row format to row index format for MUMPS
-      CALL CompRowToIndRow(Miter,MiterFact)
-      CALL InitMumps(MiterFact) 
+      CALL CompRowToIndRow( Miter , MiterFact )
+      CALL InitMumps( MiterFact ) 
+
       IF ( MatrixPrint ) THEN
-        CALL CSR_Matrix_To_SpRowColD(MiterMarko,Miter) 
-        CALL PermuToInvPer(InvPermu,Mumps_Par%SYM_PERM)
-        CALL SymbLU_SpRowColD(MiterMarko,InvPermu)        
-        CALL RowColD_To_CRF_Matrix(LU_Miter,MiterMarko,nspc,neq,vers)
+        CALL CSRToSpRowColD   ( MiterMarko , Miter ) 
+        CALL PermuToInvPer    ( InvPermu   , Mumps_Par%SYM_PERM )
+        CALL SymbLU_SpRowColD ( MiterMarko , InvPermu )        
+        CALL RowColDToCSR     ( LU_Miter   , MiterMarko , nspc , neq , vers ) 
       END IF
+
     ELSE
       ! Permutation given by Markowitz Ordering strategie
-      CALL CSR_Matrix_To_SpRowColD(MiterMarko,Miter) 
-      CALL SymbLUMarko_SpRowColD(MiterMarko)        
-      CALL RowColD_To_CRF_Matrix(LU_Miter,MiterMarko,nspc,neq,vers)
-      ! Get the permutation vector LU_Perm and map the
-      ! Miter values to the permuted LU factorisation
-      CALL Get_LU_Permutaion(LU_Miter,Miter,nspc,neq,LU_Perm)
-      !
-      IF (vers=='ex') THEN
-        ALLOCATE(LUValsFix(LU_Miter%RowPtr(LU_Miter%m+1)-1))
-        LUvalsFix(:)=LU_Miter%Val(:)
+      CALL CSRToSpRowColD     ( MiterMarko , Miter) 
+      CALL SymbLU_SpRowColD_M ( MiterMarko )        
+      CALL RowColDToCSR       ( LU_Miter , MiterMarko , nspc , neq , vers )
+
+      ! Get the permutation vector LU_Perm and map values of Miter
+      ! to the permuted LU matrix
+      CALL Get_LU_Permutaion  ( LU_Perm , LU_Miter , Miter , nspc , neq )
+      
+      ! For the extended case one can save the values of alpha and 
+      ! (beta-alpha)^T and just copy them for each iteration in ROS
+      IF ( vers == 'ex' ) THEN
+        ALLOCATE(LUValsFix(LU_Miter%nnz))
+        LUvalsFix = LU_Miter%Val
       END IF
     END IF
-    CALL Kill_Matrix_SpRowColD(MiterMarko)
+    CALL Free_SpRowColD( MiterMarko )
     !
-    !
-
-    !
-    TimeSymbolic=MPI_WTIME()-TimeSymbolic   ! stop timer for symbolic matrix calculations
+    TimeSymbolic = MPI_WTIME() - StartTimer   ! stop timer for symbolic matrix calculations
     IF (MPI_ID==0) WRITE(*,*) '  SYMBOLIC PHASE................ done'
-    !
-    !
-    CALL Rates(Tspan(1),y0,Rate,DRatedT)      ! Calculate first reaction rates
-
     
-    Rate(:)=MAX(ABS(Rate(:)),eps)*SIGN(ONE,Rate(:))
-    y(1:nspc)=MAX(ABS(y(1:nspc)),eps)*SIGN(ONE,y(1:nspc))
-    !y0(1:nspc)=MAX(ABS(y0(1:nspc)),eps)*SIGN(ONE,y0(1:nspc))
-    !
+   
+    CALL Rates( Tspan(1) , Y0 , Rate , DRatedT )      ! Calculate first reaction rates
+    
+    Rate      = MAX( ABS(Rate) , eps ) * SIGN( ONE , Rate )
+    Y(1:nspc) = MAX( ABS(Y(1:nspc)) , eps ) * SIGN( ONE , Y(1:nspc) )
+    
     ! ----calc values of Jacobian
-    TimeJacobianA=MPI_WTIME()
-    CALL JacobiMatrix(BAT,A,Rate,y,Jac_C)
-    !CALL JacobiMatrix(BAT,A,Rate,y,Jac_C)
-    TimeJac=TimeJac+MPI_WTIME()-TimeJacobianA
-    Output%npds=Output%npds+1
-    !
+    StartTimer  = MPI_WTIME()
+    CALL JacobiMatrix( BAT , A , Rate , Y , Jac_C )
+    TimeJac     = TimeJac + MPI_WTIME() - StartTimer
+    Output%npds = Output%npds + 1
+   
     !---- Save matrix structures for matlab spy
-    IF (MPI_ID==0.AND.MatrixPrint) CALL SaveMatricies(A,B,BAT,Miter,LU_Miter,BSP)
-    !
+    IF ( MatrixPrint ) CALL SaveMatricies(A,B,BAT,Miter,LU_Miter,BSP)
+  
     !---- calculate a first stepsize based on 2nd deriv.
-    CALL InitialStepSize(h,hmin,absh,Jac_C,Rate,Tspan(1),y(1:nspc),RCo%pow)
-    !CALL InitialStepSize(h,hmin,absh,Jac_C,Rate,t,y(1:nspc),RCo%pow)
-    ! 
-    !call printsparse(Jac_C,'*')
-    !print*, 'debug :: h0=', h,absh
-    !stop 'integrationmod'
+    CALL InitialStepSize( h , hmin , absh , Jac_C , Rate  &
+    &                   , Tspan(1) , Y(1:nspc) , RCo%pow  )
+ 
     !-----------------------------------------------------------------------
     !-- Initialize Netcdf Output File
-    ! 
-    tncdf_ind=0
-    OutNetcdfANZ=COUNT(OutNetcdfPhase(:)=='g')+2*COUNT(OutNetcdfPhase(:)=='a')
-    OutNetcdfDIM=OutNetcdfANZ
-    IF ( combustion ) OutNetcdfDIM=OutNetcdfANZ+1
+    itime_NetCDF = 0
+
+    ! aqua phase in [mol/m3] and [mol/l]
+    OutNetcdfANZ = COUNT(OutNetcdfPhase=='g') + 2*COUNT(OutNetcdfPhase=='a')
+    OutNetcdfDIM = OutNetcdfANZ
+    IF ( combustion ) OutNetcdfDIM = OutNetcdfANZ + 1
     ALLOCATE(yNcdf(OutNetcdfDIM))          ! output array , +1 for Temperature
-    yNcdf(:)=0.0d0
-    !
-    !-----------------------------------------------------------------------
+    yNcdf = ZERO
+    
     !--  Netcdf Output File
-    IF (ErrorLog==1) ErrVals=0.0d0
+    IF ( ErrorLog == 1 ) ErrVals = ZERO
     IF ( ntAqua > 0 ) THEN
-      actLWC=pseudoLWC(Tspan(1))
-      wetRad=(3.0d0/4.0d0/PI*actLWC/SPEK(1)%Number)**(1.0d0/3.0d0)*1.0d-1
+      actLWC = pseudoLWC(Tspan(1))
+      wetRad = (Pi34*actLWC/SPEK(1)%Number)**(rTHREE)*1.0d-1
     ELSE
-      actLWC=ZERO
-      wetRad=ZERO
+      actLWC = ZERO
+      wetRad = ZERO
     END IF
     !
-    IF (MPI_ID==0.AND.NetCdfPrint) THEN 
-      iStpNetCDF=1
-      TimeNetCDF=MPI_WTIME()
-      errind(1,1)=0
-      CALL InitNetcdf(tAnf, tEnd)
+    IF ( NetCdfPrint ) THEN 
+      iStpNetCDF  = 1
+      StartTimer  = MPI_WTIME()
+      errind(1,1) = 0
+      CALL InitNetcdf( tAnf , tEnd )
+
       WRITE(*,*) '  Init NetCDF................... done'
       !--  print initial values to NetCDF file
-      CALL SetOutputNCDF( y, yNcdf, Tspan(1), actLWC )
-      CALL StepNetCDF   ( Tspan(1)                          &
-      &                 , yNcdf(:)                          &
-      &                 , tncdf_ind                         &
-      &                 , (/ actLWC                         &
-      &                    , h                              &
-      &                    , SUM(y(1:ntGas))                &
-      &                    , SUM(y(ntGas+1:ntGas+ntAqua))   &
-      &                    , wetRad                         &
-      &                    , ZERO                        /) &
-      &                 , errind                            &
-      &                 , SUM(y(iDiag_Schwefel))            &
-      &                 , ZERO                              )
-      TimeNetCDF=MPI_WTIME()-TimeNetCDF
+      CALL SetOutputNCDF( Y, yNcdf, Tspan(1), actLWC )
+      CALL StepNetCDF   ( Tspan(1),                        &
+                        & yNcdf(:),                        &
+                        & itime_NetCDF,                    &
+                        & (/ actLWC,                       &
+                        &    h,                            &
+                        &    SUM(y(1:ntGas)),              &
+                        &    SUM(y(ntGas+1:ntGas+ntAqua)), &
+                        &    wetRad,                       &
+                        &    ZERO   /),                    &
+                        &  errind,                         &
+                        &  SUM(y(iDiag_Schwefel)),         &
+                        &  ZERO                            )
+      TimeNetCDF = MPI_WTIME() - StartTimer
     END IF
     !
-    !--- Print the head of the .simul file 
-    !CALL PrintHeadSimul(ChemFile)
-    !
-    tmp_tb=(Tspan(2)-Tspan(1))*1.0d-2
+    ! this is for the waitbar
+    tmp_tb = (Tspan(2)-Tspan(1)) * 1.0d-2
     !
     !
-    ! Set PI Parameter
+    ! future stuff (PI-stepsize control)
     ! set for normal case
     PI_norm%Kp        = 0.13d0
     PI_norm%KI        = ONE/15.0d0        
@@ -316,7 +312,7 @@ MODULE Integration_Mod
       !
       !-- Stretch the step if within 5% of tfinal-t.
       IF ( 1.05 * absh >= Tspan(2) - t ) THEN
-        h     = Tspan(2)-t
+        h     = Tspan(2) - t
         absh  = ABS(h)
         done  = .TRUE.
       END IF
@@ -326,14 +322,14 @@ MODULE Integration_Mod
         failed  = .FALSE.                   ! no failed attempts
         !
         ! Rosenbrock Timestep 
-        print*, 'DEBUG::INTEGR     temp=y(end)=',y0(nDim)
-        CALL Rosenbrock(  y0            &       ! old concentration
+        !print*, 'DEBUG::INTEGR     temp=y(end)=',y0(nDim)
+        CALL Rosenbrock(  Y0            &       ! old concentration
         &               , t             &       ! time
         &               , h             &       ! stepsize
         &               , RCo           &       ! Rosenbrock parameter
         &               , error         &       ! error value
         &               , errind        &       ! max error component
-        &               , y             )       ! new concentration 
+        &               , Y             )       ! new concentration 
         !
         tnew  = t + h
         !
@@ -376,45 +372,41 @@ MODULE Integration_Mod
           EXIT
         END IF
       END DO
-      Output%nsteps = Output%nsteps+1
+      Output%nsteps = Output%nsteps + 1
       !
-      tmp_ta = t - Tspan(1)
       !
-      !SPEK(1)%wetRadius=(3.0d0/4.0d0/PI*actLWC/SPEK(1)%Number)**(1.0d0/3.0d0)
-      !print*, t, y(Positionspeciesall('OH')), SPEK(1)%wetRadius
-      !
-      IF ( (tmp_ta >= StpNetCDF*iStpNetCDF) )  THEN
-        iStpNetCDF  = iStpNetCDF+1
-        IF ( (MPI_ID==0) .AND. (NetCdfPrint) ) THEN !.AND.t>10.0d0) THEN
+      IF ( NetCdfPrint ) THEN 
+        IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
+          iStpNetCDF  = iStpNetCDF + 1
           zen = Zenith(t)
           IF ( ntAqua > 0 ) THEN
             actLWC  = pseudoLWC(t)
-            wetRad  = (THREE/rFOUR/PI*actLWC/SPEK(1)%Number)**(rTHREE)*1.0d-1
+            wetRad  = (Pi34*actLWC/SPEK(1)%Number)**(rTHREE)*1.0d-1
           END IF
           ! save data in NetCDF File
           TimeNetCDFA = MPI_WTIME()
-          CALL SetOutputNCDF(  y,    yNcdf, t ,  actLWC)
+          CALL SetOutputNCDF(  Y,    yNcdf, t ,  actLWC)
           !
           CALL StepNetCDF   ( t                                &
           &                 , yNcdf                            &
-          &                 , tncdf_ind                        &
+          &                 , itime_NetCDF                     &
           &                 , (/ actLWC                        &
           &                    , h                             &
-          &                    , SUM(y(1:ntGas))               &
-          &                    , SUM(y(ntGas+1:ntGas+ntAqua))  &
+          &                    , SUM(Y(1:ntGas))               &
+          &                    , SUM(Y(ntGas+1:ntGas+ntAqua))  &
           &                    , wetRad                        &
           &                    , zen                        /) &
           &                 , errind                           &
           &                 , SUM(y(iDiag_Schwefel))           &
           &                 , error                            )
           !
-          TimeNetCDF  = TimeNetCDF  + (MPI_WTIME() - TimeNetCDFA)
+          TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
         END IF
       END IF
       !
       !-- Call progress bar.
-      IF ( Bar .AND. tmp_ta>=iBar*tmp_tb ) THEN
-        iBar=iBar+1
+      IF ( Bar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
+        iBar = iBar + 1         ! iBar runs from 0 to 100
         CALL Progress(iBar)
       END IF
       !
@@ -435,7 +427,7 @@ MODULE Integration_Mod
       !
       !-- Advance the integration one step.
       t   = tnew
-      y0  = y
+      Y0  = Y
       !
       !-- for PI stepsize control
       errorOld  = error
