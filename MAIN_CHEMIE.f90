@@ -110,7 +110,8 @@ PROGRAM Main_ChemKin
     CALL PrintReactions     ( ReactionSystem , 89 , .TRUE. )       ! .TRUE. in 3rd agument for chemkin input file
     CALL PrintFinalReactions( 89 )
 
-    CALL Read_ThermoData  ( SwitchTemp  , DataFile , 696 , nspc )
+    CALL GetSpeciesNames( ChemFile , y_name )
+    CALL Read_ThermoData( SwitchTemp , DataFile , 696 , nspc )
    
     !--- Read molecular mass
     OPEN ( UNIT=998 , FILE=TRIM(ChemFile)//'.mw' , STATUS='UNKNOWN' )
@@ -142,7 +143,6 @@ PROGRAM Main_ChemKin
 
     CALL Read_GASini    ( InitFile , MoleFrac , InitValKat )
     CALL Read_EMISS     ( InitFile , y_e )
-    CALL GetSpeciesNames( ChemFile , y_name )
 
     ! convert from mole fraction to [mol/cm3]
     CALL MoleFr_To_Conc( InitValAct , MoleFrac , Temperature0 )
