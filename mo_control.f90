@@ -134,6 +134,7 @@ REAL(RealKind) :: tAnf              & ! Model start time
 &                              , Pi         = 4.0d0*ATAN(1.0d0)  &
 &                              , DR         = Pi / 180.d0        &  
 &                              , PiHalf     = 2.0d0*ATAN(1.0d0)  & 
+&                              , Pi34       = 3.0d0/4.0d0/Pi     & 
 &                              , eps        = EPSILON(1.0d0)     &  ! such that 1+eps>1 with working precision
 &                              , epsY       = 1.0d-7             &
 &                              , SI_am      = 1.66053892173d-27  &  ! Atomic mass unit  [kg]  
