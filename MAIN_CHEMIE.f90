@@ -282,7 +282,6 @@ PROGRAM Main_ChemKin
     &               , Tspan                &     ! integration invervall
     &               , Atol                 &     ! abs. tolerance gas species
     &               , RtolROW              &     ! rel. tolerance Rosenbrock method
-    &               , solveLA              &     ! method solving the linear systems
     &               , RosenbrockMethod     )     ! Rosenbrock methode
   END IF
   !
