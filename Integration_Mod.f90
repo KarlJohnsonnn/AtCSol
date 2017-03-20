@@ -38,21 +38,19 @@ MODULE Integration_Mod
   !======================================================================= 
   !===================    Time Integration Routine  ======================
   !======================================================================= 
-  SUBROUTINE Integrate(y_iconc, Tspan, Atol, RtolRow, vers, method)
+  SUBROUTINE Integrate(y_iconc, Tspan, Atol, RtolRow, method)
     !--------------------------------------------------------------------
     ! Input:
     !   - y0 ............. Initial vector
     !   - Tspan .......... (/ SimulationTimeStart , SimulationTimeEnd /)
     !   - Atol ........ abs. tolerance for gas spc
     !   - RtolRow ........ rel. tolerance for Rosenbrock-Wanner-Method
-    !   - vers ........... version of solving the linear system
     !   - method...........Rosenbrock-Wanner-Method
     !   - PrintSpc ....... print spc PrintSpc(1:3)
     REAL(RealKind) :: y_iconc(nspc)
     REAL(RealKind) :: Tspan(2)
     REAL(RealKind) :: Atol(2)
     REAL(RealKind) :: RtolROW
-    CHARACTER(2) :: vers
     CHARACTER(*) :: method
     !-------------------------------------------------------------------
     ! Output:
@@ -173,7 +171,7 @@ MODULE Integration_Mod
     CALL SymbolicMult( BAT , A , Jac_C )   ! symbolic mult for Jacobian Jac = [ BAT * Ones_nR * A * Ones_nS ]
     !
     ! Set symbolic structure of iteration matrix for Row-Method
-    IF ( vers=='cl') THEN
+    IF ( CLASSIC ) THEN
       CALL BuildSymbolicClassicMatrix(  Miter , Jac_C   , RCo%ga )
     ELSE
       CALL BuildSymbolicExtendedMatrix( Miter , A , BAT , RCo%ga ) 
@@ -191,14 +189,14 @@ MODULE Integration_Mod
         CALL CSRToSpRowColD   ( MiterMarko , Miter ) 
         CALL PermuToInvPer    ( InvPermu   , Mumps_Par%SYM_PERM )
         CALL SymbLU_SpRowColD ( MiterMarko , InvPermu )        
-        CALL RowColDToCSR     ( LU_Miter   , MiterMarko , nspc , neq , vers ) 
+        CALL RowColDToCSR     ( LU_Miter   , MiterMarko , nspc , neq ) 
       END IF
 
     ELSE
       ! Permutation given by Markowitz Ordering strategie
       CALL CSRToSpRowColD     ( MiterMarko , Miter) 
       CALL SymbLU_SpRowColD_M ( MiterMarko )        
-      CALL RowColDToCSR       ( LU_Miter , MiterMarko , nspc , neq , vers )
+      CALL RowColDToCSR       ( LU_Miter , MiterMarko , nspc , neq )
 
       ! Get the permutation vector LU_Perm and map values of Miter
       ! to the permuted LU matrix
@@ -206,7 +204,7 @@ MODULE Integration_Mod
       
       ! For the extended case one can save the values of alpha and 
       ! (beta-alpha)^T and just copy them for each iteration in ROS
-      IF ( vers == 'ex' ) THEN
+      IF ( EXTENDED ) THEN
         ALLOCATE(LUValsFix(LU_Miter%nnz))
         LUvalsFix = LU_Miter%Val
       END IF
