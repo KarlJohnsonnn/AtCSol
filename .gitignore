@@ -9,3 +9,5 @@ RUN/*
 fort.*
 list
 NetCDF/*
+*.m
+*.SparseMat
