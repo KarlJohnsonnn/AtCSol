@@ -1332,7 +1332,7 @@ MODULE Chemsys_Mod
       !-----------------------------------------
       ! calculate initial aqueus concentrations 
       !-----------------------------------------
-      InitValAct(ntGAS+1:)=1.0d-20
+      InitValAct(ntGAS+1:)=1.0d-16
       DO i=1,SIZE(InitAFrac)
         iPos=PositionSpeciesAll(InitAFrac(i)%Species)
         IF (iPos>0) THEN
