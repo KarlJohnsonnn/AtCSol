@@ -937,9 +937,9 @@ CONTAINS
   SUBROUTINE MassAveMixSpecHeat(cvmixture,Conc,dUdT)
     !IN
     REAL(RealKind) :: Conc(:)           ! in [mol/cm3]
-    REAL(RealKind) :: dUdT(:)           ! in [J/mol/K]
+    REAL(RealKind) :: dUdT(:)           ! in [J/mol/K2]
     !OUT
-    REAL(RealKind) :: cvmixture         ! in [J/kg/K]
+    REAL(RealKind) :: cvmixture         ! in [J/kg/K2]
     !TEMP
     REAL(RealKind) :: ravgConc
 

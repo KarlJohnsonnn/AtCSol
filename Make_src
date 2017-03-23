@@ -18,7 +18,6 @@ OBJ = mo_unirnk.f90\
       String_Mod.f90\
       HashStr_Mod.f90\
       InputTool_Mod.f90\
-      ErrorROW_Mod.f90\
       ChemSys_Mod.f90\
       mo_ckinput.f90\
       Factorisation_Mod.f90\

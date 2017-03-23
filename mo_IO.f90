@@ -175,17 +175,17 @@ MODULE mo_IO
     !
     IF (MPI_ID==0) THEN
       ! only if MatrixPrint=True
-      CALL PrintSparse(aMat,TRIM('matrixOut/alpha'//fName))
-      CALL PrintSparse(bMat,TRIM('matrixOut/beta'//fName))
-      CALL PrintSparse(cMat,TRIM('matrixOut/_beta-alpha_T'//fName))
-      CALL PrintSparse(dMat,TRIM('matrixOut/Miter0'//fName))
+      CALL WriteSparseMatrix(aMat,TRIM('matrixOut/alpha'//fName))
+      CALL WriteSparseMatrix(bMat,TRIM('matrixOut/beta'//fName))
+      CALL WriteSparseMatrix(cMat,TRIM('matrixOut/_beta-alpha_T'//fName))
+      CALL WriteSparseMatrix(dMat,TRIM('matrixOut/Miter0'//fName))
       !
       IF (OrderingStrategie<8) THEN
         !
         ! ordering<8 --> MUMPS auto choice ordering
         ! Print structure of LU matrix and Permutation vector
         !
-        CALL PrintSparse(eMat,TRIM('matrixOut/LUmiterStructure'//fName))
+        CALL WriteSparseMatrix(eMat,TRIM('matrixOut/LUmiterStructure'//fName))
         ALLOCATE(InvPermu(eMat%m))
         CALL PermuToInvPer(InvPermu,Mumps_Par%SYM_PERM)
         CALL PrintPerm(Mumps_Par%SYM_PERM,InvPermu,TRIM('matrixOut/Permu'//fName))
@@ -210,7 +210,7 @@ MODULE mo_IO
         ! ordering>=8 --> Markowitz count (early minimum degree)
         ! Print structure of LU matrix and Permutation vector
         !
-        CALL PrintSparse(eMat,TRIM('matrixOut/LUmiterStructure'//fName))
+        CALL WriteSparseMatrix(eMat,TRIM('matrixOut/LUmiterStructure'//fName))
         CALL PrintPerm(eMat%Permu,eMat%InvPer,TRIM('matrixOut/Permu'//fName))
       END IF
       !

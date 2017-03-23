@@ -7,7 +7,7 @@
   Ladebalken = 1                   ! 0 = kein ladebalken, 0 /= ladebalken aktiv
   ErrorLog = 0                      ! 0 = no error output, 0 /= error output direkt auf bildschirm
   MatrixPrint = .false.            ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
-  NetCdfPrint = .false.            ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
+  NetCdfPrint = .true.            ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
  /END
  &FILES
   ChemFile = 'CHEM/INORG'             ! .sys Datei (ohne .sys angeben!)
@@ -27,9 +27,9 @@
   StpNetCDF = -1.0d0                  ! save after StpNetCDF seconds, if < 0.0d0 save every timestep 
 /END
  &NUMERICS
-  RtolROW  = 1.0d-3                            ! rel. Toleranz für Rosenbrock-Wanner Fehlersteuerung
-  AtolGas  = 1.0d-4                             ! abs. Toleranzen für gasförmige Stoffe 
-  AtolAqua = 1.0d-4                             ! abs. Toleranzen für aquatische Stoffe
+  RtolROW  = 1.0d-2                            ! rel. Toleranz für Rosenbrock-Wanner Fehlersteuerung
+  AtolGas  = 1.0d-3                             ! abs. Toleranzen für gasförmige Stoffe 
+  AtolAqua = 1.0d-3                             ! abs. Toleranzen für aquatische Stoffe
   Error_Est= 2                                  ! Error estimation = 2 -> 2-norm, else maxnorm
   PI_StepSize = .false.                         ! Gustafsson, Söderlind
   solveLA = 'cl'                                ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix

@@ -7,7 +7,7 @@
   Ladebalken = 1
   ErrorLog = 0
   MatrixPrint = .false.
-  NetCdfPrint = .false. 
+  NetCdfPrint = .true. 
  /END
  &FILES
   ChemFile = 'CHEM/MCM32_CAPRAM40_full'  
