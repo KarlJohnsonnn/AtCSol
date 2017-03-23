@@ -57,7 +57,7 @@
       REAL(RealKind) :: Prod, AquaFac
       REAL(RealKind) :: DkdT    ! tmp buffer for reaction const
       REAL(RealKind) :: Meff
-      INTEGER :: iReac, ii, j
+      INTEGER :: iReac, ii, j, i
       ! 
       ! DEBUGGING
       REAL(RealKind) :: debRKonst
@@ -71,6 +71,11 @@
       !==================================================================!
       !===============calc rates for ReactionSystem======================!
       !==================================================================!
+      !print*, 'DEBUG:: sum y=',sum(Y_in)
+      !do i=1,nspc
+      !  print*, 'DEBUG::     y=',Y_in(i), y_name(i)
+      !end do
+      !stop
      
       TimeRateA = MPI_WTIME()
       
@@ -97,13 +102,9 @@
         CALL GibbsFreeEnergie( GFE , T )
         CALL CalcDeltaGibbs  ( DelGFE )
         rFacEq = mega * R * T(1) * rPatm  ! in [cm3/mol]
-        !rFacEq =  R * T(1) * rPatm      ! in [m3/mol]
         !
         CALL CalcDiffGibbsFreeEnergie( DGFEdT , T )
         CALL CalcDiffDeltaGibbs( DDelGFEdT )
-        DO ii=1,nspc
-          print*, 'DEBUG::  gfe =', gfe(ii), TRIM(y_name(ii)), switchtemp(ii)
-        END DO
 
       ELSE
 
@@ -112,7 +113,7 @@
 
       END IF
 
-      print*,
+      !print*,
       ! --- compute rate of all reactions (gas,henry,aqua,diss)
       LOOP_OVER_ALL_REACTIONS: DO ii = 1 , loc_rateCnt
         
@@ -125,9 +126,13 @@
        
         ! ====== Computing effective molecularity 
         CALL EffectiveMolecularity( Meff , y_conc(1:nspc) , iReac , actLWC )
+        !if (ireac==199) print*, 'debugg:: i,Meff    = ', ireac, Meff
         
         ! ====== Compute the rate constant for specific reaction type ===
         CALL ComputeRateConstant( k , DkdT , T , Time , chi , mAir , iReac , y_conc , Meff )
+        !print*, 'DEBUG:: k=',k
+        !if (ireac==173) print*, 'DEBUG:: Meffk=',Meff*k
+        !if (ireac==199) print*, 'debugg:: i,k       = ', ireac, k
 
         AQUATIC_REACTIONS: IF ( ntAqua > 0 ) THEN
           IF      ( ReactionSystem(iReac)%Type == 'DISS' .OR. &
@@ -135,7 +140,8 @@
             ! ===== correct unit of concentrations
             AquaFac = ONE / ( (actLWC*mol2part)**ReactionSystem(iReac)%SumAqCoef )
             k       = k * AquaFac
-          ELSE IF ( ReactionSystem(iReac)%Type == 'HENRY' ) THEN
+          END IF
+          IF ( ReactionSystem(iReac)%Type == 'HENRY' ) THEN
             !=== Compute Henry mass transfer coefficient
             CALL MassTransfer( k , T(1) , Time , iReac , actLWC )
           END IF
@@ -156,10 +162,12 @@
        
         Rate(iReac) = Meff * k * Prod
         IF (combustion) DRatedT(iReac) = DkdT
-        print*, 'DEBUG::   i, Meff,  k,  produkt, Rate  =', iReac, Meff, k, Prod, Rate(iReac)
+        !print*, 'DEBUG:: Prod=',Prod
+        !print*, 'DEBUG::   i, Meff,  k,  produkt, Rate  =', iReac, Meff, k, Prod, Rate(iReac)
+        !if (ireac==199) print*, 'debugg:: i,rate(i) = ', ireac, Rate(ireac), TRIM(ReactionSystem(ireac)%Line1), Meff,k,Prod
 
       END DO LOOP_OVER_ALL_REACTIONS
-      print*,
+      !print*,
       
 
         !stop
@@ -194,16 +202,18 @@
       !--------------------------------------------------------------------------!
       !
       ! Compute new wet radius for droplett class iFrac
-      SPEK(1)%wetRadius=(THREE/FOUR/PI*actLWC/SPEK(1)%Number)**(rTHREE)
+      SPEK(1)%wetRadius = (Pi34*actLWC/SPEK(1)%Number)**(rTHREE)
       !
       !--  mass transfer coefficient
       IF ( term_diff /= ZERO )  THEN   
         kmt = ONE/(term_diff*SPEK(1)%wetRadius*SPEK(1)%wetRadius &
-        &                           + term_accom*SPEK(1)%wetRadius  )
+        &                         + term_accom*SPEK(1)%wetRadius  )
       ELSE
         kmt = dkmt
       END IF
       !
+      !print*, 'Debug::   vor  k=',k
+      !print*, 'Debug::      kmt=',kmt
       ! direaction GasSpecies-->AquaSpecies
       IF (ReactionSystem(iReac)%direction=='GA') THEN  
         k = milli * kmt * actLWC ! orginal
@@ -212,19 +222,10 @@
       ELSE 
         k = kmt / ( k * GasConst_R * Temp)   !()=HenryConst*GasConstant*Temperatur
       END IF
+      !print*, 'Debug:: gasconst=',GasConst_R
+      !print*, 'Debug::     y_c1=',y_c1(ReactionSystem(iReac)%HenrySpc)    
+      !print*, 'Debug::     y_c2=',y_c2(ReactionSystem(iReac)%HenrySpc)
     END SUBROUTINE MassTransfer
-    !
-    !=======================================================================!
-    ! Compute the correct unit dimension for higher order aqueous reactions 
-    !=======================================================================!
-    SUBROUTINE AquaDimLWC(k,iReac,actLWC)
-      INTEGER, INTENT(IN) :: iReac
-      REAL(RealKind), INTENT(IN) :: actLWC
-      REAL(RealKind), INTENT(INOUT) :: k
-      !
-      k=k/((actLWC*mol2part)**ReactionSystem(iReac)%SumAqCoef)  ! SumAqCoef=SUM(educt%koeff)-1
-      !
-    END SUBROUTINE AquaDimLWC
     !
     !=======================================================================!
     ! ===  Select the Type of the Constant and calculate the value
@@ -234,7 +235,7 @@
       REAL(RealKind), INTENT(IN) :: Time, mAir, chi
       REAL(RealKind), INTENT(IN) :: T(8)
       REAL(RealKind), INTENT(IN) :: y_conc(:)
-      INTEGER, INTENT(IN) :: iReac
+      INTEGER,        INTENT(IN) :: iReac
       REAL(RealKind), INTENT(IN), OPTIONAL :: Meff
       REAL(RealKind) :: EqRate,BaRate,FoRate
       !
@@ -242,8 +243,8 @@
       REAL(RealKind) :: cnd(3)
       ! calc reaction constant
       ! Skip photochemical reactions at night
-      BaRate=ZERO
-      DkdT=ZERO
+      BaRate = ZERO
+      DkdT   = ZERO
       !
       SELECT CASE (ReactionSystem(iReac)%TypeConstant)
         CASE ('PHOTABC')
@@ -379,6 +380,7 @@
       !stop
       !
       !
+      M = ONE
       IF (ReactionSystem(iReac)%Factor(1:1)=='$') THEN
 
         SELECT CASE (ReactionSystem(iReac)%Factor)
@@ -415,23 +417,21 @@
             STOP 'Unknown FACTOR (error at Rate calc)'
         END SELECT
 
-      ELSE IF (ReactionSystem(iReac)%nInActEd/=0) THEN
+      END IF
 
+      IF (ReactionSystem(iReac)%nInActEd/=0) THEN
         SELECT CASE (ReactionSystem(iReac)%InActEductSpc(1))
           CASE ('[H2O]')
-            M=H2O
+            M=M*H2O
           CASE ('[N2]')
-            M=N2
+            M=M*N2
           CASE ('[O2]')
-            M=O2
+            M=M*O2
           CASE ('[aH2O]')
-            M=aH2OmolperL*LWC*mol2part
+            M=M*aH2OmolperL*LWC*mol2part
           CASE DEFAULT
             !STOP
         END SELECT
-
-      ELSE 
-        M=ONE
       END IF
       !
     END SUBROUTINE EffectiveMolecularity
@@ -704,6 +704,7 @@
       REAL(RealKind) :: T(:)
       !
       Gibbs(:)=ZERO
+      ! WHERE wird bald abgeschaft, -> vektorisieren
       WHERE (SwitchTemp>T(1))
         Gibbs = lowA*(ONE-T(8)) - rTWO*lowB*T(1) - rSIX*lowC*T(2)        &
         &        - rTWELV*lowD*T(3) - rTWENTY*lowE*T(4) + lowF*T(6) - lowG 
@@ -719,6 +720,7 @@
       REAL(RealKind) :: T(:)
       !
       DGibbsdT(:)=ZERO
+      ! WHERE wird bald abgeschaft, -> vektorisieren
       WHERE (SwitchTemp>T(1))
         DGibbsdT=-(lowA*T(6) + 0.5d0*lowB + lowC*T(1)/3.0d0 +            &
         &              0.25d0*lowD*T(2) + 0.2d0*lowE*T(3) + lowF*T(7) )
@@ -841,9 +843,9 @@
 
         rK_eq = EXP(+DelGFE(iReac)) * rFacEq**(-sumBAT(iReac))
         k     = k_f * rK_eq
-        print*,
-        print*, 'DEBUG:: rates     rK_eq, k_f, f   ',rK_eq, k_f, k
-        print*, 'DEBUG:: rates     iReac,  delgfe(i)     ',ireac,delgfe(ireac), rFacEq, sumBAT(iReac) 
+        !print*,
+        !print*, 'DEBUG:: rates     rK_eq, k_f, f   ',rK_eq, k_f, k
+        !print*, 'DEBUG:: rates     iReac,  delgfe(i)     ',ireac,delgfe(ireac), rFacEq, sumBAT(iReac) 
       END IF
         
     END SUBROUTINE TempXComputeCK
@@ -938,18 +940,16 @@
     END SUBROUTINE DiffSpcInternalEnergy
     !
     !
-    SUBROUTINE Diff2SpcInternalEnergy(D2UmoldT2,T)
-      REAL(RealKind) :: D2UmoldT2(nspc)     !Constant volume specific heat’s derivative [J/mol/K2] 
+    SUBROUTINE Diff2SpcInternalEnergy(d2UdT2,T)
+      REAL(RealKind) :: d2UdT2(nspc)     !Constant volume specific heat’s derivative [J/mol/K2] 
       REAL(RealKind) :: T(:)                      
       !
       WHERE (SwitchTemp>T(1))
-        D2UmoldT2=(lowB + 2.0d0*lowC*T(1) & 
-        &                + 3.0d0*lowD*T(2) + 4.0d0*lowE*T(3) )
+        d2UdT2 = lowB + TWO*lowC*T(1) + THREE*lowD*T(2) + FOUR*lowE*T(3) 
       ELSEWHERE    
-        D2UmoldT2=(highB + 2.0d0*highC*T(1) & 
-        &                + 3.0d0*highD*T(2) + 4.0d0*highE*T(3) )
+        d2UdT2 = highB + TWO*highC*T(1) + THREE*highD*T(2) + FOUR*highE*T(3)
       END WHERE
-      D2UmoldT2=D2UmoldT2*R
+      d2UdT2 = d2UdT2 * R
     END SUBROUTINE Diff2SpcInternalEnergy
     !
     !===  Special reactions for Gas Phase Chemistry 
