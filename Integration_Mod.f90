@@ -19,7 +19,6 @@ MODULE Integration_Mod
   USE Rosenbrock_Mod
   USE Rates_Mod
   USE Factorisation_Mod
-  USE ErrorROW_Mod
   USE NetCDF_Mod
   USE Meteo_Mod, ONLY: Temp
   IMPLICIT NONE
@@ -137,48 +136,41 @@ MODULE Integration_Mod
       NetCdfPrint = .FALSE.
     END IF
     !
-    !IF (MPI_np<2) THEN
-      ALLOCATE(loc_RatePtr(neq))
-      FORALL( i=1:neq ) loc_RatePtr(i)=i
-      loc_rateCnt=neq
-    !ELSE
-      ! get local rate pointer for each process
-    !END IF
-    !
+    ALLOCATE(loc_RatePtr(neq))
+    loc_RatePtr = [(i , i=1,neq)]
+    loc_rateCnt=neq
+  
     !---- Check input parameters 
     CALL CheckInputParameters( Tspan , Atol , RtolROW )
-    !
+   
     !---- Get Rosenbrock Parameters
     CALL SetRosenbrockMethod( RCo , method )  
-    !
+    
+
     !----------------------------------------------------------
     ! ----------- Beginning with symbolic phase --------------
     !----------------------------------------------------------
-    !call printsparsematrix(A,'A')
-    !call printsparsematrix(B,'B')
-    !
+   
+  
     StartTimer = MPI_WTIME()            ! start timer for symb phase
     CALL SymbolicAdd( BA , B , A )      ! symbolic addition:    BA = B + A
     CALL SparseAdd  ( BA , B , A, '-')  ! numeric subtraction:  BA = B - A
     CALL TransposeSparse( BAT , BA )    ! transpose BA:        BAT = Transpose(BA) 
-    !  
+ 
 
-    !call printsparsematrix(BA,'BA')
-    !call printsparsematrix(BAT,'BAT')
     ! we need to calculate the Jacobian for both versions 'cl' and 'ex' to
     ! calculate an initial stepsize based on 2nd derivative (copy of MATLABs ode23s)
-    !
+
     CALL SymbolicMult( BAT , A , Jac_C )   ! symbolic mult for Jacobian Jac = [ BAT * Ones_nR * A * Ones_nS ]
-    !
+
     ! Set symbolic structure of iteration matrix for Row-Method
     IF ( CLASSIC ) THEN
       CALL BuildSymbolicClassicMatrix(  Miter , Jac_C   , RCo%ga )
     ELSE
       CALL BuildSymbolicExtendedMatrix( Miter , A , BAT , RCo%ga ) 
     END IF
-    !
+
     ! Choose ordering/factorisation strategie and do symb LU fact
-    !
     IF ( OrderingStrategie<8 .OR. ParOrdering>=0 ) THEN 
       ! Use MUMPS to factorise and solve     
       ! Convert compressed row format to row index format for MUMPS
@@ -210,14 +202,14 @@ MODULE Integration_Mod
       END IF
     END IF
     CALL Free_SpRowColD( MiterMarko )
-    !
+    
     TimeSymbolic = MPI_WTIME() - StartTimer   ! stop timer for symbolic matrix calculations
+
     IF (MPI_ID==0) WRITE(*,*) '  SYMBOLIC PHASE................ done'
     
    
     CALL Rates( Tspan(1) , Y0 , Rate , DRatedT )      ! Calculate first reaction rates
     
-    Rate      = MAX( ABS(Rate) , eps ) * SIGN( ONE , Rate )
     Y(1:nspc) = MAX( ABS(Y(1:nspc)) , eps ) * SIGN( ONE , Y(1:nspc) )
     
     ! ----calc values of Jacobian
@@ -321,8 +313,8 @@ MODULE Integration_Mod
         !
         ! Rosenbrock Timestep 
         !print*, 'DEBUG::INTEGR     temp=y(end)=',y0(nDim)
-        CALL Rosenbrock(  Y0            &       ! old concentration
-        &               , t             &       ! time
+        CALL Rosenbrock(  Y0            &       ! current concentration
+        &               , t             &       ! current time
         &               , h             &       ! stepsize
         &               , RCo           &       ! Rosenbrock parameter
         &               , error         &       ! error value
