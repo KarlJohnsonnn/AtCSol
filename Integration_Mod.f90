@@ -97,6 +97,7 @@ MODULE Integration_Mod
     !
     INTEGER :: i_error
     CHARACTER(14) :: fmt0
+    CHARACTER(17) :: fmt1
     !
     !
     Y0(1:nspc)  = y_iconc(:)
@@ -115,23 +116,28 @@ MODULE Integration_Mod
       DelGFE     =  ZERO
       DDelGFEdT  =  ZERO
       CALL rhoY( rho , Y0(1:nspc) )  ! Initialising reactor density
-      print*, 'DEBUG::INTEGRmod  scrho,scp,temp0    ', rho, Press, Y0(nDIM)
     END IF
     !
     !
     IF (MPI_ID==0) THEN
+       
       IF ( Ladebalken==1 ) Bar = .TRUE.
       WRITE(*,*) '  Initial values:   '
       WRITE(*,*)
       fmt0 = '  [molec/cm3] '
       IF ( combustion ) fmt0 = '  [mol/cm3]   '
-      WRITE(*,'(A34,2X,E23.14,A13)')  '      sum initval (gaseous)    = ', SUM(Y0(1:ntGas)),      fmt0
-      WRITE(*,'(A34,2X,E23.14,A13)')  '      sum initval (aqueous)    = ', SUM(Y0(ntGas+1:nspc)), fmt0
-      WRITE(*,'(A34,2X,E23.14,A13)')  '      sum emissions (gaseous)  = ', SUM(Y_e),              fmt0
+      fmt1 = '(A34,2X,E16.10,A)'
+      IF (ntGas >0) WRITE(*,fmt1)  '      sum initval (gaseous)    = ', SUM(Y0(1:ntGas)),      fmt0
+      IF (ntAqua>0) WRITE(*,fmt1)  '      sum initval (aqueous)    = ', SUM(Y0(ntGas+1:nspc)), fmt0
+      WRITE(*,fmt1)  '      sum emissions (gaseous)  = ', SUM(Y_e),              fmt0
+
       IF ( combustion ) THEN
-        WRITE(*,'(A34,2X,E23.14,A13)') '          Initial Temperature  = ', Temperature0
+        WRITE(*,fmt1) '          Initial Temperature  = ', Temperature0,'  [K]'
+        WRITE(*,fmt1) '             Initial Pressure  = ', Pressure0,'  [Pa]'
+        WRITE(*,fmt1) '              Reactor denstiy  = ', rho,'  [Pa]'
       END IF
       WRITE(*,*)
+
     ELSE
       NetCdfPrint = .FALSE.
     END IF
