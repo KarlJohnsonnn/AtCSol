@@ -35,6 +35,7 @@
 
 !-- LOGICAL :: Print system matrices
 &               ,MatrixPrint       &
+&               ,DebugPrint        &
 &               ,NetCdfPrint       &
 
 
@@ -104,7 +105,7 @@
       NAMELIST /SCENARIO/  Bsp,                                            &
 &               LwcLevelmin, LwcLevelmax, Ladebalken,  pHSet,              &
 &               constLWC, ErrorLog, MatrixPrint, NetCdfPrint, Temperature0,&
-&               Pressure0
+&               Pressure0, DebugPrint
 !
       NAMELIST /FILES/  MetFile, ChemFile, InitFile, DataFile, NetcdfFileName, &
 &               MetUnit, ChemUnit, InitUnit, DataUnit
@@ -143,6 +144,7 @@
       Error_Est = 2          ! default for error estimation is euklid norm
       ErrorLog  = 0 
       MatrixPrint = .FALSE.       ! 0 = Print no matrix, 0 /= Print all matrices -> no simulation
+      DebugPrint  = .FALSE.
       NetCdfPrint = .FALSE.
       Temperature0= 750.0d0
       Pressure0   = 2.0d5

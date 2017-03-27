@@ -33,6 +33,7 @@
 
 !-- print matrices of the system (alpha, beta, miter, lu_miter, permutvector,..)
       LOGICAL :: MatrixPrint   
+      LOGICAL :: DebugPrint   
       LOGICAL :: NetCdfPrint   
 
 !--- Control Parameter
