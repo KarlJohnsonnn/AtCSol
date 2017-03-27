@@ -347,8 +347,8 @@ MODULE Rosenbrock_Mod
     !-------------------------------------------------------
     ! TemporarY variables:
     !
-    REAL(RealKind), DIMENSION(nDIM)            :: Y, Yrh, Yhat, fRhs
-    REAL(RealKind), DIMENSION(nspc)            :: U, UMat, dUdT, dCdt, d2UdT2 
+    REAL(RealKind), DIMENSION(nDIM)            :: Y,  Yhat, fRhs
+    REAL(RealKind), DIMENSION(nspc)            :: Yrh, U, UMat, dUdT, dCdt, d2UdT2 
     REAL(RealKind), DIMENSION(nDIMex)          :: bb
     !
     REAL(RealKind) :: k( nDIM , RCo%nStage )
@@ -374,7 +374,9 @@ MODULE Rosenbrock_Mod
     INTEGER :: iStg, jStg, i, rPtr          ! increments
     LOGICAL :: dprint=.false.
     INTEGER :: iprnt
+    CHARACTER :: next
 
+    dprint = DebugPrint   !init run
     !print*, nDIM
     !print*, Y0
     !stop
@@ -382,12 +384,16 @@ MODULE Rosenbrock_Mod
     iprnt = MinVAL((/ 5 , neq , nspc /))
 
     ! Initial settings
-    k(:,:)    = ZERO
-    fRhs(:)   = ZERO
-    Rate(:)   = ZERO
+    k(:,:)  = ZERO
+    fRhs(:) = ZERO
+    Rate(:) = ZERO
+    !Y(:)    = Y0(:) 
     !
-  
- 
+
+    IF (dprint) THEN
+      print*, ' '
+      print*, '******************************************************************************'
+    END IF
 
     !********************************************************************************
     !    _   _             _         _          __  __         _          _       
@@ -399,23 +405,16 @@ MODULE Rosenbrock_Mod
     !
     !********************************************************************************
    
-    ! HIER UNBEDINGT RATE MIT Y0 ALS INPUT SONST SUCHST DU DICH WIEDER DUMM
-    Y(1:nspc)   = MAX( ABS(Y0(1:nspc))   , eps ) * SIGN( ONE , Y0(1:nspc) )  ! concentrations =/= 0
+    ! HIER UNBEDINGT RATE MIT Y0 ALS INPUT
+    Y    = MAX( ABS(Y0)  , eps ) * SIGN( ONE , Y0 )  ! concentrations =/= 0
 
     ! HIER MUSS DIE RATE MIT Y UND NICHT MIT Y0 BERECHNET WERDEN
     CALL Rates( t, Y, Rate, DRatedT )
-    Rate(1:neq) = MAX( ABS(Rate(1:neq)) , eps ) * SIGN( ONE , Rate(1:neq) )    ! reaction rates =/= 0
+    Rate = MAX( ABS(Rate) , eps ) * SIGN( ONE , Rate )    ! reaction rates =/= 0
 
-    !do i=1,neq
-    !  write(876,*) i,rate(i)
-    !end do
-    !stop
-    
-    ! UND HIER BLOß NICHT AUF DIE IDEE KOMMEN VON Y(:nspc) AUF Y0(:nspc) ZU ÄNDERN
-    Yrh(1:nspc)  = Y(1:nspc) / h
+    ! UND HIER  NICHT VON Y(:nspc) AUF Y0(:nspc) ÄNDERN
+    Yrh  = Y(1:nspc) / h
 
-    !
-    !cv = ONE  ! for tropospheric mechanism
 
     IF ( combustion ) THEN
       !                             OUT:      IN:
@@ -448,15 +447,19 @@ MODULE Rosenbrock_Mod
       !
       !
       IF (dprint) THEN
-        print*, 'debug     Temparr=  ',Tarr
-        print*, 'debug        time=  ',t
-        print*, 'debug          cv=  ',cv
-        print*, 'debug         SCP=  ',Press
-        print*, 'debug     SUM(Y0)=  ',SUM(Y0(1:iprnt))
-        print*, 'debug   SUM(Umol)=  ',SUM(U)
-        print*, 'debug   SUM(dCdt)=  ',SUM(dCdt)
-        print*, 'debug          X =  ',X
-        print*, 'debug    U(b-a)r =  ',-SUM(U*dCdt)/cv
+        print*, '------------------------------------------------------------------------------'
+        print*, '|    Combustion                                                              |'
+        print*, '------------------------------------------------------------------------------'
+        print*, 'debug     Temperature =  ',Tarr(1)
+        print*, 'debug     c_v         =  ',cv
+        print*, 'debug     Pressure    =  ',Press
+        print*, 'debug     SUM(U)      =  ',SUM(U)
+        print*, 'debug     SUM(dCdt)   =  ',SUM(dCdt)
+        print*, 'debug     X in Matrix =  ',X
+        print*, 'debug     U(b-a)r     =  ',-SUM(U*dCdt)/cv
+        print*, '------------------------------------------------------------------------------'
+        print*, ''
+        !stop 'debug ros'
       END IF
       !
       !stop
@@ -468,66 +471,78 @@ MODULE Rosenbrock_Mod
     
       ! classic case needs to calculate the Jacobian first
       TimeJacobianA = MPI_WTIME()
-      CALL Miter_Classic( BAT , A , Rate , Y , h , RCo%ga , Miter )
-      TimeJac       = TimeJac     + (MPI_WTIME()-TimeJacobianA)
+      IF ( combustion ) THEN
+        CALL Miter_Classic( Miter , BAT , A , Rate , Y , h , RCo%ga , UMat , dCdT )
+      ELSE
+        CALL Miter_Classic( Miter , BAT , A , Rate , Y , h , RCo%ga )
+      END IF
       Output%npds   = Output%npds + 1
 
       IF ( OrderingStrategie == 8 ) THEN
-        CALL SetLUvaluesCL( LU_Miter , Miter , LU_Perm , U , DRatedT )
+        CALL SetLUvaluesCL( LU_Miter , Miter , LU_Perm )
       END IF
+      TimeJac       = TimeJac     + (MPI_WTIME()-TimeJacobianA)
 
     ELSE !IF ( EXTENDED )
-     
+      ! 
+      ! g = gamma (Rosenbrock method)
+      !          _                                         _
+      !         |              |              |             |
+      !         |     rRate    |      g*A     |  g*dRatedT  |
+      !         |              |              |             |
+      !         |--------------+--------------+-------------|
+      !         |              |              |             |
+      ! miter = |      BAT     |      Yrh     |      0      |
+      !         |              |              |             |
+      !         !--------------+--------------+-------------|
+      !         |              |              |             |
+      !         |       0      |     UMat     |      X      |
+      !         |_             |              |            _|
+      !
+      !
       rRate  = ONE / Rate
       IF ( OrderingStrategie == 8 ) THEN
-        CALL SetLUvaluesEX  ( LU_Miter  , nspc , neq , rRate , Yrh, &
-                            & DRatedT   , U    , X   , LUvalsFix    )
-        !call writesparsematrix(LU_Miter,'LU_Miter_vor')
-        !do i=1,size(LU_Miter%val)
-        !  write(888,*) lu_Miter%val(i)
-        !end do
-        !stop
+        CALL SetLUvaluesEX ( LU_Miter, rRate , Yrh, DRatedT , U , X , LUvalsFix)
       ELSE
-        CALL Miter_Extended ( Miter     , nspc , neq , rRate , Yrh )
-        !call printsparsematrix(Miter,'Miter')
+        CALL SetLUvaluesEX ( Miter, rRate , Yrh, DRatedT , U , X )
       END IF
 
     END IF
     !
-    !   _____             _                _             __  __         _ _       
-    !  |  ___|__ _   ___ | |_  ___   _ __ (_) ____ ___  |  \/  |  __ _ | |_  _ __ (_)__  __
-    !  | |_  / _` | / __|| __|/ _ \ | '__|| ||_  // _ \ | |\/| | / _` || __|| '__|| |\ \/ /
-    !  |  _|| (_| || (__ | |_| (_) || |   | | / /|  __/ | |  | || (_| || |_ | |   | | >  < 
-    !  |_|   \__,_| \___| \__|\___/ |_|   |_|/___|\___| |_|  |_| \__,_| \__||_|   |_|/_/\_\
-    !
+    !                                  _      
+    !  _ __  _   _ _ __ ___   ___ _ __(_) ___ 
+    ! | '_ \| | | | '_ ` _ \ / _ \ '__| |/ __|
+    ! | | | | |_| | | | | | |  __/ |  | | (__ 
+    ! |_| |_|\__,_|_| |_| |_|\___|_|  |_|\___|
+    !         _                                          _ _   _             
+    !      __| | ___  ___ ___  _ __ ___  _ __   ___  ___(_) |_(_) ___  _ __  
+    !     / _` |/ _ \/ __/ _ \| '_ ` _ \| '_ \ / _ \/ __| | __| |/ _ \| '_ \ 
+    !    | (_| |  __/ (_| (_) | | | | | | |_) | (_) \__ \ | |_| | (_) | | | |
+    !     \__,_|\___|\___\___/|_| |_| |_| .__/ \___/|___/_|\__|_|\___/|_| |_|
+    !                                   |_|                                   
     ! --- LU - Decomposition ---
     timerStart  = MPI_WTIME()
     IF (OrderingStrategie==8) THEN
       CALL SparseLU( LU_Miter )
-      !call printsparse(LU_Miter,'LU_Miter_nach_LU')
-        !call writesparsematrix(LU_Miter,'LU_Miter_nach')
     ELSE
       CALL MumpsLU( Miter%Val )
     END IF
     TimeFac     = TimeFac + (MPI_WTIME()-timerStart)
 
 
-    IF (dprint) THEN
-      WRITE(*,*) '----------------------------'
-      WRITE(*,*) 'debug h, t, Temp  :: ', h , t, Y(nDIM)
-      WRITE(*,*) '    rate(1:3),sum :: ', rate(1:iprnt), SUM(rate)
-      WRITE(*,*) '   conc0(1:3),sum :: ', y0(1:iprnt),SUM(Y0)
-      !IF(combustion) WRITE(*,*) '   DRatedT(1:3)   :: ', DRatedT(1:3), SUM(DRatedT)
-      WRITE(*,*) '      sum(Miter)  :: ', SUM(Miter%val)
-      do i=1,neq
-        write(789,*), ' Miter%val = ', Miter%val(i)
-      end do
-      WRITE(*,*) '           Miter  :: ', Miter%val(1:iprnt)
-      IF(OrderingStrategie==8) THEN
-        WRITE(*,*) '           LUvor  :: ', LU_Miter%val(1:iprnt)
-        WRITE(*,*) '      sum(LU)vor  :: ', SUM(LU_Miter%val)
-      END IF
-      WRITE(*,*)
+      IF (dprint) THEN
+        print*, '------------------------------------------------------------------------------'
+        print*, '|    Rosenbrock Input                                                        |'
+        print*, '------------------------------------------------------------------------------'
+        print*, 'debug     Stepsize       =  ',h
+        print*, 'debug     Time           =  ',t
+        print*, 'debug     SUM(Y0)        =  ',SUM(Y0)
+        print*, 'debug     SUM(Miter%val) =  ',SUM(Miter%val)
+        IF(OrderingStrategie==8) THEN
+          print*, 'debug    SUM(LU%val) vor = ', SUM(LU_Miter%val)
+        END IF
+        print*, '------------------------------------------------------------------------------'
+        print*, ''
     END IF
 
     !
@@ -542,31 +557,43 @@ MODULE Rosenbrock_Mod
     !  |_| \_\ \___/   \_/\_/              |_|  |_||_| |_| |_| \___| |____/  \__|\___|| .__/ 
     !                                                                                 |_|    
     !****************************************************************************************
+      IF (dprint) THEN
+        print*, ''
+        print*, '------------------------------------------------------------------------------'
+        print*, '| Before solving Ax=b:  iStage                   b                           |'
+        print*, '------------------------------------------------------------------------------'
+        print*, ''
+      END IF
     !
     LOOP_n_STAGES:  DO iStg = 1 , RCo%nStage
 
+      !
       IF ( iStg==1 ) THEN
 
         IF ( EXTENDED ) THEN
-          bb( 1      : neq )          = mONE      ! = -1.0d0
-          bb( neq+1  : nsr )          = Y_e       ! emission
+          bb( 1     : neq ) = mONE                ! = -1.0d0
+          bb( neq+1 : nsr ) = Y_e                 ! emission
           IF ( combustion ) bb(nDIMex)  = ZERO    ! =  0.0d0
-          IF (dprint) print*, 'debug:: ', 'istage, vor solve   bb = ',iStg,bb(1:iprnt)
+          IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:iprnt)
         END IF
 
       ELSE ! iStage > 1 ==> Update time and concentration
 
         tt  = t + RCo%Asum(iStg) * h
         Y   = Y0
+
         DO jStg = 1 , iStg
           Y = Y + RCo%a(iStg,jStg) * k(:,jStg)
         END DO
-        IF (dprint) WRITE(*,*) '      conc(:)   :: ',istg, Y(1:iprnt)
         
         ! Update Rates at  (t + SumA*h) , and  (Y + A*)k
         CALL Rates( tt , Y , Rate , DRatedT )
 
-        IF (dprint) print*, 'DEBUG:: sum(rate)=',SUM(Rate)
+        IF (dprint) THEN
+          print*, ''
+          print*, 'debug::         SUM(concentration) at (Y + a*k)  = ',SUM(Y)
+          print*, 'debug::  SUM(Rates) at (t + SumA*h),  (Y + a*k)  = ',SUM(Rate)
+        END IF
       END IF
       
       !--- Calculate the right hand side of the linear System
@@ -579,7 +606,7 @@ MODULE Rosenbrock_Mod
           fRhs  = fRhs + RCo%C(iStg,jStg) * k(:,jStg)
         END DO
 
-        IF (dprint) print*, 'debug:: ', 'istage,  frhs = ',iStg,frhs(1:iprnt)
+        IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',frhs( 1:iprnt)
 
       ELSE !IF ( EXTENDED ) 
 
@@ -591,23 +618,19 @@ MODULE Rosenbrock_Mod
           DO jStg = 1 , iStg-1
             fRhs(:nspc)   = fRhs(:nspc) + RCo%C(iStg,jStg)*k(:nspc,jStg)
             IF (combustion) &                                            
-              bb(nDIMex)  = bb(nDIMex)  + RCo%C(iStg,jStg)*( cv*k(nDIM,jStg) &
-                                                & - SUM( U * k(1:nspc,jStg)) )
+              bb(nDIMex)  = bb(nDIMex)  + RCo%C(iStg,jStg)*( cv*k(  nDIM ,jStg ) &
+                                                     & -SUM(  U*k( 1:nspc,jStg )) )
           END DO
 
           bb( 1      : neq ) = -rRate * Rate
           bb( neq+1  : nsr ) = Y_e + fRhs(:nspc)/h
           IF (combustion) bb(nDIMex) = - TWO*SUM(U * Y_e) + bb(nDIMex)/h
 
-          IF (dprint) print*, 'debug:: ', 'istage, vor solve   bb = ',iStg,bb(1:iprnt)
+          IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:iprnt)
         END IF
 
       END IF
-      !
-      !print*, 'debug:: ', 'istage=',iStg,SUM(ABS(fRhs(:)))
-      !
-      ! ---  solve LGS  ---
-      !
+      
       timerStart  = MPI_WTIME()
       SOLVE_LINEAR_SYSTEM: IF ( OrderingStrategie==8 ) THEN  
 
@@ -615,7 +638,7 @@ MODULE Rosenbrock_Mod
 
           CALL SolveSparse( LU_Miter , fRhs )
           k( : , iStg ) = fRhs(:)
-          IF (dprint) print*, 'debug:: ', 'istage, nach solve  k(:iprint,iStage) = ',iStg,frhs(1:iprnt)
+          !IF (dprint) print*, 'debug::         ',iStg,k( 1:iprnt , iStg )
 
         ELSE !IF ( EXTENDED )
 
@@ -623,7 +646,7 @@ MODULE Rosenbrock_Mod
           k( 1:nspc , iStg ) = Y0(:nspc) * bb(neq+1:nsr)
           IF ( combustion ) k(nDIM,iStg) = bb(nDIM)
           
-          IF (dprint) print*, 'debug:: ', 'istage, nach solve  bb = ',iStg,bb(1:iprnt)
+          !IF (dprint) print*, 'debug::         ',iStg,k( 1:iprnt , iStg )
           
         END IF
 
@@ -633,7 +656,7 @@ MODULE Rosenbrock_Mod
 
           CALL MumpsSolve( fRhs )
           k( 1:nDIM , iStg ) = Mumps_Par%RHS(:)    
-          IF (dprint) print*, 'debug:: ', 'istage, nach solve  k(:iprint,iStage) = ',iStg,Mumps_Par%RHS(1:iprnt)
+          !IF (dprint) print*, 'debug::         ',iStg,k( 1:iprnt , iStg )
 
         ELSE !IF ( EXTENDED )
 
@@ -641,7 +664,7 @@ MODULE Rosenbrock_Mod
           k( 1:nspc , iStg ) = Y0(:nspc) * Mumps_Par%RHS(neq+1:nsr)
           IF ( combustion ) k(nDIM,iStg) = Mumps_Par%RHS(nDIMex)
 
-          IF (dprint) print*, 'debug:: ', 'istage, nach solve  bb = ',iStg,Mumps_Par%RHS(1:iprnt)
+          !IF (dprint) print*, 'debug::          ',iStg,k( 1:iprnt , iStg )
 
         END IF
 
@@ -649,26 +672,43 @@ MODULE Rosenbrock_Mod
       TimeSolve   = TimeSolve + (MPI_WTIME()-timerStart)
 
     END DO  LOOP_n_STAGES
+    IF (dprint) THEN
+      print*, ''
+      print*, '------------------------------------------------------------------------------'
+      print*, '| After solving Ax=b:  Species         k( iSpc , : )                         |'
+      print*, '------------------------------------------------------------------------------'
+      print*, ''
+      do istg=1,nspc
+        WRITE(*,'(A9,I5,A25,A3,*(E15.8,2X))') 'debug::  ',istg, TRIM(y_name(istg)),'   ',k( istg , : )
+      end do
+      IF (combustion) WRITE(*,'(A9,I5,A25,A3,*(E15.8,2X))') 'debug::  ',nDIM,'Temperature','   ',k( nDIM , : )
+      print*, '------------------------------------------------------------------------------'
+    END IF
 
     
     !--- Update Concentrations (Temperatur)
 
-    YNew(:)   = Y0(:)
-    YHat(:)   = Y0(:)
+    YNew = Y0
+    YHat = Y0
 
     DO jStg = 1 , RCo%nStage
-      Ynew(:) = Ynew(:) + RCo%m(jStg) * k(:,jStg)! new Y vector
-      Yhat(:) = Yhat(:) + RCo%me(jStg) * k(:,jStg)! embedded formula for err calc ord-1
+      Ynew = Ynew + RCo%m(jStg) * k(:,jStg)! new Y vector
+      Yhat = Yhat + RCo%me(jStg) * k(:,jStg)! embedded formula for err calc ord-1
     END DO
     !
     IF (dprint) THEN
       print*, ''
-      !print*, 'debug:: k(ndim)=',k(nDIM,:)
-      print*, 'debug:: coefs  =',RCo%m(:)
+      print*, '------------------------------------------------------------------------------'
+      print*, '| After Ros step:   Y_Old                     Y_New              Species name|'
+      print*, '------------------------------------------------------------------------------'
       do istg=1,nspc
-        print*,'debug::   y0  yn    ', Y0(istg),Ynew(iStg)
+        print*,'debug::  ', Y0(istg),Ynew(iStg),'   ', TRIM(y_name(istg))
       end do
+      IF (combustion) print*,'debug::  ', Y0(nDIM),Ynew(nDIM), '   Temperature'
+      print*, '------------------------------------------------------------------------------'
+      print*, ''
     END IF
+
     !***********************************************************************************************
     !   _____                           _____       _    _                    __               
     !  | ____| _ __  _ __  ___   _ __  | ____| ___ | |_ (_) _ __ ___    __ _ | |_  (_)  ___   _ __  
@@ -678,11 +718,17 @@ MODULE Rosenbrock_Mod
     !                                                                                              
     !***********************************************************************************************
     CALL ERROR( err , errind , Ynew , Yhat , ATolAll , RTolROW , t )
-    !
-    CALL MPI_BARRIER(MPI_COMM_WORLD,MPIErr)
-    IF (dprint) print*,'debug::   error      ', err
-    !print*,'debug::   error      ', err, SUM(Ynew)
-    IF (dprint) stop 'rosenbrockmod'
+   
+    
+    IF (dprint) THEN
+      print*,'debug::     Error     =  ', err
+      print*, '------------------------------------------------------------------------------'
+      print*, ''
+      print*, ' Press ENTER to calculate next Rosenbrock step '
+      read(*,*) 
+      !stop 'rosenbrockmod'
+    END IF
+   
   END SUBROUTINE Rosenbrock
 
 
