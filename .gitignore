@@ -11,3 +11,6 @@ list
 NetCDF/*
 *.m
 *.SparseMat
+*.o
+*.mod
+SOLVER/*

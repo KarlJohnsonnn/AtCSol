@@ -11,7 +11,7 @@ MODULE mo_ckinput
   !
   USE mo_reac,     ONLY: ntGas, ntAqua, ntSolid, ntPart, ntKat, neq, nspc, nReak&
   &                    , nreakgas,  nreakgconst, nreakgphoto, nreakgspec    &
-  &                    , nreakgtemp, nreakgtroe, nDIM, Press, rho           &
+  &                    , nreakgtemp, nreakgtroe, nDIM                       &
   &                    , lowA,lowB,lowC,lowD,lowE,lowF,lowG                 &
   &                    , highA,highB,highC,highD,highE,highF,highG
   USE mo_control,  ONLY: Rcal
@@ -178,7 +178,7 @@ CONTAINS
       END SELECT
     END DO
     CALL CloseFile(UnitThermo,DatThermo(1:INDEX(DatThermo,'.')-1),'dat')
-    IF ( cnt /= nspc ) THEN
+    IF ( cnt < nspc ) THEN
       WRITE(*,*) '    Some species are missing in thermodynamic data (*.dat)'
       STOP 'mo_ckinput'
     END IF
@@ -323,7 +323,6 @@ CONTAINS
         units='JOULES/MOLE'
       CASE DEFAULT
         units='CAL/MOLE'
-        WRITE(*,*) ' Using cal/mole '
     END SELECT
     !
     ! first count reations, ...
@@ -813,139 +812,132 @@ CONTAINS
       locLine=ADJUSTL(locLine(kl1+kl2+1:))
     END DO
   END SUBROUTINE ComputeThirdBody
-  !
-  !
-  !    ***************************************************************
-  !    **                                                           **
-  !    **    Computing molar volumes   based on mole fractions      **
-  !    **                                             (SpeedCHEM)   **   
-  !    ***************************************************************
-  SUBROUTINE MoleFr_To_Conc(Conc,Mole,T)
-    !OUT
-    REAL(RealKind), ALLOCATABLE :: Conc(:)
-    !IN
-    REAL(RealKind), INTENT(IN)  :: Mole(:)     ! Mole fraction 
-    REAL(RealKind), INTENT(IN)  :: T
-    !TEMP
-    REAL(RealKind) :: rT
-    !
-    ! Reciprocal of temperature [1/K]
-    rT = ONE/T
 
-    Conc = micro * Press * rR * rT * Mole / SUM( Mole )
-
-  END SUBROUTINE MoleFr_To_Conc
-  !
-  !
-  !    ***************************************************************
-  !    **                                                           **
-  !    **    Computing concentration based on mass fractions        **
-  !    **                                             (SpeedCHEM)   **   
-  !    ***************************************************************
-  SUBROUTINE MassFr_To_Conc(Conc,Mass,T)
-    !OUT
-    REAL(RealKind), ALLOCATABLE :: Conc(:)     ! Concentration  [mol/cm3]
-    !IN
-    REAL(RealKind), INTENT(IN)  :: Mass(:)     ! Mass fraction  [g/g]
-    REAL(RealKind), INTENT(IN)  :: T
-    !TEMP
-    REAL(RealKind) :: rT
-    !
-    ! Reciprocal of temperature [1/K]
-    rT = ONE/T
-
-    ! Concentration in mole units [mol/m3]
-    Conc  = Press * rR * rT * (Mass*rMW) / SUM( Mass*rMW )
-
-  END SUBROUTINE MassFr_To_Conc
-  !
-  !    ***************************************************************
-  !    **                                                           **
-  !    **    Computing mass fractions based on mole fractions      **
-  !    **                                             (SpeedCHEM)   **   
-  !    ***************************************************************
-  SUBROUTINE MoleFr_to_MassFr(Mass,Mole)
-    !OUT
-    REAL(RealKind), ALLOCATABLE :: Mass(:)  ! Mass fraction [g/g]
-    !IN
-    REAL(RealKind), INTENT(IN)  :: Mole(:)  ! Mole fraction  [mol/mol]
-    !TEMP
-    REAL(RealKind) :: avgMW
-    !
-    !--- Computing average mixture molecular weight [g/mol]
-    avgMW = SUM( Mole * MW )  
-    !
-    !--- Computing mass fractions [g/g]
-    Mass  = MW * Mole / avgMW
-  END SUBROUTINE MoleFr_to_MassFr
-  !
-  !    ***************************************************************
-  !    **                                                           **
-  !    **     Computing mole fractions based on mass fractions      **
-  !    **                                             (SpeedCHEM)   **   
-  !    ***************************************************************
-  SUBROUTINE MassFr_to_MoleFr(Mole,Mass)
-    !OUT
-    REAL(RealKind), ALLOCATABLE :: Mole(:)
-    !IN
-    REAL(RealKind), INTENT(IN)  :: Mass(:)     ! Mass fraction 
-    !TEMP
-    REAL(RealKind) :: ravgMW
-    !
-    !--- Computing reciprocal of average mixture molecular weight [g/mol]
-    ravgMW = ONE / SUM( Mass * rMW ) 
-    !
-    !--- Computing mole fractions [mol/mol]
-    Mole   = rMW * Mass * ravgMW
-  END SUBROUTINE MassFr_to_MoleFr
-  !
-  !
-  !    **************************************************************
-  !    **                                                          **
-  !    **         Computing average mixture density [kg/m^3]       **
-  !    **                                            (SpeedCHEM)   **
-  !    **************************************************************
-  SUBROUTINE rhoY(rho,Conc)
-    !IN
-    REAL(RealKind), INTENT(IN) :: Conc(:)   ! in [mol/cm3]
-    !OUT
-    REAL(RealKind) :: rho
-    !
-    !--- Density value [kg/m3]
-    rho = kilo * SUM( Conc * MW ) 
-  END SUBROUTINE rhoY
-  !
-  !
-  !    **************************************************************
-  !    **                                                          **
-  !    **          Computing average reactor pressure [Pa]         **
-  !    **                                            (SpeedCHEM)   **
-  !    **************************************************************
-  SUBROUTINE pressureHOT(pressure,Conc,T) 
-  !IN
-  REAL(RealKind), INTENT(IN) :: Conc(:)   ! in [mol/cm3] 
-  REAL(RealKind), INTENT(IN) :: T         ! in [K]
-  !OUT
-  REAL(RealKind) :: pressure              ! in [Pa] 
+!***************************************************************************************************
+!***************************************************************************************************
+!
+!         FUNCTIONS FOR  CONVERTING MOLE FRACTION; MASS FRACTION; MOLAR CONCENTRATION 
   
-  pressure  = mega * SUM( Conc ) * T * R 
+  FUNCTION MassFr_to_MoleFr(MassFr) RESULT(MoleFr)
+    REAL(RealKind), ALLOCATABLE :: MoleFr(:)
+    REAL(RealKind), INTENT(IN)  :: MassFr(:)     ! Mass fraction 
+    !TEMP
+    REAL(RealKind) :: W     ! mean molecular weight of a mixture
+
+    W = MeanMolecularWeight( MassFr=MassFr )
+    MoleFr   = MassFr * W * rMW
+
+  END FUNCTION MassFr_to_MoleFr
+
+  
+  FUNCTION MassFr_To_MoleConc(MassFr,rho) RESULT(MoleConc)
+    REAL(RealKind), ALLOCATABLE :: MoleConc(:) ! Concentration  [mol/cm3]
+    REAL(RealKind), INTENT(IN)  :: MassFr(:)   ! Mass fraction  [g/g]
+    REAL(RealKind), INTENT(IN)  :: rho         ! Mass density   [g/cm3] 
+  
+    MoleConc = rho * MassFr * rMW 
+
+  END FUNCTION MassFr_To_MoleConc
+
+  
+  FUNCTION MoleFr_to_MassFr(MoleFr) RESULT(MassFr)
+    REAL(RealKind), ALLOCATABLE :: MassFr(:)  ! Mass fraction [g/g]
+    REAL(RealKind), INTENT(IN)  :: MoleFr(:)  ! Mole fraction  [mol/mol]
+    REAL(RealKind) :: W   ! mean molecular weight of a mixture
+   
+    W = MeanMolecularWeight( MoleFr=MoleFr ) 
+    MassFr  = MW * MoleFr / W
+
+  END FUNCTION MoleFr_to_MassFr
+
+
+  FUNCTION MoleConc_to_MassFr(MoleConc) RESULT(MassFr)
+    REAL(RealKind), ALLOCATABLE :: MassFr(:)  ! Mass fraction [g/g]
+    REAL(RealKind), INTENT(IN)  :: MoleConc(:)  ! Mole fraction  [mol/cm3]
+    REAL(RealKind) :: W   ! mean molecular weight of a mixture
+   
+    MassFr  = MW * MoleConc / SUM( MoleConc * MW )
+
+  END FUNCTION MoleConc_to_MassFr
+
+
+  FUNCTION MoleFr_To_MoleConc(MoleFr,rho,Press,Temp) RESULT(MoleConc)
+    REAL(RealKind), ALLOCATABLE :: MoleConc(:)      ! Mole concentration
+    REAL(RealKind), INTENT(IN)  :: MoleFr(:)        ! Mole fraction 
+    REAL(RealKind), INTENT(IN), OPTIONAL  :: rho    ! [g/cm3]
+    REAL(RealKind), INTENT(IN), OPTIONAL  :: Press  ! [dyn/cm2]
+    REAL(RealKind), INTENT(IN), OPTIONAL  :: Temp   ! [K]
+
+    REAL(RealKind)              :: W
+
+    IF (PRESENT(rho)) THEN
+      W = MeanMolecularWeight( MoleFr=MoleFr )
+      MoleConc = MoleFr * rho / W
+    ELSE IF (PRESENT(Press).AND.PRESENT(Temp)) THEN
+      MoleConc = MoleFr * Press / (Rerg * SUM(MoleFr) * Temp) 
+    ELSE
+      WRITE(*,*) '  The function needs either the density value rho or pressure+temperature value! '
+      STOP
+    END IF
+
+  END FUNCTION MoleFr_To_MoleConc
+  
+!
+!***************************************************************************************************
+!***************************************************************************************************
+
+  FUNCTION Pressure(MoleConc,Temp) RESULT(P)
+    REAL(RealKind) :: P           ! Pressure in [Pa]
+    REAL(RealKind), INTENT(IN)  :: MoleConc(:) ! in [mol/cm3] 
+    REAL(RealKind), INTENT(IN)  :: Temp        ! in [K]
+                        
+    P = SUM( MoleConc ) * Temp * Rerg * dyncm2_to_Pa ! Rerg in [erg/mol/K]
  
-  END SUBROUTINE pressureHOT
-  !
+  END FUNCTION Pressure
+  
+
+  FUNCTION Density(MoleConc) RESULT(rho)
+    REAL(RealKind) :: rho          ! in [kg/cm3]
+    REAL(RealKind), INTENT(IN)  :: MoleConc(:)  ! in [mol/cm3]
+    
+    rho = kilo * SUM( MoleConc * MW ) 
+
+  END FUNCTION Density
+  
+
+  FUNCTION MeanMolecularWeight(MassFr,MoleFr,MoleConc) RESULT(W)
+    REAL(RealKind) :: W
+    REAL(RealKind), INTENT(IN), OPTIONAL :: MassFr(:)
+    REAL(RealKind), INTENT(IN), OPTIONAL :: MoleFr(:)
+    REAL(RealKind), INTENT(IN), OPTIONAL :: MoleConc(:)
+
+    IF      ( PRESENT(MassFr) ) THEN
+      W = ONE / SUM( MassFr * rMW )
+    ELSE IF ( PRESENT(MoleFr) ) THEN
+      W = SUM( MoleFr * MW )
+    ELSE IF ( PRESENT(MoleConc) ) THEN
+      W = SUM( MoleConc * MW ) / SUM( MoleConc )
+    ELSE
+      WRITE(*,*) '  The function needs either mass fraction or mole fraction or mole concentration! '
+      STOP
+    END IF
+    
+  END FUNCTION MeanMolecularWeight
+
   !
   !is the mass average mixture specific  heat at constant volume,
-  SUBROUTINE MassAveMixSpecHeat(cvmixture,Conc,dUdT)
+  SUBROUTINE MassAveMixSpecHeat(cvmixture,MoleConc,dUdT)
     !IN
-    REAL(RealKind) :: Conc(:)           ! in [mol/cm3]
-    REAL(RealKind) :: dUdT(:)           ! in [J/mol/K2]
+    REAL(RealKind) :: MoleConc(:)       ! in [mol/cm3]
+    REAL(RealKind) :: dUdT(:)           ! in [-]
     !OUT
     REAL(RealKind) :: cvmixture         ! in [J/kg/K2]
     !TEMP
-    REAL(RealKind) :: ravgConc
+    REAL(RealKind) :: ravgConc          ! in [cm3/mol]
 
-    ravgConc  = ONE / SUM( Conc * MW )  
+    ravgConc  = ONE / SUM( MoleConc * MW )  
 
-    cvmixture = kilo * R * SUM( Conc * dUdT ) * ravgConc
+    cvmixture = kilo * R * SUM( MoleConc * dUdT ) * ravgConc
   END SUBROUTINE MassAveMixSpecHeat
   ! 
   !

@@ -44,6 +44,7 @@ PROGRAM Main_ChemKin
   ! convertion from mole to mass to conc
   REAL(RealKind), ALLOCATABLE   :: MoleFrac(:)
   REAL(RealKind), ALLOCATABLE   :: MassFrac(:)
+  REAL(RealKind)                :: Press_in_dyncm2
   !
   !================================================================
   !===                     MAIN Programm
@@ -139,13 +140,20 @@ PROGRAM Main_ChemKin
     MassFrac    = ZERO           ! mole fraction 
     InitValAct  = ZERO           ! mol/cm3 
 
-    Press = Pressure0               ! initial pressure
 
     CALL Read_GASini    ( InitFile , MoleFrac , InitValKat )
     CALL Read_EMISS     ( InitFile , y_e )
 
     ! convert from mole fraction to [mol/cm3]
-    CALL MoleFr_To_Conc( InitValAct , MoleFrac , Temperature0 )
+
+    !Press = Pressure0               ! initial pressure in [Pa]
+    Press_in_dyncm2 = Pressure0 * Pa_to_dyncm2
+
+    MassFrac   = MoleFr_To_MassFr( MoleFrac ) 
+    InitValAct = MoleFr_To_MoleConc(  MoleFrac,                &
+                                   &  Press = Press_in_dyncm2, &
+                                   &  Temp  = Temperature0    )
+    !rho = Density( InitValAct )  ! Initialising reactor densityy
 
     !--- richtigen index holen, da TB unsortiert eingelesen
     DO i = 1 , neq
@@ -156,7 +164,13 @@ PROGRAM Main_ChemKin
       END IF
     END DO
     ! debug speedchem reihenfolge der species für besseres debuggen
-    scPermutation=(/26,28,25,18,21,17,20,29,22,24,19,27,15,13,23,12,14,16,1,2,3,4,5,6,7,9,10,11,8/)
+    scPermutation=[(i ,i=1,nspc+1)] 
+    IF (TRIM(ChemFile)=='ckCHEM/ERC_nheptane/ERC_nheptane') &
+      & scPermutation=(/26,28,25,18,21,17,20,29,22,24,19,27,15,13,23,12,14,16,1,2,3,4,5,6,7,9,10,11,8/)
+    !do i=1,nspc
+    !  print*, y_name(scPermutation(i)), InitValAct(scPermutation(i)),MassFrac(scPermutation(i))
+    !end do
+    !stop
   ELSE
     IF ( MPI_ID==0 ) WRITE(*,*) ' ---->  Fix Temperature'
     CALL ReadSystem( ChemFile )
@@ -238,8 +252,8 @@ PROGRAM Main_ChemKin
  
   CALL getarg ( 5 , neuROW )
   IF ( neuROW /= '' )   THEN  
-    READ( neuRow , * ) RosenbrockMethod
-    RosenbrockMethod = ADJUSTL('METHODS/'//RosenbrockMethod)
+    READ( neuRow , * ) ODEsolver
+    ODEsolver = ADJUSTL('METHODS/'//ODEsolver)
   END IF
   
   !-----------------------------------------------------------------------
@@ -282,13 +296,12 @@ PROGRAM Main_ChemKin
     &               , Tspan                &     ! integration invervall
     &               , Atol                 &     ! abs. tolerance gas species
     &               , RtolROW              &     ! rel. tolerance Rosenbrock method
-    &               , RosenbrockMethod     )     ! Rosenbrock methode
+    &               , ODEsolver     )     ! Rosenbrock methode
   END IF
   !
   !---------------------------------------------------------------
   ! --- stop timer and print output statistics
   Timer_Finish      = MPI_WTIME()
-  TimeIntegrationE  = TimeIntegrationE - TimeIntegrationA
   Timer_Finish      = Timer_Finish - Timer_Start + Time_Read
   !
   ! Print statistics

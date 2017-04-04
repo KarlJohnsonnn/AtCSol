@@ -17,7 +17,7 @@
 &                     ,InitFile          & ! Initial concentrations
 &                     ,DataFile          & ! Gas and Aqueous DATA
 &                     ,NetcdfFileName    & ! NetCDF output file
-&                     ,RosenbrockMethod    ! Method for Rosenbrock Integration
+&                     ,ODEsolver    ! Method for Rosenbrock Integration
 !
 !--- Unit Numbers
       INTEGER :: MetUnit           & ! Meteorology file
@@ -50,6 +50,7 @@
 REAL(RealKind) :: tAnf              & ! Model start time
 &               , tEnd              & ! Model end time
 &               , StpNetcdf           ! Time step for Netcdf output
+INTEGER        :: nOutP
 !
 !--- Initial temperature and pressure for combustion mechanisms
       REAL(RealKind) :: Temperature0
@@ -177,6 +178,7 @@ REAL(RealKind) :: tAnf              & ! Model start time
 !     Pressure
   REAL(RealKind)      , PARAMETER :: bar_to_dyncm2 = 1.0d06
   REAL(RealKind)      , PARAMETER :: dyncm2_to_Pa  = 1.0d-01
+  REAL(RealKind)      , PARAMETER :: Pa_to_dyncm2  = 1.0d+01
   REAL(RealKind)      , PARAMETER :: bar_to_Pa     = 1.0d05
   REAL(RealKind)      , PARAMETER :: atm_to_Pa     = 101325.0d0
 !

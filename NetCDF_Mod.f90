@@ -107,6 +107,7 @@ MODULE NetCDF_Mod
       Diag_Name_Netcdf(jt) = tmpName
       Diag_LongName(jt)    = tmpName
       DIAG_UNITS(jt)       = "mol/m3"
+      IF (combustion) DIAG_UNITS(jt) = 'mass fraction'
     ELSEIF (OutNetcdfPhase(iDiagSpc)=='a') THEN
       Diag_Name_Netcdf(jt) = TRIM(tmpName)//'_l'
       Diag_LongName(jt)    = TRIM(tmpName)//'_aqua'
@@ -417,28 +418,29 @@ END SUBROUTINE InitNetCDF
        jt=jt+1
        idx=OutNetcdfSpc(iDiagSpc)
        NaN=ISNAN(y(idx))
-       IF ( combustion ) THEN
-           yout(jt) = y(idx) / 1.d-6        ! [mol/cm3] to [mol/m3]
-       ELSE
-         IF      (OutNetcdfPhase(iDiagSpc)=='a'.AND..NOT.NaN) THEN
-           yout(jt) = y(idx) / (actLWC * mol2part)  ! convert to mol/l water
-           yout(jt+1) = y(idx) / (mol2part) ! convert to mol/m3 air
-           jt=jt+1
-           !
-         ELSE IF (OutNetcdfPhase(iDiagSpc)=='g'.AND..NOT.NaN) THEN
-           yout(jt) = y(idx) / (mol2part) 
-           !
+       IF      (OutNetcdfPhase(iDiagSpc)=='a'.AND..NOT.NaN) THEN
+         yout(jt) = y(idx) / (actLWC * mol2part)  ! convert to mol/l water
+         yout(jt+1) = y(idx) / (mol2part) ! convert to mol/m3 air
+         jt=jt+1
+         !
+       ELSE IF (OutNetcdfPhase(iDiagSpc)=='g'.AND..NOT.NaN) THEN
+         IF (combustion) THEN
+           !yout(jt) = y(idx) * 1.0d6       ! [mol/cm3] to [mol/m3]
+           yout(jt) = y(idx)          ! in mass fractions
          ELSE
-           WRITE(*,*) ' '
-           WRITE(*,*) ' '
-           WRITE(*,*) ' '
-           WRITE(*,*) '  Error: Some value is NaN ! '
-           WRITE(*,*) '  -------------------------- '
-           WRITE(*,*) '  spc idx   =  ', idx
-           WRITE(*,*) '  spc name  =  ', y_name(idx)
-           WRITE(*,*) '  spc val   =  ', y(idx)
-           STOP 
+           yout(jt) = y(idx) / (mol2part) 
          END IF
+         !
+       ELSE
+         WRITE(*,*) ' '
+         WRITE(*,*) ' '
+         WRITE(*,*) ' '
+         WRITE(*,*) '  Error: Some value is NaN ! '
+         WRITE(*,*) '  -------------------------- '
+         WRITE(*,*) '  spc idx   =  ', idx
+         WRITE(*,*) '  spc name  =  ', y_name(idx)
+         WRITE(*,*) '  spc val   =  ', y(idx)
+         STOP 
        END IF
      END DO
 !-------------------------------------------------------------------------
@@ -501,6 +503,7 @@ END SUBROUTINE InitNetCDF
   ! == Write new data to netcdf-file ===================================================
   ! ====================================================================================
   timeLoc = t/3600.0d0   ! time output in hours
+  IF ( combustion ) timeLoc=t ! time in seconds for combustion mechanism
   CALL check( NF90_PUT_VAR( ncid, rec_varid, timeLoc, start=(/time_ind/) ) )
   CALL check( NF90_PUT_VAR( ncid, x_varid,   rlon,    start=(/time_ind/) ) )
   CALL check( NF90_PUT_VAR( ncid, y_varid,   rlat,    start=(/time_ind/) ) )

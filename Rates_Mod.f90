@@ -67,6 +67,8 @@
       ! combustion
       REAL(RealKind) :: ravgConc(nspc)
       REAL(RealKind) :: Temp_in
+      REAL(RealKind) :: dCtot_dY(nspc)
+      REAL(RealKind) :: Ctot
       !
       !==================================================================!
       !===============calc rates for ReactionSystem======================!
@@ -94,9 +96,17 @@
         !IF (.NOT. Temp_in > ZERO) STOP ' Temperatur not > 0 '
         
         !--- Concentration
-        y_conc(1:nspc) = Y_in(1:nspc)
+        !y_conc(1:nspc) = Y_in(1:nspc)
         !--- Temperature
         y_conc(nDIM)   = Temp_in 
+
+        
+        ! species concentration in [mol/cm3]
+        dCtot_dY       = milli * rho * rMW
+        y_conc(1:nspc) = dCtot_dY * Y_in(1:nspc)
+        Ctot     = sum(y_conc(1:nspc))
+
+
         !
         CALL UpdateTempArray ( T   , Temp_in )
         CALL GibbsFreeEnergie( GFE , T )
@@ -831,21 +841,14 @@
       ! forward reaction rate
       k_f   = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT) ! speedchem
               
-      IF ( .NOT.  ReactionSystem(iReac)%bR ) THEN
-        k   = k_f
-      ELSE
+      IF ( ReactionSystem(iReac)%bR ) THEN
         ! backward without extra coef, equiv constant nessesarry
         ! compute inverse equiv. constant
-        ! K_eq = exp( -delta_g 0) * ( p_atm/(RT ))^( SUM(b-a)) 
-
-        !rK_eq = EXP(+DelGFE(iReac)) * rFacEq**(sumBAT(iReac))
-        !K_eq = EXP(-DelGFE(iReac)) * (ONE/rFacEq)**(sumBAT(iReac))
-
         rK_eq = EXP(+DelGFE(iReac)) * rFacEq**(-sumBAT(iReac))
         k     = k_f * rK_eq
-        !print*,
-        !print*, 'DEBUG:: rates     rK_eq, k_f, f   ',rK_eq, k_f, k
-        !print*, 'DEBUG:: rates     iReac,  delgfe(i)     ',ireac,delgfe(ireac), rFacEq, sumBAT(iReac) 
+        !print*, ' backwar k = ', k, rK_eq, sumBAT(iReac)
+      ELSE
+        k     = k_f
       END IF
         
     END SUBROUTINE TempXComputeCK
@@ -872,19 +875,19 @@
       DeRdT = -sumBAT(iReac)*T(6) -DDelGFEdT(iReac)   ! (23) Perini
       !
       !
-      IF ( .NOT.  ReactionSystem(iReac)%bR ) THEN
-        Dkcoef = DfRdT
-      ELSE   
+      IF ( ReactionSystem(iReac)%bR ) THEN
         Dkcoef = DfRdT - DeRdT
+      ELSE   
+        Dkcoef = DfRdT
       END IF
       !print*, 'DEBUG::RATES       Ddelg0dT  =', DDelGFEdT(iReac)
       !print*, 'DEBUG::RATES       DfRdT     =', DfRdT
       !print*, 'DEBUG::RATES       DeRdT     =', DeRdT
       !print*, 'DEBUG::RATES       DbRdT     =', DbRdT
-      !
+  
     END SUBROUTINE DiffTempXComputeCK
-    ! 
-    !
+    
+   
     SUBROUTINE UpdateTempArray(TempArr,Temperature)
       REAL(RealKind) :: Temperature 
       REAL(RealKind) :: TempArr(8)
@@ -902,7 +905,7 @@
     !
     !
     !-------------------------------------------------------------------------
-    !---  Species internal energies in moles [J/mol]  
+    !---  Species internal energies in moles [J/mol/K]  
     !-------------------------------------------------------------------------
     SUBROUTINE InternalEnergy(U,T)
       !OUT
@@ -920,9 +923,9 @@
       U    = U * R
     END SUBROUTINE InternalEnergy
     !
-    !-----------------------------------------------------------------------
-    !--- Derivatives of specific heats at constant volume in moles [J/mol/K]
-    !-----------------------------------------------------------------------
+    !-------------------------------------------------------------------------------
+    !--- Nondimensionl Derivatives of specific heats at constant volume in moles [-]
+    !-------------------------------------------------------------------------------
     SUBROUTINE DiffSpcInternalEnergy(dUdT,T)
       !OUT
       REAL(RealKind) :: dUdT(nspc)   

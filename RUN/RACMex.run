@@ -50,7 +50,7 @@
   AtolGas  = 1.0d-1
   AtolAqua = 1.0d-7
   solveLA = 'ex'  
-  RosenbrockMethod = 'METHODS/Ros34PW2.fort'
+  ODEsolver = 'METHODS/Ros34PW2.fort'
  /END
  &ORDERING
   OrderingStrategie      = 1

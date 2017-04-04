@@ -100,33 +100,34 @@ MODULE Rosenbrock_Mod
     !
     INTEGER :: i
     !
-    method=method(INDEX(method,'/')+1:INDEX(method,'.')-1)
+    !method=method(INDEX(method,'/')+1:INDEX(method,'.')-1)
     ! dynamisches inlcude möglich???
     ! oder zeile für zeile READ ?
-    SELECT CASE (method)
-      CASE ('Ros2AMF')
+
+    SELECT CASE (TRIM(method(9:)))
+      CASE ('Ros2AMF.fort')
         INCLUDE 'METHODS/Ros2AMF.fort'
-      CASE ('Ros3w')
+      CASE ('Ros3w.fort')
         INCLUDE 'METHODS/Ros3w.fort'
-      CASE ('Ros3Pw')
+      CASE ('Ros3Pw.fort')
         INCLUDE 'METHODS/Ros3Pw.fort'
-      CASE ('Ros34PW1a')
+      CASE ('Ros34PW1a.fort')
         INCLUDE 'METHODS/Ros34PW1a.fort'
-      CASE ('Ros34PW2')
+      CASE ('Ros34PW2.fort')
         INCLUDE 'METHODS/Ros34PW2.fort'
-      CASE ('Ros34PW3')
+      CASE ('Ros34PW3.fort')
         INCLUDE 'METHODS/Ros34PW3.fort'
-      CASE ('TSRosW2P')
+      CASE ('TSRosW2P.fort')
         INCLUDE 'METHODS/TSRosW2P.fort'
-      CASE ('TSRosW2M')
+      CASE ('TSRosW2M.fort')
         INCLUDE 'METHODS/TSRosW2M.fort'
-      CASE ('TSRosWRA3PW')
+      CASE ('TSRosWRA3PW.fort')
         INCLUDE 'METHODS/TSRosWRA3PW.fort'
-      CASE ('TSRosWRA34PW2')
+      CASE ('TSRosWRA34PW2.fort')
         INCLUDE 'METHODS/TSRosWRA34PW2.fort'
-      CASE ('TSRosWRodas3')
+      CASE ('TSRosWRodas3.fort')
         INCLUDE 'METHODS/TSRosWRodas3.fort'
-      CASE ('TSRosWSandu3')
+      CASE ('TSRosWSandu3.fort')
         INCLUDE 'METHODS/TSRosWSandu3.fort'
       CASE DEFAULT
         IF (MPI_ID==0) WRITE(*,*) '    Unknown Method:  ',method
@@ -368,6 +369,7 @@ MODULE Rosenbrock_Mod
     REAL(RealKind) :: cv ! mass average mixture specific heat at constant volume
     REAL(RealKind) :: dcvdT ! mass average mixture specific heat at constant volume
     REAL(RealKind) :: X
+    REAL(RealKind) :: Press
     !
     ! fuer verlgeich mit speedchem, andere spc reihenfolge
     !
@@ -408,9 +410,14 @@ MODULE Rosenbrock_Mod
     ! HIER UNBEDINGT RATE MIT Y0 ALS INPUT
     Y    = MAX( ABS(Y0)  , eps ) * SIGN( ONE , Y0 )  ! concentrations =/= 0
 
-    ! HIER MUSS DIE RATE MIT Y UND NICHT MIT Y0 BERECHNET WERDEN
-    CALL Rates( t, Y, Rate, DRatedT )
-    Rate = MAX( ABS(Rate) , eps ) * SIGN( ONE , Rate )    ! reaction rates =/= 0
+    IF (combustion) THEN
+      CALL Rates( t, Y0, Rate, DRatedT )
+      !Rate = MAX( ABS(Rate) , eps ) * SIGN( ONE , Rate )    ! reaction rates =/= 0
+    ELSE
+      ! HIER MUSS DIE RATE MIT Y UND NICHT MIT Y0 BERECHNET WERDEN FÜR TROPOSPHÄRENMECHANISMEN
+      CALL Rates( t, Y, Rate, DRatedT )
+      Rate = MAX( ABS(Rate) , eps ) * SIGN( ONE , Rate )    ! reaction rates =/= 0
+    END IF
 
     ! UND HIER  NICHT VON Y(:nspc) AUF Y0(:nspc) ÄNDERN
     Yrh  = Y(1:nspc) / h
@@ -420,7 +427,7 @@ MODULE Rosenbrock_Mod
       !                             OUT:      IN:
       CALL UpdateTempArray        ( Tarr    , Y0(nDIM) )       
       
-      ! Compute species internal energies in moles [J/mol/K]
+      ! Compute species internal energies in moles [J/mol]
       CALL InternalEnergy         ( U       , Tarr)             
 
       ! Specific heat [J/mol/K]
@@ -430,7 +437,7 @@ MODULE Rosenbrock_Mod
       CALL Diff2SpcInternalEnergy ( d2UdT2  , Tarr)
       
       ! Compute system pressure [Pa]
-      CALL pressureHOT            ( Press   , Y0(:nspc) , Tarr(1)  )  
+      Press = Pressure( Y0(:nspc) , Tarr(1)  )  
       
       ! Average mixture properties, constant volume specific heats [J/kg/K]
       CALL MassAveMixSpecHeat     ( cv      , Y0(:nspc) , dUdT )
@@ -440,25 +447,31 @@ MODULE Rosenbrock_Mod
       ! Computing molar concentration rate of change imposing mass consv. [mol/cm3/s]
       CALL MatVecMult             ( dCdt    , BAT   , Rate , Y_e )
 
-      dTdt     = - SUM( U * dCdt)/cv
+      dTdt     = - SUM( U * dCdt)/cv/rho
       UMat     = - U * Yrh
       dRatedT  = dRatedT * RCo%ga
       X = cv/h + RCo%ga * ( dTdt * dcvdT  + SUM( dUdT * dCdt ) )
       !
       !
       IF (dprint) THEN
-        print*, '------------------------------------------------------------------------------'
-        print*, '|    Combustion                                                              |'
-        print*, '------------------------------------------------------------------------------'
-        print*, 'debug     Temperature =  ',Tarr(1)
-        print*, 'debug     c_v         =  ',cv
-        print*, 'debug     Pressure    =  ',Press
-        print*, 'debug     SUM(U)      =  ',SUM(U)
-        print*, 'debug     SUM(dCdt)   =  ',SUM(dCdt)
-        print*, 'debug     X in Matrix =  ',X
-        print*, 'debug     U(b-a)r     =  ',-SUM(U*dCdt)/cv
-        print*, '------------------------------------------------------------------------------'
-        print*, ''
+        WRITE(*,*) '------------------------------------------------------------------------------'
+        WRITE(*,*) '|    Combustion                                                              |'
+        WRITE(*,*) '------------------------------------------------------------------------------'
+        WRITE(*,'(A,E23.16,A)') 'debug     Temperature =  ',Tarr(1)   ,'   [K]'
+        WRITE(*,'(A,E23.16,A)') 'debug     c_v         =  ',cv        ,'   [J/kg/K]'
+        WRITE(*,'(A,E23.16,A)') 'debug     Pressure    =  ',Press     ,'   [Pa]'
+        WRITE(*,'(A,E23.16,A)') 'debug     Density     =  ',rho       ,'   [kg/m3]'
+        WRITE(*,'(A,E23.16,A)') 'debug     SUM(U)      =  ',SUM(U)    ,'   [J/mol/K]'
+        WRITE(*,'(A,E23.16,A)') 'debug     X in Matrix =  ',X         ,'   [???]'
+        WRITE(*,'(A,E23.16,A)') 'debug     SUM(dCdt)   =  ',SUM(dCdt) ,'   [mol/cm3/sec]'
+        WRITE(*,'(A,E23.16,A)') 'debug     dTdt        =  ',dTdt      ,'   [K/sec]'
+        WRITE(*,*) '------------------------------------------------------------------------------'
+        WRITE(*,*) ''
+        do i=1,nspc
+          WRITE(*,'(A,I2,A,E22.14,A3,A)') 'debug     dCdt(',i,') = ',dCdt(scPermutation(i)),'   ',y_name(scPermutation(i))
+        end do
+        write(*,'(A,I2,A,E22.14,A3,A)') 'debug     dTdt(',30,') = ',dTdt,'   ','Temperature'
+        WRITE(*,*) ''
         !stop 'debug ros'
       END IF
       !
@@ -724,7 +737,7 @@ MODULE Rosenbrock_Mod
       print*,'debug::     Error     =  ', err
       print*, '------------------------------------------------------------------------------'
       print*, ''
-      print*, ' Press ENTER to calculate next Rosenbrock step '
+      print*, ' Press ENTER to calculate next step '
       read(*,*) 
       !stop 'rosenbrockmod'
     END IF

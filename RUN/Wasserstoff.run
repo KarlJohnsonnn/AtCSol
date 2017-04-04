@@ -30,7 +30,7 @@
   Error_Est = 2
   solveLA   = 'ex'  
   ImpEuler  = 0
-  RosenbrockMethod = 'METHODS/TSRosWRodas3.fort'
+  ODEsolver = 'METHODS/TSRosWRodas3.fort'
  /END
  &ORDERING
   OrderingStrategie  = 8

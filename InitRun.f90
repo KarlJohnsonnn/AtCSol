@@ -65,6 +65,7 @@
 &               ,dust              & ! dust factor (damping of photolysis)
 &               ,minStp            & ! minimal time step size
 &               ,maxStp            & ! maximal time step size
+&               ,nOutP             & !  Number of intermediate output points per simulation
 !
 !-----------------------------------------------------------------
 !---  Numerics
@@ -82,7 +83,7 @@
 
 !--- CHARACTER(2) : Control Parameter
 &               ,solveLA           & ! how to solve linear algebra 'cl' or 'ex'
-&               ,RosenbrockMethod  & ! choose ROW scheme  (integer 1,...,15)
+&               ,ODEsolver         & ! choose ode solver (rosenbrock,lsode)  (integer 1,...,15)
 !
 !-----------------------------------------------------------------
 !---  Linear Algebra
@@ -111,10 +112,10 @@
 &               MetUnit, ChemUnit, InitUnit, DataUnit
 !
       NAMELIST /TIMES/  tAnf, tEnd, idate, rlat, rlon, Dust, StpNetcdf,  &
-&               minStp, maxStp
+&               minStp, maxStp, nOutP
 !
       NAMELIST /NUMERICS/  RtolROW, AtolGas, AtolAqua, AtolTemp, PI_StepSize,      &
-&               solveLA,  RosenbrockMethod, ImpEuler, Error_Est
+&               solveLA,  ODEsolver, ImpEuler, Error_Est
 !
       NAMELIST /ORDERING/  OrderingStrategie, ParOrdering
 !      
@@ -195,6 +196,8 @@
 !--- REAL(8): Times in seconds.
       StpNetcdf   = 0.d0      ! Time step for Netcdf output      [in sec]
 
+      nOutP = 100
+
 !---  Photolysis (Here: FEBUKO chemistry-case I)
       idate = 011027          ! Date: yymmdd  (21.June 2001)
       rlat  = 5.065d+01       ! latitude  [grad] (Schmuecke)
@@ -203,6 +206,9 @@
 
 !--- Read TIMES namelist
       READ(15,TIMES)
+
+      ! minimum output steps are 2
+      IF (nOutP<2) nOutP = 2
 
 !-----------------------------------------------------------------
 !---  Numerics
@@ -216,7 +222,7 @@
       AtolTemp = 1.0d-7               ! Absolute tolerance for temperature
       PI_StepSize = .FALSE.
       solveLA  = 'ex'                 ! method of solving linear algebra
-      RosenbrockMethod  = 'ROS34PW3'  ! ROW scheme
+      ODEsolver  = 'ROS34PW3'  ! ROW scheme
       ImpEuler = 0                    ! 1 for implicit euler integration
       
 !

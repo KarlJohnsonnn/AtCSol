@@ -44,7 +44,7 @@ MODULE mo_IO
       ELSE
         WRITE(*,*)   '      Version:           extended'
       END IF
-      WRITE(*,*)   '      ROW method:        ', RosenbrockMethod
+      WRITE(*,*)   '      ODE solver:        ', ODEsolver
       IF (Error_Est==2) THEN
         WRITE(*,*)   '      Error Estimation:  euklid norm'
       ELSE

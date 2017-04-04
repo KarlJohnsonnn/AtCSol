@@ -15,11 +15,13 @@ all: CHEMIE CHEMIE_g
        
 CHEMIE:  PolyDo  
 	$(LINK) $(OPTL) $(KINCL_O) -o CHEMIE \
-        MAIN_CHEMIE.f90 $(OP) $(OBJo) $(METIS) $(MUMPS) $(UMF) $(LAPACK) $(SCOTCH) $(SCALAP) $(PARMETIS) $(NETCDF) $(LMPI) $(CL) -lblas -llapack  ;
+        MAIN_CHEMIE.f90 SOLVER/opkdmain.o SOLVER/opkda1.o SOLVER/opkda2.o  \
+				$(OP) $(OBJo) $(METIS) $(MUMPS) $(UMF) $(LAPACK) $(SCOTCH) $(SCALAP) $(PARMETIS) $(NETCDF) $(LMPI) $(CL) -lblas -llapack  ;
 
 CHEMIE_g:  PolyDg  
 	$(LINK) $(OPTL) $(KINCL_D) -o CHEMIE_g \
-        MAIN_CHEMIE.f90 $(OP) $(OBJg) $(METIS) $(MUMPS) $(UMF) $(LAPACK) $(SCOTCH)  $(SCALAP) $(PARMETIS) $(NETCDF) $(LMPI) $(CL) -lblas -llapack  ;
+        MAIN_CHEMIE.f90 SOLVER/opkdmain.o SOLVER/opkda1.o SOLVER/opkda2.o  \
+				$(OP) $(OBJg) $(METIS) $(MUMPS) $(UMF) $(LAPACK) $(SCOTCH)  $(SCALAP) $(PARMETIS) $(NETCDF) $(LMPI) $(CL) -lblas -llapack  ;
 
 PolyDo: 
 	@make -f Make_src "IN2=$(IN1)" "LIB2=$(LIB_O)" "OPT2=$(OPT_O)" "POLY=polyo" "KINCL=$(KINCL_O)"
