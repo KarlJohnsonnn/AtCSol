@@ -42,8 +42,7 @@ PROGRAM Main_ChemKin
   INTEGER         :: tmpPos    
 
   ! convertion from mole to mass to conc
-  REAL(RealKind), ALLOCATABLE   :: MoleFrac(:)
-  REAL(RealKind), ALLOCATABLE   :: MassFrac(:)
+  REAL(RealKind), ALLOCATABLE   :: MoleFrac(:), MassFrac(:), MoleConc(:)
   REAL(RealKind)                :: Press_in_dyncm2
   !
   !================================================================
@@ -149,11 +148,17 @@ PROGRAM Main_ChemKin
     !Press = Pressure0               ! initial pressure in [Pa]
     Press_in_dyncm2 = Pressure0 * Pa_to_dyncm2
 
-    MassFrac   = MoleFr_To_MassFr( MoleFrac ) 
-    InitValAct = MoleFr_To_MoleConc(  MoleFrac,                &
+    MassFrac = MoleFr_To_MassFr( MoleFrac ) 
+    
+    MoleConc = MoleFr_To_MoleConc(  MoleFrac,                &
                                    &  Press = Press_in_dyncm2, &
                                    &  Temp  = Temperature0    )
-    !rho = Density( InitValAct )  ! Initialising reactor densityy
+    ! Initialising reactor density
+    rho  = Density( MoleConc )
+    rRho = kilo/rho
+
+    !InitValAct = MassFrac
+    InitValAct = MoleConc
 
     !--- richtigen index holen, da TB unsortiert eingelesen
     DO i = 1 , neq
@@ -163,14 +168,12 @@ PROGRAM Main_ChemKin
         END DO
       END IF
     END DO
+
     ! debug speedchem reihenfolge der species für besseres debuggen
     scPermutation=[(i ,i=1,nspc+1)] 
     IF (TRIM(ChemFile)=='ckCHEM/ERC_nheptane/ERC_nheptane') &
       & scPermutation=(/26,28,25,18,21,17,20,29,22,24,19,27,15,13,23,12,14,16,1,2,3,4,5,6,7,9,10,11,8/)
-    !do i=1,nspc
-    !  print*, y_name(scPermutation(i)), InitValAct(scPermutation(i)),MassFrac(scPermutation(i))
-    !end do
-    !stop
+    
   ELSE
     IF ( MPI_ID==0 ) WRITE(*,*) ' ---->  Fix Temperature'
     CALL ReadSystem( ChemFile )
@@ -223,20 +226,22 @@ PROGRAM Main_ChemKin
   !-----------------------------------------------------------------------
   ! --- Start timer and set absolut tolerance for species
   Timer_Start = MPI_WTIME()
-  Atol        = (/ AtolGas , AtolAqua /)
- 
-  nsr = nspc + neq
   
   !-----------------------------------------------------------------------
   ! --- Dimension initialisation for the unknowns and matrices
+
+  nsr = nspc + neq
+
   IF ( combustion ) THEN
     nDIM    = nspc + 1
     nDIMcl  = nspc + 1
-    nDIMex  = nspc + neq + 1
+    nDIMex  = nsr  + 1
+    Atol    = (/ AtolGas , AtolTemp /)
   ELSE
     nDIM    = nspc
     nDIMcl  = nspc
-    nDIMex  = nspc + neq
+    nDIMex  = nsr
+    Atol    = (/ AtolGas , AtolAqua /)
   END IF
 
   !-----------------------------------------------------------------------

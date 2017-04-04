@@ -926,18 +926,25 @@ CONTAINS
 
   !
   !is the mass average mixture specific  heat at constant volume,
-  SUBROUTINE MassAveMixSpecHeat(cvmixture,MoleConc,dUdT)
+  SUBROUTINE MassAveMixSpecHeat(cvmixture,dUdT,MassFr,MoleConc)
     !IN
-    REAL(RealKind) :: MoleConc(:)       ! in [mol/cm3]
-    REAL(RealKind) :: dUdT(:)           ! in [-]
+    REAL(RealKind) :: dUdT(:)                 ! in [-]
+    REAL(RealKind), OPTIONAL :: MassFr(:)     ! in [g/g]
+    REAL(RealKind), OPTIONAL :: MoleConc(:)   ! in [mol/cm3]
     !OUT
-    REAL(RealKind) :: cvmixture         ! in [J/kg/K2]
+    REAL(RealKind) :: cvmixture         ! in [J/kg/K]
     !TEMP
-    REAL(RealKind) :: ravgConc          ! in [cm3/mol]
+    REAL(RealKind) :: ravgConc          ! in [cm3/mol][mol/g]
 
-    ravgConc  = ONE / SUM( MoleConc * MW )  
-
-    cvmixture = kilo * R * SUM( MoleConc * dUdT ) * ravgConc
+    IF (PRESENT(MassFr)) THEN
+      cvmixture = kilo * R * SUM( MassFr * dUdT * rMW )
+    ELSE IF (PRESENT(MoleConc)) THEN
+      ravgConc  = ONE / SUM( MoleConc * MW )  
+      cvmixture = kilo * R * SUM( MoleConc * dUdT ) * ravgConc
+    ELSE
+      WRITE(*,*) '  The function needs either mass fraction or mole concentration! '
+      STOP
+    END IF
   END SUBROUTINE MassAveMixSpecHeat
   ! 
   !

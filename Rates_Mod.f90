@@ -73,11 +73,6 @@
       !==================================================================!
       !===============calc rates for ReactionSystem======================!
       !==================================================================!
-      !print*, 'DEBUG:: sum y=',sum(Y_in)
-      !do i=1,nspc
-      !  print*, 'DEBUG::     y=',Y_in(i), y_name(i)
-      !end do
-      !stop
      
       TimeRateA = MPI_WTIME()
       
@@ -94,20 +89,15 @@
         
         Temp_in  = Y_in(nDIM)
         !IF (.NOT. Temp_in > ZERO) STOP ' Temperatur not > 0 '
-        
+
+
         !--- Concentration
-        !y_conc(1:nspc) = Y_in(1:nspc)
+        y_conc(1:nspc) = Y_in(1:nspc)
+        
         !--- Temperature
         y_conc(nDIM)   = Temp_in 
 
-        
-        ! species concentration in [mol/cm3]
-        dCtot_dY       = milli * rho * rMW
-        y_conc(1:nspc) = dCtot_dY * Y_in(1:nspc)
-        Ctot     = sum(y_conc(1:nspc))
 
-
-        !
         CALL UpdateTempArray ( T   , Temp_in )
         CALL GibbsFreeEnergie( GFE , T )
         CALL CalcDeltaGibbs  ( DelGFE )
@@ -136,21 +126,21 @@
        
         ! ====== Computing effective molecularity 
         CALL EffectiveMolecularity( Meff , y_conc(1:nspc) , iReac , actLWC )
-        !if (ireac==199) print*, 'debugg:: i,Meff    = ', ireac, Meff
+       
         
         ! ====== Compute the rate constant for specific reaction type ===
         CALL ComputeRateConstant( k , DkdT , T , Time , chi , mAir , iReac , y_conc , Meff )
-        !print*, 'DEBUG:: k=',k
-        !if (ireac==173) print*, 'DEBUG:: Meffk=',Meff*k
-        !if (ireac==199) print*, 'debugg:: i,k       = ', ireac, k
+        
 
         AQUATIC_REACTIONS: IF ( ntAqua > 0 ) THEN
+
           IF      ( ReactionSystem(iReac)%Type == 'DISS' .OR. &
           &         ReactionSystem(iReac)%Type == 'AQUA' ) THEN
             ! ===== correct unit of concentrations
             AquaFac = ONE / ( (actLWC*mol2part)**ReactionSystem(iReac)%SumAqCoef )
             k       = k * AquaFac
           END IF
+
           IF ( ReactionSystem(iReac)%Type == 'HENRY' ) THEN
             !=== Compute Henry mass transfer coefficient
             CALL MassTransfer( k , T(1) , Time , iReac , actLWC )
@@ -172,23 +162,18 @@
        
         Rate(iReac) = Meff * k * Prod
         IF (combustion) DRatedT(iReac) = DkdT
-        !print*, 'DEBUG:: Prod=',Prod
+
         !print*, 'DEBUG::   i, Meff,  k,  produkt, Rate  =', iReac, Meff, k, Prod, Rate(iReac)
         !if (ireac==199) print*, 'debugg:: i,rate(i) = ', ireac, Rate(ireac), TRIM(ReactionSystem(ireac)%Line1), Meff,k,Prod
 
       END DO LOOP_OVER_ALL_REACTIONS
-      !print*,
-      
 
-        !stop
-      !stop 'rates_mod'
       TimeRateE=MPI_WTIME()
       TimeRates=TimeRates+(TimeRateE-TimeRateA)
       !
       
       ! gather the values of the other processes
       !CALL GatherAllPartitions(Rate,MyParties)
-       !print*, 'MPI_ID=',MPI_ID, 'time=',Time
       !IF (combustion) CALL GatherAllPartitions(DRatedT,MyParties)
     END SUBROUTINE Rates
    !

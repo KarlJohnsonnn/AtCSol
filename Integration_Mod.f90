@@ -132,7 +132,6 @@ MODULE Integration_Mod
       DGFEdT     =  ZERO
       DelGFE     =  ZERO
       DDelGFEdT  =  ZERO
-      rho = Density( InitValAct )  ! Initialising reactor densityy
     END IF
 
     !------------------------------------------------------------------------------------------|
@@ -147,7 +146,7 @@ MODULE Integration_Mod
       WRITE(*,*) '  Initial values:   '
       WRITE(*,*)
       fmt0 = '  [molec/cm3] '
-      IF ( combustion ) fmt0 = '  [mol/cm3]   '
+      IF ( combustion ) fmt0 = '  [mol/cm3]'
       fmt1 = '(A34,2X,E16.10,A)'
       IF (ntGas >0) WRITE(*,fmt1)  '      sum initval (gaseous)    = ', SUM(Y0(1:ntGas)),      fmt0
       IF (ntAqua>0) WRITE(*,fmt1)  '      sum initval (aqueous)    = ', SUM(Y0(ntGas+1:nspc)), fmt0
@@ -156,7 +155,7 @@ MODULE Integration_Mod
       IF ( combustion ) THEN
         WRITE(*,fmt1) '          Initial Temperature  = ', Temperature0,'  [K]'
         WRITE(*,fmt1) '             Initial Pressure  = ', Pressure0,'  [Pa]'
-        WRITE(*,fmt1) '              Reactor denstiy  = ', rho,'  [Pa]'
+        WRITE(*,fmt1) '              Reactor denstiy  = ', rho,'  [kg/cm3]'
       END IF
       WRITE(*,*)
 
@@ -473,8 +472,6 @@ MODULE Integration_Mod
 
       CASE('LSODE')
 
-        print*, 'under construction'
-
         TimeIntegrationA=MPI_WTIME()
 
         ITOL   = 2              ! 2 if atol is an array
@@ -494,7 +491,6 @@ MODULE Integration_Mod
         RWORK(6) = maxStp
         RWORK(7) = minStp
 
-        Y(1:nspc) = MoleConc_to_MassFr(Y0(1:nspc))
 
 
         IF (MPI_ID==0) WRITE(*,*) '  Start Integration............. '; WRITE(*,*) ' '
@@ -507,7 +503,6 @@ MODULE Integration_Mod
           
           IWORK(6) = maxnsteps
            
-          !CALL DLSODE ( FRhs  , nDIM  , Y0    , t        , tnew            &
           CALL DLSODE ( FRhs  , nDIM  , Y     , t        , tnew            &
           &           , ITOL  , RTOL1 , ATOL1 , ITASK    , ISTATE  , IOPT  &
           &           , RWORK , LRW   , IWORK , LIW      , dummy   , MF    )
@@ -537,7 +532,6 @@ MODULE Integration_Mod
                             & , itime_NetCDF           &
                             & , (/ ZERO                &  ! LWC
                             &     , RWORK(11)          &  ! Stepsize
-                            !&     , SUM(Y0(1:ntGas)) &    ! Sum gas conc
                             &     , SUM(Y(1:ntGas)) &    ! Sum gas conc
                             &     , ZERO             &    ! Sum aqua conc
                             &     , ZERO             &    ! wet radius
@@ -608,7 +602,6 @@ MODULE Integration_Mod
     !
     htmp = ( Tol/er )**(0.7d0*RCo%pow)* ( erOld/Tol )**(0.4d0*RCo%pow) * h
     !htmp = ( Tol/er )**PI_Par%KI * ( erOld/Tol )**PI_Par%Kp * h
-    print*, 'htemp= ',htmp, h , hold
     !
     ! limitation term
     IF (htmp>PI_Par%ThetaMAX*h) THEN
@@ -626,7 +619,7 @@ MODULE Integration_Mod
     REAL(RealKind) :: Rate(neq) , DRate(neq)
     REAL(RealKind) :: Temp, Tarr(8)
     REAL(RealKind) :: U(nspc) , dUdT(nspc)
-    REAL(RealKind) :: cv, rRho
+    REAL(RealKind) :: cv
 
     ! debug
     INTEGER :: j
@@ -639,29 +632,28 @@ MODULE Integration_Mod
     CALL MatVecMult( dwdt , BAT , Rate , Y_e )  ! [mol/cm3/sec]
     
     !---------------------> calculation with Y in [mol/cm3]
-    !YDOT(1:nspc) = dwdt
-    !
-    !! energy conservation
-    !CALL UpdateTempArray( Tarr , Temp )
-    !CALL InternalEnergy( U , Tarr )                   ! [J/mol/K]
-    !CALL DiffSpcInternalEnergy( dUdT  , Tarr)         ! [-]
-    !CALL MassAveMixSpecHeat( cv , Y(1:nspc) , dUdT )
-    !
-    !YDOT(NEQ1) = - SUM( U * dwdt ) / cv / rho
-
-
-    !---------------------> calculation with Y in mass fractions
-    rRho = kilo/rho
-     
-    YDOT(1:nspc) = rRho * dwdt * MW        ! mass fraction rate of change
-       
+    YDOT(1:nspc) =  dwdt
+    
     ! energy conservation
     CALL UpdateTempArray( Tarr , Temp )
     CALL InternalEnergy( U , Tarr )                   ! [J/mol/K]
     CALL DiffSpcInternalEnergy( dUdT  , Tarr)         ! [-]
-    CALL MassAveMixSpecHeat( cv , Y(1:nspc) , dUdT )  
+    CALL MassAveMixSpecHeat( cv , dUdT , MoleConc=Y(1:nspc) )
     
-    YDOT(NEQ1) = - kilo * SUM( U * dwdt ) * rRho / cv
+    YDOT(NEQ1) = - kilo * SUM( U * dwdt ) * rRho / cv 
+
+
+    !---------------------> calculation with Y in mass fractions
+     
+    !YDOT(1:nspc) = rRho * dwdt * MW        ! mass fraction rate of change
+    !   
+    !! energy conservation
+    !CALL UpdateTempArray( Tarr , Temp )
+    !CALL InternalEnergy( U , Tarr )                   ! [J/mol/K]
+    !CALL DiffSpcInternalEnergy( dUdT  , Tarr)         ! [-]
+    !CALL MassAveMixSpecHeat( cv , dUdT ,  MassFr=Y(1:nspc) )  
+    
+    !YDOT(NEQ1) = - kilo * SUM( U * dwdt ) * rRho / cv
 
   END SUBROUTINE FRhs
 

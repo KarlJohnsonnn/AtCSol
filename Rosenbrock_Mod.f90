@@ -349,7 +349,7 @@ MODULE Rosenbrock_Mod
     ! TemporarY variables:
     !
     REAL(RealKind), DIMENSION(nDIM)            :: Y,  Yhat, fRhs
-    REAL(RealKind), DIMENSION(nspc)            :: Yrh, U, UMat, dUdT, dCdt, d2UdT2 
+    REAL(RealKind), DIMENSION(nspc)            :: Yrh, U, UMat, dUdT, dCdt, dwdt, d2UdT2 
     REAL(RealKind), DIMENSION(nDIMex)          :: bb
     !
     REAL(RealKind) :: k( nDIM , RCo%nStage )
@@ -440,14 +440,17 @@ MODULE Rosenbrock_Mod
       Press = Pressure( Y0(:nspc) , Tarr(1)  )  
       
       ! Average mixture properties, constant volume specific heats [J/kg/K]
-      CALL MassAveMixSpecHeat     ( cv      , Y0(:nspc) , dUdT )
+      CALL MassAveMixSpecHeat     ( cv      , dUdT    , Y0(:nspc) )
       ! Div. Average mixture properties, constant volume specific heats [J/kg/K2]
-      CALL MassAveMixSpecHeat     ( dcvdT   , Y0(:nspc) , d2UdT2 )
+      CALL MassAveMixSpecHeat     ( dcvdT   , d2UdT2  , Y0(:nspc) )
 
       ! Computing molar concentration rate of change imposing mass consv. [mol/cm3/s]
-      CALL MatVecMult             ( dCdt    , BAT   , Rate , Y_e )
+      CALL MatVecMult             ( dwdt    , BAT   , Rate , Y_e )
 
-      dTdt     = - SUM( U * dCdt)/cv/rho
+      !dCdt     = dwdt
+      dCdt     = rRho * dwdt * MW
+      !dTdt     = - SUM( U * dCdt)/cv/rho
+      dTdt     = - kilo * SUM( U * dwdt) * rRho/cv
       UMat     = - U * Yrh
       dRatedT  = dRatedT * RCo%ga
       X = cv/h + RCo%ga * ( dTdt * dcvdT  + SUM( dUdT * dCdt ) )

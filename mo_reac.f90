@@ -287,7 +287,7 @@
     REAL(RealKind), ALLOCATABLE :: rMW(:)    !1/ molecular weight (combustion)
     !
     ! more speedchem stuff
-    REAL(RealKind) :: rho
+    REAL(RealKind) :: rho, rRho   ! rho = density, rRho=kilo/rho
     !
     INTEGER :: scPermutation(29)
 END MODULE mo_reac

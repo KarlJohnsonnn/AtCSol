@@ -192,16 +192,16 @@ INTEGER        :: nOutP
 !
 !--- Physical constants ********************************************
 
-!     Universal gas constant [J / mol K]
+!     Universal gas constant [J / mol / K]
   REAL(RealKind), PARAMETER :: R         = 8.31446210000000D0     
   REAL(RealKind), PARAMETER :: rR        = ONE/R
 
 !
-!     Universal gas constant, calorie units [cal / mol K]
+!     Universal gas constant, calorie units [cal / mol / K]
   REAL(RealKind), PARAMETER :: Rcal      = R * joule_to_cal
   REAL(RealKind), PARAMETER :: rRcal     = ONE/Rcal
 !
-!     Universal gas constant, CGS units [erg /    mol K]
+!     Universal gas constant, CGS units [erg / mol / K]
   REAL(RealKind), PARAMETER :: Rerg      = R * joule_to_erg
   REAL(RealKind), PARAMETER :: rRerg      = ONE/Rerg
 !
