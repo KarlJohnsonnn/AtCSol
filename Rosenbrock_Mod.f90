@@ -65,10 +65,11 @@ MODULE Rosenbrock_Mod
   END TYPE Out
   TYPE(Out) :: Output
 
-  TYPE(CSR_Matrix_T) :: Miter                       ! 
-  TYPE(CSR_Matrix_T) :: LU_Miter
+  !TYPE(CSR_Matrix_T) :: Miter                       ! 
+  !TYPE(CSR_Matrix_T) :: LU_Miter
+  !TYPE(CSR_Matrix_T) :: ID_1
 
-  TYPE(SpRowIndColInd_T) :: MiterFact
+  !TYPE(SpRowIndColInd_T) :: MiterFact
   !TYPE(SpRowColD_T) :: MiterMarko
 
   TYPE(IntArgs), PUBLIC :: Args                     ! Initial arguments  
@@ -198,6 +199,7 @@ MODULE Rosenbrock_Mod
     REAL(RealKind) :: Tspan(2)               
     REAL(RealKind) :: aTol(2)
     REAL(RealKind) :: rTolROW
+    INTEGER        :: i
     !
     ALLOCATE(ThresholdStepSizeControl(nDIM))
     ThresholdStepSizeControl(:ntGas)=AtolGas/RTolROW
@@ -244,6 +246,7 @@ MODULE Rosenbrock_Mod
       CALL FinishMPI()
       STOP 'STOP'
     END IF
+    CALL SparseID( ID_1  , nDim )
   END SUBROUTINE CheckInputParameters
   !
   !
@@ -284,7 +287,7 @@ MODULE Rosenbrock_Mod
     hmin  = minStp
 
     !---- Compute an initial step size h using Yp=Y'(t) 
-    CALL MatVecMult( f0 , BAT , Rate , Y_e )
+    CALL DAXPY_sparse( f0 , BAT , Rate , Y_e )
     !print*, 'debug:: sum(bat),rate =', SUM(BAT%val),SUM(rate)
     !print*, 'debug:: sum(f0)=', SUM(f0)
     !stop
@@ -306,10 +309,10 @@ MODULE Rosenbrock_Mod
     CALL Rates( t+tdel , Y , Rate , DRatedT )
     Output%nRateEvals = Output%nRateEvals + 1
 
-    CALL MatVecMult( f1 , BAT , Rate , Y_e )
+    CALL DAXPY_sparse( f1 , BAT , Rate , Y_e )
  
     DfDt  = ( f1 - f0 ) / tdel
-    CALL MatVecMult( Tmp , Jac , f0 , zeros )
+    CALL DAXPY_sparse( Tmp , Jac , f0 , zeros )
     DfDt  = DfDt  + Tmp
   
     rh    = 1.25D0  * SQRT( rTWO * MAXVAL( ABS(DfDt/wt) ) ) / RTolRow**pow
@@ -349,7 +352,8 @@ MODULE Rosenbrock_Mod
     ! TemporarY variables:
     !
     REAL(RealKind), DIMENSION(nDIM)            :: Y,  Yhat, fRhs
-    REAL(RealKind), DIMENSION(nspc)            :: Yrh, U, UMat, dUdT, dCdt, dwdt, d2UdT2 
+    REAL(RealKind), DIMENSION(nspc)            :: Yrh, U, UMat, dUdT, dCdt, d2UdT2 
+    REAL(RealKind), DIMENSION(nspc)            :: Jac_CT, Jac_TC
     REAL(RealKind), DIMENSION(nDIMex)          :: bb
     !
     REAL(RealKind) :: k( nDIM , RCo%nStage )
@@ -363,7 +367,7 @@ MODULE Rosenbrock_Mod
     !
     REAL(RealKind) :: dHdT(nspc)    ! EnthaplY derivative in dT [J/mol/K^2]
     REAL(RealKind) :: dGdT(nspc)    ! Gibbs potential derivative in dT [J/mol/K^2]
-    REAL(RealKind) :: dTdt
+    REAL(RealKind) :: dTdt, Jac_TT
       
     REAL(RealKind) :: tt
     REAL(RealKind) :: cv ! mass average mixture specific heat at constant volume
@@ -430,30 +434,28 @@ MODULE Rosenbrock_Mod
       ! Compute species internal energies in moles [J/mol]
       CALL InternalEnergy         ( U       , Tarr)             
 
-      ! Specific heat [J/mol/K]
+      !  Nondimensionl Derivatives of specific heats at constant volume in moles 
       CALL DiffSpcInternalEnergy  ( dUdT    , Tarr)              
 
       ! Derivatives of specific heats at constant volume in [J/mol/K2]
       CALL Diff2SpcInternalEnergy ( d2UdT2  , Tarr)
       
-      ! Compute system pressure [Pa]
-      Press = Pressure( Y0(:nspc) , Tarr(1)  )  
-      
       ! Average mixture properties, constant volume specific heats [J/kg/K]
-      CALL MassAveMixSpecHeat     ( cv      , dUdT    , Y0(:nspc) )
+      CALL MassAveMixSpecHeat     ( cv      , dUdT    , MoleConc=Y0(1:nspc) )
+
       ! Div. Average mixture properties, constant volume specific heats [J/kg/K2]
-      CALL MassAveMixSpecHeat     ( dcvdT   , d2UdT2  , Y0(:nspc) )
+      CALL MassAveMixSpecHeat     ( dcvdT   , d2UdT2  , MoleConc=Y0(1:nspc) )
 
       ! Computing molar concentration rate of change imposing mass consv. [mol/cm3/s]
-      CALL MatVecMult             ( dwdt    , BAT   , Rate , Y_e )
+      CALL DAXPY_sparse           ( dCdt    , BAT   , Rate , Y_e )
 
-      !dCdt     = dwdt
-      dCdt     = rRho * dwdt * MW
-      !dTdt     = - SUM( U * dCdt)/cv/rho
-      dTdt     = - kilo * SUM( U * dwdt) * rRho/cv
-      UMat     = - U * Yrh
+      dTdt     = - kilo * SUM( U * dCdt) * rRho/cv
+
+      UMat     = RCo%ga*dcvdT*dTdt*Y(1:nspc) + U*Yrh
+
       dRatedT  = dRatedT * RCo%ga
-      X = cv/h + RCo%ga * ( dTdt * dcvdT  + SUM( dUdT * dCdt ) )
+
+      X        = cv/h - RCo%ga/(cv*h)*dTdt*dcvdT  +  RCo%ga*SUM(dUdT*dCdt) 
       !
       !
       IF (dprint) THEN
@@ -487,17 +489,33 @@ MODULE Rosenbrock_Mod
     
       ! classic case needs to calculate the Jacobian first
       TimeJacobianA = MPI_WTIME()
+
+      ! d(dcdt)/dc
+      CALL Jacobian_CC(  Jac_CC , BAT  , A , Rate , Y )
+
       IF ( combustion ) THEN
-        CALL Miter_Classic( Miter , BAT , A , Rate , Y , h , RCo%ga , UMat , dCdT )
+
+        ! d(dcdt)/dT
+        CALL Jacobian_CT(  Jac_CT , BAT    , Rate , DRatedT )
+        ! d(dTdt)/dc
+        CALL Jacobian_TC(  Jac_TC , Jac_CC , cv   , dUdT  , dTdt , U )
+        ! d(dTdt)/dT
+        CALL Jacobian_TT(  Jac_TT , Jac_CT , cv   , dcvdT , dTdt , dUdT , dCdt , U )
+        !
+        CALL Miter_Classic( Miter , h , RCo%ga , Jac_CC , Jac_TC , Jac_CT , Jac_TT )
+
       ELSE
-        CALL Miter_Classic( Miter , BAT , A , Rate , Y , h , RCo%ga )
+        CALL Miter_Classic( Miter , h , RCo%ga , Jac_CC )
       END IF
-      Output%npds   = Output%npds + 1
+
+
+
+      Output%npds = Output%npds + 1
 
       IF ( OrderingStrategie == 8 ) THEN
         CALL SetLUvaluesCL( LU_Miter , Miter , LU_Perm )
       END IF
-      TimeJac       = TimeJac     + (MPI_WTIME()-TimeJacobianA)
+      TimeJac = TimeJac + (MPI_WTIME()-TimeJacobianA)
 
     ELSE !IF ( EXTENDED )
       ! 
@@ -518,10 +536,13 @@ MODULE Rosenbrock_Mod
       !
       rRate  = ONE / Rate
       IF ( OrderingStrategie == 8 ) THEN
-        CALL SetLUvaluesEX ( LU_Miter, rRate , Yrh, DRatedT , U , X , LUvalsFix)
+        CALL SetLUvaluesEX ( LU_Miter, rRate , Yrh, DRatedT , UMat , X , LUvalsFix)
+        !CALL WriteSparseMatrix(LU_Miter,'ERC_LU_Miter',neq,nspc)
       ELSE
-        CALL SetLUvaluesEX ( Miter, rRate , Yrh, DRatedT , U , X )
+        CALL SetLUvaluesEX ( Miter, rRate , Yrh, DRatedT , UMat , X )
+        !CALL WriteSparseMatrix(Miter,'ERC_Miter',neq,nspc)
       END IF
+      !stop 'nach matrix druck'
 
     END IF
     !
@@ -587,9 +608,9 @@ MODULE Rosenbrock_Mod
       IF ( iStg==1 ) THEN
 
         IF ( EXTENDED ) THEN
-          bb( 1     : neq ) = mONE                ! = -1.0d0
-          bb( neq+1 : nsr ) = Y_e                 ! emission
-          IF ( combustion ) bb(nDIMex)  = ZERO    ! =  0.0d0
+          bb( 1     : neq ) = mONE 
+          bb( neq+1 : nsr ) = Y_e 
+          IF ( combustion ) bb(nDIMex)  = ZERO
           IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:iprnt)
         END IF
 
@@ -615,8 +636,11 @@ MODULE Rosenbrock_Mod
       !--- Calculate the right hand side of the linear System
       IF ( CLASSIC ) THEN
 
-        CALL MatVecMult( fRhs , BAT , Rate , Y_e )           
-        fRhs = h * fRhs
+        CALL DAXPY_sparse( fRhs(1:nspc) , BAT , Rate , Y_e )           
+        fRhs(1:nspc) =  h * fRhs(1:nspc)
+
+        IF (combustion) &
+        fRhs( nDIM ) = -h/cv * SUM(U*fRhs(1:nspc)) 
 
         DO jStg = 1 , iStg-1
           fRhs  = fRhs + RCo%C(iStg,jStg) * k(:,jStg)
@@ -628,19 +652,20 @@ MODULE Rosenbrock_Mod
 
         IF ( iStg/=1 ) THEN
 
-          fRhs(:)     = ZERO
-          bb(nDIMex)  = ZERO
+          fRhs     = ZERO
 
           DO jStg = 1 , iStg-1
-            fRhs(:nspc)   = fRhs(:nspc) + RCo%C(iStg,jStg)*k(:nspc,jStg)
+            fRhs(1:nspc) = fRhs(1:nspc) + RCo%C(iStg,jStg)*k(1:nspc,jStg)
             IF (combustion) &                                            
-              bb(nDIMex)  = bb(nDIMex)  + RCo%C(iStg,jStg)*( cv*k(  nDIM ,jStg ) &
-                                                     & -SUM(  U*k( 1:nspc,jStg )) )
+            fRhs(nDIM)   = fRhs(nDIM)   + RCo%C(iStg,jStg)*( cv*k(  nDIM ,jStg )  &
+            &                                          -SUM(  U*k( 1:nspc,jStg )) )
           END DO
 
-          bb( 1      : neq ) = -rRate * Rate
-          bb( neq+1  : nsr ) = Y_e + fRhs(:nspc)/h
-          IF (combustion) bb(nDIMex) = - TWO*SUM(U * Y_e) + bb(nDIMex)/h
+          ! right hand side of the linear system
+
+          bb( 1      : neq )         = -rRate * Rate
+          bb( neq+1  : nsr )         = Y_e + fRhs(1:nspc)/h
+          IF (combustion) bb(nDIMex) = fRhs(nDIM)/h
 
           IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:iprnt)
         END IF
@@ -653,16 +678,14 @@ MODULE Rosenbrock_Mod
         IF ( CLASSIC ) THEN
 
           CALL SolveSparse( LU_Miter , fRhs )
-          k( : , iStg ) = fRhs(:)
-          !IF (dprint) print*, 'debug::         ',iStg,k( 1:iprnt , iStg )
+          k( 1:nDIM , iStg ) = fRhs
 
-        ELSE !IF ( EXTENDED )
+        ELSE !IF ( EXTENDED ) THEN
 
           CALL SolveSparse( LU_Miter , bb)
-          k( 1:nspc , iStg ) = Y0(:nspc) * bb(neq+1:nsr)
-          IF ( combustion ) k(nDIM,iStg) = bb(nDIM)
-          
-          !IF (dprint) print*, 'debug::         ',iStg,k( 1:iprnt , iStg )
+          k( 1:nspc , iStg ) = Y0(1:nspc) * bb(neq+1:nsr)
+          IF ( combustion ) &
+          k( nDIM   , iStg ) = bb(nDIM)
           
         END IF
 
@@ -671,16 +694,14 @@ MODULE Rosenbrock_Mod
         IF ( CLASSIC ) THEN
 
           CALL MumpsSolve( fRhs )
-          k( 1:nDIM , iStg ) = Mumps_Par%RHS(:)    
-          !IF (dprint) print*, 'debug::         ',iStg,k( 1:iprnt , iStg )
+          k( 1:nDIM , iStg ) = Mumps_Par%RHS(1:nDIM)    
 
-        ELSE !IF ( EXTENDED )
+        ELSE !IF ( EXTENDED ) THEN
 
           CALL MumpsSolve( bb )
-          k( 1:nspc , iStg ) = Y0(:nspc) * Mumps_Par%RHS(neq+1:nsr)
-          IF ( combustion ) k(nDIM,iStg) = Mumps_Par%RHS(nDIMex)
-
-          !IF (dprint) print*, 'debug::          ',iStg,k( 1:iprnt , iStg )
+          k( 1:nspc , iStg ) = Y0(1:nspc) * Mumps_Par%RHS(neq+1:nsr)
+          IF ( combustion ) &
+          k(  nDIM  , iStg ) = Mumps_Par%RHS(nDIMex)
 
         END IF
 
@@ -702,13 +723,13 @@ MODULE Rosenbrock_Mod
     END IF
 
     
-    !--- Update Concentrations (Temperatur)
+    !--- Update Concentrations (+Temperatur)
 
     YNew = Y0
     YHat = Y0
 
     DO jStg = 1 , RCo%nStage
-      Ynew = Ynew + RCo%m(jStg) * k(:,jStg)! new Y vector
+      Ynew = Ynew +  RCo%m(jStg) * k(:,jStg)! new Y vector
       Yhat = Yhat + RCo%me(jStg) * k(:,jStg)! embedded formula for err calc ord-1
     END DO
     !
@@ -737,7 +758,7 @@ MODULE Rosenbrock_Mod
    
     
     IF (dprint) THEN
-      print*,'debug::     Error     =  ', err
+      print*,'debug::     Error     =  ', err, '  Error index  =  ', errind
       print*, '------------------------------------------------------------------------------'
       print*, ''
       print*, ' Press ENTER to calculate next step '
@@ -764,7 +785,7 @@ MODULE Rosenbrock_Mod
     IF ( Error_Est == 2 ) THEN
       err = SUM( En_Values*En_Values ) / nspc   ! euclikd norm
     ELSE
-      err = MAXVAL( ABS(En_Values) )     ! maximum norm
+      err = MAXVAL( En_Values )     ! maximum norm
     END IF
     !
   END SUBROUTINE ERROR

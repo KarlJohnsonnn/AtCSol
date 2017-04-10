@@ -164,7 +164,6 @@
         IF (combustion) DRatedT(iReac) = DkdT
 
         !print*, 'DEBUG::   i, Meff,  k,  produkt, Rate  =', iReac, Meff, k, Prod, Rate(iReac)
-        !if (ireac==199) print*, 'debugg:: i,rate(i) = ', ireac, Rate(ireac), TRIM(ReactionSystem(ireac)%Line1), Meff,k,Prod
 
       END DO LOOP_OVER_ALL_REACTIONS
 

@@ -399,7 +399,7 @@ CONTAINS
       !
       ! if no exit iReac++
       !          reversible reactions
-      fPosEq=MAX(INDEX(iLine,' = '),INDEX(iLine,' <=> '))
+      fPosEq=MAX(INDEX(iLine,' = '),INDEX(iLine,'<=>'))
       fPosFw=INDEX(iLine,' => ')
       !
       ! IF REACTION LINE

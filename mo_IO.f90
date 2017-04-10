@@ -39,21 +39,23 @@ MODULE mo_IO
         WRITE(*,*)   '      NetCDF-File:       ', '*** no NetCDF output ***'
       END IF
       WRITE(*,*)   '      Initials:          ', InitFile
-      IF (solveLA=='cl') THEN 
-        WRITE(*,*)   '      Version:           classic'
-      ELSE
-        WRITE(*,*)   '      Version:           extended'
-      END IF
       WRITE(*,*)   '      ODE solver:        ', ODEsolver
-      IF (Error_Est==2) THEN
-        WRITE(*,*)   '      Error Estimation:  euklid norm'
-      ELSE
-        WRITE(*,*)   '      Error Estimation:  maximum norm'
-      END IF
-      IF (OrderingStrategie==8) THEN
-        WRITE(*,*)   '      linSolve:          sparse LU, Markowitz ordering scheme'
-      ELSE 
-        WRITE(*,*)   '      linSolve:          MUMPS, ordering stragegie:  ',OrderingStrategie 
+      IF (ODEsolver/='LSODE') THEN
+        IF (solveLA=='cl') THEN 
+          WRITE(*,*)   '      Version:           classic'
+        ELSE
+          WRITE(*,*)   '      Version:           extended'
+        END IF
+        IF (Error_Est==2) THEN
+          WRITE(*,*)   '      Error Estimation:  euklid norm'
+        ELSE
+          WRITE(*,*)   '      Error Estimation:  maximum norm'
+        END IF
+        IF (OrderingStrategie==8) THEN
+          WRITE(*,*)   '      linSolve:          sparse LU, Markowitz ordering scheme'
+        ELSE 
+          WRITE(*,*)   '      linSolve:          MUMPS, ordering stragegie:  ',OrderingStrategie 
+        END IF
       END IF
       WRITE(*,*)   ''
       IF(ImpEuler/=1) THEN

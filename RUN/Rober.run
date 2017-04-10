@@ -32,11 +32,9 @@
   AtolAqua = 1.0d-7                             ! abs. Toleranzen für aquatische Stoffe
   Error_Est= 2
   PI_StepSize = .false.
-  solveLA = 'ex'                                ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
-  !ODEsolver = 'METHODS/TSRosW2P.fort'    ! 'METHODS/Ros34PW3.fort'    ! Rosenbrock-Wanner Verfahrenskoeffizienten
+  solveLA = 'cl'                                ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
   ODEsolver = 'METHODS/TSRosWRodas3.fort'
-  !ODEsolver = 'METHODS/TSRosWSandu3.fort'
-  !ODEsolver =  'METHODS/Ros34PW3.fort'    ! Rosenbrock-Wanner Verfahrenskoeffizienten
+  !ODEsolver ='LSODE'    ! Rosenbrock-Wanner Verfahrenskoeffizienten
   ImpEuler = 0                                  ! 0=kein impliziter Euler, 1=impliziter Euler (kein ROW!!)
  /END
  &ORDERING

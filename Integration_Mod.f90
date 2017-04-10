@@ -59,7 +59,7 @@ MODULE Integration_Mod
     ! Temporary variables:
     TYPE(RosenbrockMethod_T) :: RCo  
     !
-    TYPE(CSR_Matrix_T)     :: Id, Jac_C           ! compressed row
+    TYPE(CSR_Matrix_T)     :: Id , tmpJacCC        ! compressed row
     TYPE(SpRowIndColInd_T) :: MiterFact         ! sparse row-ind col-ind (MUMPS)
     TYPE(SpRowColD_T)      :: MiterMarko        ! sparse-LU matrix format
     !
@@ -67,7 +67,7 @@ MODULE Integration_Mod
     ! 
     REAL(RealKind) :: Y0(nDIM)
     REAL(RealKind) :: Y(nDIM)       ! current y vector
-    REAL(RealKind) :: Y_mol(nspc)       ! current y vector
+    REAL(RealKind) :: sGas, sAqua, sEmis
     !
     REAL(RealKind) :: t             ! current time
     REAL(RealKind) :: timepart
@@ -106,14 +106,18 @@ MODULE Integration_Mod
     !-----------------------------
     ! LSODE Parameter
     !INTEGER, PARAMETER :: nDIM1 = SIZE(y_iconc)
-    INTEGER, PARAMETER :: LIW = 50
-    INTEGER, PARAMETER :: LRW = 1192
+    !INTEGER, PARAMETER :: LIW = 50
+    !INTEGER, PARAMETER :: LRW = 1192
+    INTEGER :: LIW
+    INTEGER :: LRW
     INTEGER        :: ITOL , ITASK , ISTATE, IOPT, MF
-    INTEGER        :: IWORK(LIW)
+    !INTEGER        :: IWORK(LIW)
+    !REAL(RealKind) :: RWORK(LRW)
+    INTEGER,        ALLOCATABLE :: IWORK(:)
+    REAL(RealKind), ALLOCATABLE :: RWORK(:)
     !
     REAL(RealKind) :: RTOL1 , ATOL1(nDIM)
     REAL(RealKind) :: TOUT
-    REAL(RealKind) :: RWORK(LRW)
 
     !
     !
@@ -226,7 +230,7 @@ MODULE Integration_Mod
     
     ! build nessesarry matrecies for Rate Calculation and FRhs
     CALL SymbolicAdd( BA , B , A )      ! symbolic addition:    BA = B + A
-    CALL SparseAdd  ( BA , B , A, '-')  ! numeric subtraction:  BA = B - A
+    CALL SparseAdd  ( BA , B , A, .TRUE.)  ! numeric subtraction:  BA = B - A
     CALL TransposeSparse( BAT , BA )    ! transpose BA:        BAT = Transpose(BA) 
 
     SELECT CASE (TRIM(method(1:7)))
@@ -244,12 +248,18 @@ MODULE Integration_Mod
     
         ! we need to calculate the Jacobian for both versions 'cl' and 'ex' to
         ! calculate an initial stepsize based on 2nd derivative (copy of MATLABs ode23s)
-    
-        CALL SymbolicMult( BAT , A , Jac_C )   ! symbolic mult for Jacobian Jac = [ BAT * Ones_nR * A * Ones_nS ]
+        ! symbolic mult for Jacobian Jac = [ BAT * Ones_nR * A * Ones_nS ], 
+        ! add diagonal entries and set them to zero
+        CALL SymbolicMult( BAT , A , tmpJacCC )  
+        CALL SparseID(Id,nspc)                    
+        CALL SymbolicAdd(Jac_CC,Id,tmpJacCC)
+        CALL Kill_Matrix_CSR(Id)
+        CALL Kill_Matrix_CSR(tmpJacCC)
+
     
         ! Set symbolic structure of iteration matrix for Row-Method
         IF ( CLASSIC ) THEN
-          CALL BuildSymbolicClassicMatrix(  Miter , Jac_C   , RCo%ga )
+          CALL BuildSymbolicClassicMatrix(  Miter , Jac_CC  , RCo%ga )
         ELSE
           CALL BuildSymbolicExtendedMatrix( Miter , A , BAT , RCo%ga ) 
         END IF
@@ -298,7 +308,7 @@ MODULE Integration_Mod
         
         ! ----calc values of Jacobian
         StartTimer  = MPI_WTIME()
-        CALL JacobiMatrix( BAT , A , Rate , Y , Jac_C )
+        CALL Jacobian_CC(Jac_CC , BAT , A , Rate , Y )
         TimeJac     = TimeJac + MPI_WTIME() - StartTimer
         Output%npds = Output%npds + 1
        
@@ -306,7 +316,7 @@ MODULE Integration_Mod
         IF ( MatrixPrint ) CALL SaveMatricies(A,B,BAT,Miter,LU_Miter,BSP)
       
         !---- calculate a first stepsize based on 2nd deriv.
-        CALL InitialStepSize( h , hmin , absh , Jac_C , Rate  &
+        CALL InitialStepSize( h , hmin , absh , Jac_CC , Rate  &
         &                   , Tspan(1) , Y(1:nspc) , RCo%pow  )
      
         !
@@ -474,6 +484,8 @@ MODULE Integration_Mod
 
         TimeIntegrationA=MPI_WTIME()
 
+        LIW    = 20 + nDIM
+        LRW    = 22 + 9*nDIM + nDIM**2
         ITOL   = 2              ! 2 if atol is an array
         RTOL1  = RtolRow        ! relative tolerance parameter
         ATOL1(1:nspc) = Atol(1)  ! atol dimension nspc+1
@@ -484,13 +496,14 @@ MODULE Integration_Mod
         IOPT   = 1             ! optional inputs are used (see Long Desciption Part 1.)
         MF     = 22            ! Stiff method, internally generated full Jacobian.
         
+        ALLOCATE(IWORK(LIW))
+        ALLOCATE(RWORK(LRW))
         IWORK  = 0
         RWORK  = ZERO
 
         !RWORK(5) = 1.0d-6    ! first step size, if commented -> calculate h0
         RWORK(6) = maxStp
         RWORK(7) = minStp
-
 
 
         IF (MPI_ID==0) WRITE(*,*) '  Start Integration............. '; WRITE(*,*) ' '
@@ -516,26 +529,25 @@ MODULE Integration_Mod
           ! save data
           IF ( NetCdfPrint ) THEN 
             iStpNetCDF  = iStpNetCDF + 1
-            !zen = Zenith(t)
-            !IF ( ntAqua > 0 ) THEN
-            !  actLWC  = pseudoLWC(t)
-            !  wetRad  = (Pi34*actLWC/SPEK(1)%Number)**(rTHREE)*1.0d-1
-            !END IF
+            zen = Zenith(t)
+            IF ( ntAqua > 0 ) THEN
+              actLWC  = pseudoLWC(t)
+              wetRad  = (Pi34*actLWC/SPEK(1)%Number)**(rTHREE)*1.0d-1
+            END IF
 
             ! save data in NetCDF File
             TimeNetCDFA = MPI_WTIME()
-            !CALL SetOutputNCDF(  Y0 , yNcdf, t , actLWC)
             CALL SetOutputNCDF(  Y , yNcdf, t , actLWC)
           
             CALL StepNetCDF (   t                      &
                             & , yNcdf                  &
                             & , itime_NetCDF           &
-                            & , (/ ZERO                &  ! LWC
-                            &     , RWORK(11)          &  ! Stepsize
-                            &     , SUM(Y(1:ntGas)) &    ! Sum gas conc
-                            &     , ZERO             &    ! Sum aqua conc
-                            &     , ZERO             &    ! wet radius
-                            &     , ZERO            /) &  ! zenith
+                            & , (/  actLWC                        &  ! LWC
+                            &     , RWORK(11)                     &  ! Stepsize
+                            &     , SUM(Y(1:ntGas))               &    ! Sum gas conc
+                            &     , SUM(Y(ntGas+1:ntGas+ntAqua))  &    ! Sum aqua conc
+                            &     , wetRad                        &    ! wet radius
+                            &     , zen               /)          &  ! zenith
                             & , errind                 &  ! max error index = 0
                             & , ZERO                   &  ! Sum sulfuric conc
                             & , error                 )   ! error 
@@ -621,39 +633,22 @@ MODULE Integration_Mod
     REAL(RealKind) :: U(nspc) , dUdT(nspc)
     REAL(RealKind) :: cv
 
-    ! debug
-    INTEGER :: j
 
-
-    Temp = Y(nspc+1)
-
-    ! mass conservation
+    ! MASS CONSERVATION
     CALL Rates( T , Y , Rate , DRate)
-    CALL MatVecMult( dwdt , BAT , Rate , Y_e )  ! [mol/cm3/sec]
+    CALL DAXPY_sparse( dwdt , BAT , Rate , Y_e )  ! [mol/cm3/s]
     
-    !---------------------> calculation with Y in [mol/cm3]
     YDOT(1:nspc) =  dwdt
     
-    ! energy conservation
-    CALL UpdateTempArray( Tarr , Temp )
-    CALL InternalEnergy( U , Tarr )                   ! [J/mol/K]
-    CALL DiffSpcInternalEnergy( dUdT  , Tarr)         ! [-]
-    CALL MassAveMixSpecHeat( cv , dUdT , MoleConc=Y(1:nspc) )
+    IF (combustion) THEN
+      ! ENERGY CONSERVATION
+      CALL UpdateTempArray( Tarr , Y(NEQ1) )
+      CALL InternalEnergy( U , Tarr )                   ! [J/mol/K]
+      CALL DiffSpcInternalEnergy( dUdT  , Tarr)         ! [-]
+      CALL MassAveMixSpecHeat( cv , dUdT , MoleConc=Y(1:nspc) )
     
-    YDOT(NEQ1) = - kilo * SUM( U * dwdt ) * rRho / cv 
-
-
-    !---------------------> calculation with Y in mass fractions
-     
-    !YDOT(1:nspc) = rRho * dwdt * MW        ! mass fraction rate of change
-    !   
-    !! energy conservation
-    !CALL UpdateTempArray( Tarr , Temp )
-    !CALL InternalEnergy( U , Tarr )                   ! [J/mol/K]
-    !CALL DiffSpcInternalEnergy( dUdT  , Tarr)         ! [-]
-    !CALL MassAveMixSpecHeat( cv , dUdT ,  MassFr=Y(1:nspc) )  
-    
-    !YDOT(NEQ1) = - kilo * SUM( U * dwdt ) * rRho / cv
+      YDOT(NEQ1) = - kilo * SUM( U * dwdt ) * rRho / cv 
+    END IF
 
   END SUBROUTINE FRhs
 
