@@ -159,6 +159,23 @@ MODULE Sparse_Mod
     Mat%Val=1.0d0
   END SUBROUTINE SparseID
   !
+
+  SUBROUTINE CSR_to_FULL(CSR,Full)
+    TYPE(CSR_Matrix_T),  INTENT(IN)  :: CSR
+    REAL(RealKind),      INTENT(OUT) :: Full(CSR%m,CSR%n)
+
+    INTEGER :: i,j,jj 
+    
+    Full = 0.0d0
+    DO i=1,CSR%m
+      DO jj=CSR%RowPtr(i),CSR%RowPtr(i+1)-1
+        j = CSR%ColInd(jj)
+        Full(i,j) = CSR%Val(jj)
+      END DO
+    END DO
+
+  END SUBROUTINE CSR_to_FULL
+
   !
   SUBROUTINE RowColDToCSR(CSR,SpRow,m,n)
     TYPE(CSR_Matrix_T), INTENT(OUT) :: CSR
@@ -1104,10 +1121,10 @@ MODULE Sparse_Mod
   END SUBROUTINE Jacobian_CC
 
  
-  ! JacTC = -1/cv [C_v*dTdt + U^T*JacCC]
-  SUBROUTINE Jacobian_TC(JacTC,JacCC,cv,C_v,dTdt,U)
+  ! JacTC = -1/cv/rho [C_v*dTdt + U^T*JacCC]
+  SUBROUTINE Jacobian_TC(JacTC,JacCC,cv,C_v,dTdt,U,rRho)
     TYPE(CSR_Matrix_T), INTENT(IN)  :: JacCC
-    REAL(RealKind),     INTENT(IN)  :: cv , dTdt
+    REAL(RealKind),     INTENT(IN)  :: cv , dTdt, rRho
     REAL(RealKind),     INTENT(IN)  :: C_v(:), U(:)
     REAL(RealKind),     INTENT(OUT) :: JacTC(JacCC%m)
     !
@@ -1115,7 +1132,7 @@ MODULE Sparse_Mod
 
     CALL DAX_sparse(tmpJacVal,JacCC,U)
 
-    JacTC = -(C_v*dTdt + tmpJacVal) / cv
+    JacTC = -  (C_v*dTdt + tmpJacVal) / cv * rRho
 
   END SUBROUTINE Jacobian_TC
   
@@ -1135,92 +1152,22 @@ MODULE Sparse_Mod
   END SUBROUTINE Jacobian_CT
  
 
-  ! JacTT = -1/cv [dTdT*dcvdT+C_v*dCdt + U^T*JacCC]
-  SUBROUTINE Jacobian_TT(JacTT,JacCT,cv,dcvdT,dTdt,C_v,dcdt,U)
+  ! JacTT = -1/cv/rho [dTdT*dcvdT+C_v*dCdt + U^T*JacCC]
+  SUBROUTINE Jacobian_TT(JacTT,JacCT,cv,dcvdT,dTdt,C_v,dcdt,U,rRho)
     REAL(RealKind), INTENT(IN)  :: JacCT(:)
-    REAL(RealKind), INTENT(IN)  :: cv , dcvdT , dTdt
+    REAL(RealKind), INTENT(IN)  :: cv , dcvdT , dTdt , rRho
     REAL(RealKind), INTENT(IN)  :: C_v(:) , dcdt(:) , U(:)
     REAL(RealKind), INTENT(OUT) :: JacTT
     !
-    JacTT =  - ( - dTdT*dcvdT/cv + SUM(C_v*dCdt) + SUM(U*JacCT) ) / cv
+    JacTT = -  (  dTdT*dcvdT/cv  &
+          &           + SUM(C_v*dCdt)  &
+          &           + SUM(U*JacCT)   ) / cv * rRho
     
   END SUBROUTINE Jacobian_TT
  
 
   ! SPARSE MITER CALCULATION_CLASSIC
-  SUBROUTINE Miter_Classic_old(Miter,gMat,aMat,rVec,yVec,h,g)
-    !
-    ! Miter = Id - h*g*gMat*Dr*aMat*invDy;
-    !
-    TYPE(CSR_Matrix_T), INTENT(IN) :: gMat
-    TYPE(CSR_Matrix_T), INTENT(IN) :: aMat
-    TYPE(CSR_Matrix_T), INTENT(INOUT) :: Miter
-    REAL(RealKind), INTENT(IN) :: rVec(:)
-    REAL(RealKind), INTENT(IN) :: yVec(:)
-    REAL(RealKind), INTENT(IN) :: h, g
-    !
-    INTEGER :: i,j,jj,k,kk, jUvec
-    REAL(RealKind) :: ajj
-    REAL(RealKind) :: hg
-    REAL(RealKind) :: temp(MAX(gMat%m,gMat%n,aMat%n)+1)
-    REAL(RealKind) :: tempR
-   
-    Miter%Val = ZERO
-    temp      = ZERO
-    tempR     = ZERO
-    hg        = h*g
-
-    DO i = 1 , gMat%m
-    
-      tempR = ZERO
-
-      DO jj = gMat%RowPtr(i) , gMat%RowPtr(i+1)-1
-        j   = gMat%ColInd(jj)
-        ajj = gMat%Val(jj) * rVec(j) 
-        
-        ! calculate the derivative dY'/dY
-        DO kk = aMat%RowPtr(j) , aMat%RowPtr(j+1)-1
-          k       = aMat%ColInd(kk)
-          temp(k) = temp(k) + ajj * aMat%Val(kk)/yVec(k)
-        END DO
-        
-      END DO
-
-      ! update the matrix entrie
-      DO jj = Miter%RowPtr(i) , Miter%RowPtr(i+1)-1
-        j = Miter%ColInd(jj)
-        IF ( j==i ) THEN
-          Miter%Val(jj) = ONE - (hg)*temp(j)
-        ELSE
-          Miter%Val(jj) = - (hg)*temp(j)
-        END IF
-        temp(j) = ZERO
-      END DO
-    END DO
-   
-  END SUBROUTINE Miter_Classic_old
-
- 
-  ! SPARSE MITER CALCULATION_CLASSIC
-  SUBROUTINE Miter_Classic2(Miter,ID,h,g,JacCC)
-    !
-    ! JacYY = Id - h*g*gMat*Dr*aMat*invDy;
-    !
-    TYPE(CSR_Matrix_T) :: Miter
-    TYPE(CSR_Matrix_T) :: ID, JacCC
-    REAL(RealKind)     :: h, g
-    !
-    JacCC%Val = -h*g * JacCC%Val
-
-    CALL SparseAdd  ( Miter , ID , JacCC)
-   
-  END SUBROUTINE Miter_Classic2
-
-  
-  ! SPARSE MITER CALCULATION_CLASSIC
   SUBROUTINE Miter_Classic(Miter,h,g,J1,J2,J3,J4)
-    !
-    ! Miter = Id - h*g*gMat*Dr*aMat*invDy;
     !
     TYPE(CSR_Matrix_T),       INTENT(INOUT) :: Miter
     REAL(RealKind),           INTENT(IN)    :: h, g
@@ -1232,30 +1179,30 @@ MODULE Sparse_Mod
    
     Miter%Val = ZERO
     hg  = h*g
-    m   = J1%m
     cnt = 0
 
-    DO i = 1,m
-    
-      ! update the matrix entrie
+    DO i = 1,J1%m
       DO jj = Miter%RowPtr(i) , Miter%RowPtr(i+1)-1
-        
         j = Miter%ColInd(jj)
         IF      ( j==i ) THEN
-          Miter%Val(jj) = ONE - (hg)*J1%Val(jj-cnt)
+          ! diagonal d(dCdt)/dC
+          Miter%Val(jj) = ONE - hg*J1%Val(jj-cnt)
         ELSE IF ( j==Miter%m.AND.combustion) THEN
           cnt = cnt + 1
-          Miter%Val(jj) = - g*J3(i)
         ELSE
-          Miter%Val(jj) = - (hg)*J1%Val(jj-cnt)
+          ! none diagonal  d(dCdt)/dC
+          Miter%Val(jj) = - hg*J1%Val(jj-cnt)
         END IF
       END DO
-    
     END DO
 
     IF (combustion) THEN
-      Miter%val(Miter%RowPtr(m+1):Miter%RowPtr(m+2)-2) = -hg*J3
-      Miter%val(Miter%RowPtr(m+2)-1) = ONE - hg*J4
+      ! bottom row d(dTdt)/dC
+      Miter%Val(Miter%RowVectorPtr) = - hg*J2
+      ! right hand column d(dCdt)/dT
+      Miter%Val(Miter%ColVectorPtr) = - hg*J3
+      ! lower right hand corner d(dTdt)/dT
+      Miter%Val(Miter%XPtr) = ONE - hg*J4
     END IF
    
   END SUBROUTINE Miter_Classic
@@ -1326,7 +1273,7 @@ MODULE Sparse_Mod
       END DO
     END DO
     IF ( combustion ) THEN
-      CL%RowVectorPtr = [( i , i = 1 , ndim )]
+      CL%RowVectorPtr = [( i , i = CL%RowPtr(nDim),CL%RowPtr(nDim+1)-2 )]
       CL%XPtr = CL%DiagPtr(ndim)
     END IF
   END SUBROUTINE BuildSymbolicClassicMatrix
@@ -1822,6 +1769,7 @@ MODULE Sparse_Mod
   !
   !
   ! Matrix*Vector1+Vector2 (rhs)
+  ! sparse matrix * vector + vector
   SUBROUTINE DAXPY_sparse(Rhs,A,X,Y)
     !IN
     TYPE(CSR_Matrix_T), INTENT(IN)  :: A
@@ -1831,6 +1779,7 @@ MODULE Sparse_Mod
     !TEMP
     INTEGER :: i, rp_i, rp_i1  ! RowPtr(i), RowPtr(i+1)-1
    
+    Rhs = ZERO      ! notwendig? 
     DO i=1,A%m
       rp_i   = A%RowPtr(i)  ;  rp_i1  = A%RowPtr(i+1)-1
       Rhs(i) = SUM(A%Val(rp_i:rp_i1)*X(A%ColInd(rp_i:rp_i1)))+Y(i)

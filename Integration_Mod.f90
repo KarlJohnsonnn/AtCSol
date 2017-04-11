@@ -158,8 +158,8 @@ MODULE Integration_Mod
 
       IF ( combustion ) THEN
         WRITE(*,fmt1) '          Initial Temperature  = ', Temperature0,'  [K]'
-        WRITE(*,fmt1) '             Initial Pressure  = ', Pressure0,'  [Pa]'
-        WRITE(*,fmt1) '              Reactor denstiy  = ', rho,'  [kg/cm3]'
+        WRITE(*,fmt1) '          Initial Pressure     = ', Pressure0,'  [Pa]'
+        WRITE(*,fmt1) '          Reactor denstiy      = ', rho,'  [kg/cm3]'
       END IF
       WRITE(*,*)
 
@@ -627,7 +627,7 @@ MODULE Integration_Mod
     INTEGER        :: NEQ1
     REAL(RealKind) :: T , Y(NEQ1) , YDOT(NEQ1)
     !
-    REAL(RealKind) :: dwdt(nspc)
+    REAL(RealKind) :: dCdt(nspc)
     REAL(RealKind) :: Rate(neq) , DRate(neq)
     REAL(RealKind) :: Temp, Tarr(8)
     REAL(RealKind) :: U(nspc) , dUdT(nspc)
@@ -636,18 +636,18 @@ MODULE Integration_Mod
 
     ! MASS CONSERVATION
     CALL Rates( T , Y , Rate , DRate)
-    CALL DAXPY_sparse( dwdt , BAT , Rate , Y_e )  ! [mol/cm3/s]
+    CALL DAXPY_sparse( dCdt , BAT , Rate , Y_e )  ! [mol/cm3/s]
     
-    YDOT(1:nspc) =  dwdt
+    YDOT(1:nspc) =  dCdt
     
+    ! ENERGY CONSERVATION
     IF (combustion) THEN
-      ! ENERGY CONSERVATION
       CALL UpdateTempArray( Tarr , Y(NEQ1) )
-      CALL InternalEnergy( U , Tarr )                   ! [J/mol/K]
+      CALL InternalEnergy( U , Tarr )                   ! [J/mol]
       CALL DiffSpcInternalEnergy( dUdT  , Tarr)         ! [-]
-      CALL MassAveMixSpecHeat( cv , dUdT , MoleConc=Y(1:nspc) )
+      CALL MassAveMixSpecHeat( cv , dUdT , MoleConc=Y(1:nspc) ) ! [J/kg/K]
     
-      YDOT(NEQ1) = - kilo * SUM( U * dwdt ) * rRho / cv 
+      YDOT(NEQ1) = - kilo * SUM( U * dCdt ) * rRho / cv    ! rRho=kilo/rho in [cm3/g]
     END IF
 
   END SUBROUTINE FRhs

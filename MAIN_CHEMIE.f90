@@ -155,7 +155,7 @@ PROGRAM Main_ChemKin
                                    &  Temp  = Temperature0    )
     ! Initialising reactor density
     rho  = Density( MoleConc )
-    rRho = kilo/rho
+    rRho = kilo/rho       ! in [cm3/g]
 
     !InitValAct = MassFrac
     InitValAct = MoleConc

@@ -413,19 +413,12 @@ MODULE Rosenbrock_Mod
    
     ! HIER UNBEDINGT RATE MIT Y0 ALS INPUT
     Y    = MAX( ABS(Y0)  , eps ) * SIGN( ONE , Y0 )  ! concentrations =/= 0
+    
+    CALL Rates( t, Y, Rate, DRatedT )     
+    Rate = MAX( ABS(Rate) , eps ) * SIGN( ONE , Rate )    ! reaction rates =/= 0
 
-    IF (combustion) THEN
-      CALL Rates( t, Y0, Rate, DRatedT )
-      !Rate = MAX( ABS(Rate) , eps ) * SIGN( ONE , Rate )    ! reaction rates =/= 0
-    ELSE
-      ! HIER MUSS DIE RATE MIT Y UND NICHT MIT Y0 BERECHNET WERDEN FÜR TROPOSPHÄRENMECHANISMEN
-      CALL Rates( t, Y, Rate, DRatedT )
-      Rate = MAX( ABS(Rate) , eps ) * SIGN( ONE , Rate )    ! reaction rates =/= 0
-    END IF
-
-    ! UND HIER  NICHT VON Y(:nspc) AUF Y0(:nspc) ÄNDERN
+    ! HIER  NICHT VON Y(:nspc) AUF Y0(:nspc) ÄNDERN
     Yrh  = Y(1:nspc) / h
-
 
     IF ( combustion ) THEN
       !                             OUT:      IN:
@@ -455,7 +448,7 @@ MODULE Rosenbrock_Mod
 
       dRatedT  = dRatedT * RCo%ga
 
-      X        = cv/h - RCo%ga/(cv*h)*dTdt*dcvdT  +  RCo%ga*SUM(dUdT*dCdt) 
+      X        = cv/h/rRho + RCo%ga/(cv*h)*dTdt*dcvdT  +  RCo%ga*SUM(dUdT*dCdt) 
       !
       !
       IF (dprint) THEN
@@ -496,20 +489,17 @@ MODULE Rosenbrock_Mod
       IF ( combustion ) THEN
 
         ! d(dcdt)/dT
-        CALL Jacobian_CT(  Jac_CT , BAT    , Rate , DRatedT )
+        CALL Jacobian_CT( Jac_CT , BAT , Rate , DRatedT )
         ! d(dTdt)/dc
-        CALL Jacobian_TC(  Jac_TC , Jac_CC , cv   , dUdT  , dTdt , U )
+        CALL Jacobian_TC( Jac_TC , Jac_CC , cv , dUdT , dTdt , U , rRho)
         ! d(dTdt)/dT
-        CALL Jacobian_TT(  Jac_TT , Jac_CT , cv   , dcvdT , dTdt , dUdT , dCdt , U )
+        CALL Jacobian_TT( Jac_TT , Jac_CT , cv , dcvdT , dTdt , dUdT , dCdt , U , rRho)
         !
         CALL Miter_Classic( Miter , h , RCo%ga , Jac_CC , Jac_TC , Jac_CT , Jac_TT )
 
       ELSE
         CALL Miter_Classic( Miter , h , RCo%ga , Jac_CC )
       END IF
-
-
-
       Output%npds = Output%npds + 1
 
       IF ( OrderingStrategie == 8 ) THEN
@@ -537,13 +527,9 @@ MODULE Rosenbrock_Mod
       rRate  = ONE / Rate
       IF ( OrderingStrategie == 8 ) THEN
         CALL SetLUvaluesEX ( LU_Miter, rRate , Yrh, DRatedT , UMat , X , LUvalsFix)
-        !CALL WriteSparseMatrix(LU_Miter,'ERC_LU_Miter',neq,nspc)
       ELSE
         CALL SetLUvaluesEX ( Miter, rRate , Yrh, DRatedT , UMat , X )
-        !CALL WriteSparseMatrix(Miter,'ERC_Miter',neq,nspc)
       END IF
-      !stop 'nach matrix druck'
-
     END IF
     !
     !                                  _      
@@ -594,13 +580,13 @@ MODULE Rosenbrock_Mod
     !  |_| \_\ \___/   \_/\_/              |_|  |_||_| |_| |_| \___| |____/  \__|\___|| .__/ 
     !                                                                                 |_|    
     !****************************************************************************************
-      IF (dprint) THEN
-        print*, ''
-        print*, '------------------------------------------------------------------------------'
-        print*, '| Before solving Ax=b:  iStage                   b                           |'
-        print*, '------------------------------------------------------------------------------'
-        print*, ''
-      END IF
+    IF (dprint) THEN
+      print*, ''
+      print*, '------------------------------------------------------------------------------'
+      print*, '| Before solving Ax=b:  iStage                   b                           |'
+      print*, '------------------------------------------------------------------------------'
+      print*, ''
+    END IF
     !
     LOOP_n_STAGES:  DO iStg = 1 , RCo%nStage
 
@@ -636,32 +622,32 @@ MODULE Rosenbrock_Mod
       !--- Calculate the right hand side of the linear System
       IF ( CLASSIC ) THEN
 
-        CALL DAXPY_sparse( fRhs(1:nspc) , BAT , Rate , Y_e )           
-        fRhs(1:nspc) =  h * fRhs(1:nspc)
+        CALL DAXPY_sparse( dCdt , BAT , Rate , Y_e )           
+        fRhs(1:nspc) =  h * dCdt
 
         IF (combustion) &
-        fRhs( nDIM ) = -h/cv * SUM(U*fRhs(1:nspc)) 
+        fRhs( nDIM ) = - h * kilo * SUM(U*dCdt) * rRho / cv
 
         DO jStg = 1 , iStg-1
           fRhs  = fRhs + RCo%C(iStg,jStg) * k(:,jStg)
         END DO
 
-        IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',frhs( 1:iprnt)
+        IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',fRhs( 1:iprnt)
 
-      ELSE !IF ( EXTENDED ) 
+      ELSE !IF ( EXTENDED ) THEN
 
         IF ( iStg/=1 ) THEN
 
-          fRhs     = ZERO
+          fRhs = ZERO
 
           DO jStg = 1 , iStg-1
             fRhs(1:nspc) = fRhs(1:nspc) + RCo%C(iStg,jStg)*k(1:nspc,jStg)
             IF (combustion) &                                            
             fRhs(nDIM)   = fRhs(nDIM)   + RCo%C(iStg,jStg)*( cv*k(  nDIM ,jStg )  &
-            &                                          -SUM(  U*k( 1:nspc,jStg )) )
+            &                                          +SUM(  U*k( 1:nspc,jStg )) )
           END DO
 
-          ! right hand side of the linear system
+          ! right hand side of the extended linear system
 
           bb( 1      : neq )         = -rRate * Rate
           bb( neq+1  : nsr )         = Y_e + fRhs(1:nspc)/h
@@ -729,8 +715,8 @@ MODULE Rosenbrock_Mod
     YHat = Y0
 
     DO jStg = 1 , RCo%nStage
-      Ynew = Ynew +  RCo%m(jStg) * k(:,jStg)! new Y vector
-      Yhat = Yhat + RCo%me(jStg) * k(:,jStg)! embedded formula for err calc ord-1
+      YNew = YNew +  RCo%m(jStg) * k(:,jStg)! new Y vector
+      YHat = YHat + RCo%me(jStg) * k(:,jStg)! embedded formula for err calc ord-1
     END DO
     !
     IF (dprint) THEN
@@ -754,7 +740,7 @@ MODULE Rosenbrock_Mod
     !  |_____||_|   |_|   \___/ |_|    |_____||___/ \__||_||_| |_| |_| \__,_| \__| |_| \___/ |_| |_|
     !                                                                                              
     !***********************************************************************************************
-    CALL ERROR( err , errind , Ynew , Yhat , ATolAll , RTolROW , t )
+    CALL ERROR( err , errind , YNew , YHat , ATolAll , RTolROW , t )
    
     
     IF (dprint) THEN

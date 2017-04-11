@@ -889,7 +889,7 @@
     !
     !
     !-------------------------------------------------------------------------
-    !---  Species internal energies in moles [J/mol/K]  
+    !---  Species internal energies in moles [J/mol]  
     !-------------------------------------------------------------------------
     SUBROUTINE InternalEnergy(U,T)
       !OUT
