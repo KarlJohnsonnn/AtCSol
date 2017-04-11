@@ -442,13 +442,13 @@ MODULE Rosenbrock_Mod
       ! Computing molar concentration rate of change imposing mass consv. [mol/cm3/s]
       CALL DAXPY_sparse           ( dCdt    , BAT   , Rate , Y_e )
 
-      dTdt     = - kilo * SUM( U * dCdt) * rRho/cv
+      dTdt     = - SUM( U * dCdt) * rRho/cv
 
       UMat     = RCo%ga*dcvdT*dTdt*Y0(1:nspc) + U*Yrh
 
       dRatedT  = RCo%ga*dRatedT
 
-      X        = cv/h/(kilo*rRho) + RCo%ga/cv*dcvdT*dTdt  +  RCo%ga*SUM(dUdT*dCdt) 
+      X        = cv/(h*rRho) + RCo%ga/cv*dcvdT*dTdt  +  RCo%ga*SUM(dUdT*dCdt) 
       !
       !
       IF (dprint) THEN
@@ -626,7 +626,7 @@ MODULE Rosenbrock_Mod
         fRhs(1:nspc) =  h * dCdt
 
         IF (combustion) &
-        fRhs( nDIM ) = - h * kilo * SUM(U*dCdt) * rRho / cv
+        fRhs( nDIM ) = - h * SUM(U*dCdt) * rRho / cv
 
         DO jStg = 1 , iStg-1
           fRhs  = fRhs + RCo%C(iStg,jStg) * k(:,jStg)
@@ -642,9 +642,9 @@ MODULE Rosenbrock_Mod
 
           DO jStg = 1 , iStg-1
             fRhs(1:nspc) = fRhs(1:nspc) + RCo%C(iStg,jStg)*k(1:nspc,jStg)
-            IF (combustion)                                                         &
-            fRhs(nDIM)   =   fRhs(nDIM) + RCo%C(iStg,jStg) *                        &
-            &                 ( cv/(kilo*rRho)*k(nDIM,jStg) + SUM(U*k(1:nspc,jStg)) )
+            IF (combustion)                                                &
+            fRhs(nDIM)   = fRhs(nDIM) + RCo%C(iStg,jStg)*                  &
+            &               ( cv/rRho*k(nDIM,jStg) + SUM(U*k(1:nspc,jStg)) )
           END DO
 
           ! right hand side of the extended linear system
@@ -749,7 +749,6 @@ MODULE Rosenbrock_Mod
       print*, ''
       print*, ' Press ENTER to calculate next step '
       read(*,*) 
-      !stop 'rosenbrockmod'
     END IF
    
   END SUBROUTINE Rosenbrock

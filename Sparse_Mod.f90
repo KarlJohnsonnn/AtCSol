@@ -1122,17 +1122,17 @@ MODULE Sparse_Mod
 
  
   ! JacTC = -1/cv/rho [C_v*dTdt + U^T*JacCC]
-  SUBROUTINE Jacobian_TC(JacTC,JacCC,cv,C_v,dTdt,U,rRho)
+  SUBROUTINE Jacobian_TC(JacTC,JacCC,cv,dUdT,dTdt,U,rRho)
     TYPE(CSR_Matrix_T), INTENT(IN)  :: JacCC
     REAL(RealKind),     INTENT(IN)  :: cv , dTdt, rRho
-    REAL(RealKind),     INTENT(IN)  :: C_v(:), U(:)
+    REAL(RealKind),     INTENT(IN)  :: dUdT(:), U(:)
     REAL(RealKind),     INTENT(OUT) :: JacTC(JacCC%m)
     !
     REAL(RealKind) :: tmpJacVal(JacCC%m)
 
     CALL DAX_sparse(tmpJacVal,JacCC,U)
 
-    JacTC = -  (C_v*dTdt + tmpJacVal) / cv * rRho
+    JacTC = - (dUdT*dTdt + tmpJacVal) / cv * rRho * milli
 
   END SUBROUTINE Jacobian_TC
   
@@ -1153,15 +1153,15 @@ MODULE Sparse_Mod
  
 
   ! JacTT = -1/cv/rho [dTdT*dcvdT+C_v*dCdt + U^T*JacCC]
-  SUBROUTINE Jacobian_TT(JacTT,JacCT,cv,dcvdT,dTdt,C_v,dcdt,U,rRho)
+  SUBROUTINE Jacobian_TT(JacTT,JacCT,cv,dcvdT,dTdt,dUdT,dcdt,U,rRho)
     REAL(RealKind), INTENT(IN)  :: JacCT(:)
     REAL(RealKind), INTENT(IN)  :: cv , dcvdT , dTdt , rRho
-    REAL(RealKind), INTENT(IN)  :: C_v(:) , dcdt(:) , U(:)
+    REAL(RealKind), INTENT(IN)  :: dUdT(:) , dCdt(:) , U(:)
     REAL(RealKind), INTENT(OUT) :: JacTT
     !
-    JacTT = -  (  dTdT*dcvdT/cv  &
-          &           + SUM(C_v*dCdt)  &
-          &           + SUM(U*JacCT)   ) / cv * rRho
+    JacTT = - milli * rRho/cv  *                &
+          &   (  dTdT*dcvdT/cv + SUM(dUdT*dCdt) &
+          &                    + SUM(U*JacCT)   ) 
     
   END SUBROUTINE Jacobian_TT
  
