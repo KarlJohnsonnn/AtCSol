@@ -1286,25 +1286,26 @@ MODULE Sparse_Mod
 
     INTEGER, ALLOCATABLE :: tmpColInd(:)
     !
-    INTEGER :: i, j, dimBig, nnzBig
+    INTEGER :: i, j, ndim, nnzBig
+    INTEGER :: from, to
     !
     !------------------------------------------------------------------------------
     ! --- Set big Matrix dimensions and nonzeros 
     !------------------------------------------------------------------------------
     !
     IF ( combustion ) THEN
-      DimBig  = A%m   + BAT%m+1               ! nummber of rows
-      nnzBig  = A%nnz + BAT%nnz      &        ! nonzeros of alpha and (beta-alpha)^T
-      &       + 2*A%n + 2*BAT%n + 1           ! Dc,U^T and Dr,~K and X (down right)
+      ndim   = A%m   + BAT%m+1          ! nummber of rows
+      nnzBig = A%nnz + BAT%nnz     &    ! nonzeros of alpha and (beta-alpha)^T
+      &        + 2*A%n + 2*BAT%n + 1    ! Dc,U^T and Dr,~K and X (down right)
     ELSE
-      DimBig  = A%m   + BAT%m                 ! nummber of rows
-      nnzBig  = A%nnz + BAT%nnz      &        ! nonzeros of alpha and (beta-alpha)^T
-      &       + A%n   + BAT%n                 ! Dr, Dc
+      ndim   = A%m   + BAT%m            ! nummber of rows
+      nnzBig = A%nnz + BAT%nnz     &    ! nonzeros of alpha and (beta-alpha)^T
+      &        + A%n   + BAT%n          ! Dr, Dc
     END IF
     
-    CALL New_CSR( EX , DimBig , DimBig , nnzBig )
+    CALL New_CSR( EX , ndim , ndim , nnzBig )
     
-    ALLOCATE(EX%DiagPtr(DimBig))          ! entire diagonal
+    ALLOCATE(EX%DiagPtr(ndim))          ! entire diagonal
     ALLOCATE(EX%DiagPtr_R(A%m))         ! reaction rates
     ALLOCATE(EX%DiagPtr_C(BAT%m))       ! species concentrations
     EX%DiagPtr        = -13
@@ -1337,11 +1338,13 @@ MODULE Sparse_Mod
 
         EX%RowPtr(i+1)  = EX%RowPtr(i) + A%RowPtr(i+1) - A%RowPtr(i) + 2
 
+        from  = A%RowPtr(i);    to  = A%RowPtr(i+1)-1
+
         EX%ColInd(EX%RowPtr(i):EX%RowPtr(i+1)-1) =                                 & 
-        &       (/  i  , A%m + A%ColInd(A%RowPtr(i):(A%RowPtr(i+1)-1))    , DimBig  /)
+        &       [  i  , A%m + A%ColInd(from:to)    , ndim  ]
 
         EX%Val(EX%RowPtr(i):EX%RowPtr(i+1)-1)    =                                 & 
-        &       (/ ONE , g*A%Val(A%ColInd(A%RowPtr(i):(A%RowPtr(i+1)-1))) ,  ONE /)
+        &       [ ONE , g*A%Val(A%ColInd(from:to)) ,  ONE ]
      
         ! set pointers for better access 
         EX%DiagPtr(i)       = EX%RowPtr(i)
@@ -1356,11 +1359,13 @@ MODULE Sparse_Mod
 
         EX%RowPtr(i+1)  = EX%RowPtr(i) + A%RowPtr(i+1) - A%RowPtr(i) + 1
 
-        EX%ColInd(EX%RowPtr(i):EX%RowPtr(i+1)-1)  =                        & 
-        &       (/  i  , A%m + A%ColInd(A%RowPtr(i):(A%RowPtr(i+1)-1))    /)
+        from  = A%RowPtr(i);    to  = A%RowPtr(i+1)-1
 
-        EX%Val(EX%RowPtr(i):EX%RowPtr(i+1)-1)     =                        & 
-        &       (/ ONE , g*A%Val(A%ColInd(A%RowPtr(i):(A%RowPtr(i+1)-1))) /)
+        EX%ColInd(EX%RowPtr(i):EX%RowPtr(i+1)-1) = & 
+        &       [ i  , A%m + A%ColInd(from:to)     ]
+
+        EX%Val(EX%RowPtr(i):EX%RowPtr(i+1)-1)    = & 
+        &       [ ONE , g*A%Val(A%ColInd(from:to)) ]
 
         ! set pointers for better access 
         EX%DiagPtr(i)   = EX%RowPtr(i)
@@ -1382,11 +1387,12 @@ MODULE Sparse_Mod
 
       EX%RowPtr(A%m+i+1)  = EX%RowPtr(A%m+i) + BAT%RowPtr(i+1) - BAT%RowPtr(i) + 1
 
-      EX%ColInd(EX%RowPtr(A%m+i):EX%RowPtr(A%m+i+1)-1)  =                 &
-      &         (/ BAT%ColInd(BAT%RowPtr(i):(BAT%RowPtr(i+1)-1)) , A%m+i /)
+      from  = BAT%RowPtr(i);  to  = BAT%RowPtr(i+1)-1
+      EX%ColInd(EX%RowPtr(A%m+i):EX%RowPtr(A%m+i+1)-1)  = &
+      &                     [ BAT%ColInd(from:to) , A%m+i ]
 
-      EX%Val(EX%RowPtr(A%m+i):EX%RowPtr(A%m+i+1)-1)     =                 &
-      &         (/ BAT%Val(BAT%RowPtr(i):(BAT%RowPtr(i+1)-1))    ,  ONE  /)
+      EX%Val(EX%RowPtr(A%m+i):EX%RowPtr(A%m+i+1)-1)     = &
+      &                     [ BAT%Val(from:to)    ,  ONE  ]
      
       EX%DiagPtr(i+A%m)   = EX%RowPtr(A%m+i+1)-1
       EX%DiagPtr_C(i)     = EX%RowPtr(A%m+i+1)-1
@@ -1402,13 +1408,15 @@ MODULE Sparse_Mod
     !
     IF ( combustion ) THEN
 
-      EX%RowPtr(DimBig+1)=EX%RowPtr(DimBig)+A%n+1
+      EX%RowPtr(ndim+1) = EX%RowPtr(ndim) + A%n+1
       
-      EX%ColInd(EX%RowPtr(DimBig):EX%RowPtr(DimBig+1)-1) = [( i , i = BAT%n+1 , BAT%n+A%n+1 )]
-      EX%Val(EX%RowPtr(DimBig):EX%RowPtr(DimBig+1)-1)    = ONE
-      EX%RowVectorPtr(:) = [( i , i = BAT%n+1 , BAT%n+A%n+1 )]
-      EX%DiagPtr(DimBig) = EX%RowPtr(DimBig+1)-1
-      EX%XPtr            = EX%DiagPtr(DimBig)
+      from  = EX%RowPtr(ndim);  to  = EX%RowPtr(ndim+1)-1
+
+      EX%ColInd(from:to) = [( i , i = BAT%n+1,BAT%n+A%n+1 )]
+      EX%Val   (from:to) = ONE
+      EX%RowVectorPtr    = [( i , i = from,to-1 )]
+      EX%DiagPtr(ndim)   = EX%RowPtr(ndim+1)-1
+      EX%XPtr            = EX%DiagPtr(ndim)
 
     END IF
     !call printsparse(EX , '*')

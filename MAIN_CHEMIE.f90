@@ -125,20 +125,16 @@ PROGRAM Main_ChemKin
       tmpPos  = PositionSpeciesAll( tmpChar0 )
       IF ( tmpPos > 0 ) MW(tmpPos) = REAL( tmpMW0 , RealKind )
     END DO
-
     rMW(:) = ONE / MW(:)
-
     CLOSE ( 998 )
-    !
-    !
-    !ALLOCATE(InitValAct(ntGas),y_e(ntGas))
+   
+    
     ALLOCATE( MoleFrac(ntGas)   , MassFrac(ntGas) )
     ALLOCATE( InitValAct(ntGas) , y_e(ntGas) )
     ALLOCATE( InitValKat(ntKat) )
     MoleFrac    = ZERO           ! mole fraction 
     MassFrac    = ZERO           ! mole fraction 
     InitValAct  = ZERO           ! mol/cm3 
-
 
     CALL Read_GASini    ( InitFile , MoleFrac , InitValKat )
     CALL Read_EMISS     ( InitFile , y_e )
@@ -180,27 +176,27 @@ PROGRAM Main_ChemKin
   
     !----------------------------------------------------------------
     ! ---  build the coeficient matrices and write .chem
-    CALL PrintHeadSpecies ( ChemFile      , 89 )
+    CALL PrintHeadSpecies ( ChemFile , 89 )
 
-    IF ( ntGas    > 0 ) CALL PrintSpecies( ListGas2      , 89 )
-    IF ( ntAqua   > 0 ) CALL PrintSpecies( ListAqua2     , 89 )
-    IF ( ntSolid  > 0 ) CALL PrintSpecies( ListSolid2    , 89 ) 
-    IF ( ntPart   > 0 ) CALL PrintSpecies( ListPartic2   , 89 )
-    IF ( ntKat    > 0 ) CALL PrintSpecies( ListNonReac2  , 89 )
+    IF ( ntGas   > 0 ) CALL PrintSpecies( ListGas2     , 89 )
+    IF ( ntAqua  > 0 ) CALL PrintSpecies( ListAqua2    , 89 )
+    IF ( ntSolid > 0 ) CALL PrintSpecies( ListSolid2   , 89 ) 
+    IF ( ntPart  > 0 ) CALL PrintSpecies( ListPartic2  , 89 )
+    IF ( ntKat   > 0 ) CALL PrintSpecies( ListNonReac2 , 89 )
 
     CALL PrintHeadReactions( 89 )
    
     !----------------------------------------------------------------
     ! --- Build the reaction system
-    CALL AllListsToArray  ( ReactionSystem     &
-    &                     , ListRGas           &
-    &                     , ListRHenry         &
-    &                     , ListRAqua          &
-    &                     , ListRDiss          )
+    CALL AllListsToArray( ReactionSystem  &
+    &                    , ListRGas       &
+    &                    , ListRHenry     &
+    &                    , ListRAqua      &
+    &                    , ListRDiss      )
     !
     !----------------------------------------------------------------
     ! --- print reactions and build A, B and (B-A) structure
-    CALL PrintReactions   ( ReactionSystem , 89 )
+    CALL PrintReactions( ReactionSystem , 89 )
     CALL PrintFinalReactions( 89 )
 
     !----------------------------------------------------------------
@@ -282,28 +278,11 @@ PROGRAM Main_ChemKin
   CALL Print_Run_Param()
 
   !-----------------------------------------------------------------------
-  ! --- choose between implicit Euler or some Rosenbrock-Wanner methode
-  IF (ImpEuler==1) THEN
-    !---  Read run control parameters (constant stepsize)
-    !  
-    !CALL getarg(2,constH)             
-    !IF (constH=='')   THEN
-    !  WRITE(*,*) 'Input constant stepsize:'
-    !  READ(*,*)   constH
-    !END IF
-    !!
-    !READ(ConstH,*) h
-    !CALL IntegrateEuler(y_iconc(1:nspc),Tspan,h)
-    IF (MPI_ID==0)  WRITE(*,*) ' Implicit Euler currently not available....'
-    CALL Dropout()
-  ELSE
-    CALL Integrate (  InitValAct(1:nspc)   &     ! initial concentrations activ species
-    &               , Tspan                &     ! integration invervall
-    &               , Atol                 &     ! abs. tolerance gas species
-    &               , RtolROW              &     ! rel. tolerance Rosenbrock method
-    &               , ODEsolver     )     ! Rosenbrock methode
-  END IF
-  !
+  CALL Integrate (  InitValAct(1:nspc)   &     ! initial concentrations activ species
+  &               , Tspan                &     ! integration invervall
+  &               , Atol                 &     ! abs. tolerance gas species
+  &               , RtolROW              &     ! rel. tolerance Rosenbrock method
+  &               , ODEsolver     )     ! Rosenbrock methode
   !---------------------------------------------------------------
   ! --- stop timer and print output statistics
   Timer_Finish      = MPI_WTIME()

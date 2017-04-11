@@ -444,11 +444,11 @@ MODULE Rosenbrock_Mod
 
       dTdt     = - kilo * SUM( U * dCdt) * rRho/cv
 
-      UMat     = RCo%ga*dcvdT*dTdt*Y(1:nspc) + U*Yrh
+      UMat     = RCo%ga*dcvdT*dTdt*Y0(1:nspc) + U*Yrh
 
-      dRatedT  = dRatedT * RCo%ga
+      dRatedT  = RCo%ga*dRatedT
 
-      X        = cv/h/rRho + RCo%ga/(cv*h)*dTdt*dcvdT  +  RCo%ga*SUM(dUdT*dCdt) 
+      X        = cv/h/(kilo*rRho) + RCo%ga/cv*dcvdT*dTdt  +  RCo%ga*SUM(dUdT*dCdt) 
       !
       !
       IF (dprint) THEN
@@ -642,9 +642,9 @@ MODULE Rosenbrock_Mod
 
           DO jStg = 1 , iStg-1
             fRhs(1:nspc) = fRhs(1:nspc) + RCo%C(iStg,jStg)*k(1:nspc,jStg)
-            IF (combustion) &                                            
-            fRhs(nDIM)   = fRhs(nDIM)   + RCo%C(iStg,jStg)*( cv*k(  nDIM ,jStg )  &
-            &                                          +SUM(  U*k( 1:nspc,jStg )) )
+            IF (combustion)                                                         &
+            fRhs(nDIM)   =   fRhs(nDIM) + RCo%C(iStg,jStg) *                        &
+            &                 ( cv/(kilo*rRho)*k(nDIM,jStg) + SUM(U*k(1:nspc,jStg)) )
           END DO
 
           ! right hand side of the extended linear system
@@ -671,7 +671,7 @@ MODULE Rosenbrock_Mod
           CALL SolveSparse( LU_Miter , bb)
           k( 1:nspc , iStg ) = Y0(1:nspc) * bb(neq+1:nsr)
           IF ( combustion ) &
-          k( nDIM   , iStg ) = bb(nDIM)
+          k( nDIM   , iStg ) = bb(nDIMex)
           
         END IF
 
