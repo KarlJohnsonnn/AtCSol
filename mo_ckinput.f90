@@ -72,21 +72,18 @@ CONTAINS
     REAL(8)       :: MolMass(nSpc)
     CHARACTER(1)  :: Phase(nSpc)
     REAL(8)       :: ta,tb,tc,td,te,tf,tg
-    REAL(8)       :: H0_29815R(nspc)
     REAL(8),ALLOCATABLE :: ThermSwitchTemp(:)
     !
     INTEGER :: i,j,n, cnt
     INTEGER :: idxWhiteSpace
     INTEGER :: ALLOC_ERR
     CHARACTER(18) :: tSpcName
-    LOGICAL :: THERMO=.FALSE.
 
     REAL(RealKind) :: thin1, thin2, thin3
     REAL(RealKind) :: ThermoIntervall(3)
 
 
     CHARACTER(1) :: rNumber='-'
-    CHARACTER(4) :: dstr='----'
     !
     ! FORMATS
     1 FORMAT(A18,A6,4(A2,I3),A1,2F10.3,F13.7,A1,I1) 
@@ -854,7 +851,6 @@ CONTAINS
   FUNCTION MoleConc_to_MassFr(MoleConc) RESULT(MassFr)
     REAL(RealKind), ALLOCATABLE :: MassFr(:)  ! Mass fraction [g/g]
     REAL(RealKind), INTENT(IN)  :: MoleConc(:)  ! Mole fraction  [mol/cm3]
-    REAL(RealKind) :: W   ! mean molecular weight of a mixture
    
     MassFr  = MW * MoleConc / SUM( MoleConc * MW )
 

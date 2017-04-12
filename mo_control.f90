@@ -130,7 +130,7 @@ INTEGER        :: nOutP
 !---  constants
     REAL(RealKind), PARAMETER :: mol2part   = 6.02295d17         &
 &                              , GasConst_R = 0.082056d0         &   ! [in l*atm/mol/K]
-&                              , hour       = 3600.d0            &
+&                              , HOUR       = 3600.d0            &
 &                              , secday     = 4.32d04            &
 &                              , mONE       = -1.d0              &
 &                              , Pi         = 4.0d0*ATAN(1.0d0)  &
@@ -241,8 +241,9 @@ INTEGER        :: nOutP
 !-- logicals for classic or extended matrix case
     LOGICAL :: CLASSIC  = .FALSE.
     LOGICAL :: EXTENDED = .FALSE.
+
+    LOGICAL :: useMUMPS = .FALSE.
+    LOGICAL :: useSparseLU = .FALSE.
     
-
-
  END MODULE mo_control
 

@@ -57,19 +57,11 @@
       REAL(RealKind) :: Prod, AquaFac
       REAL(RealKind) :: DkdT    ! tmp buffer for reaction const
       REAL(RealKind) :: Meff
-      INTEGER :: iReac, ii, j, i
+      INTEGER :: iReac, ii, j
       ! 
-      ! DEBUGGING
-      REAL(RealKind) :: debRKonst
-      INTEGER :: cnt
-      REAL(RealKind) :: q=0.0d0
-      !
       ! combustion
-      REAL(RealKind) :: ravgConc(nspc)
       REAL(RealKind) :: Temp_in
-      REAL(RealKind) :: dCtot_dY(nspc)
-      REAL(RealKind) :: Ctot
-      !
+
       !==================================================================!
       !===============calc rates for ReactionSystem======================!
       !==================================================================!
@@ -233,7 +225,7 @@
       REAL(RealKind), INTENT(IN), OPTIONAL :: Meff
       REAL(RealKind) :: EqRate,BaRate,FoRate
       !
-      REAL(RealKind) :: k0, kinf, Fcent, logF, log10_Fcent, log10_Pr
+      REAL(RealKind) :: k0, kinf,  log10_Fcent, log10_Pr
       REAL(RealKind) :: cnd(3)
       ! calc reaction constant
       ! Skip photochemical reactions at night
@@ -367,7 +359,6 @@
       REAL(RealKind), INTENT(IN)  :: LWC
       INTEGER, INTENT(IN) :: iReac
       !TEMP
-      INTEGER :: i
       !
       !print*, 'debugg ro2=',SUM(y_conc(RO2))
       !END DO
@@ -728,19 +719,17 @@
     SUBROUTINE CalcDeltaGibbs(DelGibbs)
       REAL(RealKind) :: DelGibbs(:)
       !
-      INTEGER :: iR, jS, jj
+      INTEGER :: iR
+      INTEGER :: from, to
       !
-      DelGibbs(:)=ZERO         
+      DelGibbs = ZERO         
       !
       DO iR=1,neq
-        DelGibbs(iR) = DelGibbs(iR) - SUM(BA%Val(BA%RowPtr(iR):BA%RowPtr(iR+1)-1) &
-        &                        * GFE(BA%ColInd(BA%RowPtr(iR):BA%RowPtr(iR+1)-1)))
+        from = BA%RowPtr(iR);   to = BA%RowPtr(iR+1)-1
+        DelGibbs(iR) = DelGibbs(iR)   &
+        &               - SUM( BA%Val(from:to) * GFE(BA%ColInd(from:to)) )
       END DO
 
-      !FORALL (iR=1:BA%m)
-      !  DelGibbs(iR) = DelGibbs(iR) + SUM(BA%Val(BA%RowPtr(iR):BA%RowPtr(iR+1)-1) &
-      !  &              * GFE(BA%ColInd(BA%RowPtr(iR):BA%RowPtr(iR+1)-1)))
-      !END FORALL
     END SUBROUTINE CalcDeltaGibbs
     !
     SUBROUTINE CalcDiffDeltaGibbs(DiffDelGibbs)
@@ -815,10 +804,6 @@
       INTEGER :: iReac                  
       !TEMP:
       REAL(RealKind) :: rRcT
-      !
-      !DEBUG
-      REAL(RealKind) :: K_eq
-
 
       rRcT  = rRcal*T(6)
 
@@ -840,15 +825,11 @@
     !
     SUBROUTINE DiffTempXComputeCK(Dkcoef,Constants,T,iReac)
       REAL(RealKind) :: Dkcoef
-      REAL(RealKind) :: DfRdT, DbRdT, DeRdT
+      REAL(RealKind) :: DfRdT, DeRdT
       REAL(RealKind) :: Constants(:)
       REAL(RealKind) :: T(:)              ! temperatur array
       INTEGER :: iReac
       !
-      REAL(RealKind) :: Dg0dT(nspc)       ! in [1/K]
-      REAL(RealKind) :: Ddelg0dT
-      INTEGER :: jj, i
-      REAL(RealKind) :: Tmp
       !TEMP
       REAL(RealKind) :: rRcT
 
@@ -910,7 +891,7 @@
     !-------------------------------------------------------------------------------
     !--- Nondimensionl Derivatives of specific heats at constant volume in moles [-]
     !-------------------------------------------------------------------------------
-    SUBROUTINE DiffSpcInternalEnergy(dUdT,T)
+    SUBROUTINE DiffInternalEnergy(dUdT,T)
       !OUT
       REAL(RealKind) :: dUdT(nspc)   
       !IN
@@ -924,10 +905,10 @@
         &              + highD*T(3) + highE*T(4))  
       END WHERE
       dUdT = (dUdT - ONE)        ! speedchem SCmodule.f ~2618
-    END SUBROUTINE DiffSpcInternalEnergy
+    END SUBROUTINE DiffInternalEnergy
     !
     !
-    SUBROUTINE Diff2SpcInternalEnergy(d2UdT2,T)
+    SUBROUTINE Diff2InternalEnergy(d2UdT2,T)
       REAL(RealKind) :: d2UdT2(nspc)     !Constant volume specific heat’s derivative [J/mol/K2] 
       REAL(RealKind) :: T(:)                      
       !
@@ -937,7 +918,7 @@
         d2UdT2 = highB + TWO*highC*T(1) + THREE*highD*T(2) + FOUR*highE*T(3)
       END WHERE
       d2UdT2 = d2UdT2 * R
-    END SUBROUTINE Diff2SpcInternalEnergy
+    END SUBROUTINE Diff2InternalEnergy
     !
     !===  Special reactions for Gas Phase Chemistry 
     !===  (Check: current%str_type = 'GAS' in ReadChem, nfra=1)
@@ -1031,12 +1012,11 @@
       REAL(RealKind) :: logF_Troe
       REAL(RealKind) :: DlogF_Troedlog_Pr, Dlog_F_TroedT
       REAL(RealKind) :: DF_PDdT
-      REAL(RealKind) :: DeRdT, DbRdT, DfRdT
+      REAL(RealKind) :: DeRdT, DfRdT
 
       REAL(RealKind) :: Dkf0dT, DkfoodT
       REAL(RealKind) :: DlogF_PrdT, DF_PDdT_Lind, DF_PDdT_Troe
       REAL(RealKind) :: log10_Prc
-      REAL(RealKind) :: c, n ,d
       !
       REAL(RealKind) :: HighConst(3), LowConst(3)
       !

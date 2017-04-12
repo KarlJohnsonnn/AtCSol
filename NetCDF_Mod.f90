@@ -341,17 +341,17 @@ MODULE NetCDF_Mod
   ! ============================================================
   CONTAINS
   !  
-  SUBROUTINE check_name(NetcdfName)
-    CHARACTER(60) :: NetcdfName
-    CHARACTER(60) :: NetcdfName_new
-    !
-    IF ( (INDEX(ADJUSTL(NetcdfName),'[')>0) .AND.&
-    &    (INDEX(ADJUSTL(NetcdfName),']')>0) ) THEN
-      NetcdfName_new = TRIM(NetcdfName(INDEX(NetcdfName,'[')+1:&
-      &                                INDEX(NetcdfName,']')-1))
-      NetcdfName = TRIM(NetcdfName_new)
-    END IF
-  END SUBROUTINE check_name
+  !SUBROUTINE check_name(NetcdfName)
+  !  CHARACTER(60) :: NetcdfName
+  !  CHARACTER(60) :: NetcdfName_new
+  !  !
+  !  IF ( (INDEX(ADJUSTL(NetcdfName),'[')>0) .AND.&
+  !  &    (INDEX(ADJUSTL(NetcdfName),']')>0) ) THEN
+  !    NetcdfName_new = TRIM(NetcdfName(INDEX(NetcdfName,'[')+1:&
+  !    &                                INDEX(NetcdfName,']')-1))
+  !    NetcdfName = TRIM(NetcdfName_new)
+  !  END IF
+  !END SUBROUTINE check_name
   !
   SUBROUTINE check_name2(NetcdfName)
     CHARACTER(60) :: NetcdfName

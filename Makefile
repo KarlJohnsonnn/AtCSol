@@ -11,7 +11,7 @@ CHEMIELIB = -L$(LIB_O)
 OBJo =  $(POLYLIBo) $(CHEMIELIB)
 OBJg =  $(POLYLIBg) $(CHEMIELIB)
 
-all: CHEMIE CHEMIE_g
+all: CHEMIE 
        
 CHEMIE:  PolyDo  
 	$(LINK) $(OPTL) $(KINCL_O) -o CHEMIE \

@@ -92,7 +92,8 @@
 !--- Control Parameter
 &               ,OrderingStrategie      & ! MUMPS ordering strategie
 &               ,ParOrdering            & ! MUMPS ordering type for parallel symbolic phase
-&               ,CLASSIC,EXTENDED 
+&               ,CLASSIC,EXTENDED       &
+&               ,useMUMPS,useSparseLU
    
 !-----------------------------------------------------------------
       IMPLICIT NONE
@@ -238,6 +239,9 @@
 !
 !--- Control Parameter
       READ(15,ORDERING)
+
+      IF (OrderingStrategie<8 .OR. ParOrdering>=0 ) useMUMPS = .TRUE.
+      IF (OrderingStrategie>=8) useSparseLU = .TRUE.
 
       !OrderingStrategie=7
       !WRITE(*,*) '    ORDERINGSTRATEGIE FIXED TO MUMPS = 7'

@@ -1376,7 +1376,6 @@ MODULE Chemsys_Mod
     CHARACTER(*) :: FileName
     !
     !
-    CHARACTER(240) :: line
     CHARACTER(100) :: SpeciesName
     INTEGER :: iPos, i
     LOGICAL :: Back=.FALSE.
@@ -1387,6 +1386,7 @@ MODULE Chemsys_Mod
     INTEGER :: slash
     INTEGER, ALLOCATABLE :: allRO2(:)
     CHARACTER(100), ALLOCATABLE :: allRO2name(:)
+    INTEGER :: ic1
    
     CALL OpenIniFile(FileName)
     !
@@ -1448,15 +1448,15 @@ MODULE Chemsys_Mod
       &              Name1=SpeciesName,               &
       &              R1=c1)
       !
-      ALLOCATE(allRO2(c1))
-      ALLOCATE(allRO2name(c1))
-      allRO2(:)=0
-      allRO2name(:)='dummy'
+      ic1 = INT(c1)
+      ALLOCATE(allRO2(ic1) , allRO2name(ic1))
+      allRO2 = 0 ;  allRO2name = 'dummy'
       !
       !
       CALL RewindFile
       CALL ClearIniFile
-      c1=0
+      c1  = 0
+      ic1 = 0
       CALL LineFile( Back, Start1='BEGIN_DATARO2',  &
       &              End='END_DATARO2',             &
       &              Name1=ro2d,                    &
@@ -1474,19 +1474,17 @@ MODULE Chemsys_Mod
         END IF
         IF (PositionSpeciesAll(SpeciesName)>0) THEN
           i=i+1
-          allRO2name(i)=SpeciesName
-          allRO2(i)=PositionSpeciesAll(SpeciesName)
-          !print*, 'debug:: ro2 :',i,PositionSpeciesAll(SpeciesName), SpeciesName
+          allRO2name(i) = SpeciesName
+          allRO2(i)     = PositionSpeciesAll(SpeciesName)
         END IF
       END DO
       CALL RewindFile
       CALL ClearIniFile
       !
-      c1=c1-COUNT(allRO2==0,1)
-      ALLOCATE(RO2spcG(c1))
-      ALLOCATE(RO2(c1))
-      RO2spcG(:)=allRO2name(1:c1)
-      RO2(:)=allRO2(1:c1)
+      ic1=ic1-COUNT(allRO2==0,1)
+      ALLOCATE(RO2spcG(ic1) , RO2(ic1))
+      RO2spcG = allRO2name(1:ic1)
+      RO2     = allRO2(1:ic1)
       DEALLOCATE(allRO2name,allRO2)
     END IF
     !

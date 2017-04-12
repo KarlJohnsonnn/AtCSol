@@ -203,7 +203,7 @@ END SUBROUTINE InitMumps
 SUBROUTINE MumpsLU(DiagVal)
   REAL(RealKind), INTENT(IN) :: DiagVal(:)
   !
-  INTEGER :: i, idx_R, idx_D!, idx_C
+  !INTEGER :: i, idx_R, idx_D!, idx_C
   !
   !print*, 'ID=',MPI_ID, 'glob_diagPtr(:)=',glob_diagPtr,'loc_ratePtr(:)',loc_ratePtr(:),'Val(:)=',DiagRate(loc_ratePtr(:))
   !call dropout

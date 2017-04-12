@@ -26,10 +26,7 @@ PROGRAM Main_ChemKin
   !
   REAL(RealKind)  :: Atol(2)
   INTEGER         :: i,j,nSchwefel
-  CHARACTER(80)   :: constH   = ''
-  REAL(RealKind)  :: h 
-  REAL(RealKind), PARAMETER     :: HR=3600.0d0
-  INTEGER         :: i_error, linc, STAT
+  INTEGER         :: io_err,  STAT
   !
   ! use other ROS methode or tolerance
   CHARACTER(80)   :: neuTolR  = ''
@@ -83,12 +80,12 @@ PROGRAM Main_ChemKin
  
   !----------------------------------------------------------------
   ! --- set cloud intervall
-  LWCBounds(1) = tAnf * HR
-  LWCBounds(2) = LWCBounds(1) + 1.00d0  * HR
-  LWCBounds(3) = LWCBounds(2) + 0.25d0  * HR
-  LWCBounds(4) = LWCBounds(3) + 9.50d0  * HR
-  LWCBounds(5) = LWCBounds(4) + 0.25d0  * HR
-  LWCBounds(6) = LWCBounds(5) + 1.00d0  * HR
+  LWCBounds(1) = tAnf * HOUR
+  LWCBounds(2) = LWCBounds(1) + 1.00d0  * HOUR
+  LWCBounds(3) = LWCBounds(2) + 0.25d0  * HOUR
+  LWCBounds(4) = LWCBounds(3) + 9.50d0  * HOUR
+  LWCBounds(5) = LWCBounds(4) + 0.25d0  * HOUR
+  LWCBounds(6) = LWCBounds(5) + 1.00d0  * HOUR
 
   !----------------------------------------------------------------
   !  --- read the .sys data, save coefs in sparse matrix
@@ -279,15 +276,15 @@ PROGRAM Main_ChemKin
   CALL Print_Run_Param()
 
   !-----------------------------------------------------------------------
-  CALL Integrate (  InitValAct(1:nspc)   &     ! initial concentrations activ species
-  &               , Tspan                &     ! integration invervall
-  &               , Atol                 &     ! abs. tolerance gas species
-  &               , RtolROW              &     ! rel. tolerance Rosenbrock method
-  &               , ODEsolver     )     ! Rosenbrock methode
+  CALL Integrate (  InitValAct(1:nspc)   &  ! initial concentrations activ species
+  &               , Tspan                &  ! integration invervall
+  &               , Atol                 &  ! abs. tolerance gas species
+  &               , RtolROW              &  ! rel. tolerance Rosenbrock method
+  &               , ODEsolver     )         ! methode for solving the ode
   !---------------------------------------------------------------
   ! --- stop timer and print output statistics
-  Timer_Finish      = MPI_WTIME()
-  Timer_Finish      = Timer_Finish - Timer_Start + Time_Read
+  Timer_Finish = MPI_WTIME()
+  Timer_Finish = Timer_Finish - Timer_Start + Time_Read
   !
   ! Print statistics
   CALL Output_Statistics( Time_Read       , TimeSymbolic  , TimeFac       &

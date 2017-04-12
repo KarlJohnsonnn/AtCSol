@@ -65,16 +65,9 @@ MODULE Rosenbrock_Mod
   END TYPE Out
   TYPE(Out) :: Output
 
-  !TYPE(CSR_Matrix_T) :: Miter                       ! 
-  !TYPE(CSR_Matrix_T) :: LU_Miter
-  !TYPE(CSR_Matrix_T) :: ID_1
-
-  !TYPE(SpRowIndColInd_T) :: MiterFact
-  !TYPE(SpRowColD_T) :: MiterMarko
-
   TYPE(IntArgs), PUBLIC :: Args                     ! Initial arguments  
   
-  REAL(RealKind), PRIVATE :: timerEnd,timerStart
+  REAL(RealKind), PRIVATE :: timerStart
   REAL(RealKind), ALLOCATABLE :: LUvalsFix(:)
 
   INTEGER, ALLOCATABLE :: LU_Perm(:)
@@ -199,7 +192,6 @@ MODULE Rosenbrock_Mod
     REAL(RealKind) :: Tspan(2)               
     REAL(RealKind) :: aTol(2)
     REAL(RealKind) :: rTolROW
-    INTEGER        :: i
     !
     ALLOCATE(ThresholdStepSizeControl(nDIM))
     ThresholdStepSizeControl(:ntGas)=AtolGas/RTolROW
@@ -361,12 +353,12 @@ MODULE Rosenbrock_Mod
     REAL(RealKind) :: Tarr(8)
     REAL(RealKind) :: Rate(neq), rRate(neq)
     REAL(RealKind) :: DRatedT(neq)        
-    REAL(RealKind) :: C(nspc)       ! molar heat capacities at constant pressure
-    REAL(RealKind) :: H_e(nspc)       ! the standardstate molar enthalpY
-    REAL(RealKind) :: S(nspc)       ! standard-state entropY at 298 K
+    !REAL(RealKind) :: C(nspc)       ! molar heat capacities at constant pressure
+    !REAL(RealKind) :: H_e(nspc)       ! the standardstate molar enthalpY
+    !REAL(RealKind) :: S(nspc)       ! standard-state entropY at 298 K
     !
-    REAL(RealKind) :: dHdT(nspc)    ! EnthaplY derivative in dT [J/mol/K^2]
-    REAL(RealKind) :: dGdT(nspc)    ! Gibbs potential derivative in dT [J/mol/K^2]
+    !REAL(RealKind) :: dHdT(nspc)    ! EnthaplY derivative in dT [J/mol/K^2]
+    !REAL(RealKind) :: dGdT(nspc)    ! Gibbs potential derivative in dT [J/mol/K^2]
     REAL(RealKind) :: dTdt, Jac_TT
       
     REAL(RealKind) :: tt
@@ -377,10 +369,9 @@ MODULE Rosenbrock_Mod
     !
     ! fuer verlgeich mit speedchem, andere spc reihenfolge
     !
-    INTEGER :: iStg, jStg, i, rPtr          ! increments
+    INTEGER :: iStg, jStg, i          ! increments
     LOGICAL :: dprint=.false.
     INTEGER :: iprnt
-    CHARACTER :: next
 
     dprint = DebugPrint   !init run
     !print*, nDIM
@@ -428,10 +419,10 @@ MODULE Rosenbrock_Mod
       CALL InternalEnergy         ( U       , Tarr)             
 
       !  Nondimensionl Derivatives of specific heats at constant volume in moles 
-      CALL DiffSpcInternalEnergy  ( dUdT    , Tarr)              
+      CALL DiffInternalEnergy  ( dUdT    , Tarr)              
 
       ! Derivatives of specific heats at constant volume in [J/mol/K2]
-      CALL Diff2SpcInternalEnergy ( d2UdT2  , Tarr)
+      CALL Diff2InternalEnergy ( d2UdT2  , Tarr)
       
       ! Average mixture properties, constant volume specific heats [J/kg/K]
       CALL MassAveMixSpecHeat     ( cv      , dUdT    , MoleConc=Y0(1:nspc) )
@@ -502,7 +493,7 @@ MODULE Rosenbrock_Mod
       END IF
       Output%npds = Output%npds + 1
 
-      IF ( OrderingStrategie == 8 ) THEN
+      IF ( useSparseLU ) THEN
         CALL SetLUvaluesCL( LU_Miter , Miter , LU_Perm )
       END IF
       TimeJac = TimeJac + (MPI_WTIME()-TimeJacobianA)
@@ -525,7 +516,7 @@ MODULE Rosenbrock_Mod
       !
       !
       rRate  = ONE / Rate
-      IF ( OrderingStrategie == 8 ) THEN
+      IF ( useSparseLU ) THEN
         CALL SetLUvaluesEX ( LU_Miter, rRate , Yrh, DRatedT , UMat , X , LUvalsFix)
       ELSE
         CALL SetLUvaluesEX ( Miter, rRate , Yrh, DRatedT , UMat , X )
@@ -545,7 +536,7 @@ MODULE Rosenbrock_Mod
     !                                   |_|                                   
     ! --- LU - Decomposition ---
     timerStart  = MPI_WTIME()
-    IF (OrderingStrategie==8) THEN
+    IF ( useSparseLU ) THEN
       CALL SparseLU( LU_Miter )
     ELSE
       CALL MumpsLU( Miter%Val )
@@ -561,7 +552,7 @@ MODULE Rosenbrock_Mod
         print*, 'debug     Time           =  ',t
         print*, 'debug     SUM(Y0)        =  ',SUM(Y0)
         print*, 'debug     SUM(Miter%val) =  ',SUM(Miter%val)
-        IF(OrderingStrategie==8) THEN
+        IF( useSparseLU ) THEN
           print*, 'debug    SUM(LU%val) vor = ', SUM(LU_Miter%val)
         END IF
         print*, '------------------------------------------------------------------------------'
@@ -659,7 +650,7 @@ MODULE Rosenbrock_Mod
       END IF
       
       timerStart  = MPI_WTIME()
-      SOLVE_LINEAR_SYSTEM: IF ( OrderingStrategie==8 ) THEN  
+      SOLVE_LINEAR_SYSTEM: IF ( useSparseLU ) THEN  
 
         IF ( CLASSIC ) THEN
 
@@ -671,7 +662,7 @@ MODULE Rosenbrock_Mod
           CALL SolveSparse( LU_Miter , bb)
           k( 1:nspc , iStg ) = Y0(1:nspc) * bb(neq+1:nsr)
           IF ( combustion ) &
-          k( nDIM   , iStg ) = bb(nDIMex)
+          k(  nDIM  , iStg ) = bb(nDIMex)
           
         END IF
 

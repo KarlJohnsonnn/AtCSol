@@ -61,13 +61,13 @@ MODULE Integration_Mod
     !
     TYPE(CSR_Matrix_T)     :: Id , tmpJacCC        ! compressed row
     TYPE(SpRowIndColInd_T) :: MiterFact         ! sparse row-ind col-ind (MUMPS)
-    TYPE(SpRowColD_T)      :: MiterMarko        ! sparse-LU matrix format
+    TYPE(SpRowColD_T)      :: temp_LU_Dec        ! sparse-LU matrix format
     !
     INTEGER, ALLOCATABLE :: InvPermu(:)
+    INTEGER, ALLOCATABLE :: PivOrder(:)
     ! 
     REAL(RealKind) :: Y0(nDIM)
     REAL(RealKind) :: Y(nDIM)       ! current y vector
-    REAL(RealKind) :: sGas, sAqua, sEmis
     !
     REAL(RealKind) :: t             ! current time
     REAL(RealKind) :: timepart
@@ -77,13 +77,10 @@ MODULE Integration_Mod
     REAL(RealKind) :: DRatedT(neq)     ! part. derv. rate over temperatur vector
     REAL(RealKind) :: h, hmin, absh, tnew, tmp, hOld
     REAL(RealKind) :: error, errorOld
-    REAL(RealKind) :: tmp_ta,tmp_tb
+    REAL(RealKind) :: tmp_tb
     REAL(RealKind) :: actLWC, zen, wetRad
     INTEGER        :: errind(1,1)
     REAL(RealKind) :: ErrVals(nspc)
-    !
-    REAL(RealKind) :: Temp0   ! Temperature old
-    REAL(RealKind) :: Temp    ! Temperature new
     ! 
     INTEGER :: iBar=-1              ! waitbar increment
     INTEGER :: i, k
@@ -99,25 +96,16 @@ MODULE Integration_Mod
     LOGICAL :: done=.FALSE.
     LOGICAL :: failed
     !
-    INTEGER :: i_error
     CHARACTER(14) :: fmt0
     CHARACTER(17) :: fmt1
     !
     !-----------------------------
     ! LSODE Parameter
-    !INTEGER, PARAMETER :: nDIM1 = SIZE(y_iconc)
-    !INTEGER, PARAMETER :: LIW = 50
-    !INTEGER, PARAMETER :: LRW = 1192
-    INTEGER :: LIW
-    INTEGER :: LRW
-    INTEGER        :: ITOL , ITASK , ISTATE, IOPT, MF
-    !INTEGER        :: IWORK(LIW)
-    !REAL(RealKind) :: RWORK(LRW)
-    INTEGER,        ALLOCATABLE :: IWORK(:)
+    INTEGER :: ITOL , ITASK , ISTATE, IOPT, MF, LIW, LRW
+    INTEGER, ALLOCATABLE :: IWORK(:)
     REAL(RealKind), ALLOCATABLE :: RWORK(:)
     !
     REAL(RealKind) :: RTOL1 , ATOL1(nDIM)
-    REAL(RealKind) :: TOUT
 
     !
     !
@@ -169,7 +157,7 @@ MODULE Integration_Mod
     !
     ALLOCATE(loc_RatePtr(neq))
     loc_RatePtr = [(i , i=1,neq)]
-    loc_rateCnt=neq
+    loc_rateCnt = neq
   
     CALL CheckInputParameters( Tspan , Atol , RtolROW )
 
@@ -253,11 +241,11 @@ MODULE Integration_Mod
         CALL SymbolicMult( BAT , A , tmpJacCC )  
         CALL SparseID(Id,nspc)                    
         CALL SymbolicAdd(Jac_CC,Id,tmpJacCC)
-        CALL Kill_Matrix_CSR(Id)
-        CALL Kill_Matrix_CSR(tmpJacCC)
-
+        CALL Free_Matrix_CSR(Id)
+        CALL Free_Matrix_CSR(tmpJacCC)
     
         ! Set symbolic structure of iteration matrix for Row-Method
+        ! also assign constant matrix parts like (beta-alpha)^T, alpha
         IF ( CLASSIC ) THEN
           CALL BuildSymbolicClassicMatrix(  Miter , Jac_CC  , RCo%ga )
         ELSE
@@ -265,24 +253,43 @@ MODULE Integration_Mod
         END IF
     
         ! Choose ordering/factorisation strategie and do symb LU fact
-        IF ( OrderingStrategie<8 .OR. ParOrdering>=0 ) THEN 
+        IF ( useMUMPS ) THEN 
           ! Use MUMPS to factorise and solve     
           ! Convert compressed row format to row index format for MUMPS
           CALL CompRowToIndRow( Miter , MiterFact )
           CALL InitMumps( MiterFact ) 
     
           IF ( MatrixPrint ) THEN
-            CALL CSRToSpRowColD   ( MiterMarko , Miter ) 
+            CALL CSRToSpRowColD   ( temp_LU_Dec , Miter ) 
             CALL PermuToInvPer    ( InvPermu   , Mumps_Par%SYM_PERM )
-            CALL SymbLU_SpRowColD ( MiterMarko , InvPermu )        
-            CALL RowColDToCSR     ( LU_Miter   , MiterMarko , nspc , neq ) 
+            CALL SymbLU_SpRowColD ( temp_LU_Dec , InvPermu )        
+            CALL RowColDToCSR     ( LU_Miter   , temp_LU_Dec , nspc , neq ) 
           END IF
     
-        ELSE
+        ELSE IF ( useSparseLU ) THEN
           ! Permutation given by Markowitz Ordering strategie
-          CALL CSRToSpRowColD     ( MiterMarko , Miter) 
-          CALL SymbLU_SpRowColD_M ( MiterMarko )        
-          CALL RowColDToCSR       ( LU_Miter , MiterMarko , nspc , neq )
+          CALL CSRToSpRowColD( temp_LU_Dec , Miter) 
+
+          IF (OrderingStrategie==8) THEN
+
+            CALL SymbLU_SpRowColD_M ( temp_LU_Dec )        
+
+          ELSE 
+
+            ALLOCATE(PivOrder(temp_LU_Dec%n))
+            PivOrder = -90
+            
+            ! Pivots bis neq in reihenfolge 1,2,...,neq
+            IF ( EXTENDED ) THEN
+              PivOrder(     1 : neq      ) = [(i , i = 1     , neq  )]
+              PivOrder( neq+1 : neq+nDIM ) = [(i , i = neq+1 , neq+nDIM )]
+            ELSE
+              PivOrder(     1 : nDIM     ) = [(i , i = 1     , nDim )]
+            END IF
+            CALL SymbLU_SpRowColD ( temp_LU_Dec , PivOrder)
+
+          END IF
+          CALL RowColDToCSR       ( LU_Miter , temp_LU_Dec , nspc , neq )
     
           ! Get the permutation vector LU_Perm and map values of Miter
           ! to the permuted LU matrix
@@ -295,16 +302,21 @@ MODULE Integration_Mod
             LUvalsFix = LU_Miter%Val
           END IF
         END IF
-        CALL Free_SpRowColD( MiterMarko )
+        CALL Free_SpRowColD( temp_LU_Dec )
+
+        IF (MatrixPrint) THEN
+          CALL WriteSparseMatrix(Miter,'MATRICES/Miter_'//BSP,neq,nspc)
+          CALL WriteSparseMatrix(LU_Miter,'MATRICES/LU_Miter_'//BSP,neq,nspc)
+          !stop 'after writesparsematrix'
+        END IF
         
         TimeSymbolic = MPI_WTIME() - StartTimer   ! stop timer for symbolic matrix calculations
     
         IF (MPI_ID==0) WRITE(*,*) '  SYMBOLIC PHASE................ done'
         
        
-        CALL Rates( Tspan(1) , Y0 , Rate , DRatedT )      ! Calculate first reaction rates
-        
-        Y(1:nspc) = MAX( ABS(Y(1:nspc)) , eps ) * SIGN( ONE , Y(1:nspc) )
+        CALL Rates( Tspan(1) , Y0 , Rate , DRatedT ) ! Calculate first reaction rates
+        Y = MAX( ABS(Y) , eps ) * SIGN( ONE , Y )    ! |y| >= eps
         
         ! ----calc values of Jacobian
         StartTimer  = MPI_WTIME()
@@ -313,7 +325,7 @@ MODULE Integration_Mod
         Output%npds = Output%npds + 1
        
         !---- Save matrix structures for matlab spy
-        IF ( MatrixPrint ) CALL SaveMatricies(A,B,BAT,Miter,LU_Miter,BSP)
+        !!IF ( MatrixPrint ) CALL SaveMatricies(A,B,BAT,Miter,LU_Miter,BSP)
       
         !---- calculate a first stepsize based on 2nd deriv.
         CALL InitialStepSize( h , hmin , absh , Jac_CC , Rate  &
@@ -474,7 +486,7 @@ MODULE Integration_Mod
         TimeIntegrationE  = MPI_WTIME() - TimeIntegrationA
         !
         ! DEALLOCATE Mumps instance
-        IF (  OrderingStrategie<8 ) THEN
+        IF ( useMUMPS ) THEN
           mumps_par%JOB = -2
           CALL DMUMPS( mumps_par )
         END IF
@@ -629,7 +641,7 @@ MODULE Integration_Mod
     !
     REAL(RealKind) :: dCdt(nspc)
     REAL(RealKind) :: Rate(neq) , DRate(neq)
-    REAL(RealKind) :: Temp, Tarr(8)
+    REAL(RealKind) :: Tarr(8)
     REAL(RealKind) :: U(nspc) , dUdT(nspc)
     REAL(RealKind) :: cv
 
@@ -641,13 +653,13 @@ MODULE Integration_Mod
     YDOT(1:nspc) =  dCdt
     
     ! ENERGY CONSERVATION
-    IF (combustion) THEN
-      CALL UpdateTempArray( Tarr , Y(NEQ1) )
-      CALL InternalEnergy( U , Tarr )                   ! [J/mol]
-      CALL DiffSpcInternalEnergy( dUdT  , Tarr)         ! [-]
-      CALL MassAveMixSpecHeat( cv , dUdT , MoleConc=Y(1:nspc) ) ! [J/kg/K]
+    IF (combustion) THEN     ! OUT:   IN:
+      CALL UpdateTempArray   ( Tarr , Y(NEQ1) )
+      CALL InternalEnergy    (  U   , Tarr )        ! [J/mol]
+      CALL DiffInternalEnergy( dUdT , Tarr)         ! [-]
+      CALL MassAveMixSpecHeat( cv   , dUdT , MoleConc=Y(1:nspc) ) ! [J/kg/K]
     
-      YDOT(NEQ1) = - kilo * SUM( U * dCdt ) * rRho / cv    ! rRho=kilo/rho in [cm3/g]
+      YDOT(NEQ1) = - SUM( U * dCdt ) * rRho / cv    ! rRho=mega/rho 
     END IF
 
   END SUBROUTINE FRhs

@@ -84,7 +84,6 @@ MODULE Sparse_Mod
   TYPE(CSR_Matrix_T) :: ID_1
  
   TYPE(SpRowIndColInd_T) :: MiterFact
-  !TYPE(SpRowColD_T) :: MiterMarko
   !
   CONTAINS
   !
@@ -113,7 +112,7 @@ MODULE Sparse_Mod
   END SUBROUTINE New_CSR
   !
   !
-  SUBROUTINE Kill_Matrix_CSR(A)
+  SUBROUTINE Free_Matrix_CSR(A)
     TYPE(CSR_Matrix_T) :: A
     !
     IF (ALLOCATED(A%RowPtr))      DEALLOCATE(A%RowPtr)
@@ -124,7 +123,7 @@ MODULE Sparse_Mod
     IF (ALLOCATED(A%Permu))      DEALLOCATE(A%Permu)
     IF (ALLOCATED(A%InvPer))     DEALLOCATE(A%InvPer)  
     IF (ALLOCATED(A%Val))         DEALLOCATE(A%Val)
-  END SUBROUTINE Kill_Matrix_CSR
+  END SUBROUTINE Free_Matrix_CSR
   !
   !
   SUBROUTINE Free_SpRowColD(A)
@@ -184,6 +183,7 @@ MODULE Sparse_Mod
     !
     INTEGER :: i,j,jj,nzrA
     ! 
+
     CALL New_CSR(CSR,SpRow%n,SpRow%m,SpRow%nnz)
     
    
@@ -245,10 +245,6 @@ MODULE Sparse_Mod
     IF ( EXTENDED ) THEN
       CSR%DiagPtr_R = CSR%DiagPtr_P(   1:n   )
       CSR%DiagPtr_C = CSR%DiagPtr_P( n+1:n+m )
-      IF ( combustion ) THEN
-        ! column pointer and row pointer will be set in Get_LU_Permu
-        !stop 'hier ???'
-      END IF
     END IF
     CSR%nnz = SpRow%nnz
   END SUBROUTINE RowColDToCSR
@@ -357,6 +353,7 @@ MODULE Sparse_Mod
         A%ColInd(jj)=A%Permu(A%ColInd(jj))
       END DO
       CALL SortVec(A%ColInd(A%RowPtr(1,i):A%RowPtr(2,i)))
+      A%nnz=A%nnz+SIZE(A%ColInd(A%RowPtr(1,i):A%RowPtr(2,i)))
     END DO
   END SUBROUTINE SymbLU_SpRowColD
   !
@@ -1174,7 +1171,7 @@ MODULE Sparse_Mod
     TYPE(CSR_Matrix_T),       INTENT(IN)    :: J1
     REAL(RealKind), OPTIONAL, INTENT(IN)    :: J2(:), J3(:), J4
     !
-    INTEGER :: i,j,jj,m, cnt
+    INTEGER :: i,j,jj,cnt
     REAL(RealKind) :: hg
    
     Miter%Val = ZERO
@@ -1216,7 +1213,6 @@ MODULE Sparse_Mod
 
     TYPE(CSR_Matrix_T) :: Id
     TYPE(CSR_Matrix_T) :: CL0
-    INTEGER, ALLOCATABLE :: tmpColInd(:)
     !
     INTEGER :: i, j, jj, ndim, nnz
     !
@@ -1284,9 +1280,8 @@ MODULE Sparse_Mod
     TYPE(CSR_Matrix_T), INTENT(IN) :: A, BAT
     REAL(RealKind),     INTENT(IN) :: g
 
-    INTEGER, ALLOCATABLE :: tmpColInd(:)
     !
-    INTEGER :: i, j, ndim, nnzBig
+    INTEGER :: i, ndim, nnzBig
     INTEGER :: from, to
     !
     !------------------------------------------------------------------------------
@@ -1404,7 +1399,7 @@ MODULE Sparse_Mod
     !         |--------------+--------------+------|
     ! miter = |   BAT_Mat    |  Diag_1_nS   |      |
     !         !--------------+--------------+------|
-    !         |_             |    -U^TD_c   |   1 _|
+    !         |_             |     U^TD_c   |   1 _|
     !
     IF ( combustion ) THEN
 
@@ -1507,23 +1502,6 @@ MODULE Sparse_Mod
   END SUBROUTINE Get_LU_Permutaion
   !
   !
-  SUBROUTINE Miter_Extended(CSR_Mat,invrVec,hyVec)
-    USE mo_reac,  ONLY: neq, nspc
-    ! Set values to block matrix
-    TYPE(CSR_Matrix_T), INTENT(INOUT) :: CSR_Mat
-    ! miter = | invDiagrVec     ~~~~   |
-    !         |   ~~~~~~    DiagyVec/h |
-    !
-    REAL(RealKind), INTENT(IN) :: invrVec(:)
-    REAL(RealKind), INTENT(IN) :: hyVec(:)
-    !TEMP
-    !
-    CSR_Mat%Val(CSR_Mat%RowPtr(1:neq))=invrVec
-    CSR_Mat%Val(CSR_Mat%RowPtr(neq+2:neq+nspc+1)-1)=hyVec
-    !
-  END SUBROUTINE Miter_Extended
-  !
-  !
   ! PRINT SPARSE MATRIX (compressed Row format)
   SUBROUTINE PrintRhs(Rhs,FileName)
     REAL(RealKind) :: Rhs(:)
@@ -1582,6 +1560,7 @@ MODULE Sparse_Mod
     WRITE(99,*) '#     Dimension:   ' , A%m,' x ',A%n
     WRITE(99,*) '#     Nonzeros:    ' , A%nnz
     WRITE(99,*) '#     nreac, nspc: ' , nr,' , ',ns
+    WRITE(99,*) '#     Matrix Form: ' , solveLA
     WRITE(99,*) '###########################################################'
     WRITE(99,*)
 
@@ -1933,8 +1912,6 @@ MODULE Sparse_Mod
     !
     INTEGER :: i,jj
     REAL(RealKind) :: b(LU%n)
-    REAL(RealKind) :: DiagPtr(LU%n)
-   
     
     b( LU%Permu ) = Rhs      
     
