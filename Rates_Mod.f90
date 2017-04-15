@@ -110,19 +110,17 @@
       LOOP_OVER_ALL_REACTIONS: DO ii = 1 , loc_rateCnt
         
         ! if more than one processor is used split rate calculation
-        IF ( MPI_np>1 .AND. ParOrdering>=0 )  THEN
-          iReac = loc_RatePtr(ii)
-        ELSE
-          iReac = ii
-        END IF
+        !IF ( MPI_np>1 .AND. ParOrdering>=0 )  THEN
+        !  iReac = loc_RatePtr(ii)
+        !ELSE
+        iReac = ii
+        !END IF
        
         ! ====== Computing effective molecularity 
         CALL EffectiveMolecularity( Meff , y_conc(1:nspc) , iReac , actLWC )
-       
         
         ! ====== Compute the rate constant for specific reaction type ===
         CALL ComputeRateConstant( k , DkdT , T , Time , chi , mAir , iReac , y_conc , Meff )
-        
 
         AQUATIC_REACTIONS: IF ( ntAqua > 0 ) THEN
 
@@ -155,9 +153,10 @@
         Rate(iReac) = Meff * k * Prod
         IF (combustion) DRatedT(iReac) = DkdT
 
-        !print*, 'DEBUG::   i, Meff,  k,  produkt, Rate  =', iReac, Meff, k, Prod, Rate(iReac)
+        !print*, 'DBg:: i, Meff, k, prd, Rate  =', iReac, Meff, k, Prod, Rate(iReac)
 
       END DO LOOP_OVER_ALL_REACTIONS
+      !stop 'ratesmod'
 
       TimeRateE=MPI_WTIME()
       TimeRates=TimeRates+(TimeRateE-TimeRateA)
@@ -392,10 +391,14 @@
           CASE ('$+M','$(+M)')
             M=SUM(Conc)
             !print*, 'debug:: conc in [mol/cm3]=  ',Conc(scpermutation)
-            IF (ReactionSystem(iReac)%TBExtra) THEN
-              M = M - SUM(  (ONE-ReactionSystem(iReac)%TBalpha(:))  &
-              &              * Conc(ReactionSystem(iReac)%TB(:))    )
+            IF (ALLOCATED(ReactionSystem(iReac)%TBidx)) THEN
+              M = M - SUM(  ( ONE - ReactionSystem(iReac)%TBalpha) &
+                         &    * Conc(ReactionSystem(iReac)%TBidx)  )
+            !print *, ' Meff    = ',iReac, M,ALLOCATED(ReactionSystem(iReac)%TBidx),ReactionSystem(iReac)%TBidx
+            !print *, ' species = ', ReactionSystem(iReac)%TBspc
+            !print *, ' alpha   = ', ReactionSystem(iReac)%TBalpha
             END IF
+            !print *, ' Meff = ', M,ALLOCATED(ReactionSystem(iReac)%TBidx)
           CASE DEFAULT
             WRITE(*,*) 'Reaction: ',iReac
             CALL FinishMPI()
@@ -807,19 +810,23 @@
 
       rRcT  = rRcal*T(6)
 
-      ! forward reaction rate
-      k_f   = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT) ! speedchem
-              
-      IF ( ReactionSystem(iReac)%bR ) THEN
-        ! backward without extra coef, equiv constant nessesarry
-        ! compute inverse equiv. constant
-        rK_eq = EXP(+DelGFE(iReac)) * rFacEq**(-sumBAT(iReac))
-        k     = k_f * rK_eq
-        !print*, ' backwar k = ', k, rK_eq, sumBAT(iReac)
+      IF ( ReactionSystem(iReac)%bRexp ) THEN
+        ! explicite parameter for reverse reaction
+        k     = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT)
       ELSE
-        k     = k_f
+        IF ( ReactionSystem(iReac)%bR ) THEN
+          ! backward without extra coef, equiv constant nessesarry
+          ! compute inverse equiv. constant
+          k_f   = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT) ! speedchem
+          rK_eq = EXP(+DelGFE(iReac)) * rFacEq**(-sumBAT(iReac))
+          k     = k_f * rK_eq
+          !print*, ' backwar k = ', k, rK_eq, sumBAT(iReac)
+        ELSE
+          k     = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT) ! speedchem
+        END IF
       END IF
         
+      !print*, ' Constants = ',iReac,Constants
     END SUBROUTINE TempXComputeCK
     !
     !
@@ -945,17 +952,20 @@
       REAL(RealKind) :: TroeConst(4)
       REAL(RealKind) :: HighConst(3), LowConst(3)
       !
-      IF (ReactionSystem(iR)%Line3=='low') THEN
-        HighConst(:)=ReactionSystem(iR)%Constants(:)
-        LowConst(:)=ReactionSystem(iR)%LowConst(:)
+      IF (ReactionSystem(iR)%Line3=='LOW') THEN
+        !print*, 'DEBUG::RATES iRaec, SIZE =',iR,SIZE(ReactionSystem(iR)%LowConst),SIZE(ReactionSystem(iR)%Constants)
+        !print*, 'DEBUG::RATES    LOW Const=',ReactionSystem(iR)%LowConst
+        !print*, 'DEBUG::RATES    HIGHConst=',ReactionSystem(iR)%Constants
+        HighConst = ReactionSystem(iR)%Constants
+        LowConst  = ReactionSystem(iR)%LowConst
       ELSE
-        HighConst(:)=ReactionSystem(iR)%HighConst(:)
-        LowConst(:)=ReactionSystem(iR)%Constants(:)
+        !print*, 'DEBUG::RATES    iReac    =',iR
+        !print*, 'DEBUG::RATES    LOW Const=',ReactionSystem(iR)%Constants
+        !print*, 'DEBUG::RATES    HIGHConst=',ReactionSystem(iR)%HighConst
+        HighConst = ReactionSystem(iR)%HighConst
+        LowConst  = ReactionSystem(iR)%Constants
       END IF
       !
-      !print*, 'DEBUG::RATES    iReac    =',iR
-      !print*, 'DEBUG::RATES    LOW Const=',LowConst
-      !print*, 'DEBUG::RATES    HIGHConst=',HighConst
       !stop
       !
       k0=LowConst(1)*T(1)**LowConst(2)*EXP(-LowConst(3)/R_Const*T(6))
@@ -1020,19 +1030,19 @@
       !
       REAL(RealKind) :: HighConst(3), LowConst(3)
       !
-      IF (ReactionSystem(iR)%Line3=='low') THEN
-        HighConst(:)=ReactionSystem(iR)%Constants(:)
-        LowConst(:)=ReactionSystem(iR)%LowConst(:)
+      IF (ReactionSystem(iR)%Line3=='LOW') THEN
+        HighConst = ReactionSystem(iR)%Constants
+        LowConst  = ReactionSystem(iR)%LowConst
       ELSE
-        HighConst(:)=ReactionSystem(iR)%HighConst(:)
-        LowConst(:)=ReactionSystem(iR)%Constants(:)
+        HighConst = ReactionSystem(iR)%HighConst
+        LowConst  = ReactionSystem(iR)%Constants
       END IF
       !
       ! Lind mechnism also nessesarry for Troe 
-      Dkf0dT=kf0*(LowConst(2)+LowConst(3)/R_Const*T(6))*T(6)
-      DkfoodT=kfoo*(HighConst(2)+HighConst(3)/R_Const*T(6))*T(6)
+      Dkf0dT  = kf0*(LowConst(2)+LowConst(3)/R_Const*T(6))*T(6)
+      DkfoodT = kfoo*(HighConst(2)+HighConst(3)/R_Const*T(6))*T(6)
       !
-      DF_PDdT_Lind=Meff/(kfoo+kf0*Meff)**TWO*(kfoo*Dkf0dT-kf0*DkfoodT)
+      DF_PDdT_Lind = Meff/(kfoo+kf0*Meff)**TWO*(kfoo*Dkf0dT-kf0*DkfoodT)
       !
       IF (ALLOCATED(ReactionSystem(iR)%TroeConst)) THEN
         ! Troe mechanism
@@ -1043,18 +1053,18 @@
         &                   ( cnd(2)*cnd(2) -TWO*cnd(2)*cnd(3)*log10_Prc +           &
         &                     (cnd(3)+ONE)*log10_Prc*log10_Prc             )**(-2.0d0)
 
-        Dlog_F_TroedT=DlogF_Troedlog_Pr*DlogF_PrdT
-        DF_PDdT_Troe=10.0d0**logF_Troe*(DF_PDdT_Lind+Dlog_F_TroedT)
-        DF_PDdT=DF_PDdT_Troe
+        Dlog_F_TroedT = DlogF_Troedlog_Pr*DlogF_PrdT
+        DF_PDdT_Troe  = TEN**logF_Troe*(DF_PDdT_Lind+Dlog_F_TroedT)
+        DF_PDdT = DF_PDdT_Troe
       ELSE
-        DF_PDdT=DF_PDdT_Lind
+        DF_PDdT = DF_PDdT_Lind
       END IF
       !
-      DfRdT=(HighConst(2)+HighConst(3)/R_Const*T(6))*T(6)
+      DfRdT = (HighConst(2)+HighConst(3)/R_Const*T(6))*T(6)
       !
       IF (ReactionSystem(iR)%Line2=='BackReaction') THEN
-        DeRdT=-(sumBAT(iR)*T(6)+DDelGFEdT(iR))  
-        TempDiffFactor = DfRdT-DeRdT
+        DeRdT = -(sumBAT(iR)*T(6)+DDelGFEdT(iR))  
+        TempDiffFactor = DfRdT - DeRdT
       ELSE
         TempDiffFactor = DfRdT
       END IF

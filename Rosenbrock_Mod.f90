@@ -412,34 +412,19 @@ MODULE Rosenbrock_Mod
     Yrh  = Y(1:nspc) / h
 
     IF ( combustion ) THEN
-      !                             OUT:      IN:
-      CALL UpdateTempArray        ( Tarr    , Y0(nDIM) )       
-      
-      ! Compute species internal energies in moles [J/mol]
-      CALL InternalEnergy         ( U       , Tarr)             
-
-      !  Nondimensionl Derivatives of specific heats at constant volume in moles 
+      !                          OUT:      IN:
+      CALL UpdateTempArray     ( Tarr    , Y0(nDIM) )       
+      CALL InternalEnergy      ( U       , Tarr)             
       CALL DiffInternalEnergy  ( dUdT    , Tarr)              
-
-      ! Derivatives of specific heats at constant volume in [J/mol/K2]
       CALL Diff2InternalEnergy ( d2UdT2  , Tarr)
-      
-      ! Average mixture properties, constant volume specific heats [J/kg/K]
-      CALL MassAveMixSpecHeat     ( cv      , dUdT    , MoleConc=Y0(1:nspc) )
+      CALL MassAveMixSpecHeat  ( cv      , dUdT    , MoleConc=Y0(1:nspc) )
+      CALL MassAveMixSpecHeat  ( dcvdT   , d2UdT2  , MoleConc=Y0(1:nspc) )
+      CALL DAXPY_sparse        ( dCdt    , BAT   , Rate , Y_e )
 
-      ! Div. Average mixture properties, constant volume specific heats [J/kg/K2]
-      CALL MassAveMixSpecHeat     ( dcvdT   , d2UdT2  , MoleConc=Y0(1:nspc) )
-
-      ! Computing molar concentration rate of change imposing mass consv. [mol/cm3/s]
-      CALL DAXPY_sparse           ( dCdt    , BAT   , Rate , Y_e )
-
-      dTdt     = - SUM( U * dCdt) * rRho/cv
-
-      UMat     = RCo%ga*dcvdT*dTdt*Y0(1:nspc) + U*Yrh
-
-      dRatedT  = RCo%ga*dRatedT
-
-      X        = cv/(h*rRho) + RCo%ga/cv*dcvdT*dTdt  +  RCo%ga*SUM(dUdT*dCdt) 
+      dTdt    = - SUM( U * dCdt) * rRho/cv
+      UMat    = RCo%ga*dcvdT*dTdt*Y0(1:nspc) + U*Yrh
+      dRatedT = RCo%ga*dRatedT
+      X       = cv/(h*rRho) + RCo%ga/cv*dcvdT*dTdt + RCo%ga*SUM(dUdT*dCdt) 
       !
       !
       IF (dprint) THEN
@@ -448,8 +433,7 @@ MODULE Rosenbrock_Mod
         WRITE(*,*) '------------------------------------------------------------------------------'
         WRITE(*,'(A,E23.16,A)') 'debug     Temperature =  ',Tarr(1)   ,'   [K]'
         WRITE(*,'(A,E23.16,A)') 'debug     c_v         =  ',cv        ,'   [J/kg/K]'
-        WRITE(*,'(A,E23.16,A)') 'debug     Pressure    =  ',Press     ,'   [Pa]'
-        WRITE(*,'(A,E23.16,A)') 'debug     Density     =  ',rho       ,'   [kg/m3]'
+        WRITE(*,'(A,E23.16,A,E23.16,A)') 'debug     Density     =  ',rho       ,'   [kg/m3]',rRho       ,'   [kg/m3]'
         WRITE(*,'(A,E23.16,A)') 'debug     SUM(U)      =  ',SUM(U)    ,'   [J/mol/K]'
         WRITE(*,'(A,E23.16,A)') 'debug     X in Matrix =  ',X         ,'   [???]'
         WRITE(*,'(A,E23.16,A)') 'debug     SUM(dCdt)   =  ',SUM(dCdt) ,'   [mol/cm3/sec]'
@@ -457,13 +441,12 @@ MODULE Rosenbrock_Mod
         WRITE(*,*) '------------------------------------------------------------------------------'
         WRITE(*,*) ''
         do i=1,nspc
-          WRITE(*,'(A,I2,A,E22.14,A3,A)') 'debug     dCdt(',i,') = ',dCdt(scPermutation(i)),'   ',y_name(scPermutation(i))
+          WRITE(*,'(A,I5,A,E22.14,A3,A)') 'debug     dCdt(',i,') = ',dCdt(i),'   ',y_name(i)
         end do
-        write(*,'(A,I2,A,E22.14,A3,A)') 'debug     dTdt(',30,') = ',dTdt,'   ','Temperature'
+        WRITE(*,'(A,I5,A,E22.14,A3,A)') 'debug     dTdt(',30,') = ',dTdt,'   ','Temperature'
         WRITE(*,*) ''
         !stop 'debug ros'
       END IF
-      !
       !stop
       !
     END IF
@@ -478,16 +461,11 @@ MODULE Rosenbrock_Mod
       CALL Jacobian_CC(  Jac_CC , BAT  , A , Rate , Y )
 
       IF ( combustion ) THEN
-
-        ! d(dcdt)/dT
         CALL Jacobian_CT( Jac_CT , BAT , Rate , DRatedT )
-        ! d(dTdt)/dc
         CALL Jacobian_TC( Jac_TC , Jac_CC , cv , dUdT , dTdt , U , rRho)
-        ! d(dTdt)/dT
         CALL Jacobian_TT( Jac_TT , Jac_CT , cv , dcvdT , dTdt , dUdT , dCdt , U , rRho)
         !
         CALL Miter_Classic( Miter , h , RCo%ga , Jac_CC , Jac_TC , Jac_CT , Jac_TT )
-
       ELSE
         CALL Miter_Classic( Miter , h , RCo%ga , Jac_CC )
       END IF
@@ -543,25 +521,25 @@ MODULE Rosenbrock_Mod
     END IF
     TimeFac     = TimeFac + (MPI_WTIME()-timerStart)
 
-
-      IF (dprint) THEN
-        print*, '------------------------------------------------------------------------------'
-        print*, '|    Rosenbrock Input                                                        |'
-        print*, '------------------------------------------------------------------------------'
-        print*, 'debug     Stepsize       =  ',h
-        print*, 'debug     Time           =  ',t
-        print*, 'debug     SUM(Y0)        =  ',SUM(Y0)
-        print*, 'debug     SUM(Miter%val) =  ',SUM(Miter%val)
-        IF( useSparseLU ) THEN
-          print*, 'debug    SUM(LU%val) vor = ', SUM(LU_Miter%val)
-        END IF
-        print*, '------------------------------------------------------------------------------'
-        print*, ''
+    IF (dprint) THEN
+      print*, '------------------------------------------------------------------------------'
+      print*, '|    Rosenbrock Input                                                        |'
+      print*, '------------------------------------------------------------------------------'
+      print*, 'debug     Stepsize       =  ',h
+      print*, 'debug     Time           =  ',t
+      print*, 'debug     SUM(Y0)        =  ',SUM(Y0)
+      print*, 'debug     SUM(Miter%val) =  ',SUM(Miter%val)
+      IF( useSparseLU ) THEN
+        print*, 'debug    SUM(LU%val) vor = ', SUM(LU_Miter%val)
+      END IF
+      print*, '------------------------------------------------------------------------------'
+      print*, ''
+      print*, ''
+      print*, '------------------------------------------------------------------------------'
+      print*, '| Before solving Ax=b:  iStage                   b                           |'
+      print*, '------------------------------------------------------------------------------'
+      print*, ''
     END IF
-
-    !
-    !****************************************************************************************
-      !stop
 
     !****************************************************************************************
     !   ____    ___ __        __          _____  _                    ____   _               
@@ -571,17 +549,9 @@ MODULE Rosenbrock_Mod
     !  |_| \_\ \___/   \_/\_/              |_|  |_||_| |_| |_| \___| |____/  \__|\___|| .__/ 
     !                                                                                 |_|    
     !****************************************************************************************
-    IF (dprint) THEN
-      print*, ''
-      print*, '------------------------------------------------------------------------------'
-      print*, '| Before solving Ax=b:  iStage                   b                           |'
-      print*, '------------------------------------------------------------------------------'
-      print*, ''
-    END IF
-    !
+    
     LOOP_n_STAGES:  DO iStg = 1 , RCo%nStage
 
-      !
       IF ( iStg==1 ) THEN
 
         IF ( EXTENDED ) THEN

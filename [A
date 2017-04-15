@@ -1,0 +1,45 @@
+ ====================================================================================
+ |      ___           ___           ___           ___                       ___     |
+ |     /\  \         /\__\         /\  \         /\__\          ___        /\  \    |
+ |    /::\  \       /:/  /        /::\  \       /::|  |        /\  \      /::\  \   |
+ |   /:/\:\  \     /:/__/        /:/\:\  \     /:|:|  |        \:\  \    /:/\:\  \  |
+ |  /:/  \:\  \   /::\  \ ___   /::\~\:\  \   /:/|:|__|__      /::\__\  /::\~\:\  \ |
+ | /:/__/ \:\__\ /:/\:\  /\__\ /:/\:\ \:\__\ /:/ |::::\__\  __/:/\/__/ /:/\:\ \:\__\|
+ | \:\  \  \/__/ \/__\:\/:/  / \:\~\:\ \/__/ \/__/~~/:/  / /\/:/  /    \:\~\:\ \/__/|
+ |  \:\  \            \::/  /   \:\ \:\__\         /:/  /  \::/__/      \:\ \:\__\  |
+ |   \:\  \           /:/  /     \:\ \/__/        /:/  /    \:\__\       \:\ \/__/  |
+ |    \:\__\         /:/  /       \:\__\         /:/  /      \/__/        \:\__\    |
+ |     \/__/         \/__/         \/__/         \/__/                     \/__/    |
+ ====================================================================================
+   Initialize run-file .......... done
+   Read sys-file ................       ---->  Solve Gas Energy Equation 
+ test     aksdjfakjsldfkajsdkjflaksdjflakjsdlfkjal
+   Read ini-file ................ done
+   Print chem-file .............. done
+ 
+   Run - Paramter:
+ 
+       Mechanism:         ckCHEM/LLNL_MD/LLNL_MD.sys
+       NetCDF-File:       NetCDF/LLNL_MD.nc
+       Initials:          ckCHEM/LLNL_MD/LLNL_MD.ini                                                      
+       ODE solver:        METHODS/TSRosWRodas3.fort                                                       
+       Version:           extended
+       Error Estimation:  euklid norm
+       linSolve:          sparse LU, Markowitz ordering scheme
+ 
+   Tolerance:   
+ 
+      relative Rosenbrock        =     0.10000000000000E-03
+      absolute (gaseous species) =     0.10000000000000E-14
+      absolute Temperature       =     0.10000000000000E+00
+ 
+   Initial values:   
+
+       sum initval (gaseous)    =   0.3207263001E-04  [mol/cm3]   
+       sum emissions (gaseous)  =   0.0000000000E+00  [mol/cm3]   
+           Initial Temperature  =   0.7500000000E+03  [K]
+           Initial Pressure     =   0.2000000000E+06  [Pa]
+           Reactor denstiy      =   0.8472133033E+00  [kg/cm3]
+
+   Init NetCDF................... done
+   SYMBOLIC PHASE................ done

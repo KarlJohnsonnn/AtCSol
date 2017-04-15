@@ -53,6 +53,7 @@ MODULE Chemsys_Mod
     &                    , Line2=''        &  ! Line2 = BackReaction if nessessary
     &                    , Line3=''
     LOGICAL             :: bR=.FALSE.       ! logical for reverse reaction
+    LOGICAL             :: bRexp=.FALSE.       ! logical for reverse reaction
     CHARACTER(LenName)  :: Factor
     CHARACTER(2)        :: direction
     REAL(RealKind)      :: SumAqCoef     
@@ -66,7 +67,7 @@ MODULE Chemsys_Mod
     INTEGER                         :: NumConst=0
     INTEGER                         :: HenrySpc=0
     LOGICAL                         :: TBextra=.FALSE.
-    INTEGER, ALLOCATABLE            :: TB(:)
+    INTEGER, ALLOCATABLE            :: TBidx(:)
     CHARACTER(100), ALLOCATABLE     :: TBspc(:)
     REAL(RealKind), ALLOCATABLE     :: TBalpha(:)
     CHARACTER(LenName), ALLOCATABLE :: InActEductSpc(:)
@@ -929,7 +930,8 @@ MODULE Chemsys_Mod
     DO iLoop=1,neq
       ! count activ educts in reaction iLoop
       NumActiveEduct=0
-      !print*, 'DEBUG::chemsys    sizeRSe,p=',iloop,SIZE(ReactionSystem(iLoop)%Educt),SIZE(ReactionSystem(iLoop)%Product)
+      !print*, 'DEBUG::chemsys    sizeRSe,p= ',iloop,SIZE(ReactionSystem(iLoop)%Educt),SIZE(ReactionSystem(iLoop)%Product)
+      !print*, 'DEBUG::chemsys    reaktion = ',TRIM(ReactionSystem(iLoop)%Line1)
       DO i=1,SIZE(ReactionSystem(iLoop)%Educt)
         SELECT CASE(ReactionSystem(iLoop)%Educt(i)%Type)
           CASE ('Gas','Aqua','Solid','Partic','GAS')

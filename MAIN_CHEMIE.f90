@@ -14,7 +14,7 @@ PROGRAM Main_ChemKin
   USE Rosenbrock_Mod
   USE mo_control
   USE mo_unirnk
-  USE mo_reac, ONLY: nspc,combustion, MW, rMW, scPermutation
+  USE mo_reac, ONLY: nspc,combustion, MW, rMW
   USE mo_MPI
   USE mo_IO
   USE mo_ckinput
@@ -100,7 +100,7 @@ PROGRAM Main_ChemKin
     CALL Read_Elements    ( ChemFile    , 969 )
     CALL Read_Species     ( ChemFile    , 969 )
     CALL Read_Reaction    ( ChemFile    , 969 )
-    !
+
     CALL PrintHeadSpecies   ( ChemFile    , 89 ) 
     CALL PrintSpecies       ( ListGas2    , 89 )
     CALL PrintHeadReactions ( 89 )
@@ -109,12 +109,26 @@ PROGRAM Main_ChemKin
 
     CALL GetSpeciesNames( ChemFile , y_name )
     CALL Read_ThermoData( SwitchTemp , DataFile , 696 , nspc )
+
+    !--- richtigen index holen, da TB unsortiert eingelesen
+    DO i = 1 , neq
+      IF (ALLOCATED(ReactionSystem(i)%TBidx)) THEN
+        DO j=1,SIZE(ReactionSystem(i)%TBidx)
+          tmpPos = PositionSpeciesAll(ReactionSystem(i)%TBspc(j))
+          IF (tmpPos>0) THEN
+            ReactionSystem(i)%TBidx(j) = tmpPos
+          ELSE
+            WRITE(*,*) ' Third body species: ',ReactionSystem(i)%TBspc(j), ' not found.'
+          END IF
+        END DO
+      END IF
+    END DO
    
+    !CALL PrintReactionSystem(ReactionSysteM)
     !--- Read molecular mass
     OPEN ( UNIT=998 , FILE=TRIM(ChemFile)//'.mw' , STATUS='UNKNOWN' )
     ALLOCATE( MW(nspc) , rMW(nspc) )  
-    MW(:)   = ZERO
-    rMW(:)  = ZERO
+    MW  = ZERO  ;   rMW = ZERO
     
     DO
       READ( 998 , * , IOSTAT=STAT ) tmpChar0 , tmpMW0
@@ -122,7 +136,7 @@ PROGRAM Main_ChemKin
       tmpPos  = PositionSpeciesAll( tmpChar0 )
       IF ( tmpPos > 0 ) MW(tmpPos) = REAL( tmpMW0 , RealKind )
     END DO
-    rMW(:) = ONE / MW(:)
+    rMW = ONE / MW
     CLOSE ( 998 )
    
     
@@ -136,16 +150,14 @@ PROGRAM Main_ChemKin
     CALL Read_GASini    ( InitFile , MoleFrac , InitValKat )
     CALL Read_EMISS     ( InitFile , y_e )
 
-    ! convert from mole fraction to [mol/cm3]
-
     !Press = Pressure0               ! initial pressure in [Pa]
     Press_in_dyncm2 = Pressure0 * Pa_to_dyncm2
 
     MassFrac = MoleFr_To_MassFr( MoleFrac ) 
     
-    MoleConc = MoleFr_To_MoleConc(  MoleFrac,                &
-                                   &  Press = Press_in_dyncm2, &
-                                   &  Temp  = Temperature0    )
+    MoleConc = MoleFr_To_MoleConc( MoleFrac,               &
+                                 & Press = Press_in_dyncm2,&
+                                 & Temp  = Temperature0    )
     ! Initialising reactor density
     rho  = Density( MoleConc )
     !rRho = kilo/rho       ! in [cm3/g]
@@ -154,20 +166,7 @@ PROGRAM Main_ChemKin
     !InitValAct = MassFrac
     InitValAct = MoleConc
 
-    !--- richtigen index holen, da TB unsortiert eingelesen
-    DO i = 1 , neq
-      IF (ALLOCATED(ReactionSystem(i)%TB)) THEN
-        DO j=1,SIZE(ReactionSystem(i)%TB)
-          ReactionSystem(i)%TB(j) = PositionSpeciesAll(ReactionSystem(i)%TBspc(j)) 
-        END DO
-      END IF
-    END DO
 
-    ! debug speedchem reihenfolge der species für besseres debuggen
-    scPermutation=[(i ,i=1,nspc+1)] 
-    IF (TRIM(ChemFile)=='ckCHEM/ERC_nheptane/ERC_nheptane') &
-      & scPermutation=(/26,28,25,18,21,17,20,29,22,24,19,27,15,13,23,12,14,16,1,2,3,4,5,6,7,9,10,11,8/)
-    
   ELSE
     IF ( MPI_ID==0 ) WRITE(*,*) ' ---->  Fix Temperature'
     CALL ReadSystem( ChemFile )

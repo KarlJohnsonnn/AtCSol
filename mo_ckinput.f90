@@ -693,16 +693,16 @@ CONTAINS
         ! extract 3rd body species and alpha values
         IF (iKL>0) THEN
           ReactionSystem(iReac)%TBextra=.TRUE.
-          CALL ComputeThirdBody(  ReactionSystem(iReac)%TB      &
+          CALL ComputeThirdBody(  ReactionSystem(iReac)%TBidx   &
           &                     , ReactionSystem(iReac)%TBspc   &
           &                     , ReactionSystem(iReac)%TBalpha &
           &                     , LocString)
           IF (bR) THEN
             ReactionSystem(iReac+1)%TBextra=.TRUE.
-            ALLOCATE(ReactionSystem(iReac+1)%TB(SIZE(ReactionSystem(iReac)%TB)))
-            ALLOCATE(ReactionSystem(iReac+1)%TBspc(SIZE(ReactionSystem(iReac)%TB)))
-            ALLOCATE(ReactionSystem(iReac+1)%TBalpha(SIZE(ReactionSystem(iReac)%TB)))
-            ReactionSystem(iReac+1)%TB=ReactionSystem(iReac)%TB
+            ALLOCATE(ReactionSystem(iReac+1)%TBidx(SIZE(ReactionSystem(iReac)%TBidx)))
+            ALLOCATE(ReactionSystem(iReac+1)%TBspc(SIZE(ReactionSystem(iReac)%TBidx)))
+            ALLOCATE(ReactionSystem(iReac+1)%TBalpha(SIZE(ReactionSystem(iReac)%TBidx)))
+            ReactionSystem(iReac+1)%TBidx=ReactionSystem(iReac)%TBidx
             ReactionSystem(iReac+1)%TBspc=ReactionSystem(iReac)%TBspc
             ReactionSystem(iReac+1)%TBalpha=ReactionSystem(iReac)%TBalpha
           END IF
@@ -1164,7 +1164,7 @@ CONTAINS
         WRITE(*,'(A2,10X,E10.4)') (' |', ReacSys(i)%Constants(j),j=1,SIZE(ReacSys(i)%Constants))
         WRITE(*,*) '|'
         WRITE(*,*) '| 3rd body species with alpha: '
-        WRITE(*,'(A2,5X,I4,F6.2)') (' |', ReacSys(i)%TB(j),ReacSys(i)%TBalpha(j),j=1,SIZE(ReacSys(i)%TB))
+        WRITE(*,'(A2,5X,I4,F6.2)') (' |', ReacSys(i)%TBidx(j),ReacSys(i)%TBalpha(j),j=1,SIZE(ReacSys(i)%TBidx))
       ELSE IF (ReacSys(i)%Factor=='$(+M)') THEN
         IF (ReacSys(i)%Line3=='low'.OR.ReacSys(i)%Line3=='LOW') THEN
           WRITE(*,*) '| fall-off reactions:'
@@ -1183,7 +1183,7 @@ CONTAINS
         WRITE(*,'(A2,5X,E10.4)') (' |', ReacSys(i)%TroeConst(j),j=1,SIZE(ReacSys(i)%TroeConst))
         WRITE(*,*) '|'
         WRITE(*,*) '| 3rd body species with alpha: '
-        WRITE(*,'(A2,5X,I4,F6.2)') (' |', ReacSys(i)%TB(j),ReacSys(i)%TBalpha(j),j=1,SIZE(ReacSys(i)%TB))
+        WRITE(*,'(A2,5X,I4,F6.2)') (' |', ReacSys(i)%TBidx(j),ReacSys(i)%TBalpha(j),j=1,SIZE(ReacSys(i)%TBidx))
         WRITE(*,*) '|'
       ELSE
         WRITE(*,*) '| Arrhenius Coefs A , b , E :'
