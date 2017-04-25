@@ -536,7 +536,7 @@ MODULE Integration_Mod
           Output%nsteps     = Output%nsteps     + IWORK(11)
           Output%nRateEvals = Output%nRateEvals + IWORK(12)
           Output%npds       = Output%npds       + IWORK(13)
-          Output%ndecomps   = Output%ndecomps   + IWORK(13)
+          Output%ndecomps   = Output%ndecomps   + IWORK(21)
 
           ! save data
           IF ( NetCdfPrint ) THEN 
@@ -581,6 +581,99 @@ MODULE Integration_Mod
 
         TimeIntegrationE  = MPI_WTIME() - TimeIntegrationA
         CALL Progress(100) ! last * needs an extra call
+
+
+      CASE('LSODES')
+
+        TimeIntegrationA=MPI_WTIME()
+
+        LIW    = 30
+        LRW    = 20 + (2 + 1./2.)*(2.*BAT%nnz+2.*A%nnz+2.*nDIM) + (11 + 9./2.)*nDIM
+        ITOL   = 2              ! 2 if atol is an array
+        RTOL1  = RtolRow        ! relative tolerance parameter
+        ATOL1(1:nspc) = Atol(1)  ! atol dimension nspc+1
+        ATOL1(nDim)   = Atol(2)  ! temperature tolerance
+
+        ITASK  = 1             ! 1 for normal computation of output values of y at t = TOUT
+        ISTATE = 1             ! This is the first call for a problem
+        IOPT   = 1             ! optional inputs are used (see Long Desciption Part 1.)
+        MF     = 222            ! Stiff method, internally generated full Jacobian.
+        
+        ALLOCATE(IWORK(LIW))
+        ALLOCATE(RWORK(LRW))
+        IWORK  = 0
+        RWORK  = ZERO
+
+        !RWORK(5) = 1.0d-6    ! first step size, if commented -> calculate h0
+        RWORK(6) = maxStp
+        RWORK(7) = minStp
+
+
+        IF (MPI_ID==0) WRITE(*,*) '  Start Integration............. '; WRITE(*,*) ' '
+
+        t        = Tspan(1)
+        timepart = (Tspan(2)-Tspan(1)) / REAL(nOutP - 1, RealKind)
+        tnew     = t + timepart
+
+        MAIN_LOOP_LSODES: DO k = 1 , nOutP-1
+          
+          IWORK(6) = maxnsteps
+           
+          CALL DLSODES( FRhs  , nDIM  , Y     , t        , tnew            &
+          &           , ITOL  , RTOL1 , ATOL1 , ITASK    , ISTATE  , IOPT  &
+          &           , RWORK , LRW   , IWORK , LIW      , dummy   , MF    )
+  
+  
+          Output%nsteps     = Output%nsteps     + IWORK(11)
+          Output%nRateEvals = Output%nRateEvals + IWORK(12)
+          Output%npds       = Output%npds       + IWORK(13)
+          Output%ndecomps   = Output%ndecomps   + IWORK(21)
+
+          ! save data
+          IF ( NetCdfPrint ) THEN 
+            iStpNetCDF  = iStpNetCDF + 1
+            zen = Zenith(t)
+            IF ( ntAqua > 0 ) THEN
+              actLWC  = pseudoLWC(t)
+              wetRad  = (Pi34*actLWC/SPEK(1)%Number)**(rTHREE)*1.0d-1
+            END IF
+
+            ! save data in NetCDF File
+            TimeNetCDFA = MPI_WTIME()
+            CALL SetOutputNCDF(  Y , yNcdf, t , actLWC)
+          
+            CALL StepNetCDF (   t                      &
+                            & , yNcdf                  &
+                            & , itime_NetCDF           &
+                            & , (/  actLWC                        &  ! LWC
+                            &     , RWORK(11)                     &  ! Stepsize
+                            &     , SUM(Y(1:ntGas))               &    ! Sum gas conc
+                            &     , SUM(Y(ntGas+1:ntGas+ntAqua))  &    ! Sum aqua conc
+                            &     , wetRad                        &    ! wet radius
+                            &     , zen               /)          &  ! zenith
+                            & , errind                 &  ! max error index = 0
+                            & , ZERO                   &  ! Sum sulfuric conc
+                            & , error                 )   ! error 
+            
+            TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
+          END IF
+
+
+          !-- Call progress bar.
+          IF ( Bar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
+            iBar = iBar + 1         ! iBar runs from 0 to 100
+            CALL Progress(iBar)
+          END IF
+
+          t    = tnew
+          tnew = tnew + timepart
+        
+        END DO MAIN_LOOP_LSODES
+
+        TimeIntegrationE  = MPI_WTIME() - TimeIntegrationA
+        CALL Progress(100) ! last * needs an extra call
+
+
 
       CASE DEFAULT
         

@@ -9,7 +9,7 @@ CHEMIE
 CHEMIE_g
 *.chem
 fort.*
-list
+list*
 *.m
 *.SparseMat
 *.o

@@ -26,8 +26,10 @@
     REAL(RealKind) :: fac_exp=1.0d0, fac_A=1.0d0
     Integer :: iDat=010619
     !
-    !
+    ! some factors for calculating Troe press dep. reactions
     REAL(RealKind) :: rFacEq      ! factor nessesary for equilibrium constant
+    REAL(RealKind) :: cTroe, nTroe, dTroe
+    REAL(RealKind) :: log10_Pr, log10_Fcent, Pr
     !
     CONTAINS
     !
@@ -100,10 +102,12 @@
 
       ELSE
 
-        T(1)=Temp    ! = 280 [K]
-        y_conc(:)=Y_in(:)
+        T(1)   = Temp    ! = 280 [K]
+        y_conc = Y_in
 
       END IF
+      !print*, '    C = ',y_conc([2831,945,2629])
+      !print*, ' ctot = ', SUM(y_conc(1:nspc))
 
       !print*,
       ! --- compute rate of all reactions (gas,henry,aqua,diss)
@@ -153,7 +157,7 @@
         Rate(iReac) = Meff * k * Prod
         IF (combustion) DRatedT(iReac) = DkdT
 
-        !print*, 'DBg:: i, Meff, k, prd, Rate  =', iReac, Meff, k, Prod, Rate(iReac)
+        !WRITE(987,*) 'DBg:: i, k , prd, Rate =', iReac, k, Prod, Rate(iReac)
 
       END DO LOOP_OVER_ALL_REACTIONS
       !stop 'ratesmod'
@@ -221,11 +225,10 @@
       REAL(RealKind), INTENT(IN) :: T(8)
       REAL(RealKind), INTENT(IN) :: y_conc(:)
       INTEGER,        INTENT(IN) :: iReac
-      REAL(RealKind), INTENT(IN), OPTIONAL :: Meff
+      REAL(RealKind), INTENT(INOUT), OPTIONAL :: Meff
       REAL(RealKind) :: EqRate,BaRate,FoRate
       !
-      REAL(RealKind) :: k0, kinf,  log10_Fcent, log10_Pr
-      REAL(RealKind) :: cnd(3)
+      REAL(RealKind) :: k0, kinf
       ! calc reaction constant
       ! Skip photochemical reactions at night
       BaRate = ZERO
@@ -249,8 +252,15 @@
         CASE ('TEMP4')
           CALL Temp4Compute(k,ReactionSystem(iReac)%Constants,T(1))
         CASE ('TEMPX')
-          CALL TempXComputeCK(k,EqRate,FoRate,ReactionSystem(iReac)%Constants,T,iReac)
-          CALL DiffTempXComputeCK(DkdT,ReactionSystem(iReac)%Constants,T,iReac)
+          ! new chemkin based routines
+          CALL TempXCompute(k,EqRate,FoRate,ReactionSystem(iReac)%Constants,T,iReac)
+          CALL DiffTempXCompute(DkdT,ReactionSystem(iReac)%Constants,T,iReac)
+        CASE ('PRESSX')
+          ! new chemkin based routines
+          CALL PressXCompute(k,k0,kinf,iReac,T,Meff)
+          CALL NumDiffPressXCompute(DkdT,k,iReac,T,Meff)
+          !CALL DiffPressXCompute(DkdT,k0,kinf,iReac,T,Meff)
+          Meff = ONE
         CASE ('ASPEC1')
           CALL Aspec1Compute(k,ReactionSystem(iReac)%Constants,T(1),y_conc)
         CASE ('ASPEC2')
@@ -287,9 +297,6 @@
           CALL TroeXPCompute(k,ReactionSystem(iReac)%Constants,T(1),mAir)
         CASE ('TROEMCM')
           CALL TroeMCMCompute(k,ReactionSystem(iReac)%Constants,T(1),mAir)!
-        CASE ('PRESSX')
-          CALL PressXCompute(k,k0,kinf,iReac,T,Meff,cnd,log10_Fcent,log10_Pr)
-          CALL DiffPressXCompute(DkdT,k0,kinf,iReac,T,Meff,cnd,log10_Fcent,log10_Pr)
         CASE ('SPEC1')
           CALL Spec1Compute(k,ReactionSystem(iReac)%Constants,mAir)
         CASE ('SPEC2')
@@ -357,6 +364,7 @@
       REAL(RealKind), INTENT(IN)  :: Conc(:)
       REAL(RealKind), INTENT(IN)  :: LWC
       INTEGER, INTENT(IN) :: iReac
+      INTEGER :: j
       !TEMP
       !
       !print*, 'debugg ro2=',SUM(y_conc(RO2))
@@ -390,15 +398,15 @@
             M=SUM(Conc(RO2aq))
           CASE ('$+M','$(+M)')
             M=SUM(Conc)
-            !print*, 'debug:: conc in [mol/cm3]=  ',Conc(scpermutation)
             IF (ALLOCATED(ReactionSystem(iReac)%TBidx)) THEN
-              M = M - SUM(  ( ONE - ReactionSystem(iReac)%TBalpha) &
-                         &    * Conc(ReactionSystem(iReac)%TBidx)  )
-            !print *, ' Meff    = ',iReac, M,ALLOCATED(ReactionSystem(iReac)%TBidx),ReactionSystem(iReac)%TBidx
-            !print *, ' species = ', ReactionSystem(iReac)%TBspc
-            !print *, ' alpha   = ', ReactionSystem(iReac)%TBalpha
+              M = M - SUM(( ONE - ReactionSystem(iReac)%TBalpha) &
+                &             * Conc(ReactionSystem(iReac)%TBidx))
+              !do j=1,SIZE(ReactionSystem(iReac)%TBalpha)
+               ! print*, 'tb = ',iReac,ReactionSystem(iReac)%TBidx(j),&
+              !    &             ONE - ReactionSystem(iReac)%TBalpha(j)
+              !end do
             END IF
-            !print *, ' Meff = ', M,ALLOCATED(ReactionSystem(iReac)%TBidx)
+            !IF( mod(iReac,2)==0.) print*, 'DEBUG::SCmodule    M=',iReac,M
           CASE DEFAULT
             WRITE(*,*) 'Reaction: ',iReac
             CALL FinishMPI()
@@ -796,44 +804,38 @@
     END SUBROUTINE scTHERMO
     !
     !
-    SUBROUTINE TempXComputeCK(k,rK_eq,k_f,Constants,T,iReac)
+    SUBROUTINE TempXCompute(k,rK_eq,kf,Const,T,iReac)
       !OUT:
       REAL(RealKind) :: k               ! Reaction rate constant
-      REAL(RealKind) :: k_f             ! Forward rate constant
+      REAL(RealKind) :: kf              ! Forward rate constant
       REAL(RealKind) :: rK_eq           ! reciprocal Equilibrium rate constant
       !IN:
-      REAL(RealKind) :: Constants(:)    ! Arrhenius parameter A,b,E_a
+      REAL(RealKind) :: Const(:)    ! Arrhenius parameter A,b,E_a
       REAL(RealKind) :: T(:)            ! Temperature array SIZE=8
       INTEGER :: iReac                  
       !TEMP:
       REAL(RealKind) :: rRcT
 
-      rRcT  = rRcal*T(6)
+      rRcT = rRcal*T(6)
+      kf   = Const(1) * EXP(Const(2)*T(8) - Const(3)*rRcT)
 
-      IF ( ReactionSystem(iReac)%bRexp ) THEN
-        ! explicite parameter for reverse reaction
-        k     = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT)
-      ELSE
-        IF ( ReactionSystem(iReac)%bR ) THEN
-          ! backward without extra coef, equiv constant nessesarry
-          ! compute inverse equiv. constant
-          k_f   = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT) ! speedchem
-          rK_eq = EXP(+DelGFE(iReac)) * rFacEq**(-sumBAT(iReac))
-          k     = k_f * rK_eq
-          !print*, ' backwar k = ', k, rK_eq, sumBAT(iReac)
-        ELSE
-          k     = Constants(1) * EXP(Constants(2)*T(8)-Constants(3)*rRcT) ! speedchem
-        END IF
+      IF ( ReactionSystem(iReac)%bR ) THEN
+        ! backward without extra coef, equiv constant nessesarry
+        ! compute inverse equiv. constant
+        ! explicite reverse reaction will be computed like 
+        ! standart forward reaction
+        rK_eq = EXP(+DelGFE(iReac)) * rFacEq**(-sumBAT(iReac))
+        k     = kf * rK_eq
+      ELSE 
+        k     = kf
       END IF
-        
-      !print*, ' Constants = ',iReac,Constants
-    END SUBROUTINE TempXComputeCK
+    END SUBROUTINE TempXCompute
     !
     !
-    SUBROUTINE DiffTempXComputeCK(Dkcoef,Constants,T,iReac)
+    SUBROUTINE DiffTempXCompute(Dkcoef,Const,T,iReac)
       REAL(RealKind) :: Dkcoef
-      REAL(RealKind) :: DfRdT, DeRdT
-      REAL(RealKind) :: Constants(:)
+      REAL(RealKind) :: DfRdT, DbRdT, DeRdT
+      REAL(RealKind) :: Const(:)
       REAL(RealKind) :: T(:)              ! temperatur array
       INTEGER :: iReac
       !
@@ -841,38 +843,220 @@
       REAL(RealKind) :: rRcT
 
       rRcT  = rRcal*T(6)
-      !
-      DfRdT = T(6)*(Constants(2)+Constants(3)*rRcT)    ! (21) Perini
-      !
-      DeRdT = -sumBAT(iReac)*T(6) -DDelGFEdT(iReac)   ! (23) Perini
-      !
-      !
+      DfRdT = Const(2) + Const(3)*rRcT     ! (21) Perini
+     
       IF ( ReactionSystem(iReac)%bR ) THEN
-        Dkcoef = DfRdT - DeRdT
-      ELSE   
-        Dkcoef = DfRdT
+        ! reverse reaction using equiv constant
+        DeRdT  = - sumBAT(iReac)*T(6) - DDelGFEdT(iReac)   ! (23) Perini
+        Dkcoef = (DfRdT - DeRdT)*T(6)
+      ELSE
+        Dkcoef = DfRdT*T(6)
       END IF
-      !print*, 'DEBUG::RATES       Ddelg0dT  =', DDelGFEdT(iReac)
-      !print*, 'DEBUG::RATES       DfRdT     =', DfRdT
-      !print*, 'DEBUG::RATES       DeRdT     =', DeRdT
-      !print*, 'DEBUG::RATES       DbRdT     =', DbRdT
   
-    END SUBROUTINE DiffTempXComputeCK
+    END SUBROUTINE DiffTempXCompute
     
    
+    SUBROUTINE PressXCompute(k,k0,kinf,iR,T,Meff)
+      REAL(RealKind) :: k
+      !
+      REAL(RealKind) :: T(:)
+      REAL(RealKind) :: Meff
+      INTEGER :: iR
+      REAL(RealKind) :: FACtroe
+      REAL(RealKind) :: logF_Troe, log10_Fcent, log10_Pr
+      REAL(RealKind) :: cnd(3)
+      !
+      REAL(RealKind) :: k0 , k0M , kinf, rK_eq, Fcent, rRcT, FTL
+      REAL(RealKind) :: High(3), Low(3)
+    
+      IF (ReactionSystem(iR)%Line3=='LOW') THEN
+        High = ReactionSystem(iR)%Constants
+        Low  = ReactionSystem(iR)%LowConst
+      ELSE
+        High = ReactionSystem(iR)%HighConst
+        Low  = ReactionSystem(iR)%Constants
+      END IF
+
+      rRcT = rRcal*T(6)
+      k0   = Low(1)  * EXP(  Low(2)*T(8) -  Low(3)*rRcT )
+      kinf = High(1) * EXP( High(2)*T(8) - High(3)*rRcT )
+      
+      k0M  = k0*Meff
+      Pr   = k0M / (kinf+k0M)
+   
+      IF (ALLOCATED(ReactionSystem(iR)%TroeConst)) THEN
+        ! Troe form
+        FTL = TroeFactor(iR,T)
+      ELSE
+        ! Lind form
+        FTL = Pr
+      END IF
+     
+      ! direction (forward - backward)
+      IF ( ReactionSystem(iR)%bR ) THEN
+        rK_eq = EXP(+DelGFE(iR)) * rFacEq**(-sumBAT(iR))
+        k = kinf * FTL * rK_eq
+      ELSE
+        k = kinf * FTL
+      END IF
+
+    END SUBROUTINE PressXCompute
+
+
+    SUBROUTINE NumDiffPressXCompute(DiffFactor_PD,k,iR,T,Meff)
+      REAL(RealKind), INTENT(OUT) :: DiffFactor_PD
+
+      REAL(RealKind), INTENT(IN)  :: k, Meff, T(:)
+
+      REAL(RealKind) :: kdel, k0, kinf
+      INTEGER        :: iR
+      REAL(RealKind) :: Tdel(8)
+      REAL(RealKind) :: delTemp
+
+      delTemp = 1.0d-08
+
+      CALL UpdateTempArray(Tdel , T(1)+delTemp)
+      CALL PressXCompute(kdel, k0, kinf, iR, Tdel, Meff)
+
+      DiffFactor_PD = (kdel - k) / delTemp
+      DiffFactor_PD = DiffFactor_PD/k
+
+    END SUBROUTINE NumDiffPressXCompute
+
+
+    SUBROUTINE DiffPressXCompute(DiffFactor_PD,k0,kinf,iR,T,Meff)
+      !OUT
+      REAL(RealKind) :: DiffFactor_PD
+      !IN
+      INTEGER :: iR 
+      REAL(RealKind) :: k0, kinf, Meff
+      REAL(RealKind) :: cnd(3)
+      REAL(RealKind) :: T(8)
+      !Temp
+      REAL(RealKind) :: Dk0dT, DeRdT, DkinfdT, rRcT, rkinfpk0M
+      REAL(RealKind) :: dFTL_dT
+      REAL(RealKind) :: log10_Prc, log10_FTroe, dlog10_PrdT
+
+      REAL(RealKind) :: TempDiffFactor    ! forward or backward
+      REAL(RealKind) :: tmplog10
+      REAL(RealKind) :: DlogF_Troedlog_Pr, Dlog_F_TroedT
+      REAL(RealKind) :: DF_PDdT
+
+      REAL(RealKind) :: DF_PDdT_Troe
+      !
+      REAL(RealKind) :: High(3), Low(3)
+      !
+      IF (ReactionSystem(iR)%Line3=='LOW') THEN
+        High = ReactionSystem(iR)%Constants
+        Low  = ReactionSystem(iR)%LowConst
+      ELSE
+        High = ReactionSystem(iR)%HighConst
+        Low  = ReactionSystem(iR)%Constants
+      END IF
+     
+      ! Lind mechnism also nessesarry for Troe 
+      rRcT    = rRcal*T(6)
+      Dk0dT   =  Low(2) +  Low(3)*rRcT
+      DkinfdT = High(2) + High(3)*rRcT
+
+      rkinfpk0M = ONE / (kinf + k0*Meff)
+      dFTL_dT   = Meff*k0*kinf*(rkinfpk0M*rkinfpk0M) * (Dk0dT - DkinfdT)*T(6)
+      
+      IF (ALLOCATED(ReactionSystem(iR)%TroeConst)) THEN
+        ! Troe mechanism
+        DF_PDdT = DiffTroeFactor(Dk0dT,DkinfdT,dFTL_dT,T)
+      ELSE
+        ! Lind mechnism
+        DF_PDdT = dFTL_dT
+      END IF
+      
+      IF (ReactionSystem(iR)%bR) THEN
+        DeRdT  = - sumBAT(iR)*T(6) - DDelGFEdT(iR)
+        TempDiffFactor = DkinfdT - DeRdT
+      ELSE
+        TempDiffFactor = DkinfdT
+      END IF
+      !
+      DiffFactor_PD  = ( DF_PDdT + TempDiffFactor )*T(6)
+    
+    END SUBROUTINE DiffPressXCompute
+
+
+    FUNCTION TroeFactor(iR,T)
+      !OUT
+      REAL(RealKind) :: TroeFactor
+      !IN
+      INTEGER        :: iR
+      REAL(RealKind) :: T(:)
+      !TEMP
+      REAL(RealKind) :: Fcent, logF_Troe, FACtroe
+      REAL(RealKind) :: Troe(4)
+
+
+      Troe = ReactionSystem(iR)%TroeConst
+    
+      Fcent = (ONE - Troe(1)) * EXP(-T(1)/Troe(2)) &
+            &      + Troe(1)  * EXP(-T(1)/Troe(3)) &
+            &      +            EXP(-T(6)*Troe(4))
+      
+      log10_Fcent = LOG10(Fcent)
+      log10_Pr    = LOG10(Pr/(ONE-Pr))
+
+      cTroe = -0.40d0 - 0.67d0*log10_Fcent    ! will be used for deriv too 
+      nTroe =  0.75d0 - 1.27d0*log10_Fcent
+      dTroe =  0.14d0
+      
+      FACtroe = (log10_Pr + cTroe) / (nTroe - dTroe*(log10_Pr + cTroe))
+
+      logF_Troe  = log10_Fcent / (ONE + FACtroe*FACtroe)
+      TroeFactor = Pr * TEN**logF_Troe
+    
+    END FUNCTION TroeFactor
+
+
+    FUNCTION DiffTroeFactor(Dk0dT,DkinfdT,dFTL_dT,T)
+      REAL(RealKind) :: DiffTroeFactor
+      !IN
+      REAL(RealKind) :: Dk0dT, DkinfdT, dFTL_dT, Pr
+      REAL(RealKind) :: T(:)
+      !TEMP
+      REAL(RealKind) :: dlog10_PrdT, log10_Prc, tmplog10
+      REAL(RealKind) :: DlogF_Troedlog_Pr, Dlog_F_TroedT
+      REAL(RealKind) :: log10_FTroe
+
+      ! Troe mechanism
+
+      dlog10_PrdT = rln10 * (Dk0dT - DkinfdT) * T(6)
+
+      log10_Prc   = log10_Pr + cTroe
+
+      DlogF_Troedlog_Pr = - TWO*nTroe*log10_Fcent*log10_Prc             &
+                        &       * ( nTroe - dTroe*log10_Prc )           &
+                        &  / (  nTroe**2 - TWO*nTroe*dTroe*log10_Prc +  &
+                        &      (dTroe**2 + ONE)*log10_Prc*log10_Prc  )**2
+
+      Dlog_F_TroedT     = DlogF_Troedlog_Pr * dlog10_PrdT
+      tmplog10          = log10_Prc   / (nTroe - dTroe*log10_Prc)
+      log10_FTroe       = log10_Fcent / (ONE   + (tmplog10*tmplog10))
+
+      DiffTroeFactor    = TEN**log10_FTroe * (dFTL_dT + Pr*ln10*Dlog_F_TroedT)
+
+    END FUNCTION DiffTroeFactor
+
+
     SUBROUTINE UpdateTempArray(TempArr,Temperature)
       REAL(RealKind) :: Temperature 
       REAL(RealKind) :: TempArr(8)
       !
       INTEGER :: i
       !
-      TempArr(1)    = Temperature                ! T
+      TempArr(1) = Temperature                ! T
       DO i=2,5
-        TempArr(i)  = TempArr(i-1)*Temperature   ! T^2 ... T^5
+        TempArr(i) = TempArr(i-1)*Temperature   ! T^2 ... T^5
       END DO
-      TempArr(6)    = ONE / Temperature          ! 1/T
-      TempArr(7)    = ONE / TempArr(2)           ! 1/T^2
-      TempArr(8)    = LOG(Temperature)           ! ln(T)
+      TempArr(6) = ONE / Temperature          ! 1/T
+      TempArr(7) = ONE / TempArr(2)           ! 1/T^2
+      TempArr(8) = LOG(Temperature)           ! ln(T)
     END SUBROUTINE UpdateTempArray
     !
     !
@@ -939,147 +1123,8 @@
     !   - Reaction constant
     !--------------------------------------------------------------------------!
     !
-    SUBROUTINE PressXCompute(ReacConst,k0,kinf,iR,T,Meff,cnd,log10_Fcent,log10_Pr)
-      REAL(RealKind) :: ReacConst, EquiRate
-      !
-      REAL(RealKind) :: T(:)
-      REAL(RealKind) :: Meff
-      INTEGER :: iR
-      REAL(RealKind) :: logF_Troe, log10_Fcent, log10_Pr
-      REAL(RealKind) :: cnd(3)
-      !
-      REAL(RealKind) :: k0 ,kinf, Pr, Fcent
-      REAL(RealKind) :: TroeConst(4)
-      REAL(RealKind) :: HighConst(3), LowConst(3)
-      !
-      IF (ReactionSystem(iR)%Line3=='LOW') THEN
-        !print*, 'DEBUG::RATES iRaec, SIZE =',iR,SIZE(ReactionSystem(iR)%LowConst),SIZE(ReactionSystem(iR)%Constants)
-        !print*, 'DEBUG::RATES    LOW Const=',ReactionSystem(iR)%LowConst
-        !print*, 'DEBUG::RATES    HIGHConst=',ReactionSystem(iR)%Constants
-        HighConst = ReactionSystem(iR)%Constants
-        LowConst  = ReactionSystem(iR)%LowConst
-      ELSE
-        !print*, 'DEBUG::RATES    iReac    =',iR
-        !print*, 'DEBUG::RATES    LOW Const=',ReactionSystem(iR)%Constants
-        !print*, 'DEBUG::RATES    HIGHConst=',ReactionSystem(iR)%HighConst
-        HighConst = ReactionSystem(iR)%HighConst
-        LowConst  = ReactionSystem(iR)%Constants
-      END IF
-      !
-      !stop
-      !
-      k0=LowConst(1)*T(1)**LowConst(2)*EXP(-LowConst(3)/R_Const*T(6))
-      kinf=HighConst(1)*T(1)**HighConst(2)*EXP(-HighConst(3)/R_Const*T(6))
-      !
-      Pr=k0/kinf*Meff
-      !
-      ! If Lind reaction
-      ReacConst=kinf*Pr
-      !
-      !print*, 'DEBUG::RATES    k0  =',k0
-      !print*, 'DEBUG::RATES    kinf=',kinf
-      !print*, 'DEBUG::RATES    Pr  =',Pr
-
-      ! If Troe reaction
-      IF (ALLOCATED(ReactionSystem(iR)%TroeConst)) THEN
-        TroeConst(:)=ReactionSystem(iR)%TroeConst(:)
-        !print*, 'DEBUG::RATES    TroeConst=',TroeConst
-        ! Formel (73) Chemkin Dokumentation
-        Fcent=(ONE-TroeConst(1))*EXP(-T(1)/TroeConst(2)) +                  &
-        &      TroeConst(1)*EXP(-T(1)/TroeConst(3))+EXP(-TroeConst(4)*T(6))
-        !
-        log10_Fcent=LOG10(Fcent)
-        log10_Pr   =LOG10(Pr)
-        cnd(1)=-0.4d0-0.67d0*log10_Fcent    ! will be used for deriv too 
-        cnd(2)=0.75d0-1.27d0*log10_Fcent
-        cnd(3)=0.14d0
-        logF_Troe=log10_Fcent/(ONE + ((log10_Pr+cnd(1))/(cnd(2)-cnd(3)*(log10_Pr+cnd(1))))**TWO)
-        ReacConst=kinf*(Pr/(ONE+Pr))*10.0d0**logF_Troe
-        !
-      END IF
-      !print*, 'DEBUG::RATES    Pr=',Pr
-      !print*, 'DEBUG::RATES    Fcent=',fcent
-      !print*, 'DEBUG::RATES    logF =',logF
-      !
-      IF (ReactionSystem(iR)%Line2=='BackReaction') THEN
-        EquiRate=EXP(-DelGFE(iR))*(PressR*T(1))**sumBAT(iR)
-        ReacConst=ReacConst/EquiRate
-      END IF
-
-      !IF (ReactionSystem(i)%Line2=='BackReaction') stop 'pressreaktion'
-    END SUBROUTINE PressXCompute
     !
     !
-    SUBROUTINE DiffPressXCompute(DiffFactor_PD,kf0,kfoo,iR,T,Meff,cnd,log10_Fcent,log10_Pr)
-      REAL(RealKind) :: DiffFactor_PD
-      INTEGER :: iR 
-      REAL(RealKind) :: kf0, kfoo, Meff
-      REAL(RealKind) :: cnd(3)
-      REAL(RealKind) :: T(8)
-      REAL(RealKind) :: log10_Fcent, log10_Pr
-      !
-      REAL(RealKind) :: TempDiffFactor    ! forward or backward
-      REAL(RealKind) :: logF_Troe
-      REAL(RealKind) :: DlogF_Troedlog_Pr, Dlog_F_TroedT
-      REAL(RealKind) :: DF_PDdT
-      REAL(RealKind) :: DeRdT, DfRdT
-
-      REAL(RealKind) :: Dkf0dT, DkfoodT
-      REAL(RealKind) :: DlogF_PrdT, DF_PDdT_Lind, DF_PDdT_Troe
-      REAL(RealKind) :: log10_Prc
-      !
-      REAL(RealKind) :: HighConst(3), LowConst(3)
-      !
-      IF (ReactionSystem(iR)%Line3=='LOW') THEN
-        HighConst = ReactionSystem(iR)%Constants
-        LowConst  = ReactionSystem(iR)%LowConst
-      ELSE
-        HighConst = ReactionSystem(iR)%HighConst
-        LowConst  = ReactionSystem(iR)%Constants
-      END IF
-      !
-      ! Lind mechnism also nessesarry for Troe 
-      Dkf0dT  = kf0*(LowConst(2)+LowConst(3)/R_Const*T(6))*T(6)
-      DkfoodT = kfoo*(HighConst(2)+HighConst(3)/R_Const*T(6))*T(6)
-      !
-      DF_PDdT_Lind = Meff/(kfoo+kf0*Meff)**TWO*(kfoo*Dkf0dT-kf0*DkfoodT)
-      !
-      IF (ALLOCATED(ReactionSystem(iR)%TroeConst)) THEN
-        ! Troe mechanism
-        DlogF_PrdT=ONE/LOG(10.0d0)*(ONE/kf0*Dkf0dT-ONE/kfoo*DkfoodT)
-        log10_Prc=log10_Pr+cnd(1)
-        DlogF_Troedlog_Pr = -TWO * cnd(2) * log10_Fcent * log10_Prc *                &
-        &                   ( cnd(2)+cnd(3)*log10_Prc ) *                            &
-        &                   ( cnd(2)*cnd(2) -TWO*cnd(2)*cnd(3)*log10_Prc +           &
-        &                     (cnd(3)+ONE)*log10_Prc*log10_Prc             )**(-2.0d0)
-
-        Dlog_F_TroedT = DlogF_Troedlog_Pr*DlogF_PrdT
-        DF_PDdT_Troe  = TEN**logF_Troe*(DF_PDdT_Lind+Dlog_F_TroedT)
-        DF_PDdT = DF_PDdT_Troe
-      ELSE
-        DF_PDdT = DF_PDdT_Lind
-      END IF
-      !
-      DfRdT = (HighConst(2)+HighConst(3)/R_Const*T(6))*T(6)
-      !
-      IF (ReactionSystem(iR)%Line2=='BackReaction') THEN
-        DeRdT = -(sumBAT(iR)*T(6)+DDelGFEdT(iR))  
-        TempDiffFactor = DfRdT - DeRdT
-      ELSE
-        TempDiffFactor = DfRdT
-      END IF
-      !
-      DiffFactor_PD  = ( DF_PDdT + TempDiffFactor )
-      !
-      !print*, 'DEBUG::RATES  Dkf0dT   =',Dkf0dT
-      !print*, 'DEBUG::RATES  DkfoodT  =',DkfoodT
-      !print*, 'DEBUG::RATES  DlogFTdPr=',DlogFTdPr
-      !print*, 'DEBUG::RATES  DF_linddT=',DF_linddT
-      !print*, 'DEBUG::RATES  DlogPrdT =',DlogPrdT
-      !print*, 'DEBUG::RATES  DlogFTdT =',DlogFTdT
-      !print*, 'DEBUG::RATES  DF_troedT=',DF_troedT
-      !print*, 'DEBUG::RATES  DiffCoef =',DiffCoef
-    END SUBROUTINE
     !
     !
     SUBROUTINE TroeCompute(ReacConst,Constants,Temp,mAir)

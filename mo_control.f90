@@ -16,12 +16,14 @@
 &                     ,ChemFile          & ! Chemical mechanism
 &                     ,InitFile          & ! Initial concentrations
 &                     ,DataFile          & ! Gas and Aqueous DATA
+&                     ,MWeights          & ! molecular weights of species 
 &                     ,NetcdfFileName    & ! NetCDF output file
 &                     ,ODEsolver    ! Method for Rosenbrock Integration
 !
 !--- Unit Numbers
       INTEGER :: MetUnit           & ! Meteorology file
 &               ,ChemUnit          & ! Chemical mechanism
+&               ,MWUnit            & ! molecular weights unit
 &               ,InitUnit          & ! Initial concentrations
 &               ,DataUnit            ! Gas and Aqueous DATA
 !
@@ -244,6 +246,8 @@ INTEGER        :: nOutP
 
     LOGICAL :: useMUMPS = .FALSE.
     LOGICAL :: useSparseLU = .FALSE.
+
+    LOGICAL :: TempEq = .FALSE.
     
  END MODULE mo_control
 

@@ -403,7 +403,11 @@ MODULE Rosenbrock_Mod
     !********************************************************************************
    
     ! HIER UNBEDINGT RATE MIT Y0 ALS INPUT
-    Y    = MAX( ABS(Y0)  , eps ) * SIGN( ONE , Y0 )  ! concentrations =/= 0
+    IF ( combustion ) THEN
+      Y  = Y0
+    ELSE
+      Y  = MAX( ABS(Y0)  , eps ) * SIGN( ONE , Y0 )  ! concentrations =/= 0
+    END IF
     
     CALL Rates( t, Y, Rate, DRatedT )     
     Rate = MAX( ABS(Rate) , eps ) * SIGN( ONE , Rate )    ! reaction rates =/= 0
@@ -441,9 +445,9 @@ MODULE Rosenbrock_Mod
         WRITE(*,*) '------------------------------------------------------------------------------'
         WRITE(*,*) ''
         do i=1,nspc
-          WRITE(*,'(A,I5,A,E22.14,A3,A)') 'debug     dCdt(',i,') = ',dCdt(i),'   ',y_name(i)
+          WRITE(*,'(A,I5,A,E22.14,A3,A)') 'debug     dCdt(',i,') = ',dCdt(SCperm(i)),'   ',y_name(SCperm(i))
         end do
-        WRITE(*,'(A,I5,A,E22.14,A3,A)') 'debug     dTdt(',30,') = ',dTdt,'   ','Temperature'
+        WRITE(*,'(A,E22.14,A3,A)') 'debug      dTdt(last) = ',dTdt,'   ','Temperature'
         WRITE(*,*) ''
         !stop 'debug ros'
       END IF

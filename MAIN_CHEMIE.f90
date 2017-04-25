@@ -36,7 +36,7 @@ PROGRAM Main_ChemKin
   ! temp variables for molecular weights
   CHARACTER(16)   :: tmpchar0 = '-'
   REAL(RealKind)  :: tmpMW0
-  INTEGER         :: tmpPos    
+  INTEGER         :: tmpPos, tmpCnt
 
   ! convertion from mole to mass to conc
   REAL(RealKind), ALLOCATABLE   :: MoleFrac(:), MassFrac(:), MoleConc(:)
@@ -104,7 +104,7 @@ PROGRAM Main_ChemKin
     CALL PrintHeadSpecies   ( ChemFile    , 89 ) 
     CALL PrintSpecies       ( ListGas2    , 89 )
     CALL PrintHeadReactions ( 89 )
-    CALL PrintReactions     ( ReactionSystem , 89 , .TRUE. )       ! .TRUE. in 3rd agument for chemkin input file
+    CALL PrintReactions     ( ReactionSystem , 89 , .TRUE. )  !  .TRUE. in 3rd agument for chemkin input file
     CALL PrintFinalReactions( 89 )
 
     CALL GetSpeciesNames( ChemFile , y_name )
@@ -126,19 +126,12 @@ PROGRAM Main_ChemKin
    
     !CALL PrintReactionSystem(ReactionSysteM)
     !--- Read molecular mass
-    OPEN ( UNIT=998 , FILE=TRIM(ChemFile)//'.mw' , STATUS='UNKNOWN' )
-    ALLOCATE( MW(nspc) , rMW(nspc) )  
-    MW  = ZERO  ;   rMW = ZERO
-    
-    DO
-      READ( 998 , * , IOSTAT=STAT ) tmpChar0 , tmpMW0
-      IF ( STAT > 0 )   EXIT
-      tmpPos  = PositionSpeciesAll( tmpChar0 )
-      IF ( tmpPos > 0 ) MW(tmpPos) = REAL( tmpMW0 , RealKind )
-    END DO
-    rMW = ONE / MW
-    CLOSE ( 998 )
    
+    CALL Read_MolecularWeights(MW,MWeights,MWUnit,nspc)
+
+    ALLOCATE( rMW(nspc) )  
+    rMW = ZERO
+    rMW = ONE / MW
     
     ALLOCATE( MoleFrac(ntGas)   , MassFrac(ntGas) )
     ALLOCATE( InitValAct(ntGas) , y_e(ntGas) )
@@ -158,6 +151,15 @@ PROGRAM Main_ChemKin
     MoleConc = MoleFr_To_MoleConc( MoleFrac,               &
                                  & Press = Press_in_dyncm2,&
                                  & Temp  = Temperature0    )
+
+    !                           print*, ''
+    !                           print*, ''
+    !print *, ' molefr,massfr,moleconc = ',2831, MoleFrac(2831),MassFrac(2831),MoleConc(2831)
+    !print *, ' molefr,massfr,moleconc = ',945, MoleFrac(945),MassFrac(945),MoleConc(945)
+    !print *, ' molefr,massfr,moleconc = ',2629, MoleFrac(2629),MassFrac(2629),MoleConc(2629)
+    !                           print*, ''
+    !                           print*, ''
+    
     ! Initialising reactor density
     rho  = Density( MoleConc )
     !rRho = kilo/rho       ! in [cm3/g]

@@ -63,8 +63,8 @@ CONTAINS
     INTEGER :: UnitThermo, nSpc
     
     CHARACTER(80) :: iLine   !i =1,2,3,4
-    CHARACTER(30) :: Species(nSpc)
-    CHARACTER(30) :: SpeciesInfo(nspc)
+    CHARACTER(18) :: Species(nSpc)
+    CHARACTER(18) :: SpeciesInfo(nspc)
     CHARACTER(6)  :: RefDataCode(nSpc)
     CHARACTER(2)  :: Atoms(nSpc,4)
     INTEGER       :: nAtoms(nSpc,4)
@@ -72,21 +72,18 @@ CONTAINS
     REAL(8)       :: MolMass(nSpc)
     CHARACTER(1)  :: Phase(nSpc)
     REAL(8)       :: ta,tb,tc,td,te,tf,tg
-    REAL(8)       :: H0_29815R(nspc)
     REAL(8),ALLOCATABLE :: ThermSwitchTemp(:)
     !
     INTEGER :: i,j,n, cnt
     INTEGER :: idxWhiteSpace
     INTEGER :: ALLOC_ERR
-    CHARACTER(30) :: tSpcName
-    LOGICAL :: THERMO=.FALSE.
+    CHARACTER(18) :: tSpcName
 
     REAL(RealKind) :: thin1, thin2, thin3
     REAL(RealKind) :: ThermoIntervall(3)
 
 
     CHARACTER(1) :: rNumber='-'
-    CHARACTER(4) :: dstr='----'
     !
     ! FORMATS
     1 FORMAT(A18,A6,4(A2,I3),A1,2F10.3,F13.7,A1,I1) 
@@ -98,7 +95,6 @@ CONTAINS
     ALLOCATE(lowA(nspc),lowB(nspc),lowC(nspc),lowD(nspc),lowE(nspc),lowF(nspc),lowG(nspc),STAT=ALLOC_ERR)
     ALLOCATE(highA(nspc),highB(nspc),highC(nspc),highD(nspc),highE(nspc),highF(nspc),highG(nspc),STAT=ALLOC_ERR)
     ALLOCATE(ThermSwitchTemp(nspc))
-    lowA = -9999999999.0d0
     REWIND(UnitThermo)
     !
     i=0
@@ -125,33 +121,33 @@ CONTAINS
         rNumber = iLine(80:80)
       END IF
 
-      IF ( MAXVAL(INDEX(iLine,['END','end'])) > 0 ) EXIT
+      IF ( MAXVAL(INDEX(iLine,(/'END','end'/))) > 0 ) EXIT
       !
       SELECT CASE (rNumber)
         CASE ('1')
           READ(iLine,1) tSpcName
           i=PositionSpeciesAll(tSpcName(1:INDEX(tSpcName,' ')-1))
 
-          IF ( i <= 0 ) THEN
-            READ(UnitThermo,*) iLine
-            READ(UnitThermo,*) iLine
-            READ(UnitThermo,*) iLine
-          ELSE
-            cnt=cnt+1
-            !
-            READ(iLine,1) tSpcName,RefDataCode(i),(Atoms(i,j),  &
-            &       nAtoms(i,j),j=1,4),Phase(i),ta,tb,tc,n
-            idxWhiteSpace=INDEX(tSpcName,' ')
-            !
-            WRITE(Species(i),*) tSpcName(1:idxWhiteSpace-1)
-            WRITE(SpeciesInfo(i),*) tSpcName(idxWhiteSpace:)
-            !
-            TempRange(i,1)=REAL(ta,KIND=RealKind)
-            TempRange(i,2)=REAL(tb,KIND=RealKind)
-            TempRange(i,3)=REAL(tc,KIND=RealKind)
-            ThermSwitchTemp(i)=TempRange(i,3)
-            MolMass(i)=REAL(tc,KIND=RealKind)
-          END IF
+         IF ( i <= 0 ) THEN
+           READ(UnitThermo,*) iLine
+           READ(UnitThermo,*) iLine
+           READ(UnitThermo,*) iLine
+         ELSE
+           cnt=cnt+1
+           !
+           READ(iLine,1) tSpcName,RefDataCode(i),(Atoms(i,j),  &
+           &       nAtoms(i,j),j=1,4),Phase(i),ta,tb,tc,n
+           idxWhiteSpace=INDEX(tSpcName,' ')
+           !
+           WRITE(Species(i),*) tSpcName(1:idxWhiteSpace-1)
+           WRITE(SpeciesInfo(i),*) tSpcName(idxWhiteSpace:)
+           !
+           TempRange(i,1)=REAL(ta,KIND=RealKind)
+           TempRange(i,2)=REAL(tb,KIND=RealKind)
+           TempRange(i,3)=REAL(tc,KIND=RealKind)
+           ThermSwitchTemp(i)=TempRange(i,3)
+           MolMass(i)=REAL(tc,KIND=RealKind)
+         END IF
        CASE ('2')
          READ(iLine,2) ta,tb,tc,td,te,n
          highA(i)=REAL(ta,KIND=RealKind)
@@ -181,11 +177,6 @@ CONTAINS
     CALL CloseFile(UnitThermo,DatThermo(1:INDEX(DatThermo,'.')-1),'dat')
     IF ( cnt < nspc ) THEN
       WRITE(*,*) '    Some species are missing in thermodynamic data (*.dat)'
-      DO i=1,nspc
-        IF (lowA(i)==-9999999999.0d0) THEN
-          WRITE(*,*) ' Species ',i,' = ',TRIM(y_name(i)),' is missing!'
-        END IF
-      END DO
       STOP 'mo_ckinput'
     END IF
   END SUBROUTINE Read_Thermodata
@@ -196,7 +187,7 @@ CONTAINS
     INTEGER :: UnitReac
     
     INTEGER, PARAMETER :: nMaxElements=130
-    CHARACTER(80) :: iLine   !i =1,2,3,4
+    CHARACTER(200) :: iLine   !i =1,2,3,4
     CHARACTER(2)   :: tElem(nMaxElements)
     CHARACTER(2),ALLOCATABLE   :: Elements(:)
     !
@@ -207,7 +198,7 @@ CONTAINS
     !
     i=0
     DO
-      READ(UnitReac,'(A80)') iLine
+      READ(UnitReac,'(A200)') iLine
       !
       ! check if next line is end
       IF (iLine(1:3)=='END'.OR.iLine(1:3)=='end') THEN
@@ -217,7 +208,7 @@ CONTAINS
       !
       IF (iLine(1:4)=='ELEM'.OR.iLine(1:4)=='elem') THEN
         i=0
-        READ(UnitReac,'(A80)') iLine
+        READ(UnitReac,'(A200)') iLine
         !
         DO
           i=i+1
@@ -239,9 +230,9 @@ CONTAINS
     INTEGER :: UnitReac
     !
     INTEGER, PARAMETER :: nMaxElements=130
-    CHARACTER(100)     :: iLine   !i =1,2,3,4
+    CHARACTER(200)     :: iLine   !i =1,2,3,4
     !
-    CHARACTER(100)     :: headline  
+    CHARACTER(200)     :: headline  
     INTEGER :: i
     INTEGER :: iWS
     !
@@ -261,9 +252,8 @@ CONTAINS
     i=0
     CALL FindSection(UnitReac,'species',headline)
     DO
-      i=i+1
-      READ(UnitReac,'(A100)') iLine
-      iLine = ADJUSTL(iLine)
+    i=i+1
+      READ(UnitReac,'(A200)') iLine
       IF (iLine(1:3)=='END'.OR.iLine(1:3)=='end') EXIT
       !
       DO
@@ -286,38 +276,32 @@ CONTAINS
     CHARACTER(*) :: DataReac
     INTEGER :: UnitReac
     !
-    CHARACTER(80) :: iLine   !i =1,2,3,4
-    CHARACTER(80) :: locString
-    CHARACTER(80) :: headline  
-    CHARACTER(80) :: ductstr
-    CHARACTER(80) :: dummyString
-    CHARACTER(2)  :: EqSign
+    CHARACTER(200)     :: iLine   !i =1,2,3,4
+    CHARACTER(200)     :: locString
+    CHARACTER(200)     :: headline  
+    CHARACTER(200)     :: ductstr
+    CHARACTER(200)     :: dummyString
     !
     INTEGER :: i
     INTEGER :: iReac
     INTEGER :: iWS
     INTEGER :: iNxtSpc
     INTEGER :: iM, iKlammerM
-    INTEGER :: io_err
-    INTEGER :: nRowThirdBodys
     !
     INTEGER :: iKl,iKr
     CHARACTER(10) :: auxiliary
     !
     INTEGER :: nduct, nEducts, nProducts
     INTEGER :: fPosPlus , fPosEq, fPosFw
-    INTEGER :: idxDuctE(6),idxDuctP(6)
-    REAL(RealKind) :: KoefDuctE(6), KoefDuctP(6)
-    CHARACTER(20)  :: NamesDuctE(6),NamesDuctP(6)
-    REAL(RealKind), ALLOCATABLE :: valDucts(:)
+    INTEGER :: idxDucts(6)!,idxDuctsP(6)
+    !REAL(RealKind), ALLOCATABLE :: valDucts(:)
+    INTEGER, ALLOCATABLE :: SPCind(:,:)
     !
     !INTEGEr :: TableNspc
     CHARACTER(15) :: units
-    REAL(RealKind) :: tmpReal,tmpReal2,tmpReal3
+    REAL(RealKind) :: tmpReal
     !
     LOGICAL :: bR
-    LOGICAL :: nxtReac
-    LOGICAL :: ende
     !
     CALL OpenFile(UnitReac,TRIM(DataReac),'sys')
     REWIND UnitReac
@@ -339,33 +323,45 @@ CONTAINS
     END SELECT
     !
     ! first count reations, ...
-    iReac = 0
+    iReac=0
     DO
       ! read next line
-      READ(UnitReac,'(A80)') iLine
-     
+      READ(UnitReac,'(A200)') iLine
+      ! adjust lef
       iLine=ADJUSTL(iLine)
-
       ! exit cond
-      IF ( MAXVAL(INDEX(iLine,['END','end']))>0 )  EXIT
-
-      IF   ( INDEX(iLine,'=>')>0 ) THEN
-        iReac = iReac+1    ! irreversible reactions
-        IF ( INDEX(iLine,'<=>')>0) THEN
-          iReac = iReac+1  ! reversible reactions with arrows
-        END IF
-      END IF
+      IF ( MAX(INDEX(iLine,'END'),INDEX(iLine,'end'))>0 )  EXIT
       !
+      !print*, 'debug::mockin   iline=',iline
+      ! if no exit iReac++
+      !          reversible reactions
+      IF ( MAX(INDEX(iLine,' = '),INDEX(iLine,' <=> '))>0 )  iReac=iReac+2
+      !          irreversible reactions
+      IF ( INDEX(iLine,' => ')>0 )  iReac=iReac+1
     END DO
     REWIND UnitReac
     nReak=iReac
-    !print*, ' ges reak = ', ireac
+    !print*, 'debug::mockin   nreak=',nreak
+    !CALL PrintHashTableCK(ListGas,TableNspc)
+    !IF (TableNspc>nSpc) STOP ' More Species in reactin system than declared in species section! '
     !
     ! ALLOCATE reaction system structur
     ALLOCATE(ReactionSystem(nReak))
+    ! ALLOCATE matrices alpha, beta, (beta-alpha)^T
+    !alpha%m=nReak
+    !alpha%n=nSpc
+    !beta%m =nReak
+    !beta%n =nSpc
+    !ALLOCATE(alpha%RowPtr(nReak+1),beta%RowPtr(nReak+1))
+    !alpha%RowPtr(1)=1
+    !beta%RowPtr(1) =1
+    !
+    ! allocate temp array for spc indices (max 6 educts, 6 products)
+    ALLOCATE(SPCind(nReak,12))
+    SPCind=-1
+    !
+    !
     CALL FindSection(UnitReac,'reactions',headline)
-    nxtReac   = .FALSE.
-    ende      = .FALSE.
     iReac     = 0
     fPosPlus  = 0
     fPosEq    = 0
@@ -373,343 +369,353 @@ CONTAINS
     iLine       = ''
     dummyString = ''
     LocString   = ''
-
-    ! gather first reaction line
-    CALL NextLine(UnitReac,iLine,ende,nxtReac)
-
-    READ_REACTION_MECHANISM: DO
-      
-      IF ( ende ) EXIT READ_REACTION_MECHANISM  ! exit reading mechnism
-         
-      REACTION_LINE: IF (nxtReac)  THEN
-
-        !print*,
-        !print*, 'DEBUG:: vor  reaktion lesen iLine = ',ireac,TRIM(iLine)
-
-        iReac = iReac + 1
-        
-        ReactionSystem(iReac)%Type='GAS'    ! all gaseous
-        
-        fPosEq = INDEX(iLine,'<=')
-        ! if   <=>   reaction
+    DO
+      ! exit cond
+      IF ( MAX(INDEX(iLine,'END'),INDEX(iLine,'end'))>0 ) EXIT
+      !IF (iLine(1:3)=='END'.OR.iLine(1:3)=='end') EXIT
+      !
+      IF ( TRIM(ADJUSTL(LocString))==dummyString) THEN
+        ! read next line
+        READ(UnitReac,'(A200)') iLine
+      ELSE
+        iLine=TRIM(ADJUSTL(LocString))
+      END IF
+      !
+      dummyString=TRIM(ADJUSTL(iLine))
+      !print*, 'DEBUG::mo_ckinput   vor skip  iLine=',TRIM(iLine)
+      !
+      CALL SkipLines(UnitReac,iLine)
+      !print*, 'DEBUG::mo_ckinput   nachskip  iLine=',TRIM(iLine)
+      !
+      ! adjust left and cut off comments
+      IF (INDEX(iLine,'!')>0)  THEN
+        iLine=iLine(1:INDEX(iLine,'!')-1)
+      END IF
+      iLine=ADJUSTL(iLine)
+      !
+      !
+      ! if no exit iReac++
+      !          reversible reactions
+      fPosEq=MAX(INDEX(iLine,' = '),INDEX(iLine,'<=>'))
+      fPosFw=INDEX(iLine,' => ')
+      !
+      ! IF REACTION LINE
+      IF (fPosEq>0.OR.fPosFW>0)  THEN
+        iReac=iReac+1
+        ReactionSystem(iReac)%Type='GAS'    ! immer gas bei chemkin?
+        !
+        ! if  =   or   <=>   reaction
         IF (fPosEq>0) THEN
           bR=.TRUE.
-          ReactionSystem(iReac+1)%Type = 'GAS'    ! all gaseous
-          ReactionSystem(iReac+1)%bR   = .TRUE.    ! all gaseous
-        ELSE 
-          fPosFw = INDEX(iLine,'=>')
-          IF (fPosFw>0) bR = .FALSE.
+          ReactionSystem(iReac+1)%Type='GAS'    ! immer gas bei chemkin?
         END IF
-        
+        !
         ! FIRST LINE OF REACTION  ---  Extract Arrhenius Coeff 
         ALLOCATE(ReactionSystem(iReac)%Constants(3))
         IF (bR) ALLOCATE(ReactionSystem(iReac+1)%Constants(3))
-
-        LocString = ADJUSTL(iLine)
-
+        LocString=iLine
         DO i=3,1,-1
-          LocString = ADJUSTR(LocString)
-          iWS = INDEX(LocString,' ',.TRUE.)        ! find first whitespace <--
-          READ(LocString(iWS:),*,IOSTAT=io_err) tmpReal
-
-          IF (io_err == 0 ) THEN
-            ReactionSystem(iReac)%Constants(i)   = REAL(tmpReal,KIND=RealKind)
-            IF (bR) &
-            ReactionSystem(iReac+1)%Constants(i) = REAL(tmpReal,KIND=RealKind)
-          ELSE
-            WRITE(*,*) ''
-            WRITE(*,*) '   Something went wrong reading the Arrhenius parameter'
-            CALL  PrintError(io_err,iReac,LocString)
-          END IF
-          LocString = TRIM(LocString(:iWS))
+          LocString=ADJUSTR(LocString)
+          iWS=INDEX(LocString,' ',.TRUE.)        ! find first whitespace <--
+          READ(LocString(iWS:),*) tmpReal
+          ReactionSystem(iReac)%Constants(i)=REAL(tmpReal,KIND=RealKind)
+          IF (bR) ReactionSystem(iReac+1)%Constants(i)=REAL(tmpReal,KIND=RealKind)
+          LocString=LocString(:iWS)
         END DO
-
-        ! save reaction string
+        !
+        ! left over string = reaction
+        LocString=TRIM(ADJUSTL(LocString))
+        !
         IF (fPosEq>0) THEN
-          fPosEq = INDEX(LocString,'<=')
-          ReactionSystem(iReac)%Line1   = TRIM(ADJUSTL(LocString( 1:fPosEq-1) ))//' => '// &
-          &                               TRIM(ADJUSTL(LocString( fPosEq+3:  )))
-          ReactionSystem(iReac+1)%Line1 = TRIM(ADJUSTL(LocString( fPosEq+3:  )))//' => '// &
-          &                               TRIM(ADJUSTL(LocString( 1:fPosEq-1 )))
+          ReactionSystem(iReac)%Line1=TRIM(ADJUSTL(LocString(1:fPosEq-1)))//' => '// &
+          &                           TRIM(ADJUSTL(LocString(fPosEq+4:)))   ! save reaction string
+          !print*, 'DEBUG::mo_ckinput  hinreaktion = ',iReac,TRIM(ReactionSystem(iReac)%Line1)
         ELSE
-          ReactionSystem(iReac)%Line1   = TRIM(ADJUSTL(LocString))
+          ReactionSystem(iReac)%Line1=LocString               ! save reaction string
         END IF
-     
-        ! extract the constant type by checking the reaction if +m or (+M) appears, and cut M off
-        CALL GetConstantType( iM , iKlammerM , LocString ,         &
-          &                   ReactionSystem(iReac)%TypeConstant , &
-          &                   ReactionSystem(iReac)%Factor         )
-
+        !
+        nduct=0
+        !
+        !
+        !p
         IF (bR) THEN
           ! save reaction string
-          ReactionSystem(iReac+1)%TypeConstant = &
-          &                   ReactionSystem(iReac)%TypeConstant
-          ReactionSystem(iReac+1)%Factor  = &
-          &                   ReactionSystem(iReac)%Factor
+          ReactionSystem(iReac+1)%Line1=TRIM(ADJUSTL(LocString(fPosEq+4:)))//' => '// &
+          &                             TRIM(ADJUSTL(LocString(1:fPosEq-1)))
+          !print*, 'DEBUG::mo_ckinput  rückrealinks= ',TRIM(ADJUSTL(LocString(fPosEq+4:)))
+          !print*, 'DEBUG::mo_ckinput  rückrearecht= ',TRIM(ADJUSTL(LocString(1:fPosEq-1)))
+          !print*, 'DEBUG::mo_ckinput  rückreaktion= ',iReac+1,TRIM(ReactionSystem(iReac+1)%Line1)
         END IF
-
+        ! extract the constant type by checking the reaction if +m or (+M) appears, and cut M off
+        !print*, 'DEBUG::mo_ckinput getkonst  vor locstr= ',locstring
+        CALL GetConstantType(iM,iKlammerM,LocString,ReactionSystem(iReac)%TypeConstant,ReactionSystem(iReac)%Factor)
         !print*, 'DEBUG::mo_ckinput getkonst nach locstr= ',locstring
-
-        IF      ( INDEX(iLine,'<=>')>0 ) THEN
-          EqSign(1:2) = '<='
-        ELSE IF ( INDEX(iLine,'=>')>0 ) THEN
-          EqSign(1:2) = '=>'
-        END IF
-     
+        !
         ! count educts and products
-        ! get spc numbers and stoechiom coefs
-        CALL CountDooku( nEducts   , idxDuctE , KoefDuctE , NamesDuctE ,&
-                       & nProducts , idxDuctP , KoefDuctP , NamesDuctP ,&
-                       & LocString , TRIM(EqSign))
+        CALL CountDooku(nEducts,nProducts,LocString)
+!----------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------
+        !
+        !print*, ' debug::mockin   iR, nedu,npro, factor=', iReac,neducts,nproducts,ReactionSystem(iReac)%Factor
 
-        ! place species, stoecho coefs and type in reactionsystem struct
+        !print*, 'DEBUG::mo_ck..    ned,npr=',neducts,nproducts,locstring
         ALLOCATE(ReactionSystem(iReac)%Educt(nEducts))
-        IF (bR) ALLOCATE(ReactionSystem(iReac+1)%Product(nEducts))
-        
-        DO i=1,nEducts
-          ReactionSystem(iReac)%Educt(i)%Type   = 'GAS'                ! immer gas in chemkin?
-          ReactionSystem(iReac)%Educt(i)%Species= NamesDuctE(i)
-          ReactionSystem(iReac)%Educt(i)%Koeff  = KoefDuctE(i)
-          IF (bR) THEN
-            ReactionSystem(iReac+1)%Product(i)%Type   = 'GAS'                ! immer gas in chemkin?
-            ReactionSystem(iReac+1)%Product(i)%Species= NamesDuctE(i)
-            ReactionSystem(iReac+1)%Product(i)%Koeff  = KoefDuctE(i)
-          END IF
-        END DO
-
-        ALLOCATE(ReactionSystem(iReac)%Product(nProducts))
         IF (bR) ALLOCATE(ReactionSystem(iReac+1)%Educt(nProducts))
-
-        DO i=1,nProducts
-          ReactionSystem(iReac)%Product(i)%Type   = 'GAS'                ! immer gas in chemkin?
-          ReactionSystem(iReac)%Product(i)%Species= NamesDuctP(i)
-          ReactionSystem(iReac)%Product(i)%Koeff  = KoefDuctP(i)
-          IF (bR) THEN
-            ReactionSystem(iReac+1)%Educt(i)%Type   = 'GAS'                ! immer gas in chemkin?
-            ReactionSystem(iReac+1)%Educt(i)%Species= NamesDuctP(i)
-            ReactionSystem(iReac+1)%Educt(i)%Koeff  = KoefDuctP(i)
-          END IF
-        END DO
-
-        ! read next line after reaction line (specific reaction parameter)
-        CALL NextLine(UnitReac,iLine,ende,nxtReac)
-        IF ( nxtReac ) EXIT REACTION_LINE  ! => no extra parameter, next reaction
-        IF ( ende ) EXIT READ_REACTION_MECHANISM  ! exit reading mechnism
-        
-        
-        EXPLICITE_REVERSE_REACTION_COEF: IF (bR .AND.  &
-          .NOT.ReactionSystem(iReac)%Factor == '$(+M)' ) THEN
-
-          ! skip empty lines and comment lines
-          IF ( MAXVAL(INDEX(iLine,['DUPLICATE','duplicate']))>0 ) THEN
-            CALL NextLine(UnitReac,iLine,ende,nxtReac)
-            IF ( nxtReac ) EXIT EXPLICITE_REVERSE_REACTION_COEF
-            IF ( ende ) EXIT READ_REACTION_MECHANISM  ! exit reading mechnism
-          END IF
-
-          IF ( MAXVAL(INDEX(iLine,['REV','rev']))>0 ) THEN
-
-            ReactionSystem(iReac+1)%bRexp = .TRUE.
-            LocString = ADJUSTL(iLine)
-            iKl = INDEX(LocString,'/')
-            iKr = INDEX(LocString,'/',.TRUE.)
-            
-            IF (.NOT.ALLOCATED(ReactionSystem(iReac+1)%Constants)) &
-              ALLOCATE(ReactionSystem(iReac+1)%Constants(3))
-            
-            ! get rid of 'REV' or 'rev' and slashes 
-            LocString = ADJUSTL(LocString(ikl+1:ikr-1))
-
-            READ(LocString,*,IOSTAT=io_err) tmpReal, tmpReal2, tmpReal3
-
-            IF ( io_err == 0 ) THEN
-              ReactionSystem(iReac+1)%Constants(1) = REAL(tmpReal, KIND=RealKind)
-              ReactionSystem(iReac+1)%Constants(2) = REAL(tmpReal2,KIND=RealKind)
-              ReactionSystem(iReac+1)%Constants(3) = REAL(tmpReal3,KIND=RealKind)
-            ELSE
-              CALL  PrintError(io_err,iReac,LocString)
-            END IF
-            IF (.NOT.nxtReac) CALL NextLine(UnitReac,iLine,ende,nxtReac)
-            IF ( ende ) EXIT READ_REACTION_MECHANISM  ! exit reading mechnism
-
+        ALLOCATE(ReactionSystem(iReac)%Product(nProducts))
+        IF (bR) ALLOCATE(ReactionSystem(iReac+1)%Product(nEducts))
+        !
+        !
+        IF (bR) THEN
+          ! save reaction string
+          ReactionSystem(iReac+1)%TypeConstant=ReactionSystem(iReac)%TypeConstant
+          ReactionSystem(iReac+1)%Factor=ReactionSystem(iReac)%Factor
+        END IF
+        !
+        fPosEq=INDEX(LocString,'=')
+        ductStr=ADJUSTL(LocString(1:fPosEq-2))
+        !
+!----------------------------------------------------------------------------------------------
+! 
+!       build row pointer array for stoechiometric coefficients of matrix alpha
+!       (left side of reaction
+!
+!----------------------------------------------------------------------------------------------
+        !ALLOCATE(idxDucts(6))
+        !ALLOCATE(idxDuctsP(6))
+        !
+        DO i=1,nEducts
+          fPosPlus=INDEX(ductStr,'+')
+          !
+          CALL ExtractKoeff(iNxtSpc,tmpReal,ductStr)
+          !
+          IF (fPosPlus>0) THEN
+            ReactionSystem(iReac)%Educt(i)%Species=TRIM(ADJUSTL(ductStr(iNxtSpc:fPosPlus-1)))
+            !print*, 'debug::mock..       spc  =  ', TRIM(ADJUSTL(ductStr(iNxtSpc:fPosPlus-1)))
+            IF (bR) ReactionSystem(iReac+1)%Product(i)%Species=TRIM(ADJUSTL(ductStr(iNxtSpc:fPosPlus-1)))
           ELSE
-            EXIT EXPLICITE_REVERSE_REACTION_COEF
+            ReactionSystem(iReac)%Educt(i)%Species=TRIM(ADJUSTL(ductStr(iNxtSpc:)))
+            !print*, 'debug::mock.. last  spc  =  ', TRIM(ADJUSTL(ductStr(iNxtSpc:)))
+            IF (bR) ReactionSystem(iReac+1)%Product(i)%Species=TRIM(ADJUSTL(ductStr(iNxtSpc:)))
           END IF
-        END IF EXPLICITE_REVERSE_REACTION_COEF
-        
+          !
+          ! forward
+          SPCind(iReac,i)=PositionSpeciesGas(ReactionSystem(iReac)%Educt(i)%Species)
+          ReactionSystem(iReac)%Educt(i)%Type='GAS'                ! immer gas in chemkin?
+          ReactionSystem(iReac)%Educt(i)%Koeff=REAL(tmpReal,KIND=RealKind)
+          !
+          idxDucts(i)=PositionSpeciesGas(ReactionSystem(iReac)%Educt(i)%Species)
+          !
+          ! backward
+          IF (bR) THEN
+            SPCind(iReac+1,6+i)=PositionSpeciesGas(ReactionSystem(iReac)%Educt(i)%Species)
+            ReactionSystem(iReac+1)%Product(i)%Type='GAS'                ! immer gas in chemkin?
+            ReactionSystem(iReac+1)%Product(i)%Koeff=REAL(tmpReal,KIND=RealKind)
+          END IF
+          !
+          ductStr=TRIM(ADJUSTL(ductStr(fPosPlus+1:)))  
+        END DO
+        !
+        !stop
+        ! HIER NOCH COLIND FÜR DIE STÖCH MATRIZEN BESTIMMEN EINFACH MIT SPCIND ARBEITEN
+        !
+        !IF (nEducts>1) THEN
+        !  alpha%RowPtr(iReac+1)=alpha%RowPtr(iReac)+nEducts
+        !ELSE
+        !  alpha%RowPtr(iReac+1)=alpha%RowPtr(iReac)+1
+        !END IF
+        !
+        ! PRODUCT SIDE OF REACTION
+        !
+        !
+        ductStr=ADJUSTL(LocString(fPosEq+2:))
+        DO i=1,nProducts
+          fPosPlus=INDEX(ductStr,'+')
+          !
+          CALL ExtractKoeff(iNxtSpc,tmpReal,ductStr)
+          !
+          IF (fPosPlus>0) THEN
+            ReactionSystem(iReac)%Product(i)%Species=TRIM(ADJUSTL(ductStr(iNxtSpc:fPosPlus-1)))
+            IF (bR) ReactionSystem(iReac+1)%Educt(i)%Species=TRIM(ADJUSTL(ductStr(iNxtSpc:fPosPlus-1)))
+          ELSE
+            ReactionSystem(iReac)%Product(i)%Species=TRIM(ADJUSTL(ductStr(iNxtSpc:)))
+            IF (bR) ReactionSystem(iReac+1)%Educt(i)%Species=TRIM(ADJUSTL(ductStr(iNxtSpc:)))
+          END IF
+          ! forward
+          SPCind(iReac,6+i)=PositionSpeciesGas(ReactionSystem(iReac)%Product(i)%Species)
+          ReactionSystem(iReac)%Product(i)%Type='GAS'                
+          ReactionSystem(iReac)%Product(i)%Koeff=REAL(tmpReal,KIND=RealKind)
+          ! backward
+          IF (bR) THEN
+            SPCind(iReac+1,i)=PositionSpeciesGas(ReactionSystem(iReac)%Product(i)%Species)
+            ReactionSystem(iReac+1)%Educt(i)%Type='GAS'                
+            ReactionSystem(iReac+1)%Educt(i)%Koeff=REAL(tmpReal,KIND=RealKind)
+          END IF
+          !
+          ductStr=TRIM(ADJUSTL(ductStr(fPosPlus+1:)))  
+        END DO
+        !
+        !
+        !IF (nProducts>1) THEN
+        !  beta%RowPtr(iReac+1)=beta%RowPtr(iReac)+nProducts
+        !  IF (bR) alpha%RowPtr(iReac+2)=alpha%RowPtr(iReac+1)+nProducts
+        !  IF (bR) beta%RowPtr(iReac+2)=Beta%RowPtr(iReac+1)+nEducts
+        !ELSE
+        !  beta%RowPtr(iReac+1)=beta%RowPtr(iReac)+1
+        !  IF (bR) beta%RowPtr(iReac+2)=beta%RowPtr(iReac+1)+1
+        !  IF (bR) alpha%RowPtr(iReac+2)=alpha%RowPtr(iReac+1)+1
+        !END IF
+        !
+        !
+        IF (bR) THEN
+          !
+          iLine=''
+          ! skip empty lines and comment lines
+
+          !print*, 'DEBUG::mo_ck.. vor    iR,locstr= ',iReac,locstring
+          !CALL SkipLines(UnitReac,iLine)
+          LocString=ADJUSTL(iLine)
+          !print*, 'DEBUG::mo_ck.. nach   iR,locstr= ',iReac,locstring
+          !
+          iKl=INDEX(LocString,'/')
+          iKr=INDEX(LocString,'/',.TRUE.)
+          !
+          auxiliary=ADJUSTL(LocString(1:iKl-1))
+          !
+          ! if there are extra coefs for backreaction
+          IF (auxiliary=='rev'.OR.auxiliary=='REV') THEN
+            !ReactionSystem(iReac+1)%Factor=auxiliary
+            ReactionSystem(iReac+1)%Line3=auxiliary
+            IF (.NOT.ALLOCATED(ReactionSystem(iReac+1)%Constants)) ALLOCATE(ReactionSystem(iReac+1)%Constants(3))
+            LocString=ADJUSTL(LocString(ikl+1:ikr-1))
+            DO i=1,3
+              iWS=INDEX(LocString,' ')
+              READ(LocString(1:iWS-1),'(E10.4)') tmpReal
+              ReactionSystem(iReac+1)%Constants(i)=REAL(tmpReal,KIND=RealKind)
+              LocString=ADJUSTL(LocString(iWs+1:))
+            END DO
+          END IF
+        END IF
+        !
         ! print backreaction
         IF (bR) THEN
           ReactionSystem(iReac+1)%Line2='BackReaction'
           ReactionSystem(iReac+1)%bR=.TRUE.
         END IF
-      END IF REACTION_LINE ! Reaction => or ( = or <=> )
+      END IF ! Reaction => or ( = or <=> )
       !
-      !print*, 'DEBUG:: nach REACTION_LINE  iLine = ',TRIM(iLine)
-
       !==================================================
       ! IF AN    +m, (+m)     OR   +M, (+M) is involved
       !==================================================
       ! handle additional parameters for reverse reaction etc.
-      IF (INDEX(iLine,'/')>0) THEN
-        ! probably thrid body spc or further parameter
-      ELSE
-        IF (.NOT.nxtReac) CALL NextLine(UnitReac,iLine,ende,nxtReac)
-      END IF
-      IF ( ende ) EXIT READ_REACTION_MECHANISM  ! exit reading mechnism
-      !print*, 'DEBUG:: nach reaktion lesen iLine = ',ireac,TRIM(iLine)
-      !IF ( nxtReac ) EXIT REACTION_LINE  ! => no extra parameter, next reaction
-
       !
-      THIRD_BODY_M: IF ( ReactionSystem(iReac)%Factor == '$(+M)' ) THEN
-
-        !print*, ' debug :: THIRD_BODY_M :: ',LocString
-        LocString = ADJUSTL(iLine)
-
-        iKl = INDEX(LocString,'/')
-        iKr = INDEX(LocString,'/',.TRUE.)
-        IF ( iKl > 0 ) THEN
-          auxiliary = ADJUSTL(LocString(1:iKl-1))
-          LocString = ADJUSTL(LocString(iKl+1:iKr-1))
-          ReactionSystem(iReac)%Line3 = TRIM(auxiliary)
-          IF (bR) ReactionSystem(iReac+1)%Line3 = TRIM(auxiliary)
+      IF (ReactionSystem(iReac)%Factor=='$(+M)') THEN
+        !
+        IF (auxiliary/='rev'.OR.auxiliary/='REV') THEN
+          ! hier sind wir schon in der richtigen zeile und es muss nichts geskippt werden  
         ELSE
-          ReactionSystem(iReac)%Line3 = ''
-          IF (bR) ReactionSystem(iReac+1)%Line3 = ''
+          iLine=''
+        END IF
+        ! skip empty lines and comment lines
+        CALL SkipLines(UnitReac,iLine)
+        LocString=ADJUSTL(iLine)
+        !
+        iKl=INDEX(LocString,'/')
+        iKr=INDEX(LocString,'/',.TRUE.)
+        IF (iKl>0) THEN
+          auxiliary=ADJUSTL(LocString(1:iKl-1))
+          LocString=ADJUSTL(LocString(iKl+1:iKr-1))
+          ReactionSystem(iReac)%Line3=TRIM(auxiliary)
+          IF (bR) ReactionSystem(iReac+1)%Line3=TRIM(auxiliary)
+        ELSE
+          ReactionSystem(iReac)%Line3=''
+          IF (bR) ReactionSystem(iReac+1)%Line3=''
         END IF
         !
         !
-        IF (ReactionSystem(iReac)%Line3=='low'.OR.  &
-        &   ReactionSystem(iReac)%Line3=='LOW'      ) THEN
-
+        IF (ReactionSystem(iReac)%Line3=='low'.OR.ReactionSystem(iReac)%Line3=='LOW') THEN
           ALLOCATE(ReactionSystem(iReac)%LowConst(3))
           ALLOCATE(ReactionSystem(iReac+1)%LowConst(3))
-
-          READ(LocString,*,IOSTAT=io_err) tmpReal, tmpReal2, tmpReal3
-
-          IF ( io_err == 0 ) THEN
-            ReactionSystem(iReac)%LowConst(1) = REAL(tmpReal, KIND=RealKind)
-            ReactionSystem(iReac)%LowConst(2) = REAL(tmpReal2,KIND=RealKind)
-            ReactionSystem(iReac)%LowConst(3) = REAL(tmpReal3,KIND=RealKind)
-            ReactionSystem(iReac+1)%LowConst  = ReactionSystem(iReac)%LowConst
-          ELSE
-            CALL  PrintError(io_err,iReac,LocString)
-          END IF
-
-        ELSEIF (ReactionSystem(iReac)%Line3=='high'.OR. &
-        &       ReactionSystem(iReac)%Line3=='HIGH'     ) THEN
+          DO i=1,3
+            iWS=INDEX(LocString,' ')
+            READ(LocString(1:iWS-1),'(E10.4)') tmpReal
+            ReactionSystem(iReac)%LowConst(i)=REAL(tmpReal,KIND=RealKind)
+            ReactionSystem(iReac+1)%LowConst(i)=REAL(tmpReal,KIND=RealKind)
+            LocString=ADJUSTL(LocString(iWs+1:))
+          END DO
+        ELSEIF (ReactionSystem(iReac)%Line3=='high'.OR.ReactionSystem(iReac)%Line3=='HIGH') THEN
           ALLOCATE(ReactionSystem(iReac)%HighConst(3))
-          ALLOCATE(ReactionSystem(iReac+1)%HighConst(3))
-
-          READ(LocString,*,IOSTAT=io_err) tmpReal, tmpReal2, tmpReal3
-
-          IF ( io_err == 0 ) THEN
-            ReactionSystem(iReac)%HighConst(1) = REAL(tmpReal, KIND=RealKind)
-            ReactionSystem(iReac)%HighConst(2) = REAL(tmpReal2,KIND=RealKind)
-            ReactionSystem(iReac)%HighConst(3) = REAL(tmpReal3,KIND=RealKind)
-            ReactionSystem(iReac+1)%HighConst  = ReactionSystem(iReac)%HighConst
-          ELSE
-            CALL  PrintError(io_err,iReac,LocString)
-          END IF
-
+          DO i=1,3
+            iWS=INDEX(LocString,' ')
+            READ(LocString(1:iWS-1),'(E10.4)') tmpReal
+            ReactionSystem(iReac)%HighConst(i)=REAL(tmpReal,KIND=RealKind)
+            ReactionSystem(iReac+1)%HighConst(i)=REAL(tmpReal,KIND=RealKind)
+            LocString=ADJUSTL(LocString(iWs+1:))
+          END DO
         END IF
-        
+        !
+        iLine=''
         ! skip empty lines and comment lines
-        IF (.NOT.nxtReac) CALL NextLine(UnitReac,iLine,ende,nxtReac)
-        IF ( nxtReac ) EXIT THIRD_BODY_M  ! => no extra parameter, next reaction
-        IF ( ende ) EXIT READ_REACTION_MECHANISM  ! exit reading mechnism
-        
-        LocString = ADJUSTL(iLine)
+        CALL SkipLines(UnitReac,iLine)
+        LocString=ADJUSTL(iLine)
+        iKl=INDEX(LocString,'/')
+        iKr=INDEX(LocString,'/',.TRUE.)
+        !
+        auxiliary=ADJUSTL(LocString(1:iKl-1))
+        !
         ! extract troe parameters 
-        IF (MAXVAL(INDEX(LocString,['troe','TROE']))>0) THEN
+        IF (MAXVAL(INDEX(LocString,(/'troe','TROE'/)))>0) THEN
           ALLOCATE(ReactionSystem(iReac)%TroeConst(4))
           ALLOCATE(ReactionSystem(iReac+1)%TroeConst(4))
-
-          LocString=ADJUSTL(iLine)
-          iKl=INDEX(LocString,'/')
-          iKr=INDEX(LocString,'/',.TRUE.)
-
-          READ(LocString(iKl:iKr),*,IOSTAT=io_err) tmpReal, tmpReal2, tmpReal3
-
-          IF ( io_err == 0 ) THEN
-            ReactionSystem(iReac)%TroeConst(1) = REAL(tmpReal, KIND=RealKind)
-            ReactionSystem(iReac)%TroeConst(2) = REAL(tmpReal2,KIND=RealKind)
-            ReactionSystem(iReac)%TroeConst(3) = REAL(tmpReal3,KIND=RealKind)
-            ReactionSystem(iReac+1)%TroeConst  = ReactionSystem(iReac)%TroeConst
-          ELSE
-            CALL  PrintError(io_err,iReac,LocString)
-          END IF
-
-          IF (.NOT.nxtReac) CALL NextLine(UnitReac,iLine,ende,nxtReac)
-          IF ( ende ) EXIT READ_REACTION_MECHANISM  ! exit reading mechnism
+          LocString=ADJUSTL(LocString(iKl+1:iKr-1))
+          DO i=1,4
+            iWS=INDEX(LocString,' ')
+            READ(LocString(1:iWS-1),'(E10.4)') tmpReal
+            ReactionSystem(iReac)%TroeConst(i)=REAL(tmpReal,KIND=RealKind)
+            ReactionSystem(iReac+1)%TroeConst(i)=REAL(tmpReal,KIND=RealKind)
+            LocString=ADJUSTL(LocString(iWs+1:))
+          END DO
         END IF
-      END IF THIRD_BODY_M
-      !print*, 'DEBUG:: nach third body M         = ',ireac,TRIM(iLine)
-
-      !   CASE IF +m OR +M is involved in reaction iReac
-      THIRD_BODY_M2: IF ( ReactionSystem(iReac)%Factor == '$+M' .OR. &
-        &                 ReactionSystem(iReac)%Factor == '$(+M)'    ) THEN
-
-        nRowThirdBodys = 0
-
-        IF ( nxtReac ) THEN
-          ! all spezies gleichmaessig
-          ReactionSystem(iReac)%TBextra = .TRUE.
-          IF (bR) ReactionSystem(iReac+1)%TBextra = .TRUE.
-        ELSE
-          EXTRACT_THIRD_BODY_SPC: DO
-  
-            LocString=ADJUSTL(iLine)
-            
-            iKl=INDEX(LocString,'/')
-            iKr=INDEX(LocString,'/',.TRUE.)
-           
-            ! extract 3rd body species and alpha values
-            IF ( iKl>0 ) THEN
-              
-              nRowThirdBodys = nRowThirdBodys + 1
-  
-              !print*, 'DEBUG:: in schleife 3rd body iline= ',nRowThirdBodys,TRIM(LocString)
-              
-              ReactionSystem(iReac)%TBextra = .TRUE.
-              CALL ExtractThirdBodys(  ReactionSystem(iReac)%TBidx   &
-              &                      , ReactionSystem(iReac)%TBspc   &
-              &                      , ReactionSystem(iReac)%TBalpha &
-              &                      , LocString, nRowThirdBodys)
-            END IF
-  
-            ! skip empty lines and comment lines
-            IF (.NOT.nxtReac) CALL NextLine(UnitReac,iLine,ende,nxtReac)
-            IF ( nxtReac .OR. ende ) EXIT EXTRACT_THIRD_BODY_SPC  ! => no extra parameter, next reaction
-    
-          END DO EXTRACT_THIRD_BODY_SPC
-          IF (bR) THEN
-            ReactionSystem(iReac+1)%TBextra = .TRUE.
-            nRowThirdBodys = SIZE(ReactionSystem(iReac)%TBidx)
-            ALLOCATE(ReactionSystem(iReac+1)%TBidx(nRowThirdBodys), &
-            &        ReactionSystem(iReac+1)%TBspc(nRowThirdBodys), &
-            &        ReactionSystem(iReac+1)%TBalpha(nRowThirdBodys))
-            ReactionSystem(iReac+1)%TBidx   = ReactionSystem(iReac)%TBidx
-            ReactionSystem(iReac+1)%TBspc   = ReactionSystem(iReac)%TBspc
-            ReactionSystem(iReac+1)%TBalpha = ReactionSystem(iReac)%TBalpha
-          END IF
-        END IF
-
-      END IF THIRD_BODY_M2
-      !print*, 'DEBUG:: nach third body M2        = ',ireac,TRIM(iLine)
-
-      IF (bR) THEN
-        iReac = iReac + 1
-        bR    = .FALSE.
       END IF
-      
-      !print*, ' LOOP number done => next   ',iReac
-      !read(*,*)
-
-    END DO READ_REACTION_MECHANISM                      ! next reaction
+      !   CASE IF +m OR +M is involved in reaction iReac
+      IF (ReactionSystem(iReac)%Factor=='$+M'.OR.ReactionSystem(iReac)%Factor=='$(+M)') THEN
+        iLine=''          ! clear actual line 
+        !
+        !print*, 'debug::mockinp    vor line= ',locString
+        ! skip empty lines and comment lines and read next line
+        CALL SkipLines(UnitReac,iLine)
+        !
+        LocString=ADJUSTL(iLine)
+        !print*, 'debug::mockinp   nach line= ',locString
+        !
+        iKl=INDEX(LocString,'/')
+        iKr=INDEX(LocString,'/',.TRUE.)
+        !
+        ! extract 3rd body species and alpha values
+        IF (iKL>0) THEN
+          ReactionSystem(iReac)%TBextra=.TRUE.
+          CALL ComputeThirdBody(  ReactionSystem(iReac)%TBidx   &
+          &                     , ReactionSystem(iReac)%TBspc   &
+          &                     , ReactionSystem(iReac)%TBalpha &
+          &                     , LocString)
+          IF (bR) THEN
+            ReactionSystem(iReac+1)%TBextra=.TRUE.
+            ALLOCATE(ReactionSystem(iReac+1)%TBidx(SIZE(ReactionSystem(iReac)%TBidx)))
+            ALLOCATE(ReactionSystem(iReac+1)%TBspc(SIZE(ReactionSystem(iReac)%TBidx)))
+            ALLOCATE(ReactionSystem(iReac+1)%TBalpha(SIZE(ReactionSystem(iReac)%TBidx)))
+            ReactionSystem(iReac+1)%TBidx=ReactionSystem(iReac)%TBidx
+            ReactionSystem(iReac+1)%TBspc=ReactionSystem(iReac)%TBspc
+            ReactionSystem(iReac+1)%TBalpha=ReactionSystem(iReac)%TBalpha
+          END IF
+        END IF
+        !
+      END IF
+      IF (bR) iReac=iReac+1
+      IF (bR) bR=.FALSE.
+    END DO                      ! next reaction
     CALL CloseFile(UnitReac,DataReac,'sys')
     !
-    neq       = nReak
-    nreakgas  = nReak
+    neq=nReak
+    nreakgas=nReak
     ALLOCATE(ListGas2(ntGAS))
     CALL HashTableToList(ListGas,ListGas2)
     CALL SortList(ListGas2)
@@ -718,39 +724,27 @@ CONTAINS
   END SUBROUTINE Read_Reaction
   !
   !
-  SUBROUTINE NextLine(UnitR,Line,ende,nxtReac)
+  SUBROUTINE SkipLines(UnitR,Line)
     INTEGER, INTENT(INOUT) :: UnitR
     CHARACTER(*) :: Line
-    LOGICAL :: ende
-    LOGICAL :: nxtReac
     !
-    ende = .FALSE.
-    nxtReac = .FALSE.
-    Line = ''
-    
     ! skip empty lines and comment lines
-    DO 
-      IF ( Line(1:1)=='!' .OR. Line=='' ) THEN
-        READ(UnitR,'(A80)') Line
-        Line = ADJUSTL(Line)
-      ELSE
-        IF ( MAXVAL(INDEX(Line,['END','end']))>0 ) ende = .TRUE.
-        IF ( MAXVAL(INDEX(Line,['<=','=>']))>0) nxtReac = .TRUE.
-        EXIT
-      END IF
+    DO WHILE (Line(1:1)=='!'.OR.Line=='')
+      READ(UnitR,'(A200)') Line
+      Line=ADJUSTL(Line)
     END DO
     !
-  END SUBROUTINE NextLine
+  END SUBROUTINE SkipLines
   !
   !
   SUBROUTINE NewLine(UnitReac,LocString,i,j)
     INTEGER :: UnitReac
-    CHARACTER(80) :: iLine
-    CHARACTER(80) :: LocString
+    CHARACTER(200) :: iLine
+    CHARACTER(200) :: LocString
     INTEGER, OPTIONAL :: i,j
     ! read next line
     ! extract troe parameters 
-    READ(UnitReac,'(A80)') iLine
+    READ(UnitReac,'(A200)') iLine
     LocString=ADJUSTL(iLine)
     IF (PRESENT(i).AND.PRESENT(j)) THEN
       i=INDEX(LocString,'/')
@@ -759,83 +753,62 @@ CONTAINS
   END SUBROUTINE NewLine
   !
   !
-  SUBROUTINE ExtractThirdBodys(indM,spcM,aM,Line,iRow)
+  SUBROUTINE ComputeThirdBody(indM,spcM,aM,Line)
     ! out:
-    INTEGER,        ALLOCATABLE, INTENT(INOUT) :: indM(:)
-    CHARACTER(*),   ALLOCATABLE, INTENT(INOUT) :: spcM(:)
-    REAL(RealKind), ALLOCATABLE, INTENT(INOUT) :: aM(:)
+    INTEGER, ALLOCATABLE        :: indM(:)
+    CHARACTER(*), ALLOCATABLE   :: spcM(:)
+    REAL(RealKind), ALLOCATABLE :: aM(:)
     ! in:
     CHARACTER(*), INTENT(IN) :: Line
-    INTEGER,      INTENT(IN) :: iRow
     ! temp:
-    INTEGER,        ALLOCATABLE :: tindM(:)
-    CHARACTER(20),  ALLOCATABLE :: tspcM(:)
-    REAL(RealKind), ALLOCATABLE :: taM(:)
-
     CHARACTER(LEN(Line)) :: locLine
-    INTEGER :: nSpc, kl1, kl2, io_err
-    INTEGER :: presentSpc
+    INTEGER :: ind, kl1, kl2
     REAL(RealKind) :: tmp
-
-    locLine = Line
-
-    ! if there where already 3rd body in line befor
-    IF ( iRow > 1 ) THEN
-      nSpc  = SIZE(indM) 
-      ALLOCATE (tindM(nSpc),tspcM(nSpc),taM(nSpc))
-      tindM = indM 
-      tspcM = spcM
-      taM   = aM
-    ELSE
-      nSpc = 0
-    END IF
-
+    ind=0
+    locLine=Line
+    !print*, 'DEBUG::ckINput             locline=    ', locline
     DO
       IF (locLine=='') EXIT
-      ! two slashes = one 3rd body spc
-      kl1=INDEX(locLine,'/')  ; locLine=ADJUSTL(locLine(kl1+1:))
-      kl1=INDEX(locLine,'/')  ; locLine=ADJUSTL(locLine(kl1+1:))
-      nSpc=nSpc+1
+      kl1=INDEX(locLine,'/')
+      locLine=ADJUSTL(locLine(kl1+1:))
+      kl1=INDEX(locLine,'/')
+      locLine=ADJUSTL(locLine(kl1+1:))
+      ind=ind+1
     END DO
-
-    IF(ALLOCATED(indM)) DEALLOCATE(indM)
+    !
+    IF(ALLOCATED(indM))DEALLOCATE(indM)
     IF(ALLOCATED(spcM)) DEALLOCATE(spcM)
-    IF(ALLOCATED(aM))   DEALLOCATE(aM)
-
-    ALLOCATE(indM(nSpc),spcM(nSpc),aM(nSpc))
-
+    IF(ALLOCATED(aM)) DEALLOCATE(aM)
+    ALLOCATE(indM(ind))
+    ALLOCATE(spcM(ind))
+    ALLOCATE(aM(ind))
     locLine=Line
-    IF ( iRow > 1 ) THEN
-      nSpc = SIZE(tindM)
-      indM(1:nSpc) = tindM
-      spcM(1:nSpc) = tspcM
-      aM(1:nSpc)   = taM
-    ELSE
-      nSpc=0
-    END IF
-
+    ind=0
     DO
-      IF ( locLine == '' ) EXIT
-      nSpc  = nSpc + 1
-      kl1   = INDEX(locLine,'/')
-      kl2   = INDEX(locLine(kl1+1:),'/')
-      
-      indM(nSpc) = -1
-      spcM(nSpc) = ADJUSTL(TRIM(locLine(1:kl1-1)))
-      READ(locLine(kl1+1:kl1+kl2-1),*,IOSTAT=io_err) tmp
-
-      IF ( io_err == 0 ) THEN
-        aM(nSpc) = REAL(tmp,KIND=RealKind)
-        locLine  = ADJUSTL(locLine(kl1+kl2+1:))
-      ELSE
-        WRITE(*,*) '   Error reading thirdbody species!'
-        WRITE(*,*) '      Error code:      ',io_err
-        WRITE(*,*) '      String failed:   ',locLine
-        STOP '  Reading chemical system '
-      END IF
-
+      IF (locLine=='') EXIT
+      ind=ind+1
+      kl1=INDEX(locLine,'/')
+      kl2=INDEX(locLine(kl1+1:),'/')
+      !
+      !indM(ind)=PositionSpeciesAll(locLine(1:kl1-1))   ! liste noch nicht sortiert!
+      indM(ind)=-1
+      spcM(ind)=ADJUSTL(TRIM(locLine(1:kl1-1)))
+      READ(locLine(kl1+1:kl1+kl2-1),'(E12.6)') tmp
+      aM(ind)=REAL(tmp,KIND=RealKind)
+      !
+      !print*, 'DEBUG::ckINput_____________'
+      !print*, 'DEBUG::ckINpt                  ind=    ', ind
+      !print*, 'DEBUG::ckINput             locline=    ', locline
+      !print*, 'DEBUG::ckINput              species=   ', locLine(1:kl1-1)
+      !print*, 'DEBUG::ckINput  posspc(unsortiert) =   ', PositionSpeciesGas(locLine(1:kl1-1))
+      !print*, 'DEBUG::ckINput        locline(kl1:)=   ', locline(kl1+1:)
+      !print*, 'DEBUG::ckINput            indM(ind)=   ',  indM(ind)
+      !print*, 'DEBUG::ckINput            spcM(ind)=   ',  spcM(ind)
+      !print*, 'DEBUG::ckINput              aM(ind)=   ',  aM(ind)
+      !print*, 'DEBUG::ckINput_____________'
+      locLine=ADJUSTL(locLine(kl1+kl2+1:))
     END DO
-  END SUBROUTINE ExtractThirdBodys
+  END SUBROUTINE ComputeThirdBody
 
 !***************************************************************************************************
 !***************************************************************************************************
@@ -878,7 +851,6 @@ CONTAINS
   FUNCTION MoleConc_to_MassFr(MoleConc) RESULT(MassFr)
     REAL(RealKind), ALLOCATABLE :: MassFr(:)  ! Mass fraction [g/g]
     REAL(RealKind), INTENT(IN)  :: MoleConc(:)  ! Mole fraction  [mol/cm3]
-    REAL(RealKind) :: W   ! mean molecular weight of a mixture
    
     MassFr  = MW * MoleConc / SUM( MoleConc * MW )
 
@@ -982,11 +954,11 @@ CONTAINS
     !
     ! save constant type and cut off +m or (+m) (no longer needed)
     DO i=1,2 
-    ! loop two times because +M could be on both sides
-      idxM  = INDEX(String,'+M')
-      idxM2 = INDEX(String,'(+M)')
+    !
+      idxM=MAXVAL(INDEX(String,(/'+M','+m'/)))
+      idxM2=MAXVAL(INDEX(String,(/'(+M)','(+m)'/)))
       !
-      IF (MAX(idxM,idxM2)>0) THEN
+      IF (idxM>0) THEN
         IF (idxM2>0) THEN 
           ConstType='PRESSX'
           Factor='$(+M)'
@@ -995,7 +967,7 @@ CONTAINS
         ELSE
           ConstType='TEMPX'
           Factor='$+M'
-          String(idxM:idxM+1)='  '
+          String(idxM:idxM+2)='  '
           nreakgtemp=nreakgtemp+1
         END IF
       ELSE
@@ -1016,10 +988,9 @@ CONTAINS
     REAL(RealKind) :: Koeff
     !
     ! check if spc has coef
-    !print*, 'mockinput     string= ',string
     IF (SCAN(String(1:1),CKSetNumber)>0) THEN
       NextSpecies=SCAN(String,CKSetSpecies)            ! find the next letter
-      READ(String(1:NextSpecies-1),*) Koeff
+      READ(String(1:NextSpecies-1),'(E12.6)') Koeff
     ELSE
       NextSpecies=1
       Koeff=1.0d0
@@ -1027,78 +998,50 @@ CONTAINS
   END SUBROUTINE ExtractKoeff
   !
   !
-  SUBROUTINE CountDooku(nE,edIndex,edKoeff,edNames,nP,prIndex,prKoeff,prNames,inLine,EqSign)
-    !IN
+  SUBROUTINE CountDooku(nE,nP,inLine)
     CHARACTER(*), INTENT(IN) :: inLine
-    CHARACTER(*), INTENT(IN) :: EqSign
-    !OUT
-    INTEGER        :: nE, nP
-    INTEGER        :: edIndex(6),prIndex(6)
-    REAL(RealKind) :: edKoeff(6),prKoeff(6)
-    CHARACTER(20)  :: edNames(6),prNames(6)
-    !TEMP
+    INTEGER :: nE, nP
+    !
     CHARACTER(LEN(inLine)) :: Line
-    INTEGER :: PosPlus,PosEq, lenEq
-    REAL(RealKind) :: fac
-    INTEGER :: NxtSpc
+    INTEGER :: PosPlus,PosEq
+    !INTEGER :: tmp
     !
+    INTEGER :: edIndex(6),prIndex(6)
     !
-    nE = 0            ;      nP = 0
-    edIndex = 0       ; prIndex = 0
-    edKoeff = 0.0d0   ; prKoeff = 0.0d0
-    edNames = 'none'  ; prNames = 'none'
-    lenEq   = 2
-    IF (EqSign=='<=') lenEq=3
-
-    Line = ADJUSTL(inLine)
-
-    ! educt side (left)
+    nE=0
+    nP=0
+    Line=inLine
     DO
-      Line    = ADJUSTL(Line)
-      PosPlus = INDEX(Line,'+')
-      PosEq   = INDEX(Line,EqSign)
-
-      IF ( PosEq > 0 ) THEN
-        nE = nE + 1
-        IF ( PosPlus>0 .AND. PosPlus<PosEq ) THEN
-          CALL ExtractKoeff(NxtSpc,fac,Line(1:PosPlus-1))
-          edIndex(nE) = PositionSpeciesAll(Line(NxtSpc:PosPlus-1))
-          edKoeff(nE) = fac
-          edNames(nE) = Line(NxtSpc:PosPlus-1)
-          Line = ADJUSTL(Line(PosPlus+1:))
+      Line=ADJUSTL(Line)
+      PosPlus=INDEX(Line,'+')
+      PosEq  =INDEX(Line,'=')
+      !
+      IF (PosEq>0) THEN
+        nE=nE+1
+        IF (PosPlus>0.AND.PosPlus<PosEq) THEN
+          edIndex(nE)=PositionSpeciesGas(Line(:PosPlus-1))
+          Line=ADJUSTL(Line(PosPlus+1:))
         ELSE
-          ! last educt
-          CALL ExtractKoeff(NxtSpc,fac,Line(:PosEq-1))
-          edIndex(nE) = PositionSpeciesAll(Line(NxtSpc:PosEq-1))
-          edKoeff(nE) = fac
-          edNames(nE) = Line(NxtSpc:PosEq-1)
-          ! get rid of <=>, => or =
-          Line = ADJUSTL(Line(PosEq+lenEq:))
+          edIndex(nE)=PositionSpeciesGas(Line(:PosEq-1))
+          Line=ADJUSTL(Line(PosEq+1:))
         END IF
       ELSE
         EXIT
       END IF
     END DO
-    
-    ! product side (right)
+    !
     DO
-      PosPlus = INDEX(Line,'+')
-      nP = nP + 1
-      IF ( PosPlus > 0 ) THEN
-        CALL ExtractKoeff(NxtSpc,fac,Line(1:PosPlus-1))
-        prIndex(nP) = PositionSpeciesAll(Line(NxtSpc:PosPlus-1))
-        prKoeff(nP) = fac
-        prNames(nP) = Line(NxtSpc:PosPlus-1)
-        Line = ADJUSTL(Line(PosPlus+1:))
+      PosPlus=INDEX(Line,'+')
+      nP=nP+1
+      IF (PosPlus>0) THEN
+        prIndex(nP)=PositionSpeciesGas(Line(:PosPlus-1))
+        Line=ADJUSTL(Line(PosPlus+1:))
       ELSE
-        CALL ExtractKoeff(NxtSpc,fac,Line)
-        prIndex(nP) = PositionSpeciesAll(Line(NxtSpc:))
-        prKoeff(nP) = fac
-        prNames(nP) = Line(NxtSpc:)
+        prIndex(nP)=PositionSpeciesGas(TRIM(Line(:)))
         EXIT
       END IF
     END DO
-
+    prIndex(nP)=PositionSpeciesGas(Line(:))
   END SUBROUTINE CountDooku
   !
   !
@@ -1106,14 +1049,12 @@ CONTAINS
     CHARACTER(*) :: SecName
     INTEGER :: UnitReac
     !
-    CHARACTER(80) :: dummy
-    INTEGER :: io_err
-
-    DO
-      READ(UnitReac,'(A80)',IOSTAT=io_err) dummy
-      dummy=ADJUSTL(dummy)
-      IF (io_err/=0) WRITE(*,*) 'Did not find ',SecName
-      IF (dummy(1:LEN(SecName))==SecName) EXIT
+    CHARACTER(200) :: dummy
+    !
+    dummy=ADJUSTL(dummy)
+    !
+    DO WHILE (dummy(1:LEN(SecName))/=SecName)
+      READ(UnitReac,'(A200)') dummy
     END DO
   END SUBROUTINE
   !
@@ -1145,24 +1086,24 @@ CONTAINS
     CHARACTER(*) :: Species
     CHARACTER(*) :: Type
     !
-    !IF (Species(1:1)=='p') THEN
-    !  CALL InsertHash(ListPartic,TRIM(ADJUSTL(Species)),ntPart)
-    !  Type='Partic'
+    IF (Species(1:1)=='p') THEN
+      CALL InsertHash(ListPartic,TRIM(ADJUSTL(Species)),ntPart)
+      Type='Partic'
     !ELSE IF (Species(1:1)=='a'.OR.SCAN(Species,'pm')>0) THEN
     !  CALL InsertHash(ListAqua,TRIM(ADJUSTL(Species)),ntAqua)
     !  Type='Aqua'
-    !ELSE IF (Species(1:1)=='s') THEN
-    !  CALL InsertHash(ListSolid,TRIM(ADJUSTL(Species)),ntSolid)
-    !  Type='Solid'
-    !ELSE IF (Species(1:1)=='['.AND.LEN(TRIM(Species))<10.AND. &
-    !  &      Species(LEN(TRIM(Species)):LEN(TRIM(Species)))==']') THEN
-    !  CALL InsertHash(ListNonReac,TRIM(ADJUSTL(Species)),ntkat)
-    !  Type='Inert'
-    !ELSE IF (Species(1:1)=='(') THEN
-    !ELSE
+    ELSE IF (Species(1:1)=='s') THEN
+      CALL InsertHash(ListSolid,TRIM(ADJUSTL(Species)),ntSolid)
+      Type='Solid'
+    ELSE IF (Species(1:1)=='['.AND.LEN(TRIM(Species))<10.AND. &
+      &      Species(LEN(TRIM(Species)):LEN(TRIM(Species)))==']') THEN
+      CALL InsertHash(ListNonReac,TRIM(ADJUSTL(Species)),ntkat)
+      Type='Inert'
+    ELSE IF (Species(1:1)=='(') THEN
+    ELSE
       CALL InsertHash(ListGas,TRIM(ADJUSTL(Species)),ntGas)
       Type='Gas'
-    !END IF
+    END IF
   END SUBROUTINE InsertSpecies
   !
   !
@@ -1223,11 +1164,7 @@ CONTAINS
         WRITE(*,'(A2,10X,E10.4)') (' |', ReacSys(i)%Constants(j),j=1,SIZE(ReacSys(i)%Constants))
         WRITE(*,*) '|'
         WRITE(*,*) '| 3rd body species with alpha: '
-        IF (ALLOCATED(ReacSys(i)%TBidx)) THEN
-          WRITE(*,'(A2,5X,I4,F6.2)') (' |', ReacSys(i)%TBidx(j),ReacSys(i)%TBalpha(j),j=1,SIZE(ReacSys(i)%TBidx))
-        ELSE
-          WRITE(*,'(A)') ' | no special 3rd bodys '
-        END IF
+        WRITE(*,'(A2,5X,I4,F6.2)') (' |', ReacSys(i)%TBidx(j),ReacSys(i)%TBalpha(j),j=1,SIZE(ReacSys(i)%TBidx))
       ELSE IF (ReacSys(i)%Factor=='$(+M)') THEN
         IF (ReacSys(i)%Line3=='low'.OR.ReacSys(i)%Line3=='LOW') THEN
           WRITE(*,*) '| fall-off reactions:'
@@ -1277,16 +1214,5 @@ CONTAINS
     WRITE(Unit,*) ' ======================  Reactions   ========================'
     WRITE(Unit,*) ''
   END SUBROUTINE PrintHeadReactionsCK
-
-  SUBROUTINE PrintError(io_err,reaction,String)
-    INTEGER :: io_err, reaction
-    CHARACTER(*) :: String
-
-    WRITE(*,*) '   Error reading reaction line!'
-    WRITE(*,*) '      Error code:      ',io_err
-    WRITE(*,*) '      Number reaction: ',reaction
-    WRITE(*,*) '      String failed:   ',String
-    STOP '  Reading chemical system '
-  END SUBROUTINE PrintError
   !
 END MODULE mo_ckinput

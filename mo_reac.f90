@@ -288,5 +288,6 @@
     !
     ! more speedchem stuff
     REAL(RealKind) :: rho, rRho   ! rho = density, rRho=kilo/rho
+    REAL(RealKind), ALLOCATABLE :: SCperm(:)
     !
 END MODULE mo_reac

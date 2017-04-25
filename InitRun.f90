@@ -6,95 +6,8 @@
       !USE mo_bdf
       !USE Kind_Mod,    ONLY: RealKind
       !USE mo_micfys
-      USE mo_control,  ONLY:      &
+      USE mo_control
 !
-!-----------------------------------------------------------------
-!---  Scenario
-!-----------------------------------------------------------------
-!
-!--- CHARACTER(RealKind) : Identifier for scenario
-                 Bsp               &
-!
-!--- CHARACTER(80) : Files
-&               ,MetFile           & ! Meteorology file
-&               ,ChemFile          & ! Chemical mechanism
-&               ,InitFile          & ! Initial concentrations
-&               ,DataFile          & ! Gas and Aqeous DATA
-&               ,NetcdfFileName    & ! Output NetCdfFile
-!
-!--- INTEGER : Unit Numbers
-&               ,MetUnit           & ! Meteorology file
-&               ,ChemUnit          & ! Chemical mechanism
-&               ,InitUnit          & ! Initial concentrations
-&               ,DataUnit          & ! Initial concentrations
-!
-!-- REAL(RealKind) : Set Levels and Parameters for Processes
-&               ,LwcLevelmin       & ! lower Level for LWC      {l/m3]
-&               ,LwcLevelmax       & ! upper Level for LWC      {l/m3]
-&               ,constLWC          & ! wähle konstanten lwc wert (=0) oder lineare funktion (/=0)
-
-!-- LOGICAL :: Print system matrices
-&               ,MatrixPrint       &
-&               ,DebugPrint        &
-&               ,NetCdfPrint       &
-
-
-!--- INTEGER : Control Parameter
-&               ,pHSet             & ! Initial pH by charge balance (1=on, 0=off)
-&               ,Ladebalken        &
-&               ,Error_Est         &
-&               ,ErrorLog          &
-
-!--- REAL : combustion stuff
-&               ,Temperature0      &
-&               ,Pressure0         &
-
-!-----------------------------------------------------------------
-!---  Times
-!-----------------------------------------------------------------
-!
-!--- REAL(8): Times ( < 0 in seconds, > 0 in hours, = 0  meteorology)
-&               ,tAnf              & ! Model start time
-&               ,tEnd              & ! model end time
-&               ,StpNetcdf         & ! Time step for Netcdf output 
-!
-!---  Photolysis
-&               ,idate             & ! Date: yymmdd
-&               ,rlat              & ! latitude  [rad]
-&               ,rlon              & ! longitude [rad]
-&               ,dust              & ! dust factor (damping of photolysis)
-&               ,minStp            & ! minimal time step size
-&               ,maxStp            & ! maximal time step size
-&               ,nOutP             & !  Number of intermediate output points per simulation
-!
-!-----------------------------------------------------------------
-!---  Numerics
-!-----------------------------------------------------------------
-!
-!--- INTEGER : Control Parameter
-&               ,ImpEuler          & ! implicit euler 
-
-!--- REAL(RealKind) : Tolerances for ROW Scheme
-&               ,RtolROW           & ! Relative tolerance For ROW
-&               ,AtolGas           & ! Absolute tolerance for gas phase
-&               ,AtolAqua          & ! Absolute tolerance for liquid phase
-&               ,AtolTemp          & ! Absolute tolerance for temperature
-&               ,PI_StepSize       & ! logical for pi stepsize control
-
-!--- CHARACTER(2) : Control Parameter
-&               ,solveLA           & ! how to solve linear algebra 'cl' or 'ex'
-&               ,ODEsolver         & ! choose ode solver (rosenbrock,lsode)  (integer 1,...,15)
-!
-!-----------------------------------------------------------------
-!---  Linear Algebra
-!-----------------------------------------------------------------
-!
-!--- Control Parameter
-&               ,OrderingStrategie      & ! MUMPS ordering strategie
-&               ,ParOrdering            & ! MUMPS ordering type for parallel symbolic phase
-&               ,CLASSIC,EXTENDED       &
-&               ,useMUMPS,useSparseLU
-   
 !-----------------------------------------------------------------
       IMPLICIT NONE
       
@@ -107,10 +20,10 @@
       NAMELIST /SCENARIO/  Bsp,                                            &
 &               LwcLevelmin, LwcLevelmax, Ladebalken,  pHSet,              &
 &               constLWC, ErrorLog, MatrixPrint, NetCdfPrint, Temperature0,&
-&               Pressure0, DebugPrint
+&               Pressure0, DebugPrint, TempEq
 !
-      NAMELIST /FILES/  MetFile, ChemFile, InitFile, DataFile, NetcdfFileName, &
-&               MetUnit, ChemUnit, InitUnit, DataUnit
+      NAMELIST /FILES/  MetFile, ChemFile,MWeights, InitFile, DataFile,    &
+&               NetcdfFileName, MetUnit, ChemUnit, MWUnit, InitUnit, DataUnit
 !
       NAMELIST /TIMES/  tAnf, tEnd, idate, rlat, rlon, Dust, StpNetcdf,  &
 &               minStp, maxStp, nOutP
@@ -148,6 +61,7 @@
       MatrixPrint = .FALSE.       ! 0 = Print no matrix, 0 /= Print all matrices -> no simulation
       DebugPrint  = .FALSE.
       NetCdfPrint = .FALSE.
+      TempEq      = .FALSE.
       Temperature0= 750.0d0
       Pressure0   = 2.0d5
 
@@ -170,6 +84,7 @@
 !--- INTEGER : Unit Numbers
       MetUnit  = 15           ! Meteorology file
       ChemUnit = 10           ! Chemical mechanism
+      MWUnit   = 19           ! Chemical mechanism
       InitUnit = 12           ! Initial concentrations
       DataUnit = 13           ! Gas and aqueous phase data
       
@@ -182,6 +97,7 @@
       MetFile  = ADJUSTL(MetFile)
       ChemFile = ADJUSTL(ChemFile)
       DataFile = ADJUSTL(DataFile)
+      MWeights = ADJUSTL(MWeights)
       InitFile = ADJUSTL(InitFile)
 
       NetcdfFileName=ADJUSTL(NetcdfFileName)

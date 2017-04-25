@@ -53,7 +53,7 @@ MODULE Chemsys_Mod
     &                    , Line2=''        &  ! Line2 = BackReaction if nessessary
     &                    , Line3=''
     LOGICAL             :: bR=.FALSE.       ! logical for reverse reaction
-    LOGICAL             :: bRexp=.FALSE.       ! logical for reverse reaction
+    LOGICAL             :: brX=.FALSE.       ! logical for explicite reverse reaction
     CHARACTER(LenName)  :: Factor
     CHARACTER(2)        :: direction
     REAL(RealKind)      :: SumAqCoef     
@@ -1586,7 +1586,7 @@ MODULE Chemsys_Mod
     LOGICAL :: Back=.FALSE.
     !
     !
-    GASact=1.0d-20
+    GASact=1.0d-20 
     InAct=1.0d-20
     ! read initial values
     CALL OpenIniFile(FileName)

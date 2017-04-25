@@ -19,7 +19,7 @@ OBJ = mo_unirnk.f90\
       HashStr_Mod.f90\
       InputTool_Mod.f90\
       ChemSys_Mod.f90\
-      mo_ckinput_modi.f90\
+      mo_ckinput.f90\
       Factorisation_Mod.f90\
       Rates_Mod.f90\
       Rosenbrock_Mod.f90\
