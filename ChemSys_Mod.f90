@@ -66,6 +66,7 @@ MODULE Chemsys_Mod
     INTEGER                         :: nActEd=0  , nActPro=0
     INTEGER                         :: NumConst=0
     INTEGER                         :: HenrySpc=0
+    LOGICAL                         :: TB=.FALSE.
     LOGICAL                         :: TBextra=.FALSE.
     INTEGER, ALLOCATABLE            :: TBidx(:)
     CHARACTER(100), ALLOCATABLE     :: TBspc(:)
@@ -825,25 +826,27 @@ MODULE Chemsys_Mod
     WRITE(Unit,*) ''
     WRITE(Unit,*) ' ================   Description of Reactions   =============='
     WRITE(Unit,*) ''
-    WRITE(Unit,*) nreak,            '        NREAK   : Number of Reactions'
-    WRITE(Unit,*) nreakgas,         '        NGAS   : Gas phase reactions'
+    WRITE(Unit,*) nreak,          '        NREAK   : Number of Reactions'
+    WRITE(Unit,*) nreakgas,       '        NGAS   : Gas phase reactions'
     WRITE(Unit,*) nreakgphoto,    '           Gaseous PHOTO - type reactions'
     WRITE(Unit,*) nreakgconst,    '           Gaseous CONST - type reactions'
     WRITE(Unit,*) nreakgtemp,     '           Gaseous TEMP - type reactions'
+    WRITE(Unit,*) nreakSimpTB,    '           Gaseous Simple three-body - type reactions'
+    WRITE(Unit,*) nreakglind,     '           Gaseous Lindemann - type reactions'
     WRITE(Unit,*) nreakgtroe,     '           Gaseous TROE - type reactions'
-    WRITE(Unit,*) nreakgspec,  '           Gaseous SPECIAL - type reactions'
-    WRITE(Unit,*) nreakhenry,       '        NHENRY : Henry Equilib. reactions'
-    WRITE(Unit,*) nreakdissoc,        '        NDISS  : Dissociation reactions'
-    WRITE(Unit,*) nreakaqua,        '        NAQUA  : Aquatic Equilib. reactions'
-    WRITE(Unit,*) nreakaphoto,   '           Aqueous PHOTO - type reactions'
-    WRITE(Unit,*) nreakaconst,   '           Aqueous CONST - type reactions'
-    WRITE(Unit,*) nreakatemp,    '           Aqueous TEMP - type reactions'
-    WRITE(Unit,*) nreakaspec, '           Aqueous SPECIAL - type reactions'
+    WRITE(Unit,*) nreakgspec,     '           Gaseous SPECIAL - type reactions'
+    WRITE(Unit,*) nreakhenry,     '        NHENRY : Henry Equilib. reactions'
+    WRITE(Unit,*) nreakdissoc,    '        NDISS  : Dissociation reactions'
+    WRITE(Unit,*) nreakaqua,      '        NAQUA  : Aquatic Equilib. reactions'
+    WRITE(Unit,*) nreakaphoto,    '           Aqueous PHOTO - type reactions'
+    WRITE(Unit,*) nreakaconst,    '           Aqueous CONST - type reactions'
+    WRITE(Unit,*) nreakatemp,     '           Aqueous TEMP - type reactions'
+    WRITE(Unit,*) nreakaspec,     '           Aqueous SPECIAL - type reactions'
     WRITE(Unit,*) NumberReactionsPartic,      '        NPARTI  : Particulare reactions   '
-    WRITE(Unit,*) nreaksolid,       '        NSOLID  : Solid Equilib. reactions'
+    WRITE(Unit,*) nreaksolid,     '        NSOLID  : Solid Equilib. reactions'
     WRITE(Unit,*) nreaksolidtemp, '           Solid DTEMP3 - type reactions'
-    WRITE(Unit,*) nreaksolidEqui,   '           Solid EQUI - type reactions'
-    WRITE(Unit,*) nreaksolidspec,'           Solid SPECIAL - type reactions'
+    WRITE(Unit,*) nreaksolidEqui, '           Solid EQUI - type reactions'
+    WRITE(Unit,*) nreaksolidspec, '           Solid SPECIAL - type reactions'
     WRITE(Unit,*) NumberReactionsMicro,       '        NMICRO  : Microphysical reactions'
     WRITE(Unit,*)
     WRITE(Unit,*) ' ======================  Reactions   ========================'
@@ -906,6 +909,7 @@ MODULE Chemsys_Mod
     REAL(RealKind), ALLOCATABLE :: tmpValA(:),tmpValB(:)
     INTEGER, ALLOCATABLE :: APermVec(:)
     INTEGER :: AColLen
+    INTEGER :: cntEQ1, cntEQ2, cntNEQ1 
     !
     !
     ! set matrix dimensions
@@ -926,6 +930,7 @@ MODULE Chemsys_Mod
     ALLOCATE(BA%RowPtr(BA%m+1))
     BA%RowPtr=0
     BA%RowPtr(1)=1
+    
     !
     DO iLoop=1,neq
       ! count activ educts in reaction iLoop
@@ -1041,7 +1046,7 @@ MODULE Chemsys_Mod
     ! loop again to set ColInd and Val on A and B
     NumberReaction=0
     ValCntA=0
-    ValCntB=1
+    ValCntB=0
     EductCnt=0
     ProductCnt=0
     k=1
@@ -1099,16 +1104,18 @@ MODULE Chemsys_Mod
         tmpValA=tmpValA(APermVec)
         CALL CompressList(tmpColA,tmpValA)
         !
+
         DO m=1,AColLen
           ValCntA=ValCntA+1
           A%ColInd(ValCntA)=tmpColA(m)
           A%Val(ValCntA)=tmpValA(m)
-          !
+          
           ! this is for the TempX  backward reaction 
           sumBAT(iLoop)=sumBAT(iLoop)-tmpValA(m)
         END DO
         DEALLOCATE(APermVec)
       ELSE
+        ! reactions with only one educt
         DO i=1,NumActiveEduct
           ValCntA=ValCntA+1
           A%ColInd(ValCntA)=PositionSpeciesAll(ActiveEduct(i)%Species)
@@ -1134,22 +1141,23 @@ MODULE Chemsys_Mod
         CALL CompressList(tmpColB,tmpValB)
         !
         DO m=1,AColLen
+          ValCntB=ValCntB+1
           B%ColInd(ValCntB)=tmpColB(m)
           B%Val(ValCntB)=tmpValB(m)
           !
           ! this is for the TempX  backward reaction 
           sumBAT(iLoop)=sumBAT(iLoop)+tmpValB(m)
-          !
-          ValCntB=ValCntB+1
         END DO
         DEALLOCATE(APermVec)
       ELSE
+        !IF (NumbActiveProduct>0) THEN
         DO i=1,NumActiveProduct
-          B%ColInd(ValCntB)=PositionSpeciesAll(ActiveProduct(i)%Species)
-          B%Val(ValCntB)=ActiveProduct(i)%Koeff
-          sumBAT(iLoop)=sumBAT(iLoop)+ActiveProduct(i)%Koeff
           ValCntB=ValCntB+1
+          B%ColInd(ValCntB) = PositionSpeciesAll(ActiveProduct(i)%Species)
+          B%Val(ValCntB) = ActiveProduct(i)%Koeff
+          sumBAT(iLoop)  = sumBAT(iLoop) + ActiveProduct(i)%Koeff
         END DO
+        !END IF
       END IF
       IF (ALLOCATED(tmpColB)) DEALLOCATE(tmpColB)
       IF (ALLOCATED(tmpValB)) DEALLOCATE(tmpValB)
@@ -1159,9 +1167,70 @@ MODULE Chemsys_Mod
 
     A%nnz=A%RowPtr(A%m+1)-1
     B%nnz=B%RowPtr(B%m+1)-1
-  
   END SUBROUTINE PrintReactions
-  !
+
+  SUBROUTINE GatherSpeciesOrder(A)
+    
+    TYPE(CSR_Matrix_T), INTENT(IN) :: A
+    INTEGER :: iR, j, jj
+    INTEGER :: nnz, cnt
+    INTEGER, ALLOCATABLE :: tmpFO1(:), tmpFO2(:)
+    INTEGER, ALLOCATABLE :: tmpSO1(:), tmpSO2(:)
+    INTEGER, ALLOCATABLE :: tmpHO1(:), tmpHO2(:)
+    REAL(RealKind), ALLOCATABLE :: atmpHO(:)
+    REAL(RealKind), PARAMETER :: big = -99999999999999.d0
+
+    nnz = A%nnz
+
+    ALLOCATE(tmpFO1(nnz),tmpFO2(nnz),&
+            &tmpSO1(nnz),tmpSO2(nnz),&
+            &tmpHO1(nnz),tmpHO2(nnz),&
+            &atmpHO(nnz))
+
+    tmpFO1  = 0;      tmpFO2  = 0
+    tmpSO1  = 0;      tmpSO2  = 0
+    tmpHO1  = 0;      tmpHO2  = 0
+    atmpHO  = big
+
+    cnt = 0
+    DO iR = 1 , neq
+      DO jj = A%RowPtr(iR) , A%RowPtr(iR+1)-1
+        cnt = cnt + 1
+        IF      (A%Val(jj) == ONE) THEN
+          tmpFO1(cnt) = iR
+          tmpFO2(cnt) = A%ColInd(jj)
+        ELSE IF (A%Val(jj) == TWO) THEN
+          tmpSO1(cnt) = iR
+          tmpSO2(cnt) = A%ColInd(jj)
+        ELSE
+          tmpHO1(cnt) = iR
+          tmpHO2(cnt) = A%ColInd(jj)
+          atmpHO(cnt) = A%Val(jj)
+        END IF
+      END DO
+    END DO
+
+    CALL CompressIntegerArray(tmpFO1); CALL CompressIntegerArray(tmpFO2)
+    CALL CompressIntegerArray(tmpSO1); CALL CompressIntegerArray(tmpSO2)
+    CALL CompressIntegerArray(tmpHO1); CALL CompressIntegerArray(tmpHO2)
+    CALL CompressDoubleArray(atmpHO)
+    nFirst_order  = SIZE(tmpFO1)
+    nSecond_order = SIZE(tmpSO1)
+    nHigher_order = SIZE(tmpHO1)
+
+    ALLOCATE(first_order(nFirst_order,2))
+    ALLOCATE(second_order(nSecond_order,2))
+    ALLOCATE(higher_order(nHigher_order,2))
+    ALLOCATE(ahigher_order(nHigher_order))
+
+    first_order(:,1)  = tmpFO1; first_order(:,2)  = tmpFO2
+    second_order(:,1) = tmpSO1; second_order(:,2) = tmpSO2
+    higher_order(:,1) = tmpHO1; higher_order(:,2) = tmpHO2
+    ahigher_order     = atmpHO
+
+  END SUBROUTINE GatherSpeciesOrder
+
+
   !
   ! Read Chemical Data (initial values and Emisions)
   SUBROUTINE InputChemicalData(InitFileName,DataFileName,MeteoFileName)
@@ -1176,7 +1245,6 @@ MODULE Chemsys_Mod
     !
     ! for pH Start
     REAL(RealKind) :: kappa
-    REAL(RealKind), EXTERNAL :: pHValue
     !
     pi43=4.0d0/3.0d0*PI
     !
@@ -1386,8 +1454,8 @@ MODULE Chemsys_Mod
     CHARACTER(10) :: ro2d
     CHARACTER(10) :: c2
     INTEGER :: slash
-    INTEGER, ALLOCATABLE :: allRO2(:)
-    CHARACTER(100), ALLOCATABLE :: allRO2name(:)
+    !INTEGER, ALLOCATABLE :: allRO2(:)
+    !CHARACTER(100), ALLOCATABLE :: allRO2name(:)
     INTEGER :: ic1
    
     CALL OpenIniFile(FileName)
@@ -1449,26 +1517,15 @@ MODULE Chemsys_Mod
       &              End='END_DATARO2',               &
       &              Name1=SpeciesName,               &
       &              R1=c1)
-      !
-      ic1 = INT(c1)
-      ALLOCATE(allRO2(ic1) , allRO2name(ic1))
-      allRO2 = 0 ;  allRO2name = 'dummy'
-      !
-      !
-      CALL RewindFile
-      CALL ClearIniFile
-      c1  = 0
-      ic1 = 0
-      CALL LineFile( Back, Start1='BEGIN_DATARO2',  &
-      &              End='END_DATARO2',             &
-      &              Name1=ro2d,                    &
-      &              R1=c1)
-      !
-      i=0
+
+      ALLOCATE(RO2(INT(c1)))
+      RO2 = 0 
+      i   = 0
       DO
         CALL LineFile( Back, Start1='BEGIN_DATARO2',  &
         &              End='END_DATARO2',             &
         &              Name1=SpeciesName)
+     
         IF ( Back ) EXIT
         slash=INDEX(SpeciesName,'_')
         IF ( slash>0 ) THEN
@@ -1476,18 +1533,14 @@ MODULE Chemsys_Mod
         END IF
         IF (PositionSpeciesAll(SpeciesName)>0) THEN
           i=i+1
-          allRO2name(i) = SpeciesName
-          allRO2(i)     = PositionSpeciesAll(SpeciesName)
+          RO2(i) = PositionSpeciesAll(SpeciesName)
         END IF
       END DO
       CALL RewindFile
       CALL ClearIniFile
-      !
-      ic1=ic1-COUNT(allRO2==0,1)
-      ALLOCATE(RO2spcG(ic1) , RO2(ic1))
-      RO2spcG = allRO2name(1:ic1)
-      RO2     = allRO2(1:ic1)
-      DEALLOCATE(allRO2name,allRO2)
+      
+      CALL CompressIntegerArray(RO2);   nRO2 = SIZE(RO2)
+     
     END IF
     !
     !stop 'chemsysmod'
@@ -1501,39 +1554,23 @@ MODULE Chemsys_Mod
       &              R1=c1)
       !
       i=0
+
+      ALLOCATE(RO2aq(INT(c1)))
+      RO2aq = 0
+      
+      i=0
       DO
         CALL LineFile( Back, Start1='BEGIN_DATARO2aq',  &
         &              End='END_DATARO2aq',             &
         &              Name1=SpeciesName)
         IF (Back) EXIT
-        IF (PositionSpeciesAll(SpeciesName)>0) i=i+1
+        IF (PositionSpeciesALL(SpeciesName)>0) THEN
+          i=i+1
+          RO2aq(i)=PositionSpeciesAll(SpeciesName)
+        END IF
       END DO
-      IF (i>0) THEN
-        ALLOCATE(RO2spcA(i))
-        RO2spcA=''
-        ALLOCATE(RO2aq(i))
-        RO2aq=0
-        CALL RewindFile
-        CALL ClearIniFile
-        c1=0
-        CALL LineFile( Back, Start1='BEGIN_DATARO2aq',  &
-        &              End='END_DATARO2aq',             &
-        &              Name1=ro2d,                    &
-        &              R1=c1)
-        !
-        i=0
-        DO
-          CALL LineFile( Back, Start1='BEGIN_DATARO2aq',  &
-          &              End='END_DATARO2aq',             &
-          &              Name1=SpeciesName)
-          IF (Back) EXIT
-          IF (PositionSpeciesALL(SpeciesName)>0) THEN
-            i=i+1
-            RO2spcA(i)=SpeciesName
-            RO2aq(i)=PositionSpeciesAll(SpeciesName)
-          END IF
-        END DO
-      END IF
+      CALL CompressIntegerArray(RO2aq);   nRO2aq = SIZE(RO2aq)
+
     END IF
     CALL CloseIniFile
       
@@ -1541,7 +1578,7 @@ MODULE Chemsys_Mod
     !DO i=1,SIZE(RO2)
     !  WRITE(333,*) i, RO2(i)
     !END DO 
-    !  WRITE(333,*) ' nRO2aq=',SIZE(RO2aq)
+    !WRITE(333,*) ' nRO2aq=',SIZE(RO2aq)
     !DO i=1,SIZE(RO2aq)
     !  WRITE(333,*) i, RO2aq(i)
     !END DO 
@@ -2257,10 +2294,9 @@ MODULE Chemsys_Mod
     PositionSpeciesAll=0
     !
     ! Combustion system
-    IF ( combustion ) THEN
+    IF ( TempEq ) THEN
       PositionSpeciesAll=-1
       PositionSpeciesAll=GetHash(ListGas,TRIM(ADJUSTL(Species)))
-      !print*,' nummer=',PositionSpeciesAll, TRIM(ADJUSTL(Species))
     ELSE
     ! tropospheric system
       IF (Species(1:1)=='p') THEN
@@ -2821,4 +2857,49 @@ MODULE Chemsys_Mod
       END IF
     END DO
   END SUBROUTINE CheckConstants
+
+  SUBROUTINE CompressIntegerArray(Array)
+    INTEGER, ALLOCATABLE, INTENT(INOUT) :: Array(:)
+    INTEGER, ALLOCATABLE :: tmpArray(:)
+    
+    INTEGER :: i, N, cnt, M
+    
+    N = COUNT(Array/=0)
+    ALLOCATE(tmpArray(N))
+
+    cnt = 0
+    DO i=1,SIZE(Array)
+      IF (Array(i)/=0) THEN
+        cnt = cnt + 1
+        !tmpArray(cnt) = i
+        tmpArray(cnt) = Array(i)
+      END IF
+    END DO
+    DEALLOCATE(Array)
+    ALLOCATE(Array(N))
+    Array = tmpArray
+  END SUBROUTINE CompressIntegerArray
+
+
+  SUBROUTINE CompressDoubleArray(Array)
+    REAL(RealKind), ALLOCATABLE, INTENT(INOUT) :: Array(:)
+    REAL(RealKind), ALLOCATABLE :: tmpArray(:)
+    
+    INTEGER :: i, N, cnt
+    REAL(RealKind), PARAMETER :: big = -99999999999999.d0
+    
+    N = COUNT( Array /= big )
+    ALLOCATE(tmpArray(N))
+
+    cnt = 0
+    DO i=1,SIZE(Array)
+      IF ( Array(i) /= big ) THEN
+        cnt = cnt + 1
+        tmpArray(cnt) = Array(i)
+      END IF
+    END DO
+    DEALLOCATE(Array)
+    ALLOCATE(Array(N))
+    Array = tmpArray
+  END SUBROUTINE CompressDoubleArray
 END MODULE Chemsys_Mod

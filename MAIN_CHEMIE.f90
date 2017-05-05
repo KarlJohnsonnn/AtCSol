@@ -14,7 +14,7 @@ PROGRAM Main_ChemKin
   USE Rosenbrock_Mod
   USE mo_control
   USE mo_unirnk
-  USE mo_reac, ONLY: nspc,combustion, MW, rMW
+  USE mo_reac, ONLY: nspc, MW, rMW
   USE mo_MPI
   USE mo_IO
   USE mo_ckinput
@@ -48,11 +48,11 @@ PROGRAM Main_ChemKin
 
   !----------------------------------------------------------------
   ! ---  Initialize MPI library 
-  CALL StartMPI()
+  CALL StartMPI
 
   !----------------------------------------------------------------
   ! --- Print the program logo  
-  CALL Logo()
+  CALL Logo
 
   !----------------------------------------------------------------
   ! --- Read run control parameters (which runfile)
@@ -91,12 +91,12 @@ PROGRAM Main_ChemKin
   !  --- read the .sys data, save coefs in sparse matrix
   Time_Read = MPI_WTIME()
   OPEN ( UNIT=89 , FILE=ADJUSTL(TRIM(ChemFile))//'.chem' , STATUS='UNKNOWN' )
-  IF ( MPI_ID == 0 ) WRITE( * , '(A38)' , ADVANCE='NO' ) '  Read sys-file ................     '
+  IF ( MPI_ID == 0 ) WRITE(*,'(A38)',ADVANCE='NO') '  Reading sys-file .............     '
 
-  IF ( ChemFile(1:2) == 'ck' ) THEN
+  IF ( TempEq.AND.ChemKin ) THEN
     
     IF ( MPI_ID == 0 ) WRITE(*,*) ' ---->  Solve Gas Energy Equation '
-    combustion  = .TRUE.
+
     CALL Read_Elements    ( ChemFile    , 969 )
     CALL Read_Species     ( ChemFile    , 969 )
     CALL Read_Reaction    ( ChemFile    , 969 )
@@ -104,25 +104,18 @@ PROGRAM Main_ChemKin
     CALL PrintHeadSpecies   ( ChemFile    , 89 ) 
     CALL PrintSpecies       ( ListGas2    , 89 )
     CALL PrintHeadReactions ( 89 )
-    CALL PrintReactions     ( ReactionSystem , 89 , .TRUE. )  !  .TRUE. in 3rd agument for chemkin input file
+    CALL PrintReactions     ( ReactionSystem , 89 , .TRUE. )
     CALL PrintFinalReactions( 89 )
 
     CALL GetSpeciesNames( ChemFile , y_name )
     CALL Read_ThermoData( SwitchTemp , DataFile , 696 , nspc )
 
-    !--- richtigen index holen, da TB unsortiert eingelesen
-    DO i = 1 , neq
-      IF (ALLOCATED(ReactionSystem(i)%TBidx)) THEN
-        DO j=1,SIZE(ReactionSystem(i)%TBidx)
-          tmpPos = PositionSpeciesAll(ReactionSystem(i)%TBspc(j))
-          IF (tmpPos>0) THEN
-            ReactionSystem(i)%TBidx(j) = tmpPos
-          ELSE
-            WRITE(*,*) ' Third body species: ',ReactionSystem(i)%TBspc(j), ' not found.'
-          END IF
-        END DO
-      END IF
-    END DO
+    !--- richtigen index holen, da TB unsortiert eingelesen wurde
+    CALL GatherTBindex
+
+    IF (Vectorized) THEN
+      CALL GatherReactionTypeIndex
+    END IF
    
     !CALL PrintReactionSystem(ReactionSysteM)
     !--- Read molecular mass
@@ -151,14 +144,6 @@ PROGRAM Main_ChemKin
     MoleConc = MoleFr_To_MoleConc( MoleFrac,               &
                                  & Press = Press_in_dyncm2,&
                                  & Temp  = Temperature0    )
-
-    !                           print*, ''
-    !                           print*, ''
-    !print *, ' molefr,massfr,moleconc = ',2831, MoleFrac(2831),MassFrac(2831),MoleConc(2831)
-    !print *, ' molefr,massfr,moleconc = ',945, MoleFrac(945),MassFrac(945),MoleConc(945)
-    !print *, ' molefr,massfr,moleconc = ',2629, MoleFrac(2629),MassFrac(2629),MoleConc(2629)
-    !                           print*, ''
-    !                           print*, ''
     
     ! Initialising reactor density
     rho  = Density( MoleConc )
@@ -216,7 +201,10 @@ PROGRAM Main_ChemKin
   !----------------------------------------------------------------
   ! --- Split the rate array in mpi_np parts 
   CALL BuildPartitions( MyParties , neq , MPI_np )
-
+  
+  !----------------------------------------------------------------
+  ! --- this is for the new mass action product routine 
+  CALL GatherSpeciesOrder(A)
 
   !-----------------------------------------------------------------------
   ! --- Start timer and set absolut tolerance for species
@@ -227,7 +215,7 @@ PROGRAM Main_ChemKin
 
   nsr = nspc + neq
 
-  IF ( combustion ) THEN
+  IF ( TempEq ) THEN
     nDIM    = nspc + 1
     nDIMcl  = nspc + 1
     nDIMex  = nsr  + 1

@@ -234,6 +234,7 @@
           DF_PDdT(RTind%iTroe) = DTroeFactorVec(Dk0dT,DkinfdT,vdFTL_dT,T)
           vMeff(RTind%iTroe)   = ONE
           !print*, ' troefac = ',vFTL(17)
+          !stop
         END IF
 
         ! Backward reaction konstant for equilibrium reactions
@@ -248,10 +249,15 @@
         vK     = vFTL * tmpK
         dvK_dT = (DF_PDdT + dtmpK)*T(6)
         
-        Rate = vMeff * vk
+        ! ==== Law of mass action productories
+        vProd = MassActionProducts(y_conc(1:nspc))
+        
+        Rate = vMeff * vk * vProd
+        !Rate = vMeff * vk 
         DRatedT = dvK_dT
 
         !do j=1,neq; WRITE(987,*) 'DBg:: i, k , prd, Rate =', j, vK(j), vProd(j), Rate(j); enddo
+        !stop 'ratesmod'
       ELSE
         LOOP_OVER_ALL_REACTIONS: DO ii = 1 , loc_rateCnt
           
@@ -300,22 +306,32 @@
             END SELECT
           END IF
       
-          Rate(iReac) = Meff * k
+          DO j=A%RowPtr(iReac),A%RowPtr(iReac+1)-1
+            IF      ( A%Val(j) == ONE ) THEN
+              Prod = Prod * y_conc(A%ColInd(j))
+            ELSE IF ( A%Val(j) == TWO ) THEN
+              Prod = Prod * y_conc(A%ColInd(j))*ABS(y_conc(A%ColInd(j)))
+            ELSE
+              Prod = Prod * y_conc(A%ColInd(j))**A%Val(j)
+            END IF  
+          END DO
+         
+          Rate(iReac) = Meff * k * Prod
+          !Rate(iReac) = Meff * k 
           IF (TempEq) DRatedT(iReac) = DkdT
   
-          !WRITE(987,*) 'DBg:: i, k , prd, Rate =', iReac, k, Prod, Rate(iReac), Meff
+          !WRITE(987,*) 'DBg:: i, k , prd, Rate =', iReac, k, Prod, Rate(iReac)
+          !if(ireac==2651) print*, 'reac = ',ReactionSystem(iReac)%Line1
+  
         END DO LOOP_OVER_ALL_REACTIONS
-      END IF
 
-      ! ==== Law of mass action productories
-      !
-      vProd = MassActionProducts(y_conc(1:nspc))
-      !
-      Rate  = Rate * vProd
+        !vProd = MassActionProducts(y_conc(1:nspc))
+        !Rate  = Rate * vProd
+        !stop 'ratesmod'
+      END IF
 
       TimeRateE=MPI_WTIME()
       TimeRates=TimeRates+(TimeRateE-TimeRateA)
-      !stop 'ratesmod'
       !
       
       ! gather the values of the other processes
@@ -335,8 +351,7 @@
       !
       ! stoechometric coefficients equal 1
       DO i=1,nFirst_order
-        tP(first_order(i,1)) = tP(first_order(i,1)) &
-        &                    * Conc(first_order(i,2))
+        tP(first_order(i,1)) = tP(first_order(i,1))*Conc(first_order(i,2))
       END DO
       !
       ! stoechometric coefficients equal 2
@@ -550,7 +565,7 @@
       REAL(RealKind), INTENT(IN)  :: Conc(:)
       REAL(RealKind), INTENT(IN)  :: LWC
       INTEGER, INTENT(IN) :: iReac
-      INTEGER :: i
+      INTEGER :: j
       !TEMP
       !
       !print*, 'debugg ro2=',SUM(y_conc(RO2))
@@ -576,20 +591,12 @@
             M=(mH2O**fac_exp)*fac_A
           CASE ('$RO2')
             M=SUM(Conc(RO2))
-            !print*, ' RO2 = ',RO2
-            !stop
           CASE ('$O2O2')
             M=(((mO2*mair)**TWO)**fac_exp)*fac_A
           CASE ('$aH2O')
             !k=k*aH2OmolperL*LWC*mol2part
           CASE ('$RO2aq')
             M=SUM(Conc(RO2aq))
-            !if(ireac==21368) print*, 'aq ro2 M=',M
-            !WRITE(333,*) ' nRO2aq=',SIZE(RO2aq)
-            !DO i=1,SIZE(RO2aq)
-            !  WRITE(333,*) i, RO2aq(i)
-            !END DO
-            !stop
           CASE ('$+M','$(+M)')
             M=SUM(Conc)
             IF (ALLOCATED(ReactionSystem(iReac)%TBidx)) THEN

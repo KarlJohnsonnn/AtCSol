@@ -145,11 +145,6 @@ MODULE Euler_Mod
       Output%nsteps=Output%nsteps+1
       !
       tmp_ta=tnew-Tspan(1)
-      iOutAqua=SIZE(ListGas2)
-      yOut=y
-      DO iOut=iOutAqua+1,SIZE(ListAqua2)+iOutAqua
-        yOut(iOut)=yOut(iOut)/LWCconst/mol2part
-      END DO
       !
       IF (tmp_ta>=ii*0.01*tmp_tb.AND.NetCdfPrint.EQV..TRUE..AND.MPI_ID==0) THEN
         !-- Save data in .simul

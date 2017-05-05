@@ -37,13 +37,14 @@
       LOGICAL :: MatrixPrint   
       LOGICAL :: DebugPrint   
       LOGICAL :: NetCdfPrint   
+      LOGICAL :: constLWC   
 
 !--- Control Parameter
       INTEGER :: pHSet             & ! Initial pH by charge balance (1=on, 0=off)
-                ,constLWC          & ! with cloud constLWC>=1
 &               ,Ladebalken        & ! ladebalken im terminal bei simulation (=1, default=0)
 &               ,Error_Est         & ! error estimation 1 = inf norm  , 2 = euklid norm
 &               ,ErrorLog            ! if = 0 do not print error log 
+    
 !-----------------------------------------------------------------
 !---  Times
 !-----------------------------------------------------------------
@@ -247,7 +248,10 @@ INTEGER        :: nOutP
     LOGICAL :: useMUMPS = .FALSE.
     LOGICAL :: useSparseLU = .FALSE.
 
-    LOGICAL :: TempEq = .FALSE.
+    LOGICAL :: TempEq  = .FALSE.
+    LOGICAL :: ChemKin = .FALSE.
+
+    LOGICAL :: Vectorized = .FALSE.
     
  END MODULE mo_control
 

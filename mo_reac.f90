@@ -23,7 +23,7 @@
 !
 !---  reaction types
     TYPE def_para
-      CHARACTER(RealKind) :: str_type
+      CHARACTER(8) :: str_type
       INTEGER :: anzp
       INTEGER :: type
     END TYPE def_para
@@ -120,19 +120,6 @@
        TYPE (reaction), POINTER :: next_all
     END TYPE reaction
 
-!--    reaction pointers
-    TYPE (reaction), POINTER :: all_first
-    TYPE (reaction), POINTER :: gas_first
-    TYPE (reaction), POINTER :: henry_first
-    TYPE (reaction), POINTER :: dissoc_first
-    TYPE (reaction), POINTER :: solid_first
-    TYPE (reaction), POINTER :: aqua_first
-    TYPE (reaction), POINTER :: gphoto_first
-    TYPE (reaction), POINTER :: aphoto_first
-    TYPE (reaction), POINTER :: gconst_first
-    TYPE (reaction), POINTER :: aconst_first
-    TYPE (reaction), POINTER :: buf_first
-
 !--------------------------------------------------------------
 !--   dimensions
     INTEGER :: nt, ntsolid, ntpart
@@ -144,10 +131,11 @@
     INTEGER :: nDIMcl
     INTEGER :: nDIMex
 
-    INTEGER :: nreakgas,nreakhenry,nreakdissoc,nreakaqua, nreaksolid
-    INTEGER :: nreakgphoto,nreakgconst,nreakgtemp,nreakgtroe,nreakgspec
-    INTEGER :: nreakaphoto,nreakaconst,nreakatemp,nreakaspec
-    INTEGER :: nreaksolidtemp,nreaksolidequi,nreaksolidspec
+    INTEGER :: nreakgas=0,nreakhenry=0,nreakdissoc=0,nreakaqua=0, nreaksolid=0
+    INTEGER :: nreakgphoto=0,nreakgconst=0,nreakgtemp=0,nreakgtroe=0,nreakgspec=0
+    INTEGER :: nreakaphoto=0,nreakaconst=0,nreakatemp=0,nreakaspec=0,nreakglind=0
+    INTEGER :: nreaksolidtemp=0,nreaksolidequi=0,nreaksolidspec=0,nreakSimpTB=0
+    INTEGER :: nreakpress=0
 !    INTEGER :: nreakstemp,nreaksequi,nreaksspec
 !--    define indices of special species
     INTEGER ::   hp_ind,         &   ! Index Hp
@@ -289,5 +277,44 @@
     ! more speedchem stuff
     REAL(RealKind) :: rho, rRho   ! rho = density, rRho=kilo/rho
     REAL(RealKind), ALLOCATABLE :: SCperm(:)
+
+    !
+    ! indix arrays for different reaction types 
+    ! Types for vectorised version
+    TYPE ReacTypeIndex
+      INTEGER, ALLOCATABLE :: iArr(:),  iLind(:), iTroe(:)
+      INTEGER, ALLOCATABLE :: iEqui(:), iXrev(:),  iTBody(:)
+      INTEGER, ALLOCATABLE :: iTBodyExtra(:), iHigh(:), iLow(:)
+      INTEGER :: nArr, nLind, nTroe
+      INTEGER :: nEqui,nXrev, nTBody
+      INTEGER :: nTBodyExtra, nHigh, nLow
+    END TYPE ReacTypeIndex
+
+    TYPE(ReacTypeIndex) :: RTind
+
+    TYPE ReacTypeParameter
+      ! different kinds of arrhenius parameter
+      REAL(RealKind), ALLOCATABLE :: A(:),    b(:),    E(:)
+      REAL(RealKind), ALLOCATABLE :: A0(:),   b0(:),   E0(:)
+      REAL(RealKind), ALLOCATABLE :: AX(:),   bX(:),   EX(:)
+      REAL(RealKind), ALLOCATABLE :: Ainf(:), binf(:), Einf(:)
+      ! Troe parameter
+      REAL(RealKind), ALLOCATABLE :: T1(:), T2(:), T3(:), T4(:)
+    END TYPE ReacTypeParameter
+
+    TYPE(ReacTypeParameter) :: RTpar
+
+
+    INTEGER, ALLOCATABLE        :: first_order(:,:) ! reaction number where stoech coef == ONE
+    INTEGER, ALLOCATABLE        :: second_order(:,:) ! reactions where species have second order 
+    INTEGER, ALLOCATABLE        :: higher_order(:,:) ! higher order reactions
+    REAL(RealKind), ALLOCATABLE :: ahigher_order(:) ! higher order reactions contains also fractions and noninteger values
+    INTEGER :: nFirst_order, nSecond_order, nHigher_order
+
+    ! array for Troe reactions
+    REAL(RealKind), ALLOCATABLE :: vlog10_Pr(:),      &
+                                 & vlog10_Fcent(:),   &
+                                 & vPr(:),            &
+                                 & vcTroe(:), vn1Troe(:)
     !
 END MODULE mo_reac

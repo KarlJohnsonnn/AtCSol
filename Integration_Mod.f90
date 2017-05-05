@@ -112,7 +112,7 @@ MODULE Integration_Mod
     Y0(1:nspc)  = y_iconc(:)
     Y(1:nspc)   = y_iconc(:)
     !
-    IF ( combustion ) THEN
+    IF ( TempEq ) THEN
       !--- initial temperature
       Y0(nDIM)      = Temperature0     ! = 750 [K] aus speedchem debug
       Y(nDIM)       = Temperature0     ! = 750 [K]
@@ -120,10 +120,8 @@ MODULE Integration_Mod
       !--- malloc gibbs energy, derivates
       ALLOCATE( GFE(nspc)   , DGFEdT(nspc)   )
       ALLOCATE( DelGFE(neq) , DDelGFEdT(neq) )
-      GFE        =  ZERO
-      DGFEdT     =  ZERO
-      DelGFE     =  ZERO
-      DDelGFEdT  =  ZERO
+      GFE    = ZERO;  DGFEdT    = ZERO
+      DelGFE = ZERO;  DDelGFEdT = ZERO
     END IF
 
     !------------------------------------------------------------------------------------------|
@@ -138,13 +136,13 @@ MODULE Integration_Mod
       WRITE(*,*) '  Initial values:   '
       WRITE(*,*)
       fmt0 = '  [molec/cm3] '
-      IF ( combustion ) fmt0 = '  [mol/cm3]'
+      IF ( TempEq ) fmt0 = '  [mol/cm3]'
       fmt1 = '(A34,2X,E16.10,A)'
       IF (ntGas >0) WRITE(*,fmt1)  '      sum initval (gaseous)    = ', SUM(Y0(1:ntGas)),      fmt0
       IF (ntAqua>0) WRITE(*,fmt1)  '      sum initval (aqueous)    = ', SUM(Y0(ntGas+1:nspc)), fmt0
       WRITE(*,fmt1)  '      sum emissions (gaseous)  = ', SUM(Y_e),              fmt0
 
-      IF ( combustion ) THEN
+      IF ( TempEq ) THEN
         WRITE(*,fmt1) '          Initial Temperature  = ', Temperature0,'  [K]'
         WRITE(*,fmt1) '          Initial Pressure     = ', Pressure0,'  [Pa]'
         WRITE(*,fmt1) '          Reactor denstiy      = ', rho,'  [kg/cm3]'
@@ -177,7 +175,7 @@ MODULE Integration_Mod
       ! aqua phase in [mol/m3] and [mol/l]
       OutNetcdfANZ = COUNT(OutNetcdfPhase=='g') + 2*COUNT(OutNetcdfPhase=='a')
       OutNetcdfDIM = OutNetcdfANZ
-      IF ( combustion ) OutNetcdfDIM = OutNetcdfANZ + 1
+      IF ( TempEq ) OutNetcdfDIM = OutNetcdfANZ + 1
       ALLOCATE(yNcdf(OutNetcdfDIM))          ! output array , +1 for Temperature
       yNcdf = ZERO
           
@@ -216,10 +214,17 @@ MODULE Integration_Mod
     ! this is for the waitbar
     tmp_tb = (Tspan(2)-Tspan(1)) * 1.0d-2
     
+    !do i=1,SIZE(a%val); write(777,*) A%val(i); end do
+    !do i=1,SIZE(b%val); write(778,*) B%val(i); end do
+    !call printsparse1(A,'alpha_MCMC')
+      
+    
     ! build nessesarry matrecies for Rate Calculation and FRhs
     CALL SymbolicAdd( BA , B , A )      ! symbolic addition:    BA = B + A
-    CALL SparseAdd  ( BA , B , A, .TRUE.)  ! numeric subtraction:  BA = B - A
+    CALL SparseAdd  ( BA , B , A, '-' )  ! numeric subtraction:  BA = B - A
     CALL TransposeSparse( BAT , BA )    ! transpose BA:        BAT = Transpose(BA) 
+    !do k=1,size(ba%val); print*, 'BAVAL=',BA%Val(k); end do
+    !stop
 
     SELECT CASE (TRIM(method(1:7)))
 
@@ -305,29 +310,27 @@ MODULE Integration_Mod
         CALL Free_SpRowColD( temp_LU_Dec )
 
         IF (MatrixPrint) THEN
-          CALL WriteSparseMatrix(Miter,'MATRICES/Miter_'//BSP,neq,nspc)
-          CALL WriteSparseMatrix(LU_Miter,'MATRICES/LU_Miter_'//BSP,neq,nspc)
-          !stop 'after writesparsematrix'
+          CALL WriteSparseMatrix(Miter,'MATRICES/Miter_'//TRIM(BSP)//'_'//solveLA,neq,nspc)
+          CALL WriteSparseMatrix(LU_Miter,'MATRICES/LU_Miter_'//TRIM(BSP)//'_'//solveLA,neq,nspc)
+          WRITE(*,*) '  Writing matrices to file: ','MATRICES/Miter_'//TRIM(BSP)//'_'//solveLA
+          WRITE(*,*) '                            ','MATRICES/LU_Miter_'//TRIM(BSP)//'_'//solveLA
+          stop 'after writesparsematrix'
         END IF
         
+        IF (MPI_ID==0) WRITE(*,*) '  SYMBOLIC PHASE................ done'
         TimeSymbolic = MPI_WTIME() - StartTimer   ! stop timer for symbolic matrix calculations
     
-        IF (MPI_ID==0) WRITE(*,*) '  SYMBOLIC PHASE................ done'
-        
-       
-        CALL Rates( Tspan(1) , Y0 , Rate , DRatedT ) ! Calculate first reaction rates
+        ! ---- Calculate first reaction rates
+        CALL Rates( Tspan(1) , Y0 , Rate , DRatedT )
         Y = MAX( ABS(Y) , eps ) * SIGN( ONE , Y )    ! |y| >= eps
         
-        ! ----calc values of Jacobian
+        ! ---- Calculate values of Jacobian
         StartTimer  = MPI_WTIME()
         CALL Jacobian_CC(Jac_CC , BAT , A , Rate , Y )
         TimeJac     = TimeJac + MPI_WTIME() - StartTimer
         Output%npds = Output%npds + 1
        
-        !---- Save matrix structures for matlab spy
-        !!IF ( MatrixPrint ) CALL SaveMatricies(A,B,BAT,Miter,LU_Miter,BSP)
-      
-        !---- calculate a first stepsize based on 2nd deriv.
+        !---- Calculate a first stepsize based on 2nd deriv.
         CALL InitialStepSize( h , hmin , absh , Jac_CC , Rate  &
         &                   , Tspan(1) , Y(1:nspc) , RCo%pow  )
      
@@ -370,7 +373,6 @@ MODULE Integration_Mod
             failed  = .FALSE.                   ! no failed attempts
             !
             ! Rosenbrock Timestep 
-            !print*, 'DEBUG::INTEGR     temp=y(end)=',y0(nDim)
             CALL Rosenbrock(  Y0            &       ! current concentration
             &               , t             &       ! current time
             &               , h             &       ! stepsize
@@ -588,7 +590,7 @@ MODULE Integration_Mod
         TimeIntegrationA=MPI_WTIME()
 
         LIW    = 30
-        LRW    = 20 + (2 + 1./2.)*(2.*BAT%nnz+2.*A%nnz+2.*nDIM) + (11 + 9./2.)*nDIM
+        LRW    = 20 + 21 * nDIM + 4*(BAT%nnz+A%nnz+2*nDIM)
         ITOL   = 2              ! 2 if atol is an array
         RTOL1  = RtolRow        ! relative tolerance parameter
         ATOL1(1:nspc) = Atol(1)  ! atol dimension nspc+1
@@ -746,11 +748,13 @@ MODULE Integration_Mod
     YDOT(1:nspc) =  dCdt
     
     ! ENERGY CONSERVATION
-    IF (combustion) THEN     ! OUT:   IN:
+    IF (TempEq) THEN         ! OUT:   IN:
       CALL UpdateTempArray   ( Tarr , Y(NEQ1) )
-      CALL InternalEnergy    (  U   , Tarr )        ! [J/mol]
-      CALL DiffInternalEnergy( dUdT , Tarr)         ! [-]
-      CALL MassAveMixSpecHeat( cv   , dUdT , MoleConc=Y(1:nspc) ) ! [J/kg/K]
+      CALL InternalEnergy    (  U   , Tarr )
+      CALL DiffInternalEnergy( dUdT , Tarr) 
+      CALL MassAveMixSpecHeat( cv   , dUdT               &
+                             &      , MoleConc=Y(1:nspc) &
+                             &      , rho=rho          ) 
     
       YDOT(NEQ1) = - SUM( U * dCdt ) * rRho / cv    ! rRho=mega/rho 
     END IF

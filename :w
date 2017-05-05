@@ -7,8 +7,7 @@ MODULE mo_ckinput
   &                    , ListSolid, ListPartic, ListNonReac, ReactionSystem &
   &                    , UnitGas, UnitAqua, ListGas2, Species_T             &
   &                    , ListToHashTable, HashTableToList, SortList         &
-  &                    , PositionSpeciesGas,PositionSpeciesAll              &
-  &                    , CompressIntegerArray, CompressDoubleArray
+  &                    , PositionSpeciesGas,PositionSpeciesAll
   !
   USE mo_reac
   USE mo_control
@@ -442,7 +441,6 @@ CONTAINS
         !print*, 'DEBUG:: vor  reaktion lesen iLine = ',ireac,TRIM(iLine)
 
         iReac = iReac + 1
-        nreakgtemp = nreakgtemp + 1
         
         ReactionSystem(iReac)%Type='GAS'    ! all gaseous
         
@@ -453,7 +451,6 @@ CONTAINS
           ReactionSystem(iReac+1)%Type = 'GAS'    ! all gaseous
           ReactionSystem(iReac+1)%bR   = .TRUE.    ! all gaseous
           ReactionSystem(iReac+1)%Line2='BackReaction'
-          nreakgtemp = nreakgtemp + 1
         ELSE 
           fPosFw = INDEX(iLine,'=>')
           IF (fPosFw>0) bR = .FALSE.
@@ -582,6 +579,9 @@ CONTAINS
 
             IF ( io_err == 0 ) THEN
               ReactionSystem(iReac+1)%Constants = REAL([tmpReal,tmpReal2,tmpReal3], KIND=RealKind)
+              !ReactionSystem(iReac+1)%Constants(1) = REAL(tmpReal, KIND=RealKind)
+              !ReactionSystem(iReac+1)%Constants(2) = REAL(tmpReal2,KIND=RealKind)
+              !ReactionSystem(iReac+1)%Constants(3) = REAL(tmpReal3,KIND=RealKind)
             ELSE
               CALL  PrintError(io_err,iReac,LocString)
             END IF
@@ -637,14 +637,11 @@ CONTAINS
           READ(LocString,*,IOSTAT=io_err) tmpReal, tmpReal2, tmpReal3
 
           IF ( io_err == 0 ) THEN
-            nreakpress = nreakpress + 1
-            ReactionSystem(iReac)%LowConst  = REAL([tmpReal,tmpReal2,tmpReal3], KIND=RealKind)
-            ReactionSystem(iReac)%HighConst = ReactionSystem(iReac)%Constants
-            IF (bR) THEN
-              nreakpress = nreakpress + 1
-              ReactionSystem(iReac+1)%LowConst  = ReactionSystem(iReac)%LowConst
-              ReactionSystem(iReac+1)%HighConst = ReactionSystem(iReac+1)%Constants
-            END IF
+            ReactionSystem(iReac)%LowConst(1) = REAL(tmpReal, KIND=RealKind)
+            ReactionSystem(iReac)%LowConst(2) = REAL(tmpReal2,KIND=RealKind)
+            ReactionSystem(iReac)%LowConst(3) = REAL(tmpReal3,KIND=RealKind)
+            IF (bR) &
+            ReactionSystem(iReac+1)%LowConst  = ReactionSystem(iReac)%LowConst
           ELSE
             CALL  PrintError(io_err,iReac,LocString)
           END IF
@@ -656,14 +653,11 @@ CONTAINS
           READ(LocString,*,IOSTAT=io_err) tmpReal, tmpReal2, tmpReal3
 
           IF ( io_err == 0 ) THEN
-            nreakpress = nreakpress + 1
-            ReactionSystem(iReac)%HighConst = REAL([tmpReal,tmpReal2,tmpReal3], KIND=RealKind)
-            ReactionSystem(iReac)%LowConst  = ReactionSystem(iReac)%Constants
-            IF (bR) THEN
-              nreakpress = nreakpress + 1
-              ReactionSystem(iReac+1)%HighConst  = ReactionSystem(iReac)%HighConst
-              ReactionSystem(iReac+1)%LowConst   = ReactionSystem(iReac+1)%Constants
-            END IF
+            ReactionSystem(iReac)%HighConst(1) = REAL(tmpReal, KIND=RealKind)
+            ReactionSystem(iReac)%HighConst(2) = REAL(tmpReal2,KIND=RealKind)
+            ReactionSystem(iReac)%HighConst(3) = REAL(tmpReal3,KIND=RealKind)
+            IF (bR) &
+            ReactionSystem(iReac+1)%HighConst  = ReactionSystem(iReac)%HighConst
           ELSE
             CALL  PrintError(io_err,iReac,LocString)
           END IF
@@ -672,8 +666,10 @@ CONTAINS
         
         ! skip empty lines and comment lines
         IF (.NOT.nxtReac) CALL NextLine(UnitReac,iLine,ende,nxtReac)
+        IF ( nxtReac ) EXIT THIRD_BODY_M  ! => no extra parameter, next reaction
+        IF ( ende ) EXIT READ_REACTION_MECHANISM  ! exit reading mechnism
+        
         LocString = ADJUSTL(iLine)
-
         ! extract troe parameters 
         IF ( MAXVAL(INDEX(LocString,['troe','TROE'])) > 0 ) THEN
           ALLOCATE( ReactionSystem(iReac)%TroeConst(4))
@@ -684,26 +680,19 @@ CONTAINS
           READ(LocString(iKl:iKr),*,IOSTAT=io_err) tmpReal, tmpReal2, tmpReal3, tmpReal4
 
           IF ( io_err == 0 ) THEN
-            nreakgtroe = nreakgtroe + 1
-            ReactionSystem(iReac)%TroeConst = REAL([tmpReal,tmpReal2,tmpReal3,tmpReal4], KIND=RealKind)
-            IF (bR) THEN
-              ReactionSystem(iReac+1)%TroeConst  = ReactionSystem(iReac)%TroeConst
-              nreakgtroe = nreakgtroe + 1
-            END IF
+            ReactionSystem(iReac)%TroeConst(1) = REAL(tmpReal, KIND=RealKind)
+            ReactionSystem(iReac)%TroeConst(2) = REAL(tmpReal2,KIND=RealKind)
+            ReactionSystem(iReac)%TroeConst(3) = REAL(tmpReal3,KIND=RealKind)
+            ReactionSystem(iReac)%TroeConst(4) = REAL(tmpReal4,KIND=RealKind)
+            IF (bR) &
+            ReactionSystem(iReac+1)%TroeConst  = ReactionSystem(iReac)%TroeConst
           ELSE
             CALL  PrintError(io_err,iReac,LocString)
           END IF
 
           IF (.NOT.nxtReac) CALL NextLine(UnitReac,iLine,ende,nxtReac)
           IF ( ende ) EXIT READ_REACTION_MECHANISM  ! exit reading mechnism
-        ELSE
-          nreakglind = nreakglind + 1
-          IF (bR) nreakglind = nreakglind + 1
         END IF
-
-        IF ( nxtReac ) EXIT THIRD_BODY_M  ! => no extra parameter, next reaction
-        IF ( ende ) EXIT READ_REACTION_MECHANISM  ! exit reading mechnism
-
       END IF THIRD_BODY_M
       !print*, 'DEBUG:: nach third body M         = ',ireac,TRIM(iLine)
 
@@ -712,16 +701,11 @@ CONTAINS
         &                 ReactionSystem(iReac)%Factor == '$(+M)'    ) THEN
 
         nRowThirdBodys = 0
-        nreakSimpTB = nreakSimpTB + 1
-        IF (bR) nreakSimpTB = nreakSimpTB + 1
-
 
         IF ( nxtReac ) THEN
           ! all spezies gleichmaessig
-          ReactionSystem(iReac)%TB = .TRUE.
-          ReactionSystem(iReac)%TBextra = .FALSE.
-          IF (bR) ReactionSystem(iReac+1)%TB = .TRUE.
-          IF (bR) ReactionSystem(iReac+1)%TBextra = .FALSE.
+          ReactionSystem(iReac)%TBextra = .TRUE.
+          IF (bR) ReactionSystem(iReac+1)%TBextra = .TRUE.
         ELSE
           EXTRACT_THIRD_BODY_SPC: DO
   
@@ -775,8 +759,6 @@ CONTAINS
     !
     neq       = nReak
     nreakgas  = nReak
-    nreakSimpTB = nreakSimpTB - nreakglind - nreakgtroe
-    nreakgtemp = nreakgtemp - nreakSimpTB - nreakglind - nreakgtroe
     ALLOCATE(ListGas2(ntGAS))
     CALL HashTableToList(ListGas,ListGas2)
     CALL SortList(ListGas2)
@@ -1061,15 +1043,18 @@ CONTAINS
           ConstType='PRESSX'
           Factor='$(+M)'
           String(idxM2:idxM2+3)='    '
+          nreakgtroe=nreakgtroe+1
         ELSE
           ConstType='TEMPX'
           Factor='$+M'
           String(idxM:idxM+1)='  '
+          nreakgtemp=nreakgtemp+1
         END IF
       ELSE
         ! normal arrhenius without 3rd body
         ConstType='TEMPX'
         Factor='None'
+        nreakgtemp=nreakgtemp+1
       END IF
     END DO
     !
@@ -1083,6 +1068,7 @@ CONTAINS
     REAL(RealKind) :: Koeff
     !
     ! check if spc has coef
+    !print*, 'mockinput     string= ',string
     IF (SCAN(String(1:1),CKSetNumber)>0) THEN
       NextSpecies=SCAN(String,CKSetSpecies)            ! find the next letter
       READ(String(1:NextSpecies-1),*) Koeff
@@ -1090,7 +1076,6 @@ CONTAINS
       NextSpecies=1
       Koeff=1.0d0
     END IF
-    !print*, 'mockinput     string= ',TRIM(string)//'   ',koeff
   END SUBROUTINE ExtractKoeff
   !
   !
@@ -1194,30 +1179,70 @@ CONTAINS
     !
   END SUBROUTINE CutCArray
 
+  SUBROUTINE CompressIntegerArray(Array)
+    INTEGER, ALLOCATABLE, INTENT(INOUT) :: Array(:)
+    INTEGER, ALLOCATABLE :: tmpArray(:)
+    
+    INTEGER :: i, N, cnt
+    
+    N = COUNT(Array/=-44)
+    ALLOCATE(tmpArray(N))
+
+    cnt = 0
+    DO i=1,SIZE(Array)
+      IF (Array(i)/=-44) THEN
+        cnt = cnt + 1
+        tmpArray(cnt) = i
+      END IF
+    END DO
+    DEALLOCATE(Array)
+    ALLOCATE(Array(N))
+    Array = tmpArray
+  END SUBROUTINE CompressIntegerArray
+
+  SUBROUTINE CompressDoubleArray(Array)
+    REAL(RealKind), ALLOCATABLE, INTENT(INOUT) :: Array(:)
+    REAL(RealKind), ALLOCATABLE :: tmpArray(:)
+    
+    INTEGER :: i, N, cnt
+    
+    N = COUNT(Array/=-99999999999999.d0)
+    ALLOCATE(tmpArray(N))
+
+    cnt = 0
+    DO i=1,SIZE(Array)
+      IF (Array(i)/=-99999999999999.d0) THEN
+        cnt = cnt + 1
+        tmpArray(cnt) = i
+      END IF
+    END DO
+    DEALLOCATE(Array)
+    ALLOCATE(Array(N))
+    Array = tmpArray
+  END SUBROUTINE CompressDoubleArray
   
   SUBROUTINE GatherReactionTypeIndex()
     
     INTEGER :: iR, cnt , cnt2
-    REAL(RealKind), PARAMETER :: big = -99999999999999.d0
+    REAL, PARAMETER :: big
 
     ! allocate index arrays for specific reaction type
     ALLOCATE( RTind%iArr(neq),  RTind%iLind(neq), RTind%iTroe(neq),      &
               RTind%iEqui(neq), RTind%iXrev(neq), RTind%iTBody(neq),     &
               RTind%iHigh(neq), RTind%iLow(neq),  RTind%iTBodyExtra(neq) )
-    RTind%iArr  = 0;  RTind%iLind = 0; RTind%iTroe  = 0
-    RTind%iEqui = 0;  RTind%iXrev = 0; RTind%iTBody = 0
-    RTind%iHigh = 0;  RTind%iLow  = 0; RTind%iTBodyExtra = 0
+    RTind%iArr  = -44;  RTind%iLind = -44; RTind%iTroe  = -44
+    RTind%iEqui = -44;  RTind%iXrev = -44; RTind%iTBody = -44
+    RTind%iHigh = -44;  RTind%iLow  = -44; RTind%iTBodyExtra = -44
 
+    big = -99999999999999.d0
     ALLOCATE( RTpar%A(neq),    RTpar%b(neq),   RTpar%E(neq),   &
               RTpar%A0(neq),   RTpar%b0(neq),  RTpar%E0(neq),  &
-              RTpar%AX(neq),   RTpar%bX(neq),  RTpar%EX(neq),  &
-              RTpar%Ainf(neq), RTpar%binf(neq),RTpar%Einf(neq),&
+              RTpar%Ainf(neq), RTpar%binf(neq),RTpar%Einf(neq) &
               RTpar%T1(neq),   RTpar%T2(neq),                  &
               RTpar%T3(neq),   RTpar%T4(neq)                   )
-    RTpar%A    = big;  RTpar%b    = big; RTpar%E    = big
-    RTpar%A0   = big;  RTpar%b0   = big; RTpar%E0   = big
-    RTpar%AX   = big;  RTpar%bX   = big; RTpar%EX   = big
-    RTpar%Ainf = big;  RTpar%binf = big; RTpar%Einf = big
+    RTpar%A     = big;  RTpar%b    = big; RTpar%E    = big
+    RTpar%A0    = big;  RTpar%b0   = big; RTpar%E0   = big
+    RTpar%Ainfh = big;  RTpar%binf = big; RTpar%Einf = big
     RTpar%T1 = big;     RTpar%T2 = big
     RTpar%T3 = big;     RTpar%T4 = big
     
@@ -1225,13 +1250,10 @@ CONTAINS
     DO iR=1,neq
       IF (ReactionSystem(iR)%bR)  RTind%iEqui(iR) = iR
 
-      IF (ReactionSystem(iR)%brX) THEN
-        RTind%iXrev(iR) = iR
-        RTpar%AX(iR) = ReactionSystem(iR)%Constants(1)
-        RTpar%bX(iR) = ReactionSystem(iR)%Constants(2)
-        RTpar%EX(iR) = ReactionSystem(iR)%Constants(3)
-      END IF
-      IF (ReactionSystem(iR)%TB.OR.ReactionSystem(iR)%TBextra) THEN
+      IF (ReactionSystem(iR)%brX) RTind%iXrev(iR) = iR
+
+      IF (ReactionSystem(iR)%TBextra .OR.  &
+         &ALLOCATED(ReactionSystem(iR)%TBidx)) THEN
         RTind%iTBody(iR) = iR
         IF (ReactionSystem(iR)%TBextra) THEN
           RTind%iTBodyExtra(iR) = iR
@@ -1260,15 +1282,11 @@ CONTAINS
         RTpar%T3(iR) = ReactionSystem(iR)%TroeConst(3)
         RTpar%T4(iR) = ReactionSystem(iR)%TroeConst(4)
       ELSE
-        IF (.NOT.ReactionSystem(iR)%brX) THEN
-          RTind%iArr(iR) = iR
-          RTpar%A(iR) = ReactionSystem(iR)%Constants(1)
-          RTpar%b(iR) = ReactionSystem(iR)%Constants(2)
-          RTpar%E(iR) = ReactionSystem(iR)%Constants(3)
-          !print *, 'read arr par =',RTpar%A(iR),RTpar%b(iR),RTpar%E(iR)
-        END IF
+        RTind%iArr(iR) = iR
+        RTpar%A(iR) = ReactionSystem(iR)%Constants(1)
+        RTpar%b(iR) = ReactionSystem(iR)%Constants(2)
+        RTpar%E(iR) = ReactionSystem(iR)%Constants(3)
       END IF
-
     END DO
     CALL CompressIntegerArray(RTind%iArr);   RTind%nArr   = SIZE(RTind%iARR)
     CALL CompressIntegerArray(RTind%iLind);  RTind%nLind  = SIZE(RTind%iLind)
@@ -1280,24 +1298,13 @@ CONTAINS
     CALL CompressIntegerArray(RTind%iHigh);  RTind%nHigh  = SIZE(RTind%iHigh)
     CALL CompressIntegerArray(RTind%iTBodyExtra); RTind%nTBodyExtra = SIZE(RTind%iTBodyExtra)
 
-    !print *, 'read arr par =',RTpar%A(1),RTpar%b(1),RTpar%E(1)
     CALL CompressDoubleArray(RTpar%A);    CALL CompressDoubleArray(RTpar%b);    CALL CompressDoubleArray(RTpar%E)
-    !print *, 'read arr par =',RTpar%A(1),RTpar%b(1),RTpar%E(1)
     CALL CompressDoubleArray(RTpar%A0);   CALL CompressDoubleArray(RTpar%b0);   CALL CompressDoubleArray(RTpar%E0)
-    CALL CompressDoubleArray(RTpar%AX);   CALL CompressDoubleArray(RTpar%bX);   CALL CompressDoubleArray(RTpar%EX)
     CALL CompressDoubleArray(RTpar%Ainf); CALL CompressDoubleArray(RTpar%binf); CALL CompressDoubleArray(RTpar%Einf)
-    CALL CompressDoubleArray(RTpar%T1);   CALL CompressDoubleArray(RTpar%T2)
-    CALL CompressDoubleArray(RTpar%T3);   CALL CompressDoubleArray(RTpar%T4)
+    CALL CompressDoubleArray(RTpar%T1); CALL CompressDoubleArray(RTpar%T2)
+    CALL CompressDoubleArray(RTpar%T3); CALL CompressDoubleArray(RTpar%T4)
 
     CALL Build_TB_sparse(TB_sparse,cnt2)
-    
-    ! 
-    IF (RTind%nTroe>0) THEN
-      ALLOCATE(vlog10_Pr(RTind%nTroe), vlog10_Fcent(RTind%nTroe), &
-      &        vcTroe(RTind%nTroe),    vn1Troe(RTind%nTroe)       )
-    END IF
-
-    IF (RTind%nLow>0) ALLOCATE(vPr(neq))
 
   END SUBROUTINE GatherReactionTypeIndex
 
@@ -1322,31 +1329,16 @@ CONTAINS
   SUBROUTINE Build_TB_sparse(A,nnz)
 
     TYPE(CSR_Matrix_T) :: A
-    ! temp
     INTEGER :: i, j, jj, nnz
-    INTEGER :: nTB_i
-    INTEGER, ALLOCATABLE        :: tmpCol(:), pVec(:) 
-    REAL(RealKind), ALLOCATABLE :: tmpVal(:)
 
-    CALL New_CSR(A,RTind%nTBodyExtra,nspc,nnz)
+    CALL New_CSR(A,nTBodyExtra,nspc,nnz)
 
-    DO i=1,RTind%nTBodyExtra
-      nTB_i = SIZE(ReactionSystem(RTind%iTBodyExtra(i))%TBidx)
-      A%RowPtr(i+1) = A%RowPtr(i) + nTB_i
-
-      ! sorting spc indices
-      ALLOCATE( tmpCol(nTB_i), tmpVal(nTB_i), pVec(nTB_i) )
-      tmpCol=0;   tmpVal=ZERO;   pVec=0
-      
-      tmpCol = ReactionSystem(RTind%iTBodyExtra(i))%TBidx
-      tmpVal = ONE - ReactionSystem(RTind%iTBodyExtra(i))%TBalpha
-
-      CALL unirnk(tmpCol,pVec,nTB_i)
-
-      A%ColInd(A%RowPtr(i):A%RowPtr(i+1)-1) = tmpCol(pVec)
-      A%Val   (A%RowPtr(i):A%RowPtr(i+1)-1) = tmpVal(pVec)
-      DEALLOCATE( tmpCol, tmpVal, pVec )
+    DO i=1,nTBodyExtra
+      A%RowPtr(i+1) = A%RowPtr(i) + SIZE(ReactionSystem(iTBodyExtra(i))%TBidx)
+      A%ColInd(A%RowPtr(i):A%RowPtr(i+1)-1) = ReactionSystem(iTBodyExtra(i))%TBidx
+      A%Val(A%RowPtr(i):A%RowPtr(i+1)-1) = ONE - ReactionSystem(iTBodyExtra(i))%TBalpha
     END DO
+
   END SUBROUTINE Build_TB_Sparse
  
   SUBROUTINE Init_HashTbls(L1,L2,L3,L4,L5)

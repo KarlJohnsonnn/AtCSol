@@ -3,9 +3,6 @@
 !===  Reading and Setting of Run Control Parameters
 !==================================================
 !
-      !USE mo_bdf
-      !USE Kind_Mod,    ONLY: RealKind
-      !USE mo_micfys
       USE mo_control
 !
 !-----------------------------------------------------------------
@@ -20,7 +17,7 @@
       NAMELIST /SCENARIO/  Bsp,                                            &
 &               LwcLevelmin, LwcLevelmax, Ladebalken,  pHSet,              &
 &               constLWC, ErrorLog, MatrixPrint, NetCdfPrint, Temperature0,&
-&               Pressure0, DebugPrint, TempEq
+&               Pressure0, DebugPrint, TempEq, ChemKin
 !
       NAMELIST /FILES/  MetFile, ChemFile,MWeights, InitFile, DataFile,    &
 &               NetcdfFileName, MetUnit, ChemUnit, MWUnit, InitUnit, DataUnit
@@ -29,7 +26,7 @@
 &               minStp, maxStp, nOutP
 !
       NAMELIST /NUMERICS/  RtolROW, AtolGas, AtolAqua, AtolTemp, PI_StepSize,      &
-&               solveLA,  ODEsolver, ImpEuler, Error_Est
+&               solveLA,  ODEsolver, ImpEuler, Error_Est, Vectorized
 !
       NAMELIST /ORDERING/  OrderingStrategie, ParOrdering
 !      
@@ -52,7 +49,7 @@
 !-- REAL(8) : Set Levels and Parameters for Processes
       LwcLevelmin = 1.0d-12       ! Lower level for LWC      {l/m3]
       LwcLevelmin = 3.0d-10       ! Lower level for LWC      {l/m3]
-      constLWC = 0             ! 1 = konstanter LWC wert für ges. Simulation
+      constLWC = .FALSE.          ! true = konstanter LWC wert für ges. Simulation
 
 !--- INTEGER : Control Parameter
       pHSet     = 1          ! Initial pH by charge balance (1=on, 0=off)
@@ -62,6 +59,7 @@
       DebugPrint  = .FALSE.
       NetCdfPrint = .FALSE.
       TempEq      = .FALSE.
+      ChemKin     = .FALSE.
       Temperature0= 750.0d0
       Pressure0   = 2.0d5
 
@@ -141,6 +139,7 @@
       solveLA  = 'ex'                 ! method of solving linear algebra
       ODEsolver  = 'ROS34PW3'  ! ROW scheme
       ImpEuler = 0                    ! 1 for implicit euler integration
+      Vectorized = .FALSE.
       
 !
 !--- Read NUMERICS namelist

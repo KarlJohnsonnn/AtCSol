@@ -3,10 +3,11 @@
   pHSet = 1
   LWCLevelmax = 2.0d-8
   LwcLevelmin = 3.0d-4
-  constLWC = 1
+  constLWC = .false.
   Ladebalken = 1
   ErrorLog = 0
   MatrixPrint = .false.
+  DebugPrint  = .false.
   NetCdfPrint = .true. 
  /END
  &FILES
@@ -29,19 +30,16 @@
  &METEO
  /END
  &NUMERICS
-  RtolROW  = 1.0d-4
-  AtolGas  = 1.0d-5
-  AtolAqua = 1.0d-5
+  RtolROW  = 1.0d-2
+  AtolGas  = 1.0d-3
+  AtolAqua = 1.0d-3
   Error_Est = 2
   PI_StepSize = .FALSE.
-  solveLA = 'cl'  
+  solveLA = 'ex'  
   ODEsolver = 'METHODS/TSRosWRodas3.fort'
   !ODEsolver = 'LSODE'
-  ImpEuler = 0
  /END
  &ORDERING
   OrderingStrategie  = 8
   ParOrdering        = -1
- /END
- &ENTRAIN
  /END

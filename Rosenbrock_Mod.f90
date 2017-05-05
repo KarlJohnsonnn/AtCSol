@@ -199,7 +199,7 @@ MODULE Rosenbrock_Mod
     ALLOCATE(ATolAll(nDIM))
     ATolAll(:ntGas)=ATolGas
     ATolAll(ntGas+1:)=ATolAqua
-    IF ( combustion ) THEN
+    IF ( TempEq ) THEN
       ThresholdStepSizeControl(nDIM)=ATolTemp/RTolROW
       ATolAll(nDIM)=ATolTemp
     END IF
@@ -326,7 +326,7 @@ MODULE Rosenbrock_Mod
     !   - t.............. time
     !   - h.............. step size
     !   - RCo............ Rosenbrock method
-    !   - Temp........... actual Temperatur (optional for combustion)
+    !   - Temp........... actual Temperatur (optional for TempEq)
     !
     REAL(RealKind), INTENT(IN) :: Y0(nDIM)
     REAL(RealKind), INTENT(IN) :: t, h
@@ -335,7 +335,7 @@ MODULE Rosenbrock_Mod
     ! Output:
     !   - Ynew........... new concentratinos 
     !   - err............ error calc with embedded formula.
-    !   - TempNew........ new temperature (optional for combustion)
+    !   - TempNew........ new temperature (optional for TempEq)
     !
     REAL(RealKind), INTENT(OUT) :: YNew(nDIM)
     REAL(RealKind), INTENT(OUT)   :: err
@@ -384,7 +384,9 @@ MODULE Rosenbrock_Mod
     k(:,:)  = ZERO
     fRhs(:) = ZERO
     Rate(:) = ZERO
-    !Y(:)    = Y0(:) 
+    rRate(:)= ZERO
+    bb(:)   = ZERO
+    Y(:)    = Y0
     !
 
     IF (dprint) THEN
@@ -403,26 +405,29 @@ MODULE Rosenbrock_Mod
     !********************************************************************************
    
     ! HIER UNBEDINGT RATE MIT Y0 ALS INPUT
-    IF ( combustion ) THEN
-      Y  = Y0
+    IF ( .NOT.TempEq ) THEN
+      Y   = MAX( ABS(Y0)  , eps ) * SIGN( ONE , Y0 )  ! concentrations =/= 0
+      Yrh = Y(1:nspc) / h
+      IF (CLASSIC)  CALL Rates( t, Y, Rate, DRatedT )     
+      IF (EXTENDED) CALL Rates( t, Y0, Rate, DRatedT )     
+      Rate  = MAX( ABS(Rate) , eps ) * SIGN( ONE , Rate )    ! reaction rates =/= 0
+      rRate = ONE / Rate
     ELSE
-      Y  = MAX( ABS(Y0)  , eps ) * SIGN( ONE , Y0 )  ! concentrations =/= 0
+      Yrh = Y0 / h
+      CALL Rates( t, Y0, Rate, DRatedT )     
     END IF
     
-    CALL Rates( t, Y, Rate, DRatedT )     
-    Rate = MAX( ABS(Rate) , eps ) * SIGN( ONE , Rate )    ! reaction rates =/= 0
-
     ! HIER  NICHT VON Y(:nspc) AUF Y0(:nspc) ÄNDERN
-    Yrh  = Y(1:nspc) / h
+    !Yrh  = Y(1:nspc) / h
 
-    IF ( combustion ) THEN
+    IF ( TempEq ) THEN
       !                          OUT:      IN:
       CALL UpdateTempArray     ( Tarr    , Y0(nDIM) )       
       CALL InternalEnergy      ( U       , Tarr)             
       CALL DiffInternalEnergy  ( dUdT    , Tarr)              
       CALL Diff2InternalEnergy ( d2UdT2  , Tarr)
-      CALL MassAveMixSpecHeat  ( cv      , dUdT    , MoleConc=Y0(1:nspc) )
-      CALL MassAveMixSpecHeat  ( dcvdT   , d2UdT2  , MoleConc=Y0(1:nspc) )
+      CALL MassAveMixSpecHeat  ( cv      , dUdT    , MoleConc=Y0(1:nspc) , rho=rho)
+      CALL MassAveMixSpecHeat  ( dcvdT   , d2UdT2  , MoleConc=Y0(1:nspc) , rho=rho)
       CALL DAXPY_sparse        ( dCdt    , BAT   , Rate , Y_e )
 
       dTdt    = - SUM( U * dCdt) * rRho/cv
@@ -464,7 +469,7 @@ MODULE Rosenbrock_Mod
       ! d(dcdt)/dc
       CALL Jacobian_CC(  Jac_CC , BAT  , A , Rate , Y )
 
-      IF ( combustion ) THEN
+      IF ( TempEq ) THEN
         CALL Jacobian_CT( Jac_CT , BAT , Rate , DRatedT )
         CALL Jacobian_TC( Jac_TC , Jac_CC , cv , dUdT , dTdt , U , rRho)
         CALL Jacobian_TT( Jac_TT , Jac_CT , cv , dcvdT , dTdt , dUdT , dCdt , U , rRho)
@@ -561,7 +566,7 @@ MODULE Rosenbrock_Mod
         IF ( EXTENDED ) THEN
           bb( 1     : neq ) = mONE 
           bb( neq+1 : nsr ) = Y_e 
-          IF ( combustion ) bb(nDIMex)  = ZERO
+          IF ( TempEq ) bb(nDIMex)  = ZERO
           IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:iprnt)
         END IF
 
@@ -590,7 +595,7 @@ MODULE Rosenbrock_Mod
         CALL DAXPY_sparse( dCdt , BAT , Rate , Y_e )           
         fRhs(1:nspc) =  h * dCdt
 
-        IF (combustion) &
+        IF (TempEq) &
         fRhs( nDIM ) = - h * SUM(U*dCdt) * rRho / cv
 
         DO jStg = 1 , iStg-1
@@ -607,16 +612,16 @@ MODULE Rosenbrock_Mod
 
           DO jStg = 1 , iStg-1
             fRhs(1:nspc) = fRhs(1:nspc) + RCo%C(iStg,jStg)*k(1:nspc,jStg)
-            IF (combustion)                                                &
+            IF (TempEq)                                                &
             fRhs(nDIM)   = fRhs(nDIM) + RCo%C(iStg,jStg)*                  &
             &               ( cv/rRho*k(nDIM,jStg) + SUM(U*k(1:nspc,jStg)) )
           END DO
 
           ! right hand side of the extended linear system
 
-          bb( 1      : neq )         = -rRate * Rate
-          bb( neq+1  : nsr )         = Y_e + fRhs(1:nspc)/h
-          IF (combustion) bb(nDIMex) = fRhs(nDIM)/h
+          bb( 1      : neq )     = -rRate * Rate
+          bb( neq+1  : nsr )     = Y_e + fRhs(1:nspc)/h
+          IF (TempEq) bb(nDIMex) = fRhs(nDIM)/h
 
           IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:iprnt)
         END IF
@@ -635,7 +640,7 @@ MODULE Rosenbrock_Mod
 
           CALL SolveSparse( LU_Miter , bb)
           k( 1:nspc , iStg ) = Y0(1:nspc) * bb(neq+1:nsr)
-          IF ( combustion ) &
+          IF ( TempEq ) &
           k(  nDIM  , iStg ) = bb(nDIMex)
           
         END IF
@@ -651,7 +656,7 @@ MODULE Rosenbrock_Mod
 
           CALL MumpsSolve( bb )
           k( 1:nspc , iStg ) = Y0(1:nspc) * Mumps_Par%RHS(neq+1:nsr)
-          IF ( combustion ) &
+          IF ( TempEq ) &
           k(  nDIM  , iStg ) = Mumps_Par%RHS(nDIMex)
 
         END IF
@@ -669,7 +674,7 @@ MODULE Rosenbrock_Mod
       do istg=1,nspc
         WRITE(*,'(A9,I5,A25,A3,*(E15.8,2X))') 'debug::  ',istg, TRIM(y_name(istg)),'   ',k( istg , : )
       end do
-      IF (combustion) WRITE(*,'(A9,I5,A25,A3,*(E15.8,2X))') 'debug::  ',nDIM,'Temperature','   ',k( nDIM , : )
+      IF (TempEq) WRITE(*,'(A9,I5,A25,A3,*(E15.8,2X))') 'debug::  ',nDIM,'Temperature','   ',k( nDIM , : )
       print*, '------------------------------------------------------------------------------'
     END IF
 
@@ -692,7 +697,7 @@ MODULE Rosenbrock_Mod
       do istg=1,nspc
         print*,'debug::  ', Y0(istg),Ynew(iStg),'   ', TRIM(y_name(istg))
       end do
-      IF (combustion) print*,'debug::  ', Y0(nDIM),Ynew(nDIM), '   Temperature'
+      IF (TempEq) print*,'debug::  ', Y0(nDIM),Ynew(nDIM), '   Temperature'
       print*, '------------------------------------------------------------------------------'
       print*, ''
     END IF
@@ -707,6 +712,8 @@ MODULE Rosenbrock_Mod
     !***********************************************************************************************
     CALL ERROR( err , errind , YNew , YHat , ATolAll , RTolROW , t )
    
+    !print*, 't,h, kvecs = ', t,h,SUM(k(:,1))
+    !stop
     
     IF (dprint) THEN
       print*,'debug::     Error     =  ', err, '  Error index  =  ', errind

@@ -107,7 +107,7 @@ MODULE NetCDF_Mod
       Diag_Name_Netcdf(jt) = tmpName
       Diag_LongName(jt)    = tmpName
       DIAG_UNITS(jt)       = "mol/m3"
-      IF (combustion) DIAG_UNITS(jt) = 'mass fraction'
+      IF (TempEq) DIAG_UNITS(jt) = 'mass fraction'
     ELSEIF (OutNetcdfPhase(iDiagSpc)=='a') THEN
       Diag_Name_Netcdf(jt) = TRIM(tmpName)//'_l'
       Diag_LongName(jt)    = TRIM(tmpName)//'_aqua'
@@ -228,7 +228,7 @@ MODULE NetCDF_Mod
     CALL check ( NF90_DEF_VAR( ncid, 'SchwefelSumme' , NF90_DOUBLE, dimIDS, schwefel_varid ) )
     CALL check ( NF90_DEF_VAR( ncid, 'loc_error' , NF90_DOUBLE, dimIDS, error_varid ) )
     CALL check ( NF90_DEF_VAR( ncid, 'loc_error_spc' , NF90_DOUBLE, dimIDS, MaxErrorSpc_varid ) )
-    IF ( combustion ) THEN
+    IF ( TempEq ) THEN
       CALL check ( NF90_DEF_VAR( ncid, 'Temperature' , NF90_DOUBLE, dimIDS, Temperature_varid ) )
     END IF
     !
@@ -311,8 +311,8 @@ MODULE NetCDF_Mod
     CALL check( NF90_PUT_ATT(ncid, MaxErrorSpc_varid, NC_UNITS, '[-]' ) )  
     CALL check( NF90_PUT_ATT(ncid, MaxErrorSpc_varid, "long_name", 'species of max error val') ) 
     CALL check( NF90_PUT_ATT(ncid, MaxErrorSpc_varid, "_CoordinateAxes", "time") )
-    ! save temperature for combustion simulation
-    IF ( combustion ) THEN
+    ! save temperature for TempEq simulation
+    IF ( TempEq ) THEN
       CALL check( NF90_PUT_ATT(ncid, Temperature_varid, NC_UNITS, '[K]' ) )  
       CALL check( NF90_PUT_ATT(ncid, Temperature_varid, "long_name", 'Temperature in Kelvin') ) 
       CALL check( NF90_PUT_ATT(ncid, Temperature_varid, "_CoordinateAxes", "temp") )
@@ -408,7 +408,7 @@ END SUBROUTINE InitNetCDF
 !==================================================================
 !
      yout(:) = 0.d0
-     IF ( combustion ) yOut(OutNetcdfDIM)=y(nDIM)
+     IF ( TempEq ) yOut(OutNetcdfDIM)=y(nDIM)
      jt=0
 
 ! internal calculations all in molec/cm3
@@ -424,7 +424,7 @@ END SUBROUTINE InitNetCDF
          jt=jt+1
          !
        ELSE IF (OutNetcdfPhase(iDiagSpc)=='g'.AND..NOT.NaN) THEN
-         IF (combustion) THEN
+         IF (TempEq) THEN
            !yout(jt) = y(idx) * 1.0d6       ! [mol/cm3] to [mol/m3]
            yout(jt) = y(idx)          ! in mass fractions
          ELSE
@@ -503,7 +503,7 @@ END SUBROUTINE InitNetCDF
   ! == Write new data to netcdf-file ===================================================
   ! ====================================================================================
   timeLoc = t/3600.0d0   ! time output in hours
-  IF ( combustion ) timeLoc=t ! time in seconds for combustion mechanism
+  IF ( TempEq ) timeLoc=t ! time in seconds for TempEq mechanism
   CALL check( NF90_PUT_VAR( ncid, rec_varid, timeLoc, start=(/time_ind/) ) )
   CALL check( NF90_PUT_VAR( ncid, x_varid,   rlon,    start=(/time_ind/) ) )
   CALL check( NF90_PUT_VAR( ncid, y_varid,   rlat,    start=(/time_ind/) ) )
@@ -523,7 +523,7 @@ END SUBROUTINE InitNetCDF
   CALL check( NF90_PUT_VAR( ncid, schwefel_varid,  Schwefel, start = (/time_ind/) ) )
   CALL check( NF90_PUT_VAR( ncid, error_varid,     error,    start = (/time_ind/) ) )
   CALL check( NF90_PUT_VAR( ncid, MaxErrorSpc_varid, ErrInd, start = (/time_ind/) ) )
-  IF ( combustion ) THEN
+  IF ( TempEq ) THEN
     CALL check( NF90_PUT_VAR( ncid, Temperature_varid, yOut(OutNetcdfDIM), start = (/time_ind/) ) )
   END IF
   ! ====================================================================================

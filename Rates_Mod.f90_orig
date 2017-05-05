@@ -28,9 +28,7 @@
     !
     ! some factors for calculating Troe press dep. reactions
     REAL(RealKind) :: rFacEq      ! factor nessesary for equilibrium constant
-    REAL(RealKind) :: cTroe, n1Troe
-    REAL(RealKind), PARAMETER :: dTroe =  0.14d0
-
+    REAL(RealKind) :: cTroe, nTroe, dTroe
     REAL(RealKind) :: log10_Pr, log10_Fcent, Pr
     !
     CONTAINS
@@ -55,7 +53,7 @@
       !--------------------------------------------------------------------!
       ! Temporary variables:
       REAL(RealKind) :: y_conc(nDIM)
-      REAL(RealKind) :: chi, LWC
+      REAL(RealKind) :: chi, actLWC
       REAL(RealKind) :: T(8)
       REAL(RealKind) :: k    ! tmp buffer for reaction const
       REAL(RealKind) :: Prod, AquaFac
@@ -65,24 +63,6 @@
       ! 
       ! TempEq
       REAL(RealKind) :: Temp_in
-      !
-      !REAL(RealKind) :: vecMeff(RTind%nTBody)
-      REAL(RealKind) :: vMeff(neq), vK(neq), dvK_dT(neq),  &
-                      & tmpK(neq), dtmpK(neq), vProd(neq)
-
-      REAL(RealKind) :: vMeffX(RTind%nTBodyExtra)
-
-      REAL(RealKind) :: vFTL(neq)
-      REAL(RealKind) :: Dk0dT(neq),   DkinfdT(neq), vdFTL_dT(neq)
-
-      REAL(RealKind) :: k0(RTind%nLow), kinf(RTind%nHigh), k0M(RTind%nLow)
-      REAL(RealKind) :: vrkinfpk0M(RTind%nLow)
-      REAL(RealKind) :: vTempDiffFactor(RTind%nTroe), DF_PDdT(neq)
-
-      REAL(RealKind) :: vrKeq(RTind%nEqui), DeRdT(RTind%nEqui)
-      REAL(RealKind), ALLOCATABLE :: yM(:)
-      
-      REAL(RealKind) :: rRcT
 
       !==================================================================!
       !===============calc rates for ReactionSystem======================!
@@ -94,15 +74,16 @@
       DRatedT = ZERO
 
       ! --- Compute zenith for photo reactions
-      IF (nreakgphoto>0) chi = Zenith(Time)
+      chi     = Zenith(Time)
      
       ! --- Compute the liquid water content 
-      IF (nreakaqua>0)   LWC = pseudoLWC(Time)
+      actLWC  = pseudoLWC(Time)
       
       IF ( TempEq ) THEN
         
         Temp_in  = Y_in(nDIM)
         !IF (.NOT. Temp_in > ZERO) STOP ' Temperatur not > 0 '
+
 
         !--- Concentration
         y_conc(1:nspc) = Y_in(1:nspc)
@@ -129,242 +110,83 @@
 
       ELSE
 
-        T(1)   = 280.0d0    ! = 280 [K]
+        T(1)   = Temp    ! = 280 [K]
         y_conc = Y_in
 
       END IF
-      
-      !*************************************************************
-      ! --- compute rate of all reactions (gas,henry,aqua,diss) ---
-      !*************************************************************
-      IF (Vectorized) THEN
+      !print*, '    C = ',y_conc([2831,945,2629])
+      !print*, ' ctot = ', SUM(y_conc(1:nspc))
+
+      !print*,
+      ! --- compute rate of all reactions (gas,henry,aqua,diss)
+      LOOP_OVER_ALL_REACTIONS: DO ii = 1 , loc_rateCnt
         
+        ! if more than one processor is used split rate calculation
+        !IF ( MPI_np>1 .AND. ParOrdering>=0 )  THEN
+        !  iReac = loc_RatePtr(ii)
+        !ELSE
+        iReac = ii
+        !END IF
+       
         ! ====== Computing effective molecularity 
-        !
-        ! initializing vector components
-        vMeff = ONE; DF_PDdT = Zero; 
+        CALL EffectiveMolecularity( Meff , y_conc(1:nspc) , iReac , actLWC )
+        
+        ! ====== Compute the rate constant for specific reaction type ===
+        CALL ComputeRateConstant( k , DkdT , T , Time , chi , mAir , iReac , y_conc , Meff )
 
-        ! calculate effective molecularity of the reactions
-        IF ( RTind%nTBody>0 ) THEN
-          vMeff( RTind%iTBody ) = SUM( y_conc(1:nspc) )
+        AQUATIC_REACTIONS: IF ( ntAqua > 0 ) THEN
 
-          IF ( RTind%nTBodyExtra>0) THEN
-            CALL DAX_sparse(vMeffX,TB_sparse,y_conc(1:nspc))
-            vMeff(RTind%iTBodyExtra) = vMeff(RTind%iTBodyExtra) - vMeffX
+          IF      ( ReactionSystem(iReac)%Type == 'DISS' .OR. &
+          &         ReactionSystem(iReac)%Type == 'AQUA' ) THEN
+            ! ===== correct unit of concentrations
+            AquaFac = ONE / ( (actLWC*mol2part)**ReactionSystem(iReac)%SumAqCoef )
+            k       = k * AquaFac
           END IF
 
-        END IF
-
-        ! ====== Compute the rate constant for specific reaction type
-        !
-        !print*, ''
-        !print*, 'RTind%nLind, RTind%nHigh,RTind%nLow,RTind%nxrev,RTind%nArr, RTind%nEqui'
-        !print*,RTind%nLind, RTind%nHigh,RTind%nLow,RTind%nxrev,RTind%nArr, RTind%nEqui
-        !print*, 'SIZE(RTpar%A), SIZE(RTpar%A0),SIZE(RTpar%Ainf),SIZE(RTpar%T1)'
-        !print*,SIZE(RTpar%A), SIZE(RTpar%A0),SIZE(RTpar%Ainf),SIZE(RTpar%T1)
-        !stop
-
-        ! normal Arrhenius
-        rRcT = rRcal*T(6)
-        !print*, ' ind arr =',RTind%iArr
-        !print*, ' par arr =',RTpar%A(1),RTpar%b(1),RTpar%E(1)
-        IF ( RTind%nArr>0 )  THEN
-          tmpK(RTind%iArr)  = RTpar%A*EXP(RTpar%b*T(8) - RTpar%E*rRcT)
-          dtmpK(RTind%iArr) = (RTpar%b + RTpar%E*rRcT)*T(6)
-          !print*, ' k 59 arr =',tmpk(67)
-        END IF
-        !print *, 'k arr = ',tmpK(RTind%iArr)
-        ! Backward reaction with explicitly given Arrhenius parameters
-        IF ( RTind%nXrev>0 ) THEN
-          tmpK(RTind%iXrev)  = RTpar%AX*EXP(RTpar%bX*T(8) - RTpar%EX*rRcT)
-          dtmpK(RTind%iXrev) = (RTpar%bX + RTpar%EX*rRcT)*T(6)
-        END IF
-
-        ! reduced pressure value for falloff reactions
-        vFTL = ONE;        vdFTL_dT = ONE
-        Dk0dT = ZERO;      DkinfdT  = ZERO
-
-        IF ( RTind%nLow>0 ) THEN
-          ! Low pressure Arrhenius
-          k0    = RTpar%A0*EXP(RTpar%b0*T(8) - RTpar%E0*rRcT)
-          Dk0dT(RTind%iLow)    = RTpar%b0 + RTpar%E0*rRcT
-          ! High pressure Arrhenius
-          kinf    = RTpar%Ainf*EXP(RTpar%binf*T(8) - RTpar%Einf*rRcT)
-          DkinfdT(RTind%iHigh) = RTpar%binf + RTpar%Einf*rRcT
-
-          !print*, ' k par::  = ',RTpar%A0(1),RTpar%b0(1),RTpar%E0(1)
-          !print*, ' k par::  = ',RTpar%Ainf(1),RTpar%binf(1),RTpar%Einf(1)
-          !print*, ' k par::  = ',kinf(1), k0(1)
-          !stop
-          
-          vPr  = ONE
-
-          k0M      = k0 * vMeff(RTind%iLow)
-          vrkinfpk0M = ONE / (kinf + k0M)
-
-          vdFTL_dT(RTind%iLow) = vMeff(RTind%iTroe)*k0*kinf*(vrkinfpk0M*vrkinfpk0M) &
-          &                    * (Dk0dT(RTind%iLow) - DkinfdT(RTind%iHigh))*T(6)
-
-          vPr(RTind%iLow)    = k0M / (kinf+k0M)
-
-
-          tmpK(RTind%iLow)   = kinf
-          dtmpK(RTind%iHigh) = DkinfdT(RTind%iHigh)
-        END IF
-        
-        ! reverse reaction, calculating the equi constant 
-        IF (RTind%nEqui>0) THEN
-          vrKeq = EXP(DelGFE(RTind%iEqui)) * rFacEq**(-sumBAT(RTind%iEqui))
-          DeRdT = sumBAT(RTind%iEqui)*T(6) + DDelGFEdT(RTind%iEqui) 
-
-          tmpK(RTind%iEqui)  = tmpK(RTind%iEqui) * vrKeq
-          dtmpK(RTind%iEqui) = dtmpK(RTind%iEqui) + DeRdT 
-        END IF
-
-        ! rate constants according to Lindemann's form
-        IF ( RTind%nLind>0 ) THEN
-          vFTL(RTind%iLind)    = vPr(RTind%iLind)
-          DF_PDdT(RTind%iLind) = vdFTL_dT(RTind%iLind)
-          vMeff(RTind%iLind)   = ONE
-        END IF
-
-        ! rate constants according to Troe's form
-        IF ( RTind%nTroe>0 ) THEN
-          vFTL(RTind%iTroe)    = TroeFactorVec(T)
-          DF_PDdT(RTind%iTroe) = DTroeFactorVec(Dk0dT,DkinfdT,vdFTL_dT,T)
-          vMeff(RTind%iTroe)   = ONE
-          !print*, ' troefac = ',vFTL(17)
-        END IF
-
-        ! Backward reaction konstant for equilibrium reactions
-        !print*, ' ind arr =',RTind%iEqui
-        !print*, ' par arr =',DelGFE(RTind%iEqui), sumBAT(RTind%iEqui)
-        !print*,' R67  = ',ReactionSystem(67)%Line1
-        !print*, ' ind arr =',RTind%iArr
-        !print*, ' par arr =',RTpar%A(67),RTpar%b(67),RTpar%E(67)
-        !print*, ' k 59 arr =',tmpk(67),tmpk(68)
-
-
-        vK     = vFTL * tmpK
-        dvK_dT = (DF_PDdT + dtmpK)*T(6)
-        
-        Rate = vMeff * vk
-        DRatedT = dvK_dT
-
-        !do j=1,neq; WRITE(987,*) 'DBg:: i, k , prd, Rate =', j, vK(j), vProd(j), Rate(j); enddo
-      ELSE
-        LOOP_OVER_ALL_REACTIONS: DO ii = 1 , loc_rateCnt
-          
-          ! if more than one processor is used split rate calculation
-          !IF ( MPI_np>1 .AND. ParOrdering>=0 )  THEN
-          !  iReac = loc_RatePtr(ii)
-          !ELSE
-          iReac = ii
-          !END IF
-         
-          ! ====== Computing effective molecularity 
-          CALL EffectiveMolecularity( Meff , y_conc(1:nspc) , iReac , LWC )
-          
-          ! ====== Compute the rate constant for specific reaction type ===
-          CALL ComputeRateConstant( k , DkdT , T , Time , chi , mAir , iReac , y_conc , Meff )
-  
-          AQUATIC_REACTIONS: IF ( ntAqua > 0 ) THEN
-  
-            IF      ( ReactionSystem(iReac)%Type == 'DISS' .OR. &
-            &         ReactionSystem(iReac)%Type == 'AQUA' ) THEN
-              ! ===== correct unit of concentrations
-              AquaFac = ONE / ( (LWC*mol2part)**ReactionSystem(iReac)%SumAqCoef )
-              k       = k * AquaFac
-            END IF
-  
-            IF ( ReactionSystem(iReac)%Type == 'HENRY' ) THEN
-              !=== Compute Henry mass transfer coefficient
-              CALL MassTransfer( k , T(1) , Time , iReac , LWC )
-            END IF
-  
-          END IF AQUATIC_REACTIONS
-
-          ! === Calculate the product of concentrations 
-          Prod = ONE
-          IF (ReactionSystem(iReac)%nInActEd/=0) THEN
-            SELECT CASE (ReactionSystem(iReac)%InActEductSpc(1))
-              CASE ('[H2O]')
-                Prod = Prod*H2O
-              CASE ('[N2]')
-                Prod = Prod*N2
-              CASE ('[O2]')
-                Prod = Prod*O2
-              CASE ('[aH2O]')
-                Prod = Prod*aH2OmolperL*LWC*mol2part
-              CASE DEFAULT
-            END SELECT
+          IF ( ReactionSystem(iReac)%Type == 'HENRY' ) THEN
+            !=== Compute Henry mass transfer coefficient
+            CALL MassTransfer( k , T(1) , Time , iReac , actLWC )
           END IF
-      
-          Rate(iReac) = Meff * k
-          IF (TempEq) DRatedT(iReac) = DkdT
-  
-          !WRITE(987,*) 'DBg:: i, k , prd, Rate =', iReac, k, Prod, Rate(iReac), Meff
-        END DO LOOP_OVER_ALL_REACTIONS
-      END IF
 
-      ! ==== Law of mass action productories
-      !
-      vProd = MassActionProducts(y_conc(1:nspc))
-      !
-      Rate  = Rate * vProd
+        END IF AQUATIC_REACTIONS
+  
+        ! === Calculate the product of concentrations 
+        Prod = ONE
+        DO j=A%RowPtr(iReac),A%RowPtr(iReac+1)-1
+          IF      ( A%Val(j) == ONE ) THEN
+            Prod = Prod * y_conc(A%ColInd(j))
+          ELSE IF ( A%Val(j) == TWO ) THEN
+            Prod = Prod * y_conc(A%ColInd(j))*ABS(y_conc(A%ColInd(j)))
+          ELSE
+            Prod = Prod * y_conc(A%ColInd(j))**A%Val(j)
+          END IF  
+        END DO
+       
+        Rate(iReac) = Meff * k * Prod
+        IF (TempEq) DRatedT(iReac) = DkdT
+
+        !WRITE(987,*) 'DBg:: i, k , prd, Rate =', iReac, k, Prod, Rate(iReac)
+        !if(ireac==2651) print*, 'reac = ',ReactionSystem(iReac)%Line1
+
+      END DO LOOP_OVER_ALL_REACTIONS
+      !stop 'ratesmod'
 
       TimeRateE=MPI_WTIME()
       TimeRates=TimeRates+(TimeRateE-TimeRateA)
-      !stop 'ratesmod'
       !
       
       ! gather the values of the other processes
       !CALL GatherAllPartitions(Rate,MyParties)
       !IF (TempEq) CALL GatherAllPartitions(DRatedT,MyParties)
     END SUBROUTINE Rates
-
-
-    FUNCTION MassActionProducts(Conc)
-      REAL(RealKind) :: MassActionProducts(neq)
-
-      INTEGER :: i
-      REAL(RealKind) :: tP(neq)
-      REAL(RealKind) :: Conc(nspc)
-
-      tP = ONE
-      !
-      ! stoechometric coefficients equal 1
-      DO i=1,nFirst_order
-        tP(first_order(i,1)) = tP(first_order(i,1)) &
-        &                    * Conc(first_order(i,2))
-      END DO
-      !
-      ! stoechometric coefficients equal 2
-      DO i=1,nSecond_order
-        tP(second_order(i,1)) = tP(second_order(i,1))      &
-        &                     * Conc(second_order(i,2))    &
-        &                     * ABS(Conc(second_order(i,2)))
-      END DO
-      !
-      ! stoechometric coefficients not equal 1 or 2
-      DO i=1,nHigher_order
-        tP(higher_order(i,1)) =  tP(higher_order(i,1))    &
-        &                     *  Conc(higher_order(i,2))  &
-        &                     ** ahigher_order(i)
-      END DO
-      !stop ' massen prod'
-      
-      MassActionProducts = tP
-
-    END FUNCTION MassActionProducts
-
-
+   !
+    !
     !=====================================================================!
     ! === Converts the mass for Henry reactions Gas->Aqua , Aqua->Gas
     !=====================================================================!
-    SUBROUTINE MassTransfer(k,Temp,Time,iReac,LWC)
+    SUBROUTINE MassTransfer(k,Temp,Time,iReac,actLWC)
       REAL(RealKind) :: k
-      REAL(RealKind) :: Temp, Time, LWC
+      REAL(RealKind) :: Temp, Time, actLWC
       INTEGER :: iReac
       !
       REAL(RealKind) :: term_diff
@@ -378,7 +200,7 @@
       !--------------------------------------------------------------------------!
       !
       ! Compute new wet radius for droplett class iFrac
-      SPEK(1)%wetRadius = (Pi34*LWC/SPEK(1)%Number)**(rTHREE)
+      SPEK(1)%wetRadius = (Pi34*actLWC/SPEK(1)%Number)**(rTHREE)
       !
       !--  mass transfer coefficient
       IF ( term_diff /= ZERO )  THEN   
@@ -392,7 +214,7 @@
       !print*, 'Debug::      kmt=',kmt
       ! direaction GasSpecies-->AquaSpecies
       IF (ReactionSystem(iReac)%direction=='GA') THEN  
-        k = milli * kmt * LWC ! orginal
+        k = milli * kmt * actLWC ! orginal
         !
       ! direaction AquaSpecies-->GasSpecies  
       ELSE 
@@ -550,7 +372,7 @@
       REAL(RealKind), INTENT(IN)  :: Conc(:)
       REAL(RealKind), INTENT(IN)  :: LWC
       INTEGER, INTENT(IN) :: iReac
-      INTEGER :: i
+      INTEGER :: j
       !TEMP
       !
       !print*, 'debugg ro2=',SUM(y_conc(RO2))
@@ -576,20 +398,12 @@
             M=(mH2O**fac_exp)*fac_A
           CASE ('$RO2')
             M=SUM(Conc(RO2))
-            !print*, ' RO2 = ',RO2
-            !stop
           CASE ('$O2O2')
             M=(((mO2*mair)**TWO)**fac_exp)*fac_A
           CASE ('$aH2O')
-            !k=k*aH2OmolperL*LWC*mol2part
+            !k=k*aH2OmolperL*actLWC*mol2part
           CASE ('$RO2aq')
             M=SUM(Conc(RO2aq))
-            !if(ireac==21368) print*, 'aq ro2 M=',M
-            !WRITE(333,*) ' nRO2aq=',SIZE(RO2aq)
-            !DO i=1,SIZE(RO2aq)
-            !  WRITE(333,*) i, RO2aq(i)
-            !END DO
-            !stop
           CASE ('$+M','$(+M)')
             M=SUM(Conc)
             IF (ALLOCATED(ReactionSystem(iReac)%TBidx)) THEN
@@ -605,6 +419,21 @@
 
       END IF
 
+      IF (ReactionSystem(iReac)%nInActEd/=0) THEN
+        SELECT CASE (ReactionSystem(iReac)%InActEductSpc(1))
+          CASE ('[H2O]')
+            M=M*H2O
+          CASE ('[N2]')
+            M=M*N2
+          CASE ('[O2]')
+            M=M*O2
+          CASE ('[aH2O]')
+            M=M*aH2OmolperL*LWC*mol2part
+          CASE DEFAULT
+            !STOP
+        END SELECT
+      END IF
+      !
     END SUBROUTINE EffectiveMolecularity
     !
     !=========================================================================!
@@ -991,8 +820,7 @@
       !temp
       REAL(RealKind) :: rRcT
 
-      rRcT = rRcal*T(6)
-      kf   = Const(1) * EXP(Const(2)*T(8) - Const(3)*rRcT)
+      kf   = Const(1) * EXP(Const(2)*T(8) - Const(3)*rRcal*T(6))
 
       IF ( ReactionSystem(iReac)%bR ) THEN
         ! backward without extra coef, equiv constant nessesarry
@@ -1002,7 +830,10 @@
         rK_eq = EXP(+DelGFE(iReac)) * rFacEq**(-sumBAT(iReac))
         k     = kf * rK_eq
         !print*, ' deb:: rK_eq,Delgfe,rFacEq = ',rK_eq,rK_eq,rFacEq
+      ELSE IF( ReactionSystem(iReac)%brX ) THEN
+        k     = Const(1) * EXP(Const(2)*T(8) - Const(3)*rRcal * T(6))
       ELSE
+        rRcT  = rRcal*T(6)
         k     = Const(1) * EXP(Const(2)*T(8) - Const(3)*rRcT)
       END IF
     END SUBROUTINE TempXCompute
@@ -1023,8 +854,8 @@
      
       IF ( ReactionSystem(iReac)%bR ) THEN
         ! reverse reaction using equiv constant
-        DeRdT  = sumBAT(iReac)*T(6) + DDelGFEdT(iReac)   ! (23) Perini
-        Dkcoef = (DfRdT + DeRdT)*T(6)
+        DeRdT  = - sumBAT(iReac)*T(6) - DDelGFEdT(iReac)   ! (23) Perini
+        Dkcoef = (DfRdT - DeRdT)*T(6)
       ELSE
         Dkcoef = DfRdT*T(6)
       END IF
@@ -1179,49 +1010,16 @@
       log10_Pr    = LOG10(Pr/(ONE-Pr))
 
       cTroe = -0.40d0 - 0.67d0*log10_Fcent    ! will be used for deriv too 
-      n1Troe =  0.75d0 - 1.27d0*log10_Fcent
+      nTroe =  0.75d0 - 1.27d0*log10_Fcent
+      dTroe =  0.14d0
       
-      FACtroe = (log10_Pr + cTroe) / (n1Troe - dTroe*(log10_Pr + cTroe))
+      FACtroe = (log10_Pr + cTroe) / (nTroe - dTroe*(log10_Pr + cTroe))
 
       logF_Troe  = log10_Fcent / (ONE + FACtroe*FACtroe)
       TroeFactor = Pr * TEN**logF_Troe
     
     END FUNCTION TroeFactor
 
-
-    FUNCTION TroeFactorVec(T)
-      !OUT
-      REAL(RealKind) :: TroeFactorVec(RTind%nTroe)
-      !IN
-      REAL(RealKind) :: T(:)
-      !TEMP
-      REAL(RealKind) :: Fcent(RTind%nTroe),     &
-                      & logF_Troe(RTind%nTroe), &
-                      & FACtroe(RTind%nTroe)
-
-
-    
-      Fcent = (ONE - RTpar%T1) * EXP(-T(1)/RTpar%T2) &
-            &      + RTpar%T1  * EXP(-T(1)/RTpar%T3) &
-            &      +             EXP(-T(6)*RTpar%T4)
-      
-      vlog10_Fcent = LOG10(Fcent)
-      vlog10_Pr    = LOG10(vPr(RTind%iTroe)/(ONE-vPr(RTind%iTroe)))
-
-      vcTroe  = -0.40d0 - 0.67d0*vlog10_Fcent    ! will be used for deriv too 
-      vn1Troe =  0.75d0 - 1.27d0*vlog10_Fcent
-      
-      FACtroe = (vlog10_Pr+vcTroe) / (vn1Troe-dTroe*(vlog10_Pr+vcTroe))
-
-      logF_Troe  = vlog10_Fcent / (ONE+FACtroe*FACtroe)
-      TroeFactorVec = vPr(RTind%iTroe) * TEN**logF_Troe
-
-      !print*,' vlog10_Fcent(1),vlog10_Pr(1),FACtroe(1),logF_Troe(1)'
-      !print*, vlog10_Fcent(1),vlog10_Pr(1),FACtroe(1),logF_Troe(1)
-      !print*, vcTroe(1), vn1Troe(1), dTroe
-      !stop
-    
-    END FUNCTION TroeFactorVec
 
     FUNCTION DiffTroeFactor(Dk0dT,DkinfdT,dFTL_dT,T)
       REAL(RealKind) :: DiffTroeFactor
@@ -1239,48 +1037,19 @@
 
       log10_Prc   = log10_Pr + cTroe
 
-      DlogF_Troedlog_Pr = - TWO*n1Troe*log10_Fcent*log10_Prc             &
-                        &       * ( n1Troe - dTroe*log10_Prc )           &
-                        &  / (  n1Troe**2 - TWO*n1Troe*dTroe*log10_Prc +  &
+      DlogF_Troedlog_Pr = - TWO*nTroe*log10_Fcent*log10_Prc             &
+                        &       * ( nTroe - dTroe*log10_Prc )           &
+                        &  / (  nTroe**2 - TWO*nTroe*dTroe*log10_Prc +  &
                         &      (dTroe**2 + ONE)*log10_Prc*log10_Prc  )**2
 
       Dlog_F_TroedT     = DlogF_Troedlog_Pr * dlog10_PrdT
-      tmplog10          = log10_Prc   / (n1Troe - dTroe*log10_Prc)
+      tmplog10          = log10_Prc   / (nTroe - dTroe*log10_Prc)
       log10_FTroe       = log10_Fcent / (ONE   + (tmplog10*tmplog10))
 
       DiffTroeFactor    = TEN**log10_FTroe * (dFTL_dT + Pr*ln10*Dlog_F_TroedT)
 
     END FUNCTION DiffTroeFactor
 
-    FUNCTION DTroeFactorVec(Dk0dT,DkinfdT,dFTL_dT,T)
-      REAL(RealKind) :: DTroeFactorVec(RTind%nTroe)
-      !IN
-      REAL(RealKind) :: Dk0dT(:), DkinfdT(:), dFTL_dT(:)
-      REAL(RealKind) :: T(:)
-      !TEMP
-      REAL(RealKind), DIMENSION(RTind%nTroe) :: dlog10_PrdT, log10_Prc, tmplog10
-      REAL(RealKind), DIMENSION(RTind%nTroe) :: DlogF_Troedlog_Pr, Dlog_F_TroedT
-      REAL(RealKind), DIMENSION(RTind%nTroe) :: log10_FTroe
-
-      ! Troe mechanism
-
-      dlog10_PrdT = rln10*(Dk0dT(RTind%iTroe) - DkinfdT(RTind%iTroe))*T(6)
-
-      log10_Prc   = vlog10_Pr + cTroe
-
-      DlogF_Troedlog_Pr = - TWO*n1Troe*vlog10_Fcent*log10_Prc             &
-                        &       * ( n1Troe - dTroe*log10_Prc )           &
-                        &  / (  n1Troe**2 - TWO*n1Troe*dTroe*log10_Prc + &
-                        &      (dTroe**2 + ONE)*log10_Prc*log10_Prc  )**2
-
-      Dlog_F_TroedT  = DlogF_Troedlog_Pr * dlog10_PrdT
-      tmplog10       = log10_Prc   / (n1Troe - dTroe*log10_Prc)
-      log10_FTroe    = vlog10_Fcent / (ONE   + (tmplog10*tmplog10))
-
-      DTroeFactorVec = TEN**log10_FTroe * ( dFTL_dT(RTind%iTroe) &
-      &              + vPr(RTind%iTroe) * ln10*Dlog_F_TroedT )
-
-    END FUNCTION DTroeFactorVec
 
     SUBROUTINE UpdateTempArray(TempArr,Temperature)
       REAL(RealKind) :: Temperature 

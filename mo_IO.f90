@@ -61,11 +61,11 @@ MODULE mo_IO
       IF(ImpEuler/=1) THEN
         WRITE(*,*)   '  Tolerance:   '
         WRITE(*,*)   ''
-        WRITE(*,'(A34,2X,E23.14)')   '      relative Rosenbrock        = ',RtolROW
-        WRITE(*,'(A34,2X,E23.14)')   '      absolute (gaseous species) = ',AtolGas
-        IF (ntAqua>0) WRITE(*,'(A34,2X,E23.14)')   '      absolute (aqueous species) = ',AtolAqua
-        IF ( combustion ) THEN
-          WRITE(*,'(A34,2X,E23.14)')   '      absolute Temperature       = ',AtolTemp
+        WRITE(*,'(A34,2X,Es8.2)')   '      relative Rosenbrock        = ',RtolROW
+        WRITE(*,'(A34,2X,Es8.2)')   '      absolute (gaseous species) = ',AtolGas
+        IF (ntAqua>0) WRITE(*,'(A34,2X,Es8.2)')   '      absolute (aqueous species) = ',AtolAqua
+        IF ( TempEq ) THEN
+          WRITE(*,'(A34,2X,Es8.2)')   '      absolute Temperature       = ',AtolTemp
         END IF
       END IF
       WRITE(*,*)   ''

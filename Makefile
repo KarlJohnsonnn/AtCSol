@@ -1,4 +1,4 @@
-IN1=M_DEF_Mac2
+IN1=M_DEF_MacWilli
 
 include $(IN1) 
 

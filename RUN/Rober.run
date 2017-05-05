@@ -3,7 +3,7 @@
   pHSet = 1                        ! berechne pH Wert zu Beginn
   LWCLevelmax = 2.0d-8            ! minimaler LWC Wert [l/cm3]
   LWCLevelmin = 3.0d-4            ! maximaler LWC Wert [l/cm3]
-  constLWC = 1                     ! 0 = konstanter LWC wert, 0 /= pseudo LWC funktion wird benutzt
+  constLWC = .false.                     ! 0 = konstanter LWC wert, 0 /= pseudo LWC funktion wird benutzt
   Ladebalken = 1                   ! 0 = kein ladebalken, 0 /= ladebalken aktiv
   ErrorLog = 0                      ! 0 = no error output, 0 /= error output direkt auf bildschirm
   MatrixPrint = .false.            ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
@@ -32,7 +32,7 @@
   AtolAqua = 1.0d-7                             ! abs. Toleranzen für aquatische Stoffe
   Error_Est= 2
   PI_StepSize = .false.
-  solveLA = 'cl'                                ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
+  solveLA = 'ex'                                ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
   ODEsolver = 'METHODS/TSRosWRodas3.fort'
   !ODEsolver ='LSODE'    ! Rosenbrock-Wanner Verfahrenskoeffizienten
   ImpEuler = 0                                  ! 0=kein impliziter Euler, 1=impliziter Euler (kein ROW!!)

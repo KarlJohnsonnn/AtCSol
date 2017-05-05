@@ -25,7 +25,6 @@ MODULE Sparse_Mod
   USE mo_MPI
   USE mo_control
   USE Kind_Mod
-  USE mo_reac,          ONLY: combustion
   !
   IMPLICIT NONE 
   ! 
@@ -40,9 +39,9 @@ MODULE Sparse_Mod
     INTEGER, ALLOCATABLE  :: DiagPtr_P(:)       ! permuted pos of diag entries
     INTEGER, ALLOCATABLE  :: DiagPtr_R(:)       ! permuted pos of rate entries
     INTEGER, ALLOCATABLE  :: DiagPtr_C(:)       ! permuted pos of conenctations
-    INTEGER, ALLOCATABLE  :: RowVectorPtr(:)    ! for combustion matrix ( -U^T*D_c )
-    INTEGER, ALLOCATABLE  :: ColVectorPtr(:)    ! for combustion matrix ( ~K )
-    INTEGER               :: XPtr=-42           ! for combustion matrix ( X )
+    INTEGER, ALLOCATABLE  :: RowVectorPtr(:)    ! for TempEq matrix ( -U^T*D_c )
+    INTEGER, ALLOCATABLE  :: ColVectorPtr(:)    ! for TempEq matrix ( ~K )
+    INTEGER               :: XPtr=-42           ! for TempEq matrix ( X )
     INTEGER, ALLOCATABLE  :: Permu(:)           ! permutation vector (markowitz)
     INTEGER, ALLOCATABLE  :: InvPer(:)          ! invers permutation (inv markowitz)
     INTEGER, ALLOCATABLE  :: LUperm(:)          ! 
@@ -76,6 +75,8 @@ MODULE Sparse_Mod
   &                    , B                & ! coef matrix of products
   &                    , BA               & ! B-A
   &                    , BAT                ! Transpose(B-A)
+  
+  TYPE(CSR_Matrix_T) :: TB_sparse ! sparse matrix containing thirdbody 
   !
   TYPE(CSR_Matrix_T) :: Jac_CC
 
@@ -188,7 +189,7 @@ MODULE Sparse_Mod
     
    
     IF ( EXTENDED ) THEN
-      IF ( combustion ) THEN
+      IF ( TempEq ) THEN
         ALLOCATE(CSR%DiagPtr(n+m+1))
         ALLOCATE(CSR%DiagPtr_P(n+m+1))
       ELSE
@@ -200,7 +201,7 @@ MODULE Sparse_Mod
       CSR%DiagPtr_R = -11
       CSR%DiagPtr_C = -11
     ELSE
-      IF ( combustion ) THEN
+      IF ( TempEq ) THEN
         ALLOCATE(CSR%DiagPtr(m+1))
         ALLOCATE(CSR%DiagPtr_P(m+1))
       ELSE
@@ -945,7 +946,7 @@ MODULE Sparse_Mod
   SUBROUTINE SparseAdd(MatC,MatA,MatB,Sub)
     TYPE(CSR_Matrix_T), INTENT(IN)    :: MatA, MatB
     TYPE(CSR_Matrix_T), INTENT(INOUT) :: MatC
-    LOGICAL, OPTIONAL,  INTENT(IN)    :: Sub
+    CHARACTER, OPTIONAL,  INTENT(IN)    :: Sub
     !
     ! Temp variables
     INTEGER, ALLOCATABLE :: tmpCol(:)
@@ -953,45 +954,83 @@ MODULE Sparse_Mod
     REAL(RealKind), ALLOCATABLE :: tmpBVal(:)
     REAL(RealKind), ALLOCATABLE :: tmpVal(:)
     INTEGER :: lenColIndA, lenColIndB
-    INTEGER :: i
+    INTEGER :: i, ii, j, jj, k ,kk
     !
     ALLOCATE(tmpBVal(MatB%RowPtr(MatB%m+1)-1))
-    IF (PRESENT(Sub)) THEN
+    IF (Sub=='-') THEN
       tmpBVal = -MatB%Val
     ELSE
       tmpBVal = MatB%Val
     END IF
     !
     DO i=1,MatC%m
-      lenColIndA = MatA%RowPtr(i+1)-MatA%RowPtr(i)
-      lenColIndB = MatB%RowPtr(i+1)-MatB%RowPtr(i)
-
-      ALLOCATE(tmpCol(lenColIndA+lenColIndB))
-      ALLOCATE(tmpVal(lenColIndA+lenColIndB))
-
-      tmpCol = 0
-      tmpVal = ZERO
-
-      tmpCol = [ MatA%ColInd(MatA%RowPtr(i):MatA%RowPtr(i+1)-1), &
-               & MatB%ColInd(MatB%RowPtr(i):MatB%RowPtr(i+1)-1)  ]
-
-      tmpVal = [ MatA%Val(MatA%RowPtr(i):MatA%RowPtr(i+1)-1), &
-               &  tmpBVal(MatB%RowPtr(i):MatB%RowPtr(i+1)-1)  ]
-
-      ALLOCATE(Perm(SIZE(tmpCol)))
-      Perm   = 0
-      
-      CALL sort2(tmpCol,Perm)
-      tmpVal = tmpVal(Perm)
-      CALL CompressList(tmpCol,tmpVal)
-
-      MatC%Val(MatC%RowPtr(i):MatC%RowPtr(i+1)-1)=tmpVal
-      !
-      DEALLOCATE(tmpCol,tmpVal,Perm)
+      DO ii=MatC%RowPtr(i),MatC%RowPtr(i+1)-1
+        DO jj=MatA%RowPtr(i),MatA%RowPtr(i+1)-1
+          IF (MatA%ColInd(jj)==MatC%ColInd(ii)) THEN
+            MatC%Val(ii) = MatC%Val(ii)+MatA%Val(jj)
+          END IF
+        END DO
+        DO kk=MatB%RowPtr(i),MatB%RowPtr(i+1)-1
+          IF (MatB%ColInd(kk)==MatC%ColInd(ii)) THEN
+            MatC%Val(ii) = MatC%Val(ii)+tmpBVal(kk)
+          END IF
+        END DO
+      END DO
     END DO
     DEALLOCATE(tmpBVal)
   END SUBROUTINE SparseAdd
   !
+  SUBROUTINE SparseAdd_alt(MatA,MatB,MatC,Sub_Add)
+    ! A + B = C
+    TYPE(CSR_Matrix_T) :: MatA, MatB
+    TYPE(CSR_Matrix_T), INTENT(INOUT) :: MatC
+    CHARACTER, INTENT(IN) :: Sub_Add
+    !
+    INTEGER, ALLOCATABLE :: tmpCol(:)
+    INTEGER, ALLOCATABLE :: perm(:)
+    REAL(RealKind), ALLOCATABLE :: tmpBVal(:)
+    REAL(RealKind), ALLOCATABLE :: tmpVal(:)
+    INTEGER :: lenColIndA, lenColIndB
+    INTEGER :: i
+    !
+    IF ((Sub_Add=='-').OR.(Sub_Add=='+')) THEN
+      IF (Sub_Add=='-') THEN
+        ALLOCATE(tmpBVal(MatB%RowPtr(MatB%m+1)-1))
+        tmpBVal=-MatB%Val
+      ELSE
+        tmpBVal=MatB%Val
+      END IF
+    ELSE
+      WRITE(*,*) 'Sub_Add should be "-" or "+" !!'
+      CALL FinishMPI()
+      STOP 'STOP'
+    END IF
+    !
+    DO i=1,MatC%m
+      lenColIndA=MatA%RowPtr(i+1)-MatA%RowPtr(i)
+      lenColIndB=MatB%RowPtr(i+1)-MatB%RowPtr(i)
+      ALLOCATE(tmpCol(lenColIndA+lenColIndB))
+      tmpCol=0
+      ALLOCATE(tmpVal(lenColIndA+lenColIndB))
+      tmpVal=ZERO
+      ALLOCATE(Perm(lenColIndA+lenColIndB))
+      Perm=0
+      tmpCol=(/MatA%ColInd(MatA%RowPtr(i):MatA%RowPtr(i+1)-1), &
+      &        MatB%ColInd(MatB%RowPtr(i):MatB%RowPtr(i+1)-1) /)
+      tmpVal=(/MatA%Val(MatA%RowPtr(i):MatA%RowPtr(i+1)-1),    &
+      &        tmpBVal(MatB%RowPtr(i):MatB%RowPtr(i+1)-1) /)
+      !
+      CALL sort2(tmpCol,Perm)
+      tmpVal=tmpVal(Perm)
+      CALL CompressList(tmpCol,tmpVal)
+      MatC%Val(MatC%RowPtr(i):MatC%RowPtr(i+1)-1)=tmpVal
+      !
+      DEALLOCATE(tmpCol)
+      DEALLOCATE(tmpVal)
+      DEALLOCATE(Perm)
+    END DO
+    DEALLOCATE(tmpBVal)
+  END SUBROUTINE SparseAdd_alt
   !
   ! SORT ALGORITHM FOR SYMBOLIC MATRIX*MATRIX CALC
   SUBROUTINE Sort(v)
@@ -1184,7 +1223,7 @@ MODULE Sparse_Mod
         IF      ( j==i ) THEN
           ! diagonal d(dCdt)/dC
           Miter%Val(jj) = ONE - hg*J1%Val(jj-cnt)
-        ELSE IF ( j==Miter%m.AND.combustion) THEN
+        ELSE IF ( j==Miter%m.AND.TempEq) THEN
           cnt = cnt + 1
         ELSE
           ! none diagonal  d(dCdt)/dC
@@ -1193,7 +1232,7 @@ MODULE Sparse_Mod
       END DO
     END DO
 
-    IF (combustion) THEN
+    IF (TempEq) THEN
       ! bottom row d(dTdt)/dC
       Miter%Val(Miter%RowVectorPtr) = - hg*J2
       ! right hand column d(dCdt)/dT
@@ -1221,13 +1260,13 @@ MODULE Sparse_Mod
     !------------------------------------------------------------------------------
     !
     !
-    IF ( combustion ) THEN
-      ndim = Jac%n + 1               ! number of rows/coloumns
-      nnz  = Jac%RowPtr(Jac%m+1)-1      &  ! nonzeros of Jacobian
+    IF ( TempEq ) THEN
+      ndim = Jac%n + 1                  ! number of rows/coloumns
+      nnz  = Jac%RowPtr(Jac%m+1)-1   &  ! nonzeros of Jacobian
       &       + Jac%m + Jac%n + 1       ! Dc,U^T and Dr,~K and X (down right)
     ELSE
-      ndim = Jac%n               ! number of rows/coloumns
-      nnz  = Jac%RowPtr(Jac%m+1)-1        ! nonzeros of Jacobian
+      ndim = Jac%n                      ! number of rows/coloumns
+      nnz  = Jac%RowPtr(Jac%m+1)-1      ! nonzeros of Jacobian
     END IF
 
     CALL New_CSR ( CL0 , ndim , ndim , nnz )
@@ -1235,13 +1274,13 @@ MODULE Sparse_Mod
     ALLOCATE(CL0%DiagPtr(ndim))
     CL0%DiagPtr  = -12
 
-    IF ( combustion ) THEN
+    IF ( TempEq ) THEN
       !
       DO i = 1 , ndim - 1
         CL0%RowPtr(i+1) = CL0%RowPtr(i) + (Jac%RowPtr(i+1)-Jac%RowPtr(i)) + 1
 
         CL0%ColInd( CL0%RowPtr(i):CL0%RowPtr(i+1)-1 ) =                           & 
-        &    (/ Jac%ColInd(Jac%RowPtr(i):(Jac%RowPtr(i+1)-1)) , ndim /)
+        &    [ Jac%ColInd(Jac%RowPtr(i):(Jac%RowPtr(i+1)-1)) , ndim ]
       END DO
       
       ! set last row (full row)
@@ -1251,8 +1290,8 @@ MODULE Sparse_Mod
       CALL SymbolicAdd(CL,Id,CL0)
       ALLOCATE(CL%RowVectorPtr(ndim-1))
       ALLOCATE(CL%ColVectorPtr(ndim-1))
-      CL%RowVectorPtr = -ONE
-      CL%ColVectorPtr = -ONE
+      CL%RowVectorPtr = -1
+      CL%ColVectorPtr = -1
       CL%Val          = ONE
     ELSE
       CALL SymbolicAdd(CL,Id,Jac)
@@ -1262,13 +1301,13 @@ MODULE Sparse_Mod
     CL%DiagPtr  = -12
     ! get diagonal pointer
     DO i = 1 , ndim
-      IF ( combustion .AND. i < ndim ) CL%ColVectorPtr(i)  = CL%RowPtr(i+1) - 1
+      IF ( TempEq .AND. i < ndim ) CL%ColVectorPtr(i)  = CL%RowPtr(i+1) - 1
       DO jj = CL%RowPtr(i) , CL%RowPtr(i+1)-1 
         j = CL%ColInd(jj)
         IF ( i == j ) CL%DiagPtr(i) = jj
       END DO
     END DO
-    IF ( combustion ) THEN
+    IF ( TempEq ) THEN
       CL%RowVectorPtr = [( i , i = CL%RowPtr(nDim),CL%RowPtr(nDim+1)-2 )]
       CL%XPtr = CL%DiagPtr(ndim)
     END IF
@@ -1288,7 +1327,7 @@ MODULE Sparse_Mod
     ! --- Set big Matrix dimensions and nonzeros 
     !------------------------------------------------------------------------------
     !
-    IF ( combustion ) THEN
+    IF ( TempEq ) THEN
       ndim   = A%m   + BAT%m+1          ! nummber of rows
       nnzBig = A%nnz + BAT%nnz     &    ! nonzeros of alpha and (beta-alpha)^T
       &        + 2*A%n + 2*BAT%n + 1    ! Dc,U^T and Dr,~K and X (down right)
@@ -1308,7 +1347,7 @@ MODULE Sparse_Mod
     EX%DiagPtr_C      = -13
 
     ! Allocate a full row vector and a full column vector
-    IF ( combustion ) THEN
+    IF ( TempEq ) THEN
       ALLOCATE(EX%ColVectorPtr(A%m))    ! | Vector
       ALLOCATE(EX%RowVectorPtr(BAT%m))  ! _ Vector
       EX%ColVectorPtr = -13
@@ -1327,7 +1366,7 @@ MODULE Sparse_Mod
     !         !--------------+--------------+------|
     !         |_             |              |     _|
     !
-    IF ( combustion ) THEN
+    IF ( TempEq ) THEN
 
       DO i = 1 , A%m 
 
@@ -1377,7 +1416,7 @@ MODULE Sparse_Mod
     ! miter = |   BAT_Mat    |  Diag_1_nS   |      |
     !         !--------------+--------------+------|
     !         |_             |              |     _|
-    ! same for combustion and atmopheric stuff
+    ! same for TempEq and atmopheric stuff
     DO i=1,BAT%m
 
       EX%RowPtr(A%m+i+1)  = EX%RowPtr(A%m+i) + BAT%RowPtr(i+1) - BAT%RowPtr(i) + 1
@@ -1401,7 +1440,7 @@ MODULE Sparse_Mod
     !         !--------------+--------------+------|
     !         |_             |     U^TD_c   |   1 _|
     !
-    IF ( combustion ) THEN
+    IF ( TempEq ) THEN
 
       EX%RowPtr(ndim+1) = EX%RowPtr(ndim) + A%n+1
       
@@ -1434,7 +1473,7 @@ MODULE Sparse_Mod
     LU%Val( LU%DiagPtr_R )  = invD_r
     LU%Val( LU%DiagPtr_C )  = D_c
       
-    IF ( combustion ) THEN
+    IF ( TempEq ) THEN
       LU%Val( LU%ColVectorPtr ) = KVec
       LU%Val( LU%RowVectorPtr ) = UVec
       LU%Val( LU%XPtr )         = X
@@ -1493,7 +1532,7 @@ MODULE Sparse_Mod
     A%LUperm  = Permutation
     LU%LUperm = Permutation
 
-    IF ( combustion ) THEN
+    IF ( TempEq ) THEN
       LU%ColVectorPtr = Permutation( A%ColVectorPtr )
       LU%RowVectorPtr = Permutation( A%RowVectorPtr )
       LU%XPtr         = Permutation( A%XPtr )
@@ -1538,6 +1577,25 @@ MODULE Sparse_Mod
   END SUBROUTINE PrintSparseMatrix
   !
   !
+  SUBROUTINE PrintSparse1(A,FileName)
+    TYPE(CSR_Matrix_T), INTENT(IN) :: A
+    CHARACTER(*), OPTIONAL :: FileName
+    !
+    INTEGER :: i,j,jj
+    !
+    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName))//'.SparseMat',STATUS='UNKNOWN')
+    !
+    WRITE(99,*) A%m
+    WRITE(99,*) SIZE(A%ColInd)
+    ! 
+    DO i=1,A%m
+      DO jj=A%RowPtr(i),A%RowPtr(i+1)-1
+        j=A%ColInd(jj)
+        WRITE(99,'(1X,I5,1X,I5,10X,E23.14)') i,j,A%Val(jj)
+      END DO
+    END DO
+    CLOSE(99)
+  END SUBROUTINE PrintSparse1
   !
   SUBROUTINE WriteSparseMatrix(A,FileName,nr,ns)
     TYPE(CSR_Matrix_T), INTENT(IN) :: A
@@ -1642,11 +1700,11 @@ MODULE Sparse_Mod
       WRITE(99,*)
     END IF
 
-    IF (combustion) THEN
+    IF (TempEq) THEN
       IF (ALLOCATED(A%RowVectorPtr)) THEN
         WRITE(99,*) '###########################################################'
         WRITE(99,*) '# Array for indices pointing to the row vector             '
-        WRITE(99,*) '#                        (only combustion) '
+        WRITE(99,*) '#                        (only with TempEq) '
         WRITE(99,*) '###########################################################'
         WRITE(99,*) 'ROW_PTR'
         DO i=1,SIZE(A%RowVectorPtr)
@@ -1658,7 +1716,7 @@ MODULE Sparse_Mod
       IF (ALLOCATED(A%ColVectorPtr)) THEN
         WRITE(99,*) '###########################################################'
         WRITE(99,*) '# Array for indices pointing to the column vector          '
-        WRITE(99,*) '#                        (only combustion) '
+        WRITE(99,*) '#                        (only with TempEq) '
         WRITE(99,*) '###########################################################'
         WRITE(99,*) 'COL_PTR'
         DO i=1,SIZE(A%ColVectorPtr)
@@ -1670,7 +1728,7 @@ MODULE Sparse_Mod
       IF (A%XPtr/=-42) THEN
         WRITE(99,*) '###########################################################'
         WRITE(99,*) '# Index pointing to the X value           '
-        WRITE(99,*) '#                        (only combustion) '
+        WRITE(99,*) '#                        (only with TempEq) '
         WRITE(99,*) '###########################################################'
         WRITE(99,*) 'X_PTR'
         WRITE(99,'(1X,I12,10X,I12)') i,A%XPtr

@@ -200,37 +200,12 @@ SUBROUTINE InitMumps(A,givenPermutaion)
   !CALL dropout   
 END SUBROUTINE InitMumps
 
-SUBROUTINE MumpsLU(DiagVal)
-  REAL(RealKind), INTENT(IN) :: DiagVal(:)
-  !
-  !INTEGER :: i, idx_R, idx_D!, idx_C
-  !
-  !print*, 'ID=',MPI_ID, 'glob_diagPtr(:)=',glob_diagPtr,'loc_ratePtr(:)',loc_ratePtr(:),'Val(:)=',DiagRate(loc_ratePtr(:))
-  !call dropout
-  !
-  ! extended matrix version
-  !IF (solveLA=='ex') THEN
-  !  DO i=1,loc_rateCnt
-  !    print*,MPI_ID, 'i= ',i,'glob_diagPtr(i)',glob_diagPtr(i),'loc_ratePtr(i)',loc_ratePtr(i),'rVal=',DiagVal(loc_ratePtr(i))
-  !    idx_D=glob_diagPtr(loc_diagPtr(i))
-  !    idx_R=loc_ratePtr(i)
-  !    Mumps_Par%A_loc(idx_D)=DiagVal(idx_R)
-  !  END DO
-    !DO i=1,loc_concCnt
-    !  print*,MPI_ID, 'i= ',i,'glob_diagPtr(i)',glob_diagPtr(i+neq),'loc_concPtr(i)',loc_concPtr(i),'yVal=',DiagVal(loc_concPtr(i)-neq)
-    !  idx_D=glob_diagPtr(loc_diagPtr(i+loc_rateCnt))
-    !  idx_C=loc_concPtr(i)-neq
-    !  Mumps_Par%A_loc(idx_D)=DiagVal(idx_C)
-    !END DO
-  !ELSE
-  !
+SUBROUTINE MumpsLU(MatrixValues)
+  REAL(RealKind), INTENT(IN) :: MatrixValues(:)
+  
   ! classic matrix version
-    Mumps_Par%A=DiagVal(:)     ! ganze matrix wird übergeben
-  !END IF
-  !
-  !call dropout
-  !
-  Mumps_Par%JOB=2
+  Mumps_Par%A   = MatrixValues     ! ganze matrix wird übergeben
+  Mumps_Par%JOB = 2
   CALL DMUMPS(Mumps_Par)
 END SUBROUTINE MumpsLU
 

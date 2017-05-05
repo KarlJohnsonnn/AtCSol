@@ -73,7 +73,7 @@ FUNCTION pseudoLWC(RealTime)
   !            | |    |  |    | |                               Time
   !  LWCbounds 1 2    3  4    5 6
   !
-  IF (constLWC==0) THEN
+  IF (constLWC) THEN
     ! Constant LWC level 
     pseudoLWC=LWCconst
   ELSE
@@ -101,5 +101,31 @@ FUNCTION pseudoLWC(RealTime)
     END IF
   END IF
 END FUNCTION
+
+!**************************************************************************!
+!***
+!***  Computation of pH-Value (Hp concentration)
+!***
+!**************************************************************************!
+!
+  FUNCTION pHValue(ya)
+    USE mo_reac
+    USE mo_control
+    USE Kind_Mod
+
+    IMPLICIT NONE
+
+    REAL(RealKind) :: pHValue
+    REAL(RealKind) :: ya(ntAqua)   ! molar density
+    INTEGER :: jt
+
+    pHValue = ZERO
+    DO jt=1,ntAqua!-1 
+      IF (jt==Hp_ind) CYCLE
+      pHValue = pHValue + ya(jt) * Charge(jt)
+    END DO
+    pHValue = -pHValue
+  END FUNCTION pHValue
+
 
 END MODULE Meteo_Mod
