@@ -8,7 +8,9 @@
   ErrorLog = 0                      ! 0 = no error output, 0 /= error output direkt auf bildschirm
   MatrixPrint = .false.            ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
   DebugPrint  = .false.            ! DEBUGGING Rosenbrock 
-  NetCdfPrint = .true.            ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
+  NetCdfPrint = .false.            ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
+  TempEq      = .false. 
+  ChemKin     = .false.        ! input mechanism in ChemKin notation
  /END
  &FILES
   ChemFile = 'CHEM/INORG'             ! .sys Datei (ohne .sys angeben!)
@@ -38,6 +40,7 @@
   ImpEuler = 0                                  ! 0=kein impliziter Euler, 1=impliziter Euler (kein ROW!!)
   ODEsolver = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
   !ODEsolver = 'LSODE'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
+  Vectorized = .true.
  /END
  &ORDERING
   OrderingStrategie  = 8                  ! 8=Markowitz(SparseLU) , 1,..,7=Mumps Orderings  

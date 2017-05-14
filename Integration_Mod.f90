@@ -98,6 +98,7 @@ MODULE Integration_Mod
     !
     CHARACTER(14) :: fmt0
     CHARACTER(17) :: fmt1
+    CHARACTER(10) :: swMethod
     !
     !-----------------------------
     ! LSODE Parameter
@@ -114,8 +115,8 @@ MODULE Integration_Mod
     !
     IF ( TempEq ) THEN
       !--- initial temperature
-      Y0(nDIM)      = Temperature0     ! = 750 [K] aus speedchem debug
-      Y(nDIM)       = Temperature0     ! = 750 [K]
+      Y0(nDIM) = Temperature0     ! = 750 [K] aus speedchem debug
+      Y(nDIM)  = Temperature0     ! = 750 [K]
       
       !--- malloc gibbs energy, derivates
       ALLOCATE( GFE(nspc)   , DGFEdT(nspc)   )
@@ -225,127 +226,120 @@ MODULE Integration_Mod
     CALL TransposeSparse( BAT , BA )    ! transpose BA:        BAT = Transpose(BA) 
     !do k=1,size(ba%val); print*, 'BAVAL=',BA%Val(k); end do
     !stop
+    IF ( TRIM(method(1:7)) == 'METHODS' .OR. &
+    &    TRIM(method(1:7)) == 'bwEuler' ) THEN
+      !---- Get Rosenbrock Parameters
+      CALL SetRosenbrockMethod( RCo , method )  
+  
+      !----------------------------------------------------------
+      ! ----------- Beginning with symbolic phase --------------
+      !----------------------------------------------------------
+    
+      StartTimer = MPI_WTIME()            ! start timer for symb phase
+  
+      ! we need to calculate the Jacobian for both versions 'cl' and 'ex' to
+      ! calculate an initial stepsize based on 2nd derivative (copy of MATLABs ode23s)
+      ! symbolic mult for Jacobian Jac = [ BAT * Ones_nR * A * Ones_nS ], 
+      ! add diagonal entries and set them to zero
+      CALL SymbolicMult( BAT , A , tmpJacCC )  
+      CALL SparseID(Id,nspc)                    
+      CALL SymbolicAdd(Jac_CC,Id,tmpJacCC)
+      CALL Free_Matrix_CSR(Id)
+      CALL Free_Matrix_CSR(tmpJacCC)
+  
+      ! Set symbolic structure of iteration matrix for Row-Method
+      ! also assign constant matrix parts like (beta-alpha)^T, alpha
+      IF ( CLASSIC ) THEN
+        CALL BuildSymbolicClassicMatrix(  Miter , Jac_CC  , RCo%ga )
+      ELSE
+        CALL BuildSymbolicExtendedMatrix( Miter , A , BAT , RCo%ga ) 
+      END IF
+  
+      ! Choose ordering/factorisation strategie and do symb LU fact
+      IF ( useMUMPS ) THEN 
+        ! Use MUMPS to factorise and solve     
+        ! Convert compressed row format to row index format for MUMPS
+        CALL CompRowToIndRow( Miter , MiterFact )
+        CALL InitMumps( MiterFact ) 
+  
+        IF ( MatrixPrint ) THEN
+          CALL CSRToSpRowColD   ( temp_LU_Dec , Miter ) 
+          CALL PermuToInvPer    ( InvPermu   , Mumps_Par%SYM_PERM )
+          CALL SymbLU_SpRowColD ( temp_LU_Dec , InvPermu )        
+          CALL RowColDToCSR     ( LU_Miter   , temp_LU_Dec , nspc , neq ) 
+        END IF
+  
+      ELSE IF ( useSparseLU ) THEN
+        ! Permutation given by Markowitz Ordering strategie
+        CALL CSRToSpRowColD( temp_LU_Dec , Miter) 
+
+        IF (OrderingStrategie==8) THEN
+
+          CALL SymbLU_SpRowColD_M ( temp_LU_Dec )        
+
+        ELSE 
+
+          ALLOCATE(PivOrder(temp_LU_Dec%n))
+          PivOrder = -90
+          
+          ! Pivots bis neq in reihenfolge 1,2,...,neq
+          IF ( EXTENDED ) THEN
+            PivOrder(     1 : neq      ) = [(i , i = 1     , neq  )]
+            PivOrder( neq+1 : neq+nDIM ) = [(i , i = neq+1 , neq+nDIM )]
+          ELSE
+            PivOrder(     1 : nDIM     ) = [(i , i = 1     , nDim )]
+          END IF
+          CALL SymbLU_SpRowColD ( temp_LU_Dec , PivOrder)
+
+        END IF
+        CALL RowColDToCSR       ( LU_Miter , temp_LU_Dec , nspc , neq )
+  
+        ! Get the permutation vector LU_Perm and map values of Miter
+        ! to the permuted LU matrix
+        CALL Get_LU_Permutaion  ( LU_Perm , LU_Miter , Miter , nspc , neq )
+        
+        ! For the extended case one can save the values of alpha and 
+        ! (beta-alpha)^T and just copy them for each iteration in ROS
+        IF ( EXTENDED ) THEN
+          ALLOCATE(LUValsFix(LU_Miter%nnz))
+          LUvalsFix = LU_Miter%Val
+        END IF
+      END IF
+      CALL Free_SpRowColD( temp_LU_Dec )
+
+      
+      IF (MPI_ID==0) THEN
+        IF (MatrixPrint) THEN
+          CALL WriteSparseMatrix(Miter,'MATRICES/Miter_'//TRIM(BSP)//'_'//solveLA,neq,nspc)
+          CALL WriteSparseMatrix(LU_Miter,'MATRICES/LU_Miter_'//TRIM(BSP)//'_'//solveLA,neq,nspc)
+          stop 'after writesparsematrix'
+        END IF
+        WRITE(*,*) '  Symbolic-phase................ done'
+        WRITE(*,*) ' '
+      END IF
+      TimeSymbolic = MPI_WTIME() - StartTimer   ! stop timer for symbolic matrix calculations
+
+      ! ---- Calculate first reaction rates
+      CALL ReactionRatesAndDerivative( Tspan(1) , Y0 , Rate , DRatedT )
+      Y = MAX( ABS(Y) , eps ) * SIGN( ONE , Y )    ! |y| >= eps
+      
+      ! ---- Calculate values of Jacobian
+      StartTimer  = MPI_WTIME()
+      CALL Jacobian_CC(Jac_CC , BAT , A , Rate , Y )
+      TimeJac     = TimeJac + MPI_WTIME() - StartTimer
+      Output%npds = Output%npds + 1
+       
+    END IF
 
     SELECT CASE (TRIM(method(1:7)))
 
       CASE('METHODS')
-       
-        !---- Get Rosenbrock Parameters
-        CALL SetRosenbrockMethod( RCo , method )  
     
-        !----------------------------------------------------------
-        ! ----------- Beginning with symbolic phase --------------
-        !----------------------------------------------------------
-      
-        StartTimer = MPI_WTIME()            ! start timer for symb phase
-    
-        ! we need to calculate the Jacobian for both versions 'cl' and 'ex' to
-        ! calculate an initial stepsize based on 2nd derivative (copy of MATLABs ode23s)
-        ! symbolic mult for Jacobian Jac = [ BAT * Ones_nR * A * Ones_nS ], 
-        ! add diagonal entries and set them to zero
-        CALL SymbolicMult( BAT , A , tmpJacCC )  
-        CALL SparseID(Id,nspc)                    
-        CALL SymbolicAdd(Jac_CC,Id,tmpJacCC)
-        CALL Free_Matrix_CSR(Id)
-        CALL Free_Matrix_CSR(tmpJacCC)
-    
-        ! Set symbolic structure of iteration matrix for Row-Method
-        ! also assign constant matrix parts like (beta-alpha)^T, alpha
-        IF ( CLASSIC ) THEN
-          CALL BuildSymbolicClassicMatrix(  Miter , Jac_CC  , RCo%ga )
-        ELSE
-          CALL BuildSymbolicExtendedMatrix( Miter , A , BAT , RCo%ga ) 
-        END IF
-    
-        ! Choose ordering/factorisation strategie and do symb LU fact
-        IF ( useMUMPS ) THEN 
-          ! Use MUMPS to factorise and solve     
-          ! Convert compressed row format to row index format for MUMPS
-          CALL CompRowToIndRow( Miter , MiterFact )
-          CALL InitMumps( MiterFact ) 
-    
-          IF ( MatrixPrint ) THEN
-            CALL CSRToSpRowColD   ( temp_LU_Dec , Miter ) 
-            CALL PermuToInvPer    ( InvPermu   , Mumps_Par%SYM_PERM )
-            CALL SymbLU_SpRowColD ( temp_LU_Dec , InvPermu )        
-            CALL RowColDToCSR     ( LU_Miter   , temp_LU_Dec , nspc , neq ) 
-          END IF
-    
-        ELSE IF ( useSparseLU ) THEN
-          ! Permutation given by Markowitz Ordering strategie
-          CALL CSRToSpRowColD( temp_LU_Dec , Miter) 
-
-          IF (OrderingStrategie==8) THEN
-
-            CALL SymbLU_SpRowColD_M ( temp_LU_Dec )        
-
-          ELSE 
-
-            ALLOCATE(PivOrder(temp_LU_Dec%n))
-            PivOrder = -90
-            
-            ! Pivots bis neq in reihenfolge 1,2,...,neq
-            IF ( EXTENDED ) THEN
-              PivOrder(     1 : neq      ) = [(i , i = 1     , neq  )]
-              PivOrder( neq+1 : neq+nDIM ) = [(i , i = neq+1 , neq+nDIM )]
-            ELSE
-              PivOrder(     1 : nDIM     ) = [(i , i = 1     , nDim )]
-            END IF
-            CALL SymbLU_SpRowColD ( temp_LU_Dec , PivOrder)
-
-          END IF
-          CALL RowColDToCSR       ( LU_Miter , temp_LU_Dec , nspc , neq )
-    
-          ! Get the permutation vector LU_Perm and map values of Miter
-          ! to the permuted LU matrix
-          CALL Get_LU_Permutaion  ( LU_Perm , LU_Miter , Miter , nspc , neq )
-          
-          ! For the extended case one can save the values of alpha and 
-          ! (beta-alpha)^T and just copy them for each iteration in ROS
-          IF ( EXTENDED ) THEN
-            ALLOCATE(LUValsFix(LU_Miter%nnz))
-            LUvalsFix = LU_Miter%Val
-          END IF
-        END IF
-        CALL Free_SpRowColD( temp_LU_Dec )
-
-        IF (MatrixPrint) THEN
-          CALL WriteSparseMatrix(Miter,'MATRICES/Miter_'//TRIM(BSP)//'_'//solveLA,neq,nspc)
-          CALL WriteSparseMatrix(LU_Miter,'MATRICES/LU_Miter_'//TRIM(BSP)//'_'//solveLA,neq,nspc)
-          WRITE(*,*) '  Writing matrices to file: ','MATRICES/Miter_'//TRIM(BSP)//'_'//solveLA
-          WRITE(*,*) '                            ','MATRICES/LU_Miter_'//TRIM(BSP)//'_'//solveLA
-          stop 'after writesparsematrix'
-        END IF
-        
-        IF (MPI_ID==0) WRITE(*,*) '  SYMBOLIC PHASE................ done'
-        TimeSymbolic = MPI_WTIME() - StartTimer   ! stop timer for symbolic matrix calculations
-    
-        ! ---- Calculate first reaction rates
-        CALL Rates( Tspan(1) , Y0 , Rate , DRatedT )
-        Y = MAX( ABS(Y) , eps ) * SIGN( ONE , Y )    ! |y| >= eps
-        
-        ! ---- Calculate values of Jacobian
-        StartTimer  = MPI_WTIME()
-        CALL Jacobian_CC(Jac_CC , BAT , A , Rate , Y )
-        TimeJac     = TimeJac + MPI_WTIME() - StartTimer
-        Output%npds = Output%npds + 1
-       
         !---- Calculate a first stepsize based on 2nd deriv.
         CALL InitialStepSize( h , hmin , absh , Jac_CC , Rate  &
         &                   , Tspan(1) , Y(1:nspc) , RCo%pow  )
      
         !
-        ! future stuff (PI-stepsize control)
-        ! set for normal case
-        PI_norm%Kp        = 0.13d0
-        PI_norm%KI        = ONE/15.0d0        
-        PI_norm%ThetaMAX  = TWO         
-        PI_norm%rho       = 1.2d0 
-        ! set for rejected case
-        PI_rej%Kp         = ZERO
-        PI_rej%KI         = rFIVE        
-        PI_rej%ThetaMAX   = TWO        
-        PI_rej%rho        = 1.2d0 
         !===============================================================================
         !=================================THE MAIN LOOP=================================
         !===============================================================================
@@ -379,7 +373,8 @@ MODULE Integration_Mod
             &               , RCo           &       ! Rosenbrock parameter
             &               , error         &       ! error value
             &               , errind        &       ! max error component
-            &               , Y             )       ! new concentration 
+            &               , Y             &       ! new concentration 
+            &               , Euler=.FALSE. )       ! new concentration 
             !
             tnew  = t + h
             !
@@ -392,11 +387,7 @@ MODULE Integration_Mod
             Output%nSolves    = Output%nSolves    + RCo%nStage
             !
             !
-            IF ( PI_StepSize .AND. Output%nSteps>1 ) THEN
-              failed = (error > h*PI_rej%rho*RtolRow)
-            ELSE
-              failed = (error > ONE)
-            END IF
+            failed = (error > ONE)
             !
             IF (failed) THEN               !failed step
               ! Accept the solution only if the weighted error is no more than the
@@ -411,11 +402,7 @@ MODULE Integration_Mod
                 STOP '....Integration_Mod '
               END IF
               !
-              IF ( PI_StepSize .AND. Output%nSteps>1  ) THEN
-                CALL  PI_StepsizeControl(absh,RtolRow,error,errorOld,h,hOld,PI_rej,RCo)
-              ELSE
-                absh  = MAX( hmin , absh * MAX( rTEN , 0.8d0 * (ONE/error)**RCo%pow) )
-              END IF
+              absh  = MAX( hmin , absh * MAX( rTEN , 0.8d0 * (ONE/error)**RCo%pow) )
               h     = absh
               done  = .FALSE.
             ELSE                            !succ. step
@@ -426,6 +413,7 @@ MODULE Integration_Mod
           !
           !
           IF ( NetCdfPrint ) THEN 
+            TimeNetCDFA = MPI_WTIME()
             IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
               iStpNetCDF  = iStpNetCDF + 1
               zen = Zenith(t)
@@ -434,7 +422,6 @@ MODULE Integration_Mod
                 wetRad  = (Pi34*actLWC/SPEK(1)%Number)**(rTHREE)*1.0d-1
               END IF
               ! save data in NetCDF File
-              TimeNetCDFA = MPI_WTIME()
               CALL SetOutputNCDF(  Y,    yNcdf, t ,  actLWC)
               !
               CALL StepNetCDF   ( t                                &
@@ -464,15 +451,11 @@ MODULE Integration_Mod
           IF ( done ) EXIT
           !
           !-- If there were no failures compute a new h.
-          IF ( PI_StepSize ) THEN
-            CALL PI_StepsizeControl(absh,RtolRow,error,errorOld,h,hOld,PI_norm,RCo)
+          tmp = 1.25d0  * error**RCo%pow
+          IF ( TWO * tmp > ONE ) THEN
+            absh  = absh / tmp
           ELSE
-            tmp = 1.25d0  * error**RCo%pow
-            IF ( TWO * tmp > ONE ) THEN
-              absh  = absh / tmp
-            ELSE
-              absh  = absh * TWO
-            END IF
+            absh  = absh * TWO
           END IF
           !
           !-- Advance the integration one step.
@@ -485,15 +468,6 @@ MODULE Integration_Mod
 
         END DO MAIN_LOOP_ROSENBROCK_METHOD  ! MAIN LOOP
     
-        TimeIntegrationE  = MPI_WTIME() - TimeIntegrationA
-        !
-        ! DEALLOCATE Mumps instance
-        IF ( useMUMPS ) THEN
-          mumps_par%JOB = -2
-          CALL DMUMPS( mumps_par )
-        END IF
-
-
       CASE('LSODE')
 
         TimeIntegrationA=MPI_WTIME()
@@ -542,6 +516,7 @@ MODULE Integration_Mod
 
           ! save data
           IF ( NetCdfPrint ) THEN 
+            TimeNetCDFA = MPI_WTIME()
             iStpNetCDF  = iStpNetCDF + 1
             zen = Zenith(t)
             IF ( ntAqua > 0 ) THEN
@@ -550,7 +525,6 @@ MODULE Integration_Mod
             END IF
 
             ! save data in NetCDF File
-            TimeNetCDFA = MPI_WTIME()
             CALL SetOutputNCDF(  Y , yNcdf, t , actLWC)
           
             CALL StepNetCDF (   t                      &
@@ -581,7 +555,6 @@ MODULE Integration_Mod
         
         END DO MAIN_LOOP_LSODE
 
-        TimeIntegrationE  = MPI_WTIME() - TimeIntegrationA
         CALL Progress(100) ! last * needs an extra call
 
 
@@ -633,6 +606,7 @@ MODULE Integration_Mod
 
           ! save data
           IF ( NetCdfPrint ) THEN 
+            TimeNetCDFA = MPI_WTIME()
             iStpNetCDF  = iStpNetCDF + 1
             zen = Zenith(t)
             IF ( ntAqua > 0 ) THEN
@@ -641,7 +615,6 @@ MODULE Integration_Mod
             END IF
 
             ! save data in NetCDF File
-            TimeNetCDFA = MPI_WTIME()
             CALL SetOutputNCDF(  Y , yNcdf, t , actLWC)
           
             CALL StepNetCDF (   t                      &
@@ -672,17 +645,97 @@ MODULE Integration_Mod
         
         END DO MAIN_LOOP_LSODES
 
-        TimeIntegrationE  = MPI_WTIME() - TimeIntegrationA
         CALL Progress(100) ! last * needs an extra call
 
 
+      CASE ('bwEuler')
+
+        h = maxStp
+        
+        BACKWARD_EULER: DO
+          
+          !-- Stretch the step if within 10% of tfinal-t.
+          IF ( 1.05d0*h >= Tspan(2)-t ) THEN
+            h    = Tspan(2) - t
+            done = .TRUE.
+          END IF
+
+          CALL Rosenbrock(  Y0            &       ! current concentration
+          &               , t             &       ! current time
+          &               , h             &       ! stepsize
+          &               , RCo           &       ! Rosenbrock parameter
+          &               , error         &       ! error value
+          &               , errind        &       ! max error component
+          &               , Y             &       ! new concentration 
+          &               , Euler=.TRUE.  )       ! specifies backward Euler method
+
+          tnew = t + h
+          IF (done) THEN
+            tnew = Tspan(2)         ! Hit end point exactly.
+            h    = tnew - t         ! Purify h.
+          END IF
+
+          Output%nRateEvals = Output%nRateEvals + 1
+          Output%nSolves    = Output%nSolves + 1
+          Output%nsteps     = Output%nsteps + 1
+
+          IF ( NetCdfPrint ) THEN 
+            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
+              iStpNetCDF  = iStpNetCDF + 1
+              zen = Zenith(t)
+              IF ( ntAqua > 0 ) THEN
+                actLWC  = pseudoLWC(t)
+                wetRad  = (Pi34*actLWC/SPEK(1)%Number)**(rTHREE)*1.0d-1
+              END IF
+              ! save data in NetCDF File
+              TimeNetCDFA = MPI_WTIME()
+              CALL SetOutputNCDF(  Y,    yNcdf, t ,  actLWC)
+              !
+              CALL StepNetCDF   ( t                                &
+              &                 , yNcdf                            &
+              &                 , itime_NetCDF                     &
+              &                 , (/ actLWC                        &
+              &                    , h                             &
+              &                    , SUM(Y(1:ntGas))               &
+              &                    , SUM(Y(ntGas+1:ntGas+ntAqua))  &
+              &                    , wetRad                        &
+              &                    , zen                        /) &
+              &                 , errind                           &
+              &                 , SUM(y(iDiag_Schwefel))           &
+              &                 , error                            )
+              !
+              TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
+            END IF
+          END IF
+
+          !-- Call progress bar.
+          IF ( Bar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
+            iBar = iBar + 1         ! iBar runs from 0 to 100
+            CALL Progress(iBar)
+          END IF
+
+          !-- Termination condition for the main loop.
+          IF ( done ) EXIT
+            
+          !-- Advance the integration one step.
+          t   = tnew
+          Y0  = Y
+
+        END DO BACKWARD_EULER
 
       CASE DEFAULT
         
-        WRITE(*,*) ' No other methods implemented jet. Use Rosenbrock or LSODE'
+        WRITE(*,*) ' No other methods implemented jet. Use Rosenbrock, LSODE[S] or backward Euler'
 
     END SELECT
+    TimeIntegrationE  = MPI_WTIME() - TimeIntegrationA
 
+    !
+    ! DEALLOCATE Mumps instance
+    IF ( useMUMPS ) THEN
+      mumps_par%JOB = -2
+      CALL DMUMPS( mumps_par )
+    END IF
   END SUBROUTINE Integrate
   
  
@@ -742,7 +795,7 @@ MODULE Integration_Mod
 
 
     ! MASS CONSERVATION
-    CALL Rates( T , Y , Rate , DRate)
+    CALL ReactionRatesAndDerivative( T , Y , Rate , DRate)
     CALL DAXPY_sparse( dCdt , BAT , Rate , Y_e )  ! [mol/cm3/s]
     
     YDOT(1:nspc) =  dCdt

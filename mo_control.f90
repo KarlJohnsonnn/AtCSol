@@ -82,6 +82,7 @@ INTEGER        :: nOutP
       REAL(RealKind) :: Time_Read=0.0d0
       REAL(RealKind) :: TimeSymbolic=0.0d0
       REAL(RealKind) :: TimeNetCDF=0.0d0
+      REAL(RealKind) :: TimeErrCalc=0.0d0
   
       REAL(RealKind) :: TimeIntegrationA=0.0d0
       REAL(RealKind) :: TimeIntegrationE=0.0d0
@@ -131,9 +132,7 @@ INTEGER        :: nOutP
 !-----------------------------------------------------------------
 !
 !---  constants
-    REAL(RealKind), PARAMETER :: mol2part   = 6.02295d17         &
-&                              , GasConst_R = 0.082056d0         &   ! [in l*atm/mol/K]
-&                              , HOUR       = 3600.d0            &
+    REAL(RealKind), PARAMETER :: HOUR       = 3600.d0            &
 &                              , secday     = 4.32d04            &
 &                              , mONE       = -1.d0              &
 &                              , Pi         = 4.0d0*ATAN(1.0d0)  &
@@ -162,7 +161,9 @@ INTEGER        :: nOutP
 &                             ,  TEN     =    10.0d0  ,   rTEN     =   ONE/TEN     &
 &                             ,  ELEVN   =    11.0d0  ,   rELEVN   =   ONE/ELEVN   &
 &                             ,  TWELV   =    12.0d0  ,   rTWELV   =   ONE/TWELV   &
-&                             , TWENTY   =    20.0d0  ,   rTWENTY  =   ONE/TWENTY
+&                             , TWENTY   =    20.0d0  ,   rTWENTY  =   ONE/TWENTY  &
+&                             , mTHIRTY  =   -30.0d0  &
+&                             , rm300    = mONE/300.d0,   r300     =   ONE/300.d0
 !
 !--- Orders of magnitude
   REAL(RealKind), PARAMETER ::   nano    =     1.0d-09    &
@@ -175,6 +176,9 @@ INTEGER        :: nOutP
 !--- Natural logarithms
   REAL(RealKind), PARAMETER ::    ln10   =     LOG(TEN)    &
 &                             ,  rln10   = ONE/LOG(TEN)
+!
+!--- minimum values if there is no sun
+  REAL(RealKind), PARAMETER ::    EyChiZmin  =  9.357d-14
 !
 !
 !--- Unit Conversion constants

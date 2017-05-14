@@ -1740,6 +1740,7 @@ MODULE Sparse_Mod
     END IF
 
     CLOSE(99)
+    WRITE(*,*) '  Writing matrices to file: ',TRIM(FileName)
   END SUBROUTINE WriteSparseMatrix
   !
   !

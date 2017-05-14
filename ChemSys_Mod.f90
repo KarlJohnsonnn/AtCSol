@@ -191,7 +191,7 @@ MODULE Chemsys_Mod
   INTEGER, ALLOCATABLE :: RO2idxG(:) , RO2idxA(:)
   !
   !
-  REAL(RealKind) :: aH2O
+  !REAL(RealKind) :: aH2O
   !
   REAL(RealKind), ALLOCATABLE :: sumBAT(:)         ! sum_j=1,n_s (b_ij-a_ij),  i el. N_R
   !
@@ -251,114 +251,6 @@ MODULE Chemsys_Mod
 999 CONTINUE
   END SUBROUTINE ReadSpecies
   !
-  !========
-  SUBROUTINE mkArray(Arr,Typen)
-    INTEGER :: Arr(47)
-    TYPE(NReacType_T) :: Typen
-    !
-    !
-    Arr(1)=Typen%GasPhoto
-    Arr(2)=Typen%GasPhotAB
-    Arr(3)=Typen%GasPhotABC
-    Arr(4)=Typen%GasPhotMCM
-    Arr(5)=Typen%GasConst
-    Arr(6)=Typen%Temp
-    Arr(7)=Typen%Temp1
-    Arr(8)=Typen%Temp2
-    Arr(9)=Typen%Temp3
-    Arr(10)=Typen%Troe
-    Arr(11)=Typen%Troef
-    Arr(12)=Typen%TroeQ
-    Arr(13)=Typen%Spec1
-    Arr(14)=Typen%Spec2
-    Arr(15)=Typen%Spec3
-    Arr(16)=Typen%Spec4
-    Arr(17)=Typen%Spec1MCM
-    Arr(18)=Typen%Spec2MCM
-    Arr(19)=Typen%Spec3MCM
-    Arr(20)=Typen%SPec4MCM
-    Arr(21)=Typen%Spec5MCM
-    Arr(22)=Typen%Spec6MCM
-    Arr(23)=Typen%Spec7MCM
-    Arr(24)=Typen%Spec8MCM
-    Arr(25)=Typen%S4H2O
-    Arr(26)=Typen%Henry
-    Arr(27)=Typen%AquaPhoto
-    Arr(28)=Typen%AquaPhotAB
-    Arr(29)=Typen%AquaPhotABC
-    Arr(30)=Typen%AquaPhotMCM 
-    Arr(31)=Typen%AquaConst
-    Arr(32)=Typen%AquaTemp
-    Arr(33)=Typen%AquaTemp1
-    Arr(34)=Typen%AquaTemp2
-    Arr(35)=Typen%AquaTemp3
-    Arr(36)=Typen%Special
-    Arr(37)=Typen%DTemp
-    Arr(38)=Typen%DTemp1
-    Arr(39)=Typen%DTemp2
-    Arr(40)=Typen%DTemp3
-    Arr(41)=Typen%DTemp4
-    Arr(42)=Typen%DTemp5
-    Arr(43)=Typen%Meskhidze
-    Arr(44)=Typen%Equi
-    Arr(45)=Typen%SolidSpecial
-    Arr(46)=Typen%Parti
-    Arr(47)=Typen%Microphys
-  END SUBROUTINE mkArray
-  !
-  !
-  SUBROUTINE InitNReacType()
-    NTypes%GasPhoto=0
-    NTypes%GasPhotAB=0
-    NTypes%GasPhotABC=0
-    NTypes%GasPhotMCM=0
-    NTypes%GasConst=0
-    NTypes%Temp=0
-    NTypes%Temp1=0
-    NTypes%Temp2=0
-    NTypes%Temp3=0
-    NTypes%Troe=0
-    NTypes%Troef=0
-    NTypes%TroeQ=0
-    NTypes%Spec1=0
-    NTypes%Spec2=0
-    NTypes%Spec3=0
-    NTypes%Spec4=0
-    NTypes%Spec1MCM=0
-    NTypes%Spec2MCM=0
-    NTypes%Spec3MCM=0
-    NTypes%SPec4MCM=0
-    NTypes%Spec5MCM=0
-    NTypes%Spec6MCM=0
-    NTypes%Spec7MCM=0
-    NTypes%Spec8MCM=0
-    NTypes%S4H2O=0
-    NTypes%Henry=0
-    NTypes%AquaPhoto=0
-    NTypes%AquaPhotAB=0
-    NTypes%AquaPhotABC=0
-    NTypes%AquaPhotMCM =0
-    NTypes%AquaConst=0
-    NTypes%AquaTemp=0
-    NTypes%AquaTemp1=0
-    NTypes%AquaTemp2=0
-    NTypes%AquaTemp3=0
-    NTypes%Special=0
-    NTypes%DTemp=0
-    NTypes%DTemp1=0
-    NTypes%DTemp2=0
-    NTypes%DTemp3=0
-    NTypes%DTemp4=0
-    NTypes%DTemp5=0
-    NTypes%Meskhidze=0
-    NTypes%Equi=0
-    NTypes%SolidSpecial=0
-    NTypes%Parti=0
-    NTypes%Microphys=0
-    NTypes%SolidDTemp3=0
-  END SUBROUTINE InitNReacType
-  !
-  !
   SUBROUTINE ReadReaction(Out)
     LOGICAL :: Out
     !
@@ -367,12 +259,30 @@ MODULE Chemsys_Mod
     CHARACTER(LenLine) :: Line(1:4)
     CHARACTER(20) :: Type
     CHARACTER(40) :: TypeR
+    INTEGER :: idxFAC
     !
     !
     !
     iLine=0
     DO
       READ(InputUnit,'(a400)',IOSTAT=is) LocLine
+      idxFAC = INDEX(LocLine,'$')
+      IF ( idxFAC > 0 ) THEN
+        SELECT CASE (TRIM(LocLine(idxFAC:)))
+          CASE ('$H2','$O2N2','$M','$O2','$N2','$H2O','$O2O2','$aH2O','$+M','$(+M)','$RO2','$RO2aq')
+            IF (TRIM(LocLine(idxFAC:))=='$H2')   nFAC_H2   = nFAC_H2 + 1
+            IF (TRIM(LocLine(idxFAC:))=='$O2N2') nFAC_O2N2 = nFAC_O2N2 + 1
+            IF (TRIM(LocLine(idxFAC:))=='$M')    nFAC_M    = nFAC_M + 1
+            IF (TRIM(LocLine(idxFAC:))=='$O2')   nFAC_O2   = nFAC_O2 + 1
+            IF (TRIM(LocLine(idxFAC:))=='$N2')   nFAC_N2   = nFAC_N2 + 1
+            IF (TRIM(LocLine(idxFAC:))=='$H2O')  nFAC_H2O  = nFAC_H2O + 1
+            IF (TRIM(LocLine(idxFAC:))=='$O2O2') nFAC_O2O2 = nFAC_O2O2 + 1
+            IF (TRIM(LocLine(idxFAC:))=='$aH2O') nFAC_aH2O = nFAC_aH2O + 2
+            IF (TRIM(LocLine(idxFAC:))=='$RO2')  nFAC_RO2  = nFAC_RO2 + 1
+            IF (TRIM(LocLine(idxFAC:))=='$RO2aq') nFAC_RO2aq = nFAC_RO2aq + 1
+            nFACTOR = nFACTOR + 1
+        END SELECT
+      END IF
       IF (ABS(is)>0) THEN
         EXIT
       END IF
@@ -403,110 +313,122 @@ MODULE Chemsys_Mod
         CASE ('GAS')
           nreakgas=nreakgas+1
           CALL InsertReaction(ListRGas,Line,TypeR)
+          !print*, 'gasTypeR = ', TypeR
           SELECT CASE (TypeR)
-            !CASE ('PHOTO','PHOTMCM')
-            CASE ('PHOTO','PHOTAB','PHOTABC','PHOTMCM')
-              IF (TypeR=='PHOTO')    NTypes%GasPhoto=NTypes%GasPhoto+1
-              IF (TypeR=='PHOTAB')   NTypes%GasPhotAB=NTypes%GasPhotAB+1
-              IF (TypeR=='PHOTABC')  NTypes%GasPhotABC=NTypes%GasPhotABC+1
-              IF (TypeR=='PHOTMCM')  NTypes%GasPhotMCM=NTypes%GasPhotMCM+1
-              nreakgphoto=nreakgphoto+1
+            CASE ('PHOTAB','PHOTABC','PHOTMCM')
+              IF (TypeR=='PHOTAB')   nPHOTab  = nPHOTab  + 1
+              IF (TypeR=='PHOTABC')  nPHOTabc = nPHOTabc + 1
+              IF (TypeR=='PHOTMCM')  nPHOTmcm = nPHOTmcm + 1
+              nreakgphoto = nreakgphoto+1
             CASE ('CONST')
-              NTypes%GasConst=NTypes%GasConst+1
-              nreakgconst=nreakgconst+1
-            CASE ('TEMP','TEMP1','TEMP2','TEMP3')
-              IF (TypeR=='TEMP')  NTypes%Temp=NTypes%Temp+1
-              IF (TypeR=='TEMP1') NTypes%Temp1=NTypes%Temp1+1
-              IF (TypeR=='TEMP2') NTypes%Temp2=NTypes%Temp2+1
-              IF (TypeR=='TEMP3') NTypes%Temp3=NTypes%Temp3+1
-              nreakgtemp=nreakgtemp+1
-            CASE ('TROE','TROEF','TROEQ')
-              IF (TypeR=='TROE')  NTypes%Troe=NTypes%Troe+1
-              IF (TypeR=='TROEF') NTypes%TroeF=NTypes%TroeF+1
-              IF (TypeR=='TROEQ') NTypes%TRoeQ=NTypes%TroeQ+1
-              nreakgtroe=nreakgtroe+1
+              nCONST = nCONST + 1
+              nreakgconst = nreakgconst+1
+            CASE ('TEMP1','TEMP2','TEMP3')
+              IF (TypeR=='TEMP1') nTEMP1 = nTEMP1 + 1
+              IF (TypeR=='TEMP2') nTEMP2 = nTEMP2 + 1
+              IF (TypeR=='TEMP3') nTEMP3 = nTEMP3 + 1
+              IF (TypeR=='TEMP4') nTEMP4 = nTEMP4 + 1
+              nreakgtemp = nreakgtemp + 1
+            CASE ('TROE','TROEF','TROEQ','TROEQF','TROEXP','TROEMCM')
+              IF (TypeR=='TROE')    nTROE    = nTROE    + 1
+              IF (TypeR=='TROEF')   nTROEf   = nTROEf   + 1
+              IF (TypeR=='TROEQ')   nTROEq   = nTROEq   + 1
+              IF (TypeR=='TROEQF')  nTROEqf  = nTROEqf  + 1
+              IF (TypeR=='TROEXP')  nTROExp  = nTROExp  + 1
+              IF (TypeR=='TROEMCM') nTROEmcm = nTROEmcm + 1
+              nreakgtroe = nreakgtroe + 1
             CASE ('SPEC1','SPEC2','SPEC3','SPEC4','SPEC1MCM','SPEC2MCM',            &
             &     'SPEC3MCM','SPEC4MCM','SPEC5MCM','SPEC6MCM','SPEC7MCM','SPEC8MCM')
-              IF (TypeR=='SPEC1') NTypes%Spec1=NTypes%Spec1+1
-              IF (TypeR=='SPEC2') NTypes%Spec2=NTypes%Spec2+1
-              IF (TypeR=='SPEC3') NTypes%Spec3=NTypes%Spec3+1
-              IF (TypeR=='SPEC4') NTypes%Spec4=NTypes%Spec4+1
-              IF (TypeR=='SPEC1MCM') NTypes%Spec1MCM=NTypes%Spec1MCM+1
-              IF (TypeR=='SPEC2MCM') NTypes%Spec2MCM=NTypes%Spec2MCM+1
-              IF (TypeR=='SPEC3MCM') NTypes%Spec3MCM=NTypes%Spec3MCM+1
-              IF (TypeR=='SPEC4MCM') NTypes%Spec4MCM=NTypes%Spec4MCM+1
-              IF (TypeR=='SPEC5MCM') NTypes%Spec5MCM=NTypes%Spec5MCM+1
-              IF (TypeR=='SPEC6MCM') NTypes%Spec6MCM=NTypes%Spec6MCM+1
-              IF (TypeR=='SPEC7MCM') NTypes%Spec7MCM=NTypes%Spec7MCM+1
-              IF (TypeR=='SPEC8MCM') NTypes%Spec8MCM=NTypes%Spec8MCM+1
-              nreakgspec=nreakgspec+1
+              IF (TypeR=='SPEC1') nSPEC1 = nSPEC1 + 1
+              IF (TypeR=='SPEC2') nSPEC2 = nSPEC2 + 1
+              IF (TypeR=='SPEC3') nSPEC3 = nSPEC3 + 1
+              IF (TypeR=='SPEC4') nSPEC4 = nSPEC4 + 1
+              IF (TypeR=='SPEC1MCM') nSPEC1mcm = nSPEC1mcm + 1
+              IF (TypeR=='SPEC2MCM') nSPEC2mcm = nSPEC2mcm + 1
+              IF (TypeR=='SPEC3MCM') nSPEC3mcm = nSPEC3mcm + 1
+              IF (TypeR=='SPEC4MCM') nSPEC4mcm = nSPEC4mcm + 1
+              IF (TypeR=='SPEC5MCM') nSPEC5mcm = nSPEC5mcm + 1
+              IF (TypeR=='SPEC6MCM') nSPEC6mcm = nSPEC6mcm + 1
+              IF (TypeR=='SPEC7MCM') nSPEC7mcm = nSPEC7mcm + 1
+              IF (TypeR=='SPEC8MCM') nSPEC8mcm = nSPEC8mcm + 1
+              nreakgspec = nreakgspec + 1
             CASE ('S4H2O')
-              NTypes%S4H2O=NTypes%S4H2O+1
-              nreakgspec=nreakgspec+1
+              nS4H2O = nS4H2O + 1
+            CASE ('T1H2O')
+              nT1H2O = nT1H2O + 1
           END SELECT
         CASE ('HENRY')
-          nreakhenry=nreakhenry+1
-          NTypes%Henry=NTypes%Henry+1
+          nreakhenry = nreakhenry + 1
+          nHENRY = nHENRY + 1
           CALL InsertReaction(ListRHenry,Line,TypeR)
+          IF (TypeR=='TEMP1') nTEMP1 = nTEMP1 + 1
+          IF (TypeR=='TEMP2') nTEMP2 = nTEMP2 + 1
+          IF (TypeR=='TEMP3') nTEMP3 = nTEMP3 + 1
+          IF (TypeR=='CONST') nCONST = nCONST + 1
         CASE ('AQUA')
-          nreakaqua=nreakaqua+1
+          nreakaqua = nreakaqua+1
           CALL InsertReaction(ListRAqua,Line,TypeR)
           SELECT CASE (TypeR)
-            !CASE ('PHOTO','PHOTMCM')
-            CASE ('PHOTO','PHOTAB','PHOTABC','PHOTMCM')
-              IF (TypeR=='PHOTO')   NTypes%AquaPhoto=NTypes%AquaPhoto+1
-              IF (TypeR=='PHOTAB')  NTypes%AquaPhotAB=NTypes%AquaPhotAB+1
-              IF (TypeR=='PHOTABC') NTypes%AquaPhotABC=NTypes%AquaPhotABC+1
-              IF (TypeR=='PHOTMCM') NTypes%AquaPhotMCM=NTypes%AquaPhotMCM+1
-              nreakaphoto=nreakaphoto+1
+            CASE ('PHOTAB','PHOTABC','PHOTMCM')
+              IF (TypeR=='PHOTAB')   nPHOTab  = nPHOTab  + 1
+              IF (TypeR=='PHOTABC')  nPHOTabc = nPHOTabc + 1
+              IF (TypeR=='PHOTMCM')  nPHOTmcm = nPHOTmcm + 1
+              nreakaphoto = nreakaphoto + 1
             CASE ('CONST')
-              NTypes%AquaConst=NTypes%AquaConst+1
-              nreakaconst=nreakaconst+1
+              nCONST = nCONST + 1
+              nreakaconst = nreakaconst + 1
             CASE ('TEMP','Temp1''TEMP2','TEMP3')
-              IF (TypeR=='TEMP')   NTypes%AquaTemp=NTypes%AquaTemp+1
-              IF (TypeR=='TEMP1')   NTypes%AquaTemp1=NTypes%AquaTemp1+1
-              IF (TypeR=='TEMP2')   NTypes%AquaTemp2=NTypes%AquaTemp2+1
-              IF (TypeR=='TEMP3')   NTypes%AquaTemp3=NTypes%AquaTemp3+1
-              nreakatemp=nreakatemp+1
-            CASE ('SPECIAL')
-              NTypes%Special=NTypes%Special+1
-              nreakaspec=nreakaspec+1
+              IF (TypeR=='TEMP1') nTEMP1 = nTEMP1 + 1
+              IF (TypeR=='TEMP2') nTEMP2 = nTEMP2 + 1
+              IF (TypeR=='TEMP3') nTEMP3 = nTEMP3 + 1
+              IF (TypeR=='TEMP4') nTEMP4 = nTEMP4 + 1
+              nreakatemp = nreakatemp + 1
+            CASE ('ASPEC1','ASPEC2','ASPEC3','ASPEC4')
+              IF (TypeR=='ASPEC1') nASPEC1 = nASPEC1 + 1
+              IF (TypeR=='ASPEC2') nASPEC2 = nASPEC2 + 1
+              IF (TypeR=='ASPEC3') nASPEC3 = nASPEC3 + 1
+              IF (TypeR=='ASPEC4') nASPEC4 = nASPEC4 + 1
+            !CASE ('SPECIAL')
+            !  NTypes%Special=NTypes%Special+1
+            !  nreakaspec=nreakaspec+1
           END SELECT
         CASE ('DISS')
           nreakdissoc=nreakdissoc+1
           CALL InsertReaction(ListRDiss,Line,TypeR)
           SELECT CASE (TypeR)
-            CASE ('DTEMP','DTEMP1','DTEMP2','DTEMP3','DTEMP4','DTEMP5','MESKHIDZE')
-              IF (TypeR=='DTEMP')   NTypes%DTemp=NTypes%DTemp+1
-              IF (TypeR=='DTEMP1')   NTypes%DTemp1=NTypes%DTemp1+1
-              IF (TypeR=='DTEMP2')   NTypes%DTemp2=NTypes%DTemp2+1
-              IF (TypeR=='DTEMP3')   NTypes%DTemp3=NTypes%DTemp3+1
-              IF (TypeR=='DTEMP4')   NTypes%DTemp4=NTypes%DTemp4+1
-              IF (TypeR=='DTEMP5')   NTypes%DTemp5=NTypes%DTemp5+1
-              IF (TypeR=='MESKHIDZE')   NTypes%Meskhidze=NTypes%Meskhidze+1
+            CASE ('DCONST','DTEMP','DTEMP2','DTEMP3','DTEMP4','DTEMP5','MESKHIDZE')
+              IF (TypeR=='DCONST')   nDCONST = nDCONST + 1
+              IF (TypeR=='DTEMP')    nDTEMP  = nDTEMP  + 1
+              IF (TypeR=='DTEMP2')   nDTEMP2 = nDTEMP2 + 1
+              IF (TypeR=='DTEMP3')   nDTEMP3 = nDTEMP3 + 1
+              IF (TypeR=='DTEMP4')   nDTEMP4 = nDTEMP4 + 1
+              IF (TypeR=='DTEMP5')   nDTEMP5 = nDTEMP5 + 1
+              IF (TypeR=='MESKHIDZE') nMeskhidze = nMeskhidze + 1
           END SELECT
-        CASE ('SOLID')
-          nreaksolid=nreaksolid+1
-          CALL InsertReaction(ListRSolid,Line,TypeR)
-          SELECT CASE (TypeR)
-            CASE ('EQUI')
-              NTypes%Equi=NTypes%Equi+1
-              nreaksolidEqui=nreaksolidEqui+1
-            CASE ('DTEMP3')
-              NTypes%SolidDTemp3=NTypes%SolidDTemp3+1
-              nreaksolidtemp=nreaksolidtemp+1
-            CASE ('SPECIAL')
-              NTypes%SolidSpecial=NTypes%SolidSpecial+1
-              nreaksolidspec=nreaksolidspec+1
-          END SELECT
-        CASE ('PARTI')
-          NTypes%Parti=NTypes%Parti+1
-          NumberReactionsPartic=NumberReactionsPartic+1
-          CALL InsertReaction(ListRPartic,Line,TypeR)
-        CASE ('MICROPHYS')
-          NTypes%Microphys=NTypes%Microphys+1
-          NumberReactionsMicro=NumberReactionsMicro+1
-          CALL InsertReaction(ListRMicro,Line,TypeR)
+        !CASE ('SOLID')
+        !  nreaksolid = nreaksolid + 1
+        !  CALL InsertReaction(ListRSolid,Line,TypeR)
+        !  SELECT CASE (TypeR)
+        !    CASE ('EQUI')
+        !      NTypes%Equi=NTypes%Equi+1
+        !      nreaksolidEqui=nreaksolidEqui+1
+        !    CASE ('DTEMP3')
+        !      NTypes%SolidDTemp3=NTypes%SolidDTemp3+1
+        !      nreaksolidtemp=nreaksolidtemp+1
+        !    CASE ('SPECIAL')
+        !      NTypes%SolidSpecial=NTypes%SolidSpecial+1
+        !      nreaksolidspec=nreaksolidspec+1
+        !  END SELECT
+        !CASE ('PARTI')
+        !  NTypes%Parti=NTypes%Parti+1
+        !  NumberReactionsPartic=NumberReactionsPartic+1
+        !  CALL InsertReaction(ListRPartic,Line,TypeR)
+        !CASE ('MICROPHYS')
+        !  NTypes%Microphys=NTypes%Microphys+1
+        !  NumberReactionsMicro=NumberReactionsMicro+1
+        !  CALL InsertReaction(ListRMicro,Line,TypeR)
+      CASE DEFAULT
+        WRITE(*,*) '  Unknown reaction type: ', Type
       END SELECT
       Out=.FALSE.
     ELSE
@@ -1036,8 +958,18 @@ MODULE Chemsys_Mod
       WRITE(Unit,*) SIZE(ReactionSystem(iLoop)%Constants),                      &
                     ReactionSystem(iLoop)%Constants
       WRITE(Unit,*) 'FACTOR:  ',ReactionSystem(iLoop)%Factor
-      IF (ReactionSystem(iLoop)%Factor=='$RO2') hasRO2=.TRUE.
-      IF (ReactionSystem(iLoop)%Factor=='$RO2aq') hasRO2aq=.TRUE.
+
+      SELECT CASE (ReactionSystem(iLoop)%Factor)
+      !  CASE ('$H2','$O2N2','$M','$O2','$N2','$H2O','aH2O','$+M','$(+M)')
+      !    nFACTOR = nFACTOR + 1
+        CASE ('$RO2')
+          hasRO2  = .TRUE.
+      !    nFACTOR = nFACTOR + 1
+        CASE ('$RO2aq')
+          hasRO2aq = .TRUE.
+      !    nFACTOR  = nFACTOR + 1
+      END SELECT
+
       !
       IF (PRESENT(CK)) WRITE(Unit,*) 'EXTRA1:  ',ADJUSTL(TRIM(ReactionSystem(iLoop)%Line2))
       IF (PRESENT(CK)) WRITE(Unit,*) 'EXTRA2:  ',ADJUSTL(TRIM(ReactionSystem(iLoop)%Line3))
@@ -1249,9 +1181,10 @@ MODULE Chemsys_Mod
     pi43=4.0d0/3.0d0*PI
     !
     ! this is for mass transfer (accom , diffus term)
-    ALLOCATE( y_c1(nspc+ntkat), y_c2(nspc+ntkat) )
-    y_c1(1:ntGas)=5.0d-6
-    y_c2(1:ntGas)=5.0d-5
+    ALLOCATE( henry_diff(nspc+ntkat), henry_accom(nspc+ntkat) )
+    henry_diff = ZERO;    henry_accom = ZERO
+    henry_diff(1:ntGas)=5.0d-6
+    henry_accom(1:ntGas)=5.0d-5
     !
     !
     !=========================================================================
@@ -1296,8 +1229,8 @@ MODULE Chemsys_Mod
     !
     DO i=1,ntkat
       IF ( y_name(nspc+i)/='[aH2O]' )  THEN
-        y_c1(nspc+i)=5.d-6
-        y_c2(nspc+i)=5.d-5
+        henry_diff(nspc+i)=5.d-6
+        henry_accom(nspc+i)=5.d-5
       END IF
     END DO
     !
@@ -1309,9 +1242,9 @@ MODULE Chemsys_Mod
     IF (ntAqua>=1) ALLOCATE (AquaName(ntAqua))        ! aqueous phase species
     IF (ntkat >=1) ALLOCATE (PassName(ntkat))         ! passive phase species
     !
-    FORALL (jt=1:ntGas) GasName(jt)=ADJUSTL(y_name(jt))
-    FORALL (jt=1:ntAqua) AquaName(jt)=ADJUSTL(y_name(ntGas+jt))
-    FORALL (jt=1:ntKat) PassName(jt)=ADJUSTL(y_name(ntGas+ntAqua+jt))
+    FORALL ( jt=1:ntGas ) GasName(jt)  = ADJUSTL(y_name(jt))
+    FORALL ( jt=1:ntAqua) AquaName(jt) = ADJUSTL(y_name(ntGas+jt))
+    FORALL ( jt=1:ntKat ) PassName(jt) = ADJUSTL(y_name(ntGas+ntAqua+jt))
     !
     !=========================================================================
     !===  Set  Chemical DATA  
@@ -1320,22 +1253,22 @@ MODULE Chemsys_Mod
     !
     IF ( ntAqua>=1 ) THEN
       !---  Allocate arrays
-      ALLOCATE (Charge(ntAqua))             ! charge of ions
-      ALLOCATE (SolubInd(ntAqua))           ! solubility
-      ALLOCATE (MolMass(ntAqua))            ! molar mass of species
-      ALLOCATE (SpcDens(ntAqua))            ! density of species
-      ALLOCATE (OrgIndex(ntAqua))           ! carbon atoms
-      ALLOCATE (CC(ntAqua))                 ! compound class
-      ALLOCATE (ActIndex(ntAqua))           ! index for calculation of activity coefficient
+      ALLOCATE ( Charge(ntAqua),   &      ! charge of ions
+               & SolubInd(ntAqua), &      ! solubility
+               & MolMass(ntAqua),  &      ! molar mass of species
+               & SpcDens(ntAqua),  &      ! density of species
+               & OrgIndex(ntAqua), &      ! carbon atoms
+               & CC(ntAqua),       &      ! compound class
+               & ActIndex(ntAqua)  )      ! index for calculation of activity coefficient
   
       !---  Set default values
-      Charge(:)=0.d0
-      SolubInd(:)=0.d0
-      MolMass(:)=0.d0
-      SpcDens(:)=1.d0
-      OrgIndex(:)=0.d0
-      CC(:)='  '
-      ActIndex(:)=0.d0
+      Charge   = ZERO
+      SolubInd = ZERO
+      MolMass  = ZERO
+      SpcDens  = ONE
+      OrgIndex = ZERO
+      CC       = '  '
+      ActIndex = ZERO
       !
       !--------------------------------------------------------------
       !---  Determine Charges of Ions
@@ -1373,9 +1306,10 @@ MODULE Chemsys_Mod
     !---------------------------------
     CALL Read_EMISS( InitFileName , y_e(:) )
     CALL Read_GASini( InitFileName , InitValAct(1:nspc), InitValKat(:) )
+    ntKat = ntKatGas
     !
     !--- Read thermodynamic data,....
-    CALL Read_SpeciesData(y_c1,y_c2,DataFileName)
+    CALL Read_SpeciesData(henry_diff,henry_accom,DataFileName)
     !---------------------------------
     !
     !---  Read/Calculate aqua phase initials
@@ -1383,31 +1317,30 @@ MODULE Chemsys_Mod
     IF ( ntAqua>=1 ) THEN
       !
       CALL Read_AQUAini( InitValAct(ntGas+1:), InitValKat(:), InitFileName )
+      ntKat = ntKat + ntKatAqua
       CALL Read_AFRAC( InitAFrac, InitFileName )
       CALL Read_SPEK( SPEK, InitFileName)
-      !
-      !
-      LWC=pseudoLWC(tAnf)
-      aH2O=aH2OmolperL*LWC*mol2part 
-      !
-      IF ( ntKat>=1 ) THEN
+      
+      LWC  = pseudoLWC(tAnf)
+     
+      IF ( ntKatAqua>=1 ) THEN
         DO i=1,ntKat
           IF (y_name(nspc+i)=='[aH2O]') THEN
-            InitValKat(i)=InitValKat(i)*LWC*mol2part    ! convert fluessigwasser to molec/cm3
-            aH2O = InitValKat(i)
+            InitValKat(i) = InitValKat(i)*LWC*mol2part    ! convert aH2O [mol/L] to [molec/cm3]
           END IF
         END DO
       END IF
+
       !
       !-----------------------------------------
       ! calculate initial aqueus concentrations 
       !-----------------------------------------
-      InitValAct(ntGAS+1:)=1.0d-16
+      !InitValAct(ntGAS+1:)=1.0d-16     ! notwendig? (willi 10.5.)
       DO i=1,SIZE(InitAFrac)
         iPos=PositionSpeciesAll(InitAFrac(i)%Species)
         IF (iPos>0) THEN
           !
-          InitValAct(iPos) = SPEK(1)%Number*1.0d+03          &  ! [#/m3]
+          InitValAct(iPos) = SPEK(1)%Number * kilo          &  ! [#/m3]
           &                * InitAFrac(i)%Frac1              &  ! [g/g]
           &                * (pi43*(SPEK(1)%Radius)**3)      &  ! [m3]
           &                * SPEK(1)%Density                 &  ! [kg/m3]
@@ -1416,24 +1349,16 @@ MODULE Chemsys_Mod
         END IF
       END DO
     END IF
-    !
-    !----------------------------------
-    ! initial values of passive species 
-    !----------------------------------
-    DO i=1,SIZE(InitValKat)
-      IF (ListNonReac2(i)%Species/='[aH2O]') THEN
-        InitValKat(i)=InitValKat(i)*GasFac
-      END IF
-    END DO
+    
     !======================================================
     !---  Compute pH value and number of ions
     !---  Initial pH by charge balance 
     IF ( pHSet>=1.AND.ntAqua>0 )  THEN
       Kappa = pHValue(InitValAct(ntGas+1:))
-      IF ( Kappa>0.d0 )  THEN
-        InitValAct(Hp_ind)=Kappa
+      IF ( Kappa > ZERO )  THEN
+        InitValAct(Hp_ind)  = Kappa
       ELSE 
-        InitValAct(OHm_ind)=InitValAct(OHm_ind)+InitValAct(Hp_ind)-Kappa
+        InitValAct(OHm_ind) = InitValAct(OHm_ind) + InitValAct(Hp_ind) - Kappa
       END IF
     END IF
     !
@@ -1487,7 +1412,7 @@ MODULE Chemsys_Mod
     !-----------------------------------------------------------
     ! --- Aqua Phase thermodynamic data
     !
-    IF ( ntGAS>0 ) THEN
+    IF ( ntAQUA>0 ) THEN
       AQUA: DO 
         i=i+1
         CALL LineFile( Back,                                     &
@@ -1499,6 +1424,7 @@ MODULE Chemsys_Mod
         iPos=PositionSpeciesAll(SpeciesName)
         IF ( iPos>0 .AND. iPos<ntGAS+ntAQUA) THEN
           IF ( alpha==0.0d0 .AND. dg==0.0d0 ) CYCLE AQUA
+          !print*, ' wir sind nie hier'
           CC(iPos-ntGas)=ADJUSTL(TRIM(c2))
           y_acc(iPos)=1.0d-12/(3.0d0*dg)
           nue=SQRT(8.0d+03*8.313d0/Pi/mm)
@@ -1623,26 +1549,29 @@ MODULE Chemsys_Mod
     LOGICAL :: Back=.FALSE.
     !
     !
-    GASact=1.0d-20 
-    InAct=1.0d-20
+    GASact = 1.0d-20 
+    InAct  = 1.0d-20
     ! read initial values
     CALL OpenIniFile(FileName)
     DO
-      CALL LineFile( Back,                     &
-      &              Start1='BEGIN_GAS',       &
-      &              Start2='BEGIN_INITIAL',   &
-      &              End   ='END_INITIAL',     &
-      &              Name1 =SpeciesName, R1=c1 )
+      CALL LineFile( Back,                       &
+      &              Start1 = 'BEGIN_GAS',       &
+      &              Start2 = 'BEGIN_INITIAL',   &
+      &              End    = 'END_INITIAL',     &
+      &              Name1  = SpeciesName,       &
+      &              R1     = c1                 )
       IF (Back)   EXIT
       !
-      iPos=PositionSpeciesAll(SpeciesName)
-      !print*, ' debug hallo hallo', TRIM(SpeciesName), c1, back, iPos
+      iPos = PositionSpeciesAll(SpeciesName)
+      !print*, ' debug :: gas spc :: ', TRIM(SpeciesName), c1, back, iPos
       IF (iPos>0) THEN
-        IF (SpeciesName(1:1)=='[') THEN
-          InAct(iPos-nspc)=c1
+        SpeciesName = ADJUSTL(SpeciesName)
+        IF (SpeciesName(1:1)=='['.AND. LEN(TRIM(SpeciesName))<maxLENinActDuct) THEN
+          InAct(iPos-nspc) = c1
+          ntKatGas = ntKatGas + 1
         ELSE
           !iPos=PositionSpeciesAll(SpeciesName)
-          GASact(iPos)=c1
+          GASact(iPos) = c1
        END IF
       END IF
     END DO
@@ -1722,21 +1651,27 @@ MODULE Chemsys_Mod
     LOGICAL :: Back
     !
     ! Read initial values of aqua spc
+    AQUAact(:)=1.0d-16
     CALL OpenIniFile(FileName)
     DO
       CALL LineFile( Back,                    &
-      &              Start1='BEGIN_AQUA',     &
-      &              Start2='BEGIN_INITIAL',  &
-      &              End   ='END_INITIAL',    &
-      &              Name1=SpeciesName,R1=c1  )
+      &              Start1 = 'BEGIN_AQUA',   &
+      &              Start2 = 'BEGIN_INITIAL',&
+      &              End    = 'END_INITIAL',  &
+      &              Name1  = SpeciesName,    &
+      &              R1     = c1              )
       IF (Back)   EXIT
-      !
-      iPos=PositionSpecies(SpeciesName)
+      
+      iPos = PositionSpecies(SpeciesName)
+      SpeciesName = ADJUSTL(SpeciesName)
+
+      !print*, ' debug :: gas spc :: ', TRIM(SpeciesName), c1, back, iPos
       IF (iPos>0) THEN
-        IF (SpeciesName(1:1)=='[') THEN
+        IF (SpeciesName(1:1)=='['.AND. LEN(TRIM(SpeciesName))<maxLENinActDuct) THEN
           AquaInAct(iPos)=c1
+          ntKatAqua = ntKatAqua + 1
         ELSE
-          AquaAct(iPos)=c1
+          AquaAct(iPos) = c1
        END IF
       END IF
     END DO
@@ -2114,6 +2049,7 @@ MODULE Chemsys_Mod
     REAL(RealKind) :: PreFac !NumberSpecies
     CHARACTER(LenLine) :: Species
     CHARACTER(LEN(String)) :: LocString
+    INTEGER :: sbL, sbR
     !
     LocString=String
     NumSpec=1
@@ -2170,7 +2106,9 @@ MODULE Chemsys_Mod
       PosSpecies=SCAN(Species,SetSpecies)
       NumSpec=NumSpec+1
       IF (PosSpecies==1) THEN           
-        IF (Species(1:1)=='['.AND.LEN(TRIM(Species))<maxLENinActDuct) THEN
+        sbL = INDEX(TRIM(Species),'[')
+        sbR = INDEX(TRIM(Species),']')
+        IF (sbL==1 .AND. LEN(TRIM(Species))==sbR-sbL+1) THEN
           ! works if there's just one InActEduct
           InActDuct(1)%Koeff=PreFac
           InActDuct(1)%Species=Species
@@ -2325,6 +2263,7 @@ MODULE Chemsys_Mod
       &        LEN(TRIM(Species))<maxLENinActDuct) THEN
         PositionSpeciesAll=GetHash(ListNonReac,TRIM(ADJUSTL(Species)))    
         IF (PositionSpeciesAll>0) THEN
+          !PositionSpeciesAll=PositionSpeciesAll+ntGAS+ntAQUA+ntSOLID+ntPart
           PositionSpeciesAll=PositionSpeciesAll+ntGAS+ntAQUA+ntSOLID+ntPart
         END IF
       ! GAS
@@ -2641,6 +2580,9 @@ MODULE Chemsys_Mod
     &                                  LSolid, LPartic, LMicro
     INTEGER :: i, j, iList, TmpArraySize
     INTEGER :: nList
+
+    INTEGER :: icnt(47), icntFAC(10), iHen
+            
     !
     ! #Reactions
     neq= nreakgas     &
@@ -2691,11 +2633,16 @@ MODULE Chemsys_Mod
       nList=nList+1
       CompleteReactionList(nList)=LMicro
     END IF
+
+    ALLOCATE( ReacStruct(neq) )
+    ALLOCATE( ReactionTypes(neq) )
     !
-    ALLOCATE(ReacStruct(neq))
-    ALLOCATE(ReactionTypes(neq))
+    CALL AllocateRTarrays
     !
     i=1
+    iHen = 0
+    icnt(:)    = 0
+    icntFAC(:) = 0
     !
     DO iList=1,nList
       Current=>CompleteReactionList(iList)%Start
@@ -2707,6 +2654,15 @@ MODULE Chemsys_Mod
         ReacStruct(i)%Line2=Current%Line2
         ReacStruct(i)%Line3=Current%Line3
         ReacStruct(i)%Factor=Current%Factor
+         
+        !IF ( Current%Type == 'HENRY') THEN! .AND. Current%TypeConstant == 'CONST') THEN
+        !  print*, ' henry bla = ',Current%TypeConstant
+        !END IF
+
+        CALL GatherReacFACTOR(i,icntFAC,Current%Factor)
+
+        ! forward direaction
+        CALL GatherReacArrays(i,icnt,Current%Type,Current%TypeConstant,Current%Constants,.FALSE.)
         !
         TmpArraySize=SIZE(Current%Educt)
         ReacStruct(i)%nActEd=tmpArraySize
@@ -2734,8 +2690,13 @@ MODULE Chemsys_Mod
           ReacStruct(i)%direction='GA'
           ReacStruct(i)%HenrySpc=PositionSpeciesAll(ReacStruct(i)%Educt(1)%Species)
           !ReacStruct(i)%Constants(1)=ReacStruct(i)%Constants(1)
+
+          icnt(29) = icnt(29) + 1
+          RTind2%iHENRY(icnt(29),1) = i
+          RTind2%iHENRY(icnt(29),2) = PositionSpeciesAll(ReacStruct(i)%Educt(1)%Species)
+          RTind2%iHENRY(icnt(29),3) = i + 1
+          RTind2%iHENRY(icnt(29),4) = PositionSpeciesAll(ReacStruct(i)%Product(1)%Species)
         END IF
-        !
         !
         !
         TmpArraySize=SIZE(Current%Educt)
@@ -2744,6 +2705,9 @@ MODULE Chemsys_Mod
         DO j=1,TmpArraySize
           ReacStruct(i)%InActEduct(j)=Current%InActEduct(j)%Koeff
           ReacStruct(i)%InActEductSpc(j)=Current%InActEduct(j)%Species
+          IF ( Current%InActEduct(j)%Species /= '') THEN
+            nFirst_orderKAT = nFirst_orderKAT + 1
+          END IF
         END DO
         !
         TmpArraySize=SIZE(Current%InActProduct)
@@ -2755,11 +2719,17 @@ MODULE Chemsys_Mod
         ReacStruct(i)%nInActEd=Current%nInActEd
         ReacStruct(i)%nInActPro=Current%nInActPro
         !
-        ReacStruct(i)%SumAqCoef=SUM(Current%Educt(:)%Koeff)-1.0d0
+        ReacStruct(i)%SumAqCoef=SUM(Current%Educt(:)%Koeff)-ONE
         !
         !IF (TRIM(ADJUSTL(ReacStruct(i)%InActEductSpc(1)))=='[aH2O]') THEN 
         !  ReacStruct(i)%SumAqCoef=ReacStruct(i)%SumAqCoef+1
         !END IF
+        IF ( ReacStruct(i)%Type=='AQUA'.OR. ReacStruct(i)%Type=='DISS' ) THEN
+          IF ( ReacStruct(i)%SumAqCoef > ZERO ) THEN
+            nHOaqua = nHOaqua + 1
+          END IF
+        END IF
+        !
         ! for equilibrium reactions save <-- direction
         SELECT CASE (Current%Type)
           CASE ('DISS','HENRY')
@@ -2772,6 +2742,8 @@ MODULE Chemsys_Mod
             ReacStruct(i)%bR=.TRUE.
             ReacStruct(i)%Line3=Current%Line3
             ReacStruct(i)%Factor=Current%Factor
+            CALL GatherReacFACTOR(i,icntFAC,Current%Factor)
+           
             !
             TmpArraySize=SIZE(Current%Product)
             ReacStruct(i)%nActEd=TmpArraySize
@@ -2807,6 +2779,9 @@ MODULE Chemsys_Mod
             DO j=1,TmpArraySize
               ReacStruct(i)%InActEduct(j)=Current%InActProduct(j)%Koeff
               ReacStruct(i)%InActEductSpc(j)=Current%InActProduct(j)%Species
+              IF ( Current%InActProduct(j)%Species /= '') THEN
+                nFirst_orderKAT = nFirst_orderKAT + 1
+              END IF
             END DO
             !
             TmpArraySize=SIZE(Current%InActEduct)
@@ -2824,6 +2799,11 @@ MODULE Chemsys_Mod
             IF (TRIM(ADJUSTL(ReacStruct(i)%InActEductSpc(1)))=='[aH2O]') THEN 
               ReacStruct(i)%SumAqCoef=ReacStruct(i)%SumAqCoef+1
             END IF
+            IF ( ReacStruct(i)%Type=='AQUA'.OR. ReacStruct(i)%Type=='DISS' ) THEN
+              IF ( ReacStruct(i)%SumAqCoef > ZERO ) THEN
+                nHOaqua = nHOaqua + 1
+             END IF
+            END IF
             !
         END SELECT
         !
@@ -2831,7 +2811,259 @@ MODULE Chemsys_Mod
         i=i+1
       END DO
     END DO
+    
+    ! build the array for mass action products of inactive species (katalytic?)
+    ALLOCATE( first_orderKAT(nfirst_orderKAT,2) )
+    nFirst_orderKAT = 0
+
+    ! counting the aquatic reactions with more than one educt
+    ALLOCATE( RTind2%iHOaqua(nHOaqua), RTpar2%HOaqua(nHOaqua) )
+    nHOaqua = 0
+
+    DO i=1,neq
+      
+      IF ( ReacStruct(i)%InActEductSpc(1) /= '') THEN
+        nFirst_orderKAT = nFirst_orderKAT + 1
+        first_orderKAT(nfirst_orderKAT,1) = i
+        !first_orderKAT(nfirst_orderKAT,2) = PositionSpeciesAll(ReacStruct(i)%InActEductSpc(1))
+        first_orderKAT(nfirst_orderKAT,2) = PositionSpeciesAll(ReacStruct(i)%InActEductSpc(1)) - nspc
+      END IF
+      
+      IF ( ReacStruct(i)%Type=='AQUA'.OR. ReacStruct(i)%Type=='DISS' ) THEN
+        IF ( ReacStruct(i)%SumAqCoef > ZERO ) THEN
+          nHOaqua = nHOaqua + 1
+          RTind2%iHOaqua(nHOaqua) = i
+          RTpar2%HOaqua(nHOaqua)  = ReacStruct(i)%SumAqCoef
+        END IF
+      END IF
+
+    END DO
+    
+    !print*, ' nHenry = ',nHenry, nHenryga, nHenryag
+    !stop
   END SUBROUTINE AllListsToArray
+  !
+  SUBROUTINE GatherReacFACTOR(iR,icntFAC,Factor)
+    CHARACTER(*), INTENT(IN) :: Factor
+    INTEGER,      INTENT(IN) :: iR
+    INTEGER,      INTENT(INOUT) :: icntFAC(:)
+
+    SELECT CASE (Factor)
+      CASE ('$H2')
+        icntFAC(1) = icntFAC(1) + 1
+        RTind2%iFAC_H2(icntFAC(1)) = iR
+      CASE ('$O2N2')
+        icntFAC(2) = icntFAC(2) + 1
+        RTind2%iFAC_O2N2(icntFAC(2)) = iR
+      CASE ('$M')
+        icntFAC(3) = icntFAC(3) + 1
+        RTind2%iFAC_M(icntFAC(3)) = iR
+      CASE ('$O2')
+        icntFAC(4) = icntFAC(4) + 1
+        RTind2%iFAC_O2(icntFAC(4)) = iR
+      CASE ('$N2')
+        icntFAC(5) = icntFAC(5) + 1
+        RTind2%iFAC_N2(icntFAC(5)) = iR
+      CASE ('$H2O')
+        icntFAC(6) = icntFAC(6) + 1
+        RTind2%iFAC_H2O(icntFAC(6)) = iR
+      CASE ('$RO2')
+        icntFAC(7) = icntFAC(7) + 1
+        RTind2%iFAC_RO2(icntFAC(7)) = iR
+        hasRO2  = .TRUE.
+      CASE ('$O2O2')
+        icntFAC(8) = icntFAC(8) + 1
+        RTind2%iFAC_O2O2(icntFAC(8)) = iR
+      CASE ('$aH2O')
+        icntFAC(9) = icntFAC(9) + 1
+        RTind2%iFAC_aH2O(icntFAC(9)) = iR
+      CASE ('$RO2aq')
+        icntFAC(10) = icntFAC(10) + 1
+        RTind2%iFAC_RO2aq(icntFAC(10)) = iR
+        hasRO2aq = .TRUE.
+    END SELECT
+  END SUBROUTINE GatherReacFACTOR
+
+  SUBROUTINE GatherReacArrays(iR,icnt,Typ,TypeR,C,bR)
+    REAL(RealKind), INTENT(IN) :: C(:)
+    CHARACTER(*),   INTENT(IN) :: Typ
+    CHARACTER(*),   INTENT(IN) :: TypeR
+    INTEGER,        INTENT(IN) :: iR
+    LOGICAL,        INTENT(IN) :: bR
+    INTEGER,        INTENT(INOUT) :: icnt(47)
+
+    SELECT CASE ( TypeR )
+      CASE ('CONST')
+        icnt(1) = icnt(1) + 1
+        RTind2%iCONST(icnt(1))   = iR
+        RTpar2%CONST(icnt(1)) = C(1)
+      CASE ('PHOTAB') 
+        icnt(2) = icnt(2) + 1
+        RTind2%iPHOTab(icnt(2)) = iR
+        RTpar2%PHOTab(icnt(2),:) = C
+      CASE ('PHOTABC')
+        icnt(3) = icnt(3) + 1
+        RTind2%iPHOTabc(icnt(3)) = iR
+        RTpar2%PHOTabc(icnt(3),:) = C 
+      CASE ('PHOTMCM') 
+        icnt(4) = icnt(4) + 1
+        RTind2%iPHOTmcm(icnt(4)) = iR 
+        RTpar2%PHOTmcm(icnt(4),:) = C 
+      CASE ('TEMP1') 
+        icnt(5) = icnt(5) + 1
+        RTind2%iTEMP1(icnt(5)) = iR 
+        RTpar2%TEMP1(icnt(5),:) = C 
+      CASE ('TEMP2') 
+        icnt(6) = icnt(6) + 1
+        RTind2%iTEMP2(icnt(6)) = iR 
+        RTpar2%TEMP2(icnt(6),:) = C 
+      CASE ('TEMP3')
+        icnt(7) = icnt(7) + 1
+        RTind2%iTEMP3(icnt(7)) = iR 
+        RTpar2%TEMP3(icnt(7),:) = C 
+        !IF ( Typ == 'HENRY') THEN
+        !  icnt(7) = icnt(7) + 1
+        !  RTind2%iTEMP3(icnt(7)) = iR + 1
+        !  RTpar2%TEMP3(icnt(7),:) = C 
+        !END IF
+      CASE ('TEMP4') 
+        icnt(8) = icnt(8) + 1
+        RTind2%iTEMP4(icnt(8)) = iR 
+        RTpar2%TEMP4(icnt(8),:) = C 
+      CASE ('TROE')  
+        icnt(9) = icnt(9) + 1
+        RTind2%iTROE(icnt(9)) = iR 
+        RTpar2%TROE(icnt(9),:) = C 
+      CASE ('TROEF') 
+        icnt(10) = icnt(10) + 1
+        RTind2%iTROEf(icnt(10)) = iR  
+        RTpar2%TROEf(icnt(10),:) = C  
+      CASE ('TROEQ') 
+        icnt(11) = icnt(11) + 1
+        RTind2%iTROEq(icnt(11)) = iR 
+        RTpar2%TROEq(icnt(11),:) = C 
+      CASE ('TROEQF')
+        icnt(12) = icnt(12) + 1
+        RTind2%iTROEqf(icnt(12)) = iR 
+        RTpar2%TROEqf(icnt(12),:) = C 
+      CASE ('TROEXP')
+        icnt(13) = icnt(13) + 1
+        RTind2%iTROExp(icnt(13)) = iR 
+        RTpar2%TROExp(icnt(13),:) = C 
+      CASE ('TROEMCM') 
+        icnt(14) = icnt(14) + 1
+        RTind2%iTROEmcm(icnt(14)) = iR 
+        RTpar2%TROEmcm(icnt(14),:) = C 
+      CASE ('SPEC1') 
+        icnt(15) = icnt(15) + 1
+        RTind2%iSPEC1(icnt(15)) = iR 
+        RTpar2%SPEC1(icnt(15),:) = C 
+      CASE ('SPEC2') 
+        icnt(16) = icnt(16) + 1
+        RTind2%iSPEC2(icnt(16)) = iR 
+        RTpar2%SPEC2(icnt(16),:) = C 
+      CASE ('SPEC3') 
+        icnt(17) = icnt(17) + 1
+        RTind2%iSPEC3(icnt(17)) = iR 
+        RTpar2%SPEC3(icnt(17),:) = C 
+      CASE ('SPEC4') 
+        icnt(18) = icnt(18) + 1
+        RTind2%iSPEC4(icnt(18)) = iR 
+        RTpar2%SPEC4(icnt(18),:) = C 
+      CASE ('SPEC1MCM')
+        icnt(19) = icnt(19) + 1
+        RTind2%iSPEC1mcm(icnt(19)) = iR 
+        RTpar2%SPEC1mcm(icnt(19),:) = C 
+      CASE ('SPEC2MCM') 
+        icnt(20) = icnt(20) + 1
+        RTind2%iSPEC2mcm(icnt(20)) = iR 
+        RTpar2%SPEC2mcm(icnt(20),:) = C 
+      CASE ('SPEC3MCM') 
+        icnt(21) = icnt(21) + 1
+        RTind2%iSPEC3mcm(icnt(21)) = iR 
+        RTpar2%SPEC3mcm(icnt(21),:) = C 
+      CASE ('SPEC4MCM')
+        icnt(22) = icnt(22) + 1
+        RTind2%iSPEC4mcm(icnt(22)) = iR 
+        RTpar2%SPEC4mcm(icnt(22),:) = C 
+      CASE ('SPEC5MCM') 
+        icnt(23) = icnt(23) + 1
+        RTind2%iSPEC5mcm(icnt(23)) = iR 
+        RTpar2%SPEC5mcm(icnt(23),:) = C 
+      CASE ('SPEC6MCM') 
+        icnt(24) = icnt(24) + 1
+        RTind2%iSPEC6mcm(icnt(24)) = iR 
+        RTpar2%SPEC6mcm(icnt(24),:) = C 
+      CASE ('SPEC7MCM') 
+        icnt(25) = icnt(25) + 1
+        RTind2%iSPEC7mcm(icnt(25)) = iR 
+        RTpar2%SPEC7mcm(icnt(25),:) = C 
+      CASE ('SPEC8MCM') 
+        icnt(26) = icnt(26) + 1
+        RTind2%iSPEC8mcm(icnt(26)) = iR 
+        RTpar2%SPEC8mcm(icnt(26),:) = C 
+      CASE ('S4H2O') 
+        icnt(27) = icnt(27) + 1
+        RTind2%iS4H2O(icnt(27)) = iR 
+        RTpar2%S4H2O(icnt(27),:) = C 
+      CASE ('T1H2O') 
+        icnt(28) = icnt(28) + 1
+        RTind2%iT1H2O(icnt(28)) = iR 
+        RTpar2%T1H2O(icnt(28),:) = C 
+      CASE ('ASPEC1') 
+        icnt(30) = icnt(30) + 1
+        RTind2%iASPEC1(icnt(30)) = iR 
+        RTpar2%ASPEC1(icnt(30),:) = C 
+      CASE ('ASPEC2') 
+        icnt(31) = icnt(31) + 1
+        RTind2%iASPEC2(icnt(31)) = iR 
+        RTpar2%ASPEC2(icnt(31),:) = C 
+      CASE ('ASPEC3') 
+        icnt(32) = icnt(32) + 1
+        RTind2%iASPEC3(icnt(32)) = iR 
+        RTpar2%ASPEC3(icnt(32),:) = C 
+      CASE ('ASPEC4') 
+        icnt(33) = icnt(33) + 1
+        RTind2%iASPEC4(icnt(33)) = iR 
+        RTpar2%ASPEC4(icnt(33),:) = C(1)
+      CASE ('DCONST') 
+        icnt(34) = icnt(34) + 1
+        RTind2%iDCONST(icnt(34),1) = iR
+        RTind2%iDCONST(icnt(34),2) = iR + 1
+        RTpar2%DCONST(icnt(34),:)  = C 
+      CASE ('DTEMP')  
+        icnt(35) = icnt(35) + 1
+        RTind2%iDTEMP(icnt(35),1) = iR
+        RTind2%iDTEMP(icnt(35),2) = iR + 1
+        RTpar2%DTEMP(icnt(35),:)  = C 
+      CASE ('DTEMP2') 
+        icnt(36) = icnt(36) + 1
+        RTind2%iDTEMP2(icnt(36),1)  = iR
+        RTind2%iDTEMP2(icnt(36),2)  = iR + 1 
+        RTpar2%DTEMP2(icnt(36),:) = C 
+      CASE ('DTEMP3') 
+        icnt(37) = icnt(37) + 1
+        RTind2%iDTEMP3(icnt(37),1) = iR
+        RTind2%iDTEMP3(icnt(37),2) = iR + 1
+        RTpar2%DTEMP3(icnt(37),:)  = C 
+      CASE ('DTEMP4') 
+        icnt(38) = icnt(38) + 1
+        RTind2%iDTEMP4(icnt(38),1) = iR
+        RTind2%iDTEMP4(icnt(38),2) = iR + 1
+        RTpar2%DTEMP4(icnt(38),:)  = C 
+      CASE ('DTEMP5') 
+        icnt(39) = icnt(39) + 1
+        RTind2%iDTEMP5(icnt(39),1) = iR
+        RTind2%iDTEMP5(icnt(39),2) = iR + 1
+        RTpar2%DTEMP5(icnt(39),:)  = C 
+      CASE ('MESKHIDZE') 
+        icnt(40) = icnt(40) + 1
+        RTind2%iMeskhidze(icnt(40),1)  = iR
+        RTind2%iMeskhidze(icnt(40),2)  = iR + 1
+        RTpar2%Meskhidze(icnt(40),:) = C 
+    END SELECT
+
+  END SUBROUTINE GatherReacArrays
   !
   !
   SUBROUTINE CheckConstants(RS)
@@ -2902,4 +3134,58 @@ MODULE Chemsys_Mod
     ALLOCATE(Array(N))
     Array = tmpArray
   END SUBROUTINE CompressDoubleArray
+
+  SUBROUTINE AllocateRTarrays()
+
+    ! allocate index arrays and parameter arrays for the new vectorized version
+    ALLOCATE( RTind2%iCONST(nCONST), RTpar2%CONST(nCONST))
+
+    ALLOCATE( RTind2%iPHOTabc(nPHOTabc), RTind2%iPHOTab(nPHOTab), RTind2%iPHOTmcm(nPHOTmcm))
+    ALLOCATE( RTpar2%PHOTabc(nPHOTabc,3), RTpar2%PHOTab(nPHOTab,2), RTpar2%PHOTmcm(nPHOTmcm,3))
+
+    ALLOCATE( RTind2%iTEMP1(nTEMP1), RTind2%iTEMP2(nTEMP2), RTind2%iTEMP3(nTEMP3), RTind2%iTEMP4(nTEMP4))
+    ALLOCATE( RTpar2%TEMP1(nTEMP1,2), RTpar2%TEMP2(nTEMP2,2), RTpar2%TEMP3(nTEMP3,2), RTpar2%TEMP4(nTEMP4,2))
+
+    ALLOCATE( RTind2%iTROE(nTROE),     RTind2%iTROEf(nTROEf),   RTind2%iTROEq(nTROEq),   &
+            & RTind2%iTROEqf(nTROEqf), RTind2%iTROExp(nTROExp), RTind2%iTROEmcm(nTROEmcm))
+    ALLOCATE( RTpar2%TROE(nTROE,4),     RTpar2%TROEf(nTROEf,5),   RTpar2%TROEq(nTROEq,6),   &
+            & RTpar2%TROEqf(nTROEqf,7), RTpar2%TROExp(nTROExp,5), RTpar2%TROEmcm(nTROEmcm,10))
+
+    ALLOCATE( RTind2%iSPEC1(nSPEC1), RTind2%iSPEC2(nSPEC2), RTind2%iSPEC3(nSPEC3), RTind2%iSPEC4(nSPEC4))
+    ALLOCATE( RTpar2%SPEC1(nSPEC1,2), RTpar2%SPEC2(nSPEC2,2), RTpar2%SPEC3(nSPEC3,6), RTpar2%SPEC4(nSPEC4,4))
+
+    ALLOCATE( RTind2%iSPEC1mcm(nSPEC1mcm), RTind2%iSPEC2mcm(nSPEC2mcm),&
+            & RTind2%iSPEC3mcm(nSPEC3mcm), RTind2%iSPEC4mcm(nSPEC4mcm),&
+            & RTind2%iSPEC5mcm(nSPEC5mcm), RTind2%iSPEC6mcm(nSPEC6mcm),&
+            & RTind2%iSPEC7mcm(nSPEC7mcm), RTind2%iSPEC8mcm(nSPEC8mcm) )
+    ALLOCATE( RTpar2%SPEC1mcm(nSPEC1mcm,3), RTpar2%SPEC2mcm(nSPEC2mcm,3),&
+            & RTpar2%SPEC3mcm(nSPEC3mcm,2), RTpar2%SPEC4mcm(nSPEC4mcm,4),&
+            & RTpar2%SPEC5mcm(nSPEC5mcm,4), RTpar2%SPEC6mcm(nSPEC6mcm,4),&
+            & RTpar2%SPEC7mcm(nSPEC7mcm,6), RTpar2%SPEC8mcm(nSPEC8mcm,4) )
+
+    ALLOCATE( RTind2%iS4H2O(nS4H2O), RTind2%iT1H2O(nT1H2O))
+    ALLOCATE( RTpar2%S4H2O(nS4H2O,4), RTpar2%T1H2O(nT1H2O,2))
+
+    ALLOCATE( RTind2%iASPEC1(nASPEC1), RTind2%iASPEC2(nASPEC2),& 
+            & RTind2%iASPEC3(nASPEC3), RTind2%iASPEC4(nASPEC4) )
+    ALLOCATE( RTpar2%ASPEC1(nASPEC1,2), RTpar2%ASPEC2(nASPEC2,3),&
+            & RTpar2%ASPEC3(nASPEC3,2), RTpar2%ASPEC4(nASPEC4,3) ) 
+
+    ALLOCATE( RTind2%iDTEMP(nDTEMP,2),   RTind2%iDTEMP2(nDTEMP2,2),                           &
+            & RTind2%iDTEMP3(nDTEMP3,2), RTind2%iDTEMP4(nDTEMP4,2), RTind2%iDTEMP5(nDTEMP5,2) )
+    ALLOCATE( RTpar2%DTEMP(nDTEMP,3),    RTpar2%DTEMP2(nDTEMP2,4),                           &
+            & RTpar2%DTEMP3(nDTEMP3,4),  RTpar2%DTEMP4(nDTEMP4,4),  RTpar2%DTEMP5(nDTEMP5,3) )
+
+    ALLOCATE( RTind2%iDCONST(nDCONST,2), RTind2%iMeskhidze(nMeskhidze,2) )
+    ALLOCATE( RTpar2%DCONST(nDCONST,2),  RTpar2%Meskhidze(nMeskhidze,7) )
+    
+    ALLOCATE( RTind2%iFAC_H2(nFAC_H2), RTind2%iFAC_O2N2(nFAC_O2N2), RTind2%iFAC_M(nFAC_M),          &
+            & RTind2%iFAC_O2(nFAC_O2), RTind2%iFAC_N2(nFAC_N2), RTind2%iFAC_H2O(nFAC_H2O),        &
+            & RTind2%iFAC_RO2(nFAC_RO2), RTind2%iFAC_O2O2(nFAC_O2O2), RTind2%iFAC_aH2O(nFAC_aH2O),&
+            & RTind2%iFAC_RO2aq(nFAC_RO2aq) )
+
+    !  dim1 = iReac, dim2= iSpc, dim3 = iR_g->a / iR_a->g
+    ALLOCATE( RTind2%iHENRY(nHENRY,4) )
+
+  END SUBROUTINE AllocateRTarrays
 END MODULE Chemsys_Mod

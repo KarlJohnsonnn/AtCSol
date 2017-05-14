@@ -8,7 +8,9 @@
   ErrorLog = 0
   MatrixPrint = .false.
   DebugPrint  = .false.
-  NetCdfPrint = .true. 
+  NetCdfPrint = .false. 
+  TempEq      = .false. 
+  ChemKin     = .false.        ! input mechanism in ChemKin notation
  /END
  &FILES
   ChemFile = 'CHEM/MCM32_CAPRAM40_full'  
@@ -35,9 +37,11 @@
   AtolAqua = 1.0d-3
   Error_Est = 2
   PI_StepSize = .FALSE.
-  solveLA = 'ex'  
+  solveLA = 'cl'  
   ODEsolver = 'METHODS/TSRosWRodas3.fort'
   !ODEsolver = 'LSODE'
+  Vectorized = .true.
+  !Vectorized = .false.
  /END
  &ORDERING
   OrderingStrategie  = 8

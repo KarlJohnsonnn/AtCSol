@@ -1,4 +1,4 @@
-OPTFREE =  -ffree-form -ffixed-line-length-none -ffree-line-length-none
+OPTFREE =  -ffree-form -ffixed-line-length-none -ffree-line-length-none -fcoarray=lib
 OPTFIX =  -ffixed-line-length-none -ffree-line-length-none
 
 COMP1=EigeneProgramme
@@ -8,12 +8,8 @@ F90_F  = mpif90 $(OPTFIX) $(CPPFLAGS) $(LDFLAGS)
 
 CC   = mpicc
 
-#OPT_O =  -O3  -Wunused 
-#OPT_D =  -Warray-bounds -fbacktrace -fbounds-check
-#OPTL = -O3 -Wunused  
-
 OPT_O =  -O3 -fdefault-real-8 -fdefault-double-8 -Wunused 
-OPT_D =  -Og -Warray-bounds -Wextra -fbacktrace -ffpe-trap=zero -fimplicit-none  -fcheck=all 
+OPT_D =  -g -O0 -Warray-bounds -Wextra -fbacktrace -ffpe-trap=zero -fimplicit-none  -fcheck=all -Wall
 
 #OP=-Wl,--start-group
 OP=
@@ -48,5 +44,8 @@ NETCDF=-lcurl -L/usr/local/lib -lnetcdf -L/usr/local/lib -lnetcdff -L/usr/local/
 #NETCDF =-L/usr/local/cellar/netcdf/4.4.1.1_3/lib -lnetcdf -L/usr/local/Cellar/netcdf/4.4.1.1_3/lib -lnetcdff
 
 LAPACK=-llapack
+
+COARRAY = -L/usr/local/Cellar/opencoarrays/1.8.10/lib/ -lcaf_mpi
+#COARRAY = 
 
 ModSuf=mod

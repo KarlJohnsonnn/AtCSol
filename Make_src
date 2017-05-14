@@ -3,14 +3,14 @@ include $(IN2)
 OBJ = mo_unirnk.f90\
       LexicalStringSort.f90\
       Kind_Mod.f90\
-      mo_control.f90\
       mo_reac.f90\
+      mo_control.f90\
+      Meteo_Mod.f90\
       mo_MPI.f90\
       InitRun.f90\
       NetCDF_Mod.f90\
       Sparse_Mod.f90\
       Sparse2_Mod.f90\
-      Meteo_Mod.f90\
       String_Mod.f90\
       HashStr_Mod.f90\
       InputTool_Mod.f90\

@@ -73,11 +73,11 @@ MODULE mo_IO
   END SUBROUTINE Print_Run_Param
   !
   !
-  SUBROUTINE Output_Statistics(TRead,TSymb,TFac,TSolve,TRates,TJac,TInte,TAll,TSend,TNcdf)
+  SUBROUTINE Output_Statistics(TRead,TSymb,TFac,TSolve,TRates,TJac,TInte,TAll,TSend,TNcdf, TErr)
     !
-    REAL(RealKind) :: TRead,TSymb,TFac,TSolve,TRates,TJac,TInte,TAll,TSend, TNcdf
+    REAL(RealKind) :: TRead,TSymb,TFac,TSolve,TRates,TJac,TInte,TAll,TSend, TNcdf, TErr
     REAL(RealKind) :: maxTRead,maxTSymb,maxTFac,maxTSolve,maxTRates,maxTJac &
-    &               , maxTInte,maxTAll,maxTSend,maxtNcdf
+    &               , maxTInte,maxTAll,maxTSend,maxtNcdf,maxTErr
     !
     CALL GetMaxTimes(maxTRead,TRead)
     CALL GetMaxTimes(maxTRates,TRates)
@@ -89,6 +89,7 @@ MODULE mo_IO
     CALL GetMaxTimes(maxTJac,TJac)
     CALL GetMaxTimes(maxTAll,TAll)
     CALL GetMaxTimes(maxTNcdf,TNcdf)
+    CALL GetMaxTimes(maxTErr,TErr)
     !
     IF (MPI_ID==0) THEN
       ! print the statistics
@@ -120,8 +121,9 @@ MODULE mo_IO
       WRITE(*,299) '          - factorisation          =', maxTFac  ,' [sec]'
       WRITE(*,299) '          - solve linear Systems   =', maxTSolve,' [sec]'
       WRITE(*,299) '          - Rates                  =', maxTRates,' [sec]'
-      WRITE(*,299) '          - Ratessend              =', maxTSend ,' [sec]'
+      IF(MPI_np>1) WRITE(*,299) '          - Ratessend              =', maxTSend ,' [sec]'
       WRITE(*,299) '          - Jacobian               =', maxTJac  ,' [sec]'
+      WRITE(*,299) '          - Error calculation      =', maxTErr  ,' [sec]'
       WRITE(*,*)   ' = = = = = = = = = = = = = = = = = ======= = = = = = = = = = = = = = = = ='
       WRITE(*,299) ' Total runtime                     =', maxTAll,' [sec]'
       WRITE(*,*)  '===========================================================================' 

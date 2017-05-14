@@ -122,14 +122,16 @@
 
 !--------------------------------------------------------------
 !--   dimensions
-    INTEGER :: nt, ntsolid, ntpart
-    INTEGER :: ntGas          ! number of gaseous species
-    INTEGER :: ntAqua         ! number of aqueeous species
-    INTEGER :: ntKat          ! number of katalysator species
-    INTEGER :: neq,nspc,nkat,nreak,nHenry
-    INTEGER :: nDIM
-    INTEGER :: nDIMcl
-    INTEGER :: nDIMex
+    INTEGER :: nt=0, ntsolid=0, ntpart=0
+    INTEGER :: ntGas=0                 ! number of gaseous species
+    INTEGER :: ntAqua=0               ! number of aqueeous species
+    INTEGER :: ntKat=0                ! number of katalysator species
+    INTEGER :: ntKatGas=0,ntKatAqua=0   ! number of katalysator species gaseous ,aqueous
+    INTEGER :: neq=0,nspc=0,nreak=0
+    INTEGER :: nDIM=0
+    INTEGER :: nDIMcl=0
+    INTEGER :: nDIMex=0
+    REAL(RealKind) :: rNspc
 
     INTEGER :: nreakgas=0,nreakhenry=0,nreakdissoc=0,nreakaqua=0, nreaksolid=0
     INTEGER :: nreakgphoto=0,nreakgconst=0,nreakgtemp=0,nreakgtroe=0,nreakgspec=0
@@ -138,9 +140,9 @@
     INTEGER :: nreakpress=0
 !    INTEGER :: nreakstemp,nreaksequi,nreaksspec
 !--    define indices of special species
-    INTEGER ::   hp_ind,         &   ! Index Hp
-&               ohm_ind,         &   ! Index OHm
-&              ah2o_ind,         &   ! Index aH2O
+    INTEGER ::   Hp_ind,         &   ! Index Hp
+&               OHm_ind,         &   ! Index OHm
+&              aH2O_ind,         &   ! Index aH2O
 &              Temp_ind              ! Index Temperatur
 
 !--------------------------------------------------------------
@@ -233,9 +235,8 @@
     REAL(RealKind), ALLOCATABLE :: InitValKat(:)
 
     !REAL(RealKind), ALLOCATABLE :: y_emi(:)
-    REAL(RealKind), ALLOCATABLE :: y_udepo(:)
-    REAL(RealKind), ALLOCATABLE :: y_c1(:)
-    REAL(RealKind), ALLOCATABLE :: y_c2(:)
+    REAL(RealKind), ALLOCATABLE :: henry_diff(:)
+    REAL(RealKind), ALLOCATABLE :: henry_accom(:)
 
 !--------------------------------------------------------------
 !--    deposition and emissions
@@ -281,18 +282,52 @@
     !
     ! indix arrays for different reaction types 
     ! Types for vectorised version
-    TYPE ReacTypeIndex
+    TYPE ReacTypeIndex_CK
       INTEGER, ALLOCATABLE :: iArr(:),  iLind(:), iTroe(:)
       INTEGER, ALLOCATABLE :: iEqui(:), iXrev(:),  iTBody(:)
       INTEGER, ALLOCATABLE :: iTBodyExtra(:), iHigh(:), iLow(:)
       INTEGER :: nArr, nLind, nTroe
       INTEGER :: nEqui,nXrev, nTBody
       INTEGER :: nTBodyExtra, nHigh, nLow
-    END TYPE ReacTypeIndex
+    END TYPE ReacTypeIndex_CK
 
-    TYPE(ReacTypeIndex) :: RTind
+    TYPE(ReacTypeIndex_CK) :: RTind
 
-    TYPE ReacTypeParameter
+    !
+    ! indix arrays for different reaction types 
+    ! Types for vectorised version
+    TYPE ReacTypeIndex_TR
+      INTEGER, ALLOCATABLE :: iPHOTabc(:),  iPHOTab(:),   iPHOTmcm(:), iCONST(:)
+      INTEGER, ALLOCATABLE :: iTEMP1(:),    iTEMP2(:),    iTEMP3(:),   iTEMP4(:)
+      INTEGER, ALLOCATABLE :: iTROE(:),     iTROEf(:),    iTROEq(:),   iTROEqf(:), iTROExp(:)
+      INTEGER, ALLOCATABLE :: iTROEmcm(:),  iSPEC1(:),    iSPEC2(:),   iSPEC3(:),  iSPEC4(:)
+      INTEGER, ALLOCATABLE :: iSPEC1mcm(:), iSPEC2mcm(:), iSPEC3mcm(:), iSPEC4mcm(:)
+      INTEGER, ALLOCATABLE :: iSPEC5mcm(:), iSPEC6mcm(:), iSPEC7mcm(:), iSPEC8mcm(:)
+      INTEGER, ALLOCATABLE :: iS4H2O(:),    iT1H2O(:),    iASPEC1(:),   iASPEC2(:)
+      INTEGER, ALLOCATABLE :: iASPEC3(:),   iASPEC4(:),   iDCONST(:,:),   iDTEMP(:,:)
+      INTEGER, ALLOCATABLE :: iDTEMP2(:,:), iDTEMP3(:,:), iDTEMP4(:,:), iDTEMP5(:,:), iMeskhidze(:,:)
+      INTEGER, ALLOCATABLE :: iHENRY(:,:)
+      ! nFACTOR x 2, with [H2,O2N2,M,O2,N2,H2O,RO2,O2O2,aH2O,RO2aq,+M/(+M)]
+      INTEGER, ALLOCATABLE :: iFAC_H2(:),  iFAC_O2N2(:), iFAC_M(:),    iFAC_O2(:),   iFAC_N2(:)
+      INTEGER, ALLOCATABLE :: iFAC_H2O(:), iFAC_RO2(:),  iFAC_O2O2(:), iFAC_aH2O(:), iFAC_RO2aq(:)
+      INTEGER, ALLOCATABLE :: iHOaqua(:)
+    END TYPE ReacTypeIndex_TR
+
+    INTEGER :: nPHOTabc=0, nPHOTab=0, nPHOTmcm=0, nCONST=0, nTEMP1=0, nTEMP2=0, nTEMP3=0, nTEMP4=0
+    INTEGER :: nTROE=0, nTROEf=0, nTROEq=0, nTROEqf=0, nTROExp=0, nTROEmcm=0, nSPEC1=0, nSPEC2=0
+    INTEGER :: nSPEC3=0, nSPEC4=0, nSPEC1mcm=0, nSPEC2mcm=0, nSPEC3mcm=0, nSPEC4mcm=0, nSPEC5mcm=0
+    INTEGER :: nSPEC6mcm=0, nSPEC7mcm=0, nSPEC8mcm=0, nS4H2O=0, nT1H2O=0, nASPEC1=0, nASPEC2=0
+    INTEGER :: nASPEC3=0, nASPEC4=0
+    INTEGER :: nDTEMP=0, nDTEMP2=0, nDTEMP3=0, nDTEMP4=0, nDTEMP5=0, nDCONST=0
+    INTEGER :: nMeskhidze=0, nHENRY=0, nHENRYga=0, nHENRYag=0
+    INTEGER :: nFACTOR=0, nFAC_H2=0, nFAC_O2N2=0, nFAC_M=0, nFAC_O2=0, nFAC_N2=0
+    INTEGER :: nFAC_H2O=0, nFAC_RO2=0, nFAC_O2O2=0, nFAC_aH2O=0, nFAC_RO2aq=0
+    INTEGER :: nHOaqua=0
+
+    TYPE(ReacTypeIndex_TR) :: RTind2
+
+
+    TYPE ReacTypeParameter_CK
       ! different kinds of arrhenius parameter
       REAL(RealKind), ALLOCATABLE :: A(:),    b(:),    E(:)
       REAL(RealKind), ALLOCATABLE :: A0(:),   b0(:),   E0(:)
@@ -300,16 +335,54 @@
       REAL(RealKind), ALLOCATABLE :: Ainf(:), binf(:), Einf(:)
       ! Troe parameter
       REAL(RealKind), ALLOCATABLE :: T1(:), T2(:), T3(:), T4(:)
-    END TYPE ReacTypeParameter
+    END TYPE ReacTypeParameter_CK
 
-    TYPE(ReacTypeParameter) :: RTpar
+    TYPE(ReacTypeParameter_CK) :: RTpar
+
+    TYPE ReacTypeParameter_TR
+      ! different kinds of arrhenius parameter
+      REAL(RealKind), ALLOCATABLE :: PHOTabc(:,:)     ! nPHOTabc x 3
+      REAL(RealKind), ALLOCATABLE :: PHOTab(:,:)      ! nPHOTab x 2
+      REAL(RealKind), ALLOCATABLE :: PHOTmcm(:,:)     ! nPHOTmcm x 3
+      REAL(RealKind), ALLOCATABLE :: CONST(:)         ! nCONST x 1
+      REAL(RealKind), ALLOCATABLE :: TEMP1(:,:), TEMP2(:,:), TEMP3(:,:), TEMP4(:,:) ! nTEMPi x 2
+      REAL(RealKind), ALLOCATABLE :: TROE(:,:)        ! nTROE x 4
+      REAL(RealKind), ALLOCATABLE :: TROEf(:,:)       ! nTROEf x 5
+      REAL(RealKind), ALLOCATABLE :: TROEq(:,:)       ! nTROEq x 6
+      REAL(RealKind), ALLOCATABLE :: TROEqf(:,:)      ! nTROEqf x 7
+      REAL(RealKind), ALLOCATABLE :: TROExp(:,:)      ! nTROExp x 5
+      REAL(RealKind), ALLOCATABLE :: TROEmcm(:,:)     ! nTROExp x 10
+      REAL(RealKind), ALLOCATABLE :: SPEC1(:,:), SPEC2(:,:)  ! nSPEC1,2 x 2
+      REAL(RealKind), ALLOCATABLE :: SPEC3(:,:)       ! nSPEC3 x 6
+      REAL(RealKind), ALLOCATABLE :: SPEC4(:,:)       ! nSPEC4 x 4
+      REAL(RealKind), ALLOCATABLE :: SPEC1mcm(:,:), SPEC2mcm(:,:)  ! nSPEC1mcm,2 x 3
+      REAL(RealKind), ALLOCATABLE :: SPEC3mcm(:,:)    ! nSPEC3mcm x 2
+      REAL(RealKind), ALLOCATABLE :: SPEC4mcm(:,:), SPEC5mcm(:,:), SPEC6mcm(:,:), SPEC8mcm(:,:)  ! nSPEC4,5,6mcm x 4
+      REAL(RealKind), ALLOCATABLE :: SPEC7mcm(:,:)    ! nSPEC7mcm x 6
+      REAL(RealKind), ALLOCATABLE :: S4H2O(:,:)       ! nS4H2o x 4
+      REAL(RealKind), ALLOCATABLE :: T1H2O(:,:)       ! nT1H2o x 2
+      REAL(RealKind), ALLOCATABLE :: Meskhidze(:,:)   ! nMeskhidze x 7
+      REAL(RealKind), ALLOCATABLE :: ASPEC1(:,:), ASPEC3(:,:) ! nASPEC1,3 x 2
+      REAL(RealKind), ALLOCATABLE :: ASPEC2(:,:), ASPEC4(:,:) ! nAPSEC2,4 x 3
+      REAL(RealKind), ALLOCATABLE :: DTEMP(:,:), DTEMP5(:,:)  ! nDTEMP,5 x 3
+      REAL(RealKind), ALLOCATABLE :: DTEMP2(:,:), DTEMP3(:,:), DTEMP4(:,:)  ! nDTEMP2,3,4 x 4
+      REAL(RealKind), ALLOCATABLE :: DCONST(:,:)        ! nDCONST x 2
+      REAL(RealKind), ALLOCATABLE :: HENRY(:,:)         ! nHENRY x 2
+      !REAL(RealKind), ALLOCATABLE :: FACTOR(:)          ! nFACTOR x 1
+      !REAL(RealKind), ALLOCATABLE :: iFAC_H2(:), iFAC_O2N2(:), iFAC_M(:), iFAC_O2(:), iFAC_N2(:)
+      !REAL(RealKind), ALLOCATABLE :: iFAC_H2O(:), iFAC_RO2(:), iFAC_O2O2(:), iFAC_aH2O(:), iFAC_RO2aq(:)
+      REAL(RealKind), ALLOCATABLE :: HOaqua(:)
+    END TYPE ReacTypeParameter_TR
+
+    TYPE(ReacTypeParameter_TR) :: RTpar2
 
 
+    INTEGER, ALLOCATABLE        :: first_orderKAT(:,:) ! reaction number where stoech coef == ONE
     INTEGER, ALLOCATABLE        :: first_order(:,:) ! reaction number where stoech coef == ONE
     INTEGER, ALLOCATABLE        :: second_order(:,:) ! reactions where species have second order 
     INTEGER, ALLOCATABLE        :: higher_order(:,:) ! higher order reactions
     REAL(RealKind), ALLOCATABLE :: ahigher_order(:) ! higher order reactions contains also fractions and noninteger values
-    INTEGER :: nFirst_order, nSecond_order, nHigher_order
+    INTEGER :: nFirst_order=0, nSecond_order=0, nHigher_order=0, nFirst_orderKAT=0
 
     ! array for Troe reactions
     REAL(RealKind), ALLOCATABLE :: vlog10_Pr(:),      &

@@ -5,7 +5,7 @@
 !=======================================
 !
 !
-PROGRAM Main_ChemKin
+PROGRAM MAIN_CHEMIE
   !
   USE Sparse_Mod
   USE Kind_Mod
@@ -74,7 +74,7 @@ PROGRAM Main_ChemKin
   !
   !----------------------------------------------------------------
   ! --- Initialize all reaction types
-  CALL InitNReacType()
+  !CALL InitNReacType()
   !
   Tspan = (/ tAnf , tEnd /)
  
@@ -227,6 +227,8 @@ PROGRAM Main_ChemKin
     Atol    = (/ AtolGas , AtolAqua /)
   END IF
 
+  rNspc = ONE/REAL(nspc,KIND=RealKind)
+
   !-----------------------------------------------------------------------
   ! --- If more than one argument is passed set new tolerance and ROS methode
   CALL getarg ( 2 , neuTolR )             
@@ -263,7 +265,10 @@ PROGRAM Main_ChemKin
   !-----------------------------------------------------------------------
   !--- print input parameter, method, tols, etc.
   CALL Print_Run_Param()
-
+  !print*, 'NTypes%AquaPhoto=',NTypes%AquaPhoto
+  !print*, 'NTypes%Spec1MCM=',NTypes%Spec1MCM
+  !print*, 'NTypes%Spec1MCM=',NTypes%GasConst
+  !stop
   !-----------------------------------------------------------------------
   CALL Integrate (  InitValAct(1:nspc)   &  ! initial concentrations activ species
   &               , Tspan                &  ! integration invervall
@@ -279,9 +284,9 @@ PROGRAM Main_ChemKin
   CALL Output_Statistics( Time_Read       , TimeSymbolic  , TimeFac       &
   &                     , TimeSolve       , TimeRates     , TimeJac       &
   &                     , TimeIntegrationE, Timer_Finish  , TimeRateSend  &
-  &                     , TimeNetCDF                                      )
+  &                     , TimeNetCDF      , TimeErrCalc                   )
   WRITE(*,*) ''
   !---------------------------------------------------------------
   ! --- Close MPI 
   CALL FinishMPI()
-END PROGRAM Main_ChemKin
+END PROGRAM MAIN_CHEMIE

@@ -6,6 +6,7 @@
   constLWC = .false.                     ! 0 = konstanter LWC wert, 0 /= pseudo LWC funktion wird benutzt
   Ladebalken = 1                   ! 0 = kein ladebalken, 0 /= ladebalken aktiv
   ErrorLog = 0                      ! 0 = no error output, 0 /= error output direkt auf bildschirm
+  DebugPrint  = .false.            ! DEBUGGING Rosenbrock 
   MatrixPrint = .false.            ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
   NetCdfPrint = .true.            ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
  /END
@@ -17,13 +18,14 @@
  /END
  &TIMES
   tAnf=0.0d0                          ! Startzeit Integration
-  tEnd=84600.0d0                     ! Endzeit   Integration
+  tEnd=1000000.0d0                     ! Endzeit   Integration
   Dust    = 0.5d0                     ! Zenith Berechnung       (Staub)
   idate   = 010621                    ! ---------''---------    (Datum: YYMMDD)
   rlat    = 45.d0                     ! ---------''---------    (Breitengrad)
   rlon    =  0.d0                     ! ---------''---------    (Längengrad)
   minStp  = 1.0d-30                   ! minimale Schrittweite für Integration
-  maxStp  = 100.0d0                    ! maximale Schrittweite für Integration
+  !maxStp  = 1.0d-3                    ! Schrittweite für Integration mit BW_Euler
+  maxStp  = 1000.0d0                    ! maximale Schrittweite für Integration
   StpNetCDF = -1.0d0                  ! save after StpNetCDF seconds, if < 0.0d0 save every timestep 
 /END
  &NUMERICS
@@ -33,9 +35,12 @@
   Error_Est= 2
   PI_StepSize = .false.
   solveLA = 'ex'                                ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
+  !ODEsolver = 'bwEuler'
   ODEsolver = 'METHODS/TSRosWRodas3.fort'
   !ODEsolver ='LSODE'    ! Rosenbrock-Wanner Verfahrenskoeffizienten
   ImpEuler = 0                                  ! 0=kein impliziter Euler, 1=impliziter Euler (kein ROW!!)
+  Vectorized = .false.
+  !Vectorized = .true.
  /END
  &ORDERING
   OrderingStrategie  = 8                   ! 8=Markowitz(SparseLU) , 1,..,7=Mumps Orderings  
