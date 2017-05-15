@@ -1,0 +1,36 @@
+ &SCENARIO
+  BSP         = 'nheptane'
+  Ladebalken  = 1
+  ErrorLog    = 0
+  matrixPrint = .false.  
+  debugPrint  = .false.
+  NetCdfPrint = .true.
+  TempEq      = .true.
+  Temperature0= 750.0d0       ! in [K]
+  Pressure0   = 2.0d+5        ! in [Pa]
+ /END
+ &FILES
+  ChemFile = 'ckCHEM/nHeptane/nHeptane'
+  DataFile = 'ckCHEM/nHeptane/LLNL_MD.dat'
+  MWeights = 'ckCHEM/nHeptane/MolecWeights.mw'
+  InitFile = 'ckCHEM/nHeptane/ERC_nheptane.ini'
+ /END
+ &TIMES
+  tAnf    = 0.0d0
+  tEnd    = 1.50d-2
+  minStp  = 1.0d-45
+  maxStp  = 0.0001d0
+  nOutP   = 100
+/END
+ &NUMERICS
+  RtolROW   = 1.0d-4
+  AtolGas   = 1.0d-15
+  AtolTemp  = 1.0d-1
+  Error_Est = 2
+  solveLA   = 'ex'
+  ODEsolver = 'METHODS/TSRosWRodas3.fort'
+  !ODEsolver = 'LSODE'
+ /END
+ &ORDERING
+  OrderingStrategie  = 8
+ /END

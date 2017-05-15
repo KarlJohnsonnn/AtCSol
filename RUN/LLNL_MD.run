@@ -1,0 +1,46 @@
+ &SCENARIO
+  BSP         = 'LLNL_MD'
+  Ladebalken  = 1
+  ErrorLog    = 0
+  MatrixPrint = .false.  
+  DebugPrint  = .false.
+  NetCdfPrint = .true.
+  TempEq      = .true. 
+  ChemKin     = .true.        ! input mechanism in ChemKin notation
+  Temperature0= 750.0d0       ! in [K]
+  Pressure0   = 2.0d+5        ! in [Pa]
+ /END
+ &FILES
+  ChemFile = 'ckCHEM/LLNL_MD/LLNL_MD_neu'
+  DataFile = 'ckCHEM/LLNL_MD/LLNL_MD.dat'
+  MWeights = 'ckCHEM/LLNL_MD/MolecWeights.mw'
+  InitFile = 'ckCHEM/LLNL_MD/LLNL_MD.ini'
+ /END
+ &TIMES
+  tAnf    = 0.0d0
+  tEnd    = 4.0d-2
+  minStp  = 1.0d-45
+  maxStp  = 2.0d-4
+  nOutP   = 2
+/END
+ &NUMERICS
+  RtolROW   = 1.0d-4
+  AtolGas   = 1.0d-15
+  AtolTemp  = 1.0d-1
+  Error_Est = 2
+  solveLA   = 'ex' 
+  !ODEsolver = 'METHODS/Ros2AMF.fort'
+  !ODEsolver = 'METHODS/TSRosWRodas3.fort'
+  !ODEsolver = 'METHODS/TSRosWRA3PW.fort'
+  !ODEsolver = 'METHODS/TSRosW2M.fort'
+  !ODEsolver = 'METHODS/TSRosW2P.fort'
+  !ODEsolver = 'METHODS/TSRosWARK3.fort'
+  !ODEsolver = 'METHODS/TSRosWSandu3.fort'
+  ODEsolver = 'METHODS/TSRosWRA34PW2.fort'
+  !ODEsolver = 'LSODES'
+  !ODEsolver = 'bwEuler'
+  Vectorized = .true.
+ /END
+ &ORDERING
+  OrderingStrategie  = 8
+ /END

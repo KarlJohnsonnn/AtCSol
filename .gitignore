@@ -1,8 +1,6 @@
 LIB/*
 LIB_D/*
-RUN/*
 NetCDF/*.nc
-SOLVER/*
 MATRICES/*
 .DS_Store
 CHEMIE
