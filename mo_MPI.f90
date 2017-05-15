@@ -5,7 +5,7 @@ MODULE mo_MPI
   USE mo_control
   USE mo_reac, ONLY: LowerRateLim, UpperRateLim
   IMPLICIT NONE
-  INTEGER :: MPI_RealKind
+  INTEGER :: MPI_dp
   !
   INTEGER :: MPI_ID
   INTEGER :: MPI_np
@@ -24,7 +24,7 @@ MODULE mo_MPI
     CALL CheckMPIErr() 
     CALL MPI_COMM_SIZE( MPI_COMM_WORLD, MPI_np, MPIErr )
     CALL CheckMPIErr() 
-    MPI_RealKind=MPI_Double_Precision
+    MPI_dp=MPI_Double_Precision
   END SUBROUTINE StartMPI
   !
   !
@@ -90,7 +90,7 @@ MODULE mo_MPI
   !
   !
   SUBROUTINE GatherAllPartitions(Vec,Partitions)
-    REAL(RealKind) :: Vec(:)
+    REAL(dp) :: Vec(:)
     INTEGER :: Partitions(:,:)
     !
     ! collect the parts of Rate on all processes
@@ -113,8 +113,8 @@ MODULE mo_MPI
   !
   ! This routine will gather the maximum time value of all processes
   SUBROUTINE GetMaxTimes(maxTime,inTime)
-    REAL(RealKind) :: inTime
-    REAL(RealKind) :: maxTime
+    REAL(dp) :: inTime
+    REAL(dp) :: maxTime
     !
     !
     CALL MPI_Reduce( inTime          &    ! sendbuffer
@@ -148,8 +148,8 @@ MODULE mo_MPI
   !
   ! Send array of real values from i  to process 0
   SUBROUTINE SendReal(SendV,ResV,i)
-    REAL(RealKind) :: SendV(:)
-    REAL(RealKind) :: ResV(SIZE(SendV))
+    REAL(dp) :: SendV(:)
+    REAL(dp) :: ResV(SIZE(SendV))
     INTEGER :: i,nSendV
      
     nSendV=SIZE(SendV)

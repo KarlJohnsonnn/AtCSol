@@ -62,10 +62,10 @@ CONTAINS
     CHARACTER(*) :: DatMW
     INTEGER      :: UnitMW, nSpc
     !Out
-    REAL(RealKind), ALLOCATABLE :: MW0(:)
+    REAL(dp), ALLOCATABLE :: MW0(:)
     !temp
     CHARACTER(16)   :: tmpchar0 = '-'
-    REAL(RealKind)  :: tmpMW0
+    REAL(dp)  :: tmpMW0
     INTEGER         :: tmpPos, tmpCnt, i, io_err
     LOGICAL :: ExistFile
 
@@ -90,7 +90,7 @@ CONTAINS
         IF ( tmpPos > 0 ) THEN 
           IF (MW0(tmpPos)<0.0d0) i = i+1
           tmpCnt = tmpCnt + 1
-          MW0(tmpPos)    = REAL( tmpMW0 , RealKind )
+          MW0(tmpPos)    = REAL( tmpMW0 , dp )
           SCperm(i) = tmpPos
         ELSE
           WRITE(*,*) ' Species: ',TRIM(tmpChar0)//'  not in mechnism.'
@@ -133,8 +133,8 @@ CONTAINS
     CHARACTER(30) :: tSpcName
     LOGICAL :: THERMO=.FALSE.
 
-    REAL(RealKind) :: thin1, thin2, thin3
-    REAL(RealKind) :: ThermoIntervall(3)
+    REAL(dp) :: thin1, thin2, thin3
+    REAL(dp) :: ThermoIntervall(3)
 
 
     CHARACTER(1) :: rNumber='-'
@@ -160,9 +160,9 @@ CONTAINS
       READ(UnitThermo,*) iLine
       IF ( MAXVAL(INDEX(iLine,(/'THERMO','thermo'/))) > 0 ) THEN
         READ(UnitThermo,*) thin1, thin2, thin3
-        ThermoIntervall(1)  = REAL(thin1,RealKind)
-        ThermoIntervall(2)  = REAL(thin2,RealKind)
-        ThermoIntervall(3)  = REAL(thin3,RealKind)
+        ThermoIntervall(1)  = REAL(thin1,dp)
+        ThermoIntervall(2)  = REAL(thin2,dp)
+        ThermoIntervall(3)  = REAL(thin3,dp)
         EXIT
       END IF
     END DO
@@ -198,34 +198,34 @@ CONTAINS
             WRITE(Species(i),*) tSpcName(1:idxWhiteSpace-1)
             WRITE(SpeciesInfo(i),*) tSpcName(idxWhiteSpace:)
             !
-            TempRange(i,1)=REAL(ta,KIND=RealKind)
-            TempRange(i,2)=REAL(tb,KIND=RealKind)
-            TempRange(i,3)=REAL(tc,KIND=RealKind)
+            TempRange(i,1)=REAL(ta,KIND=dp)
+            TempRange(i,2)=REAL(tb,KIND=dp)
+            TempRange(i,3)=REAL(tc,KIND=dp)
             ThermSwitchTemp(i)=TempRange(i,3)
-            MolMass(i)=REAL(tc,KIND=RealKind)
+            MolMass(i)=REAL(tc,KIND=dp)
           END IF
        CASE ('2')
          READ(iLine,2) ta,tb,tc,td,te,n
-         highA(i)=REAL(ta,KIND=RealKind)
-         highB(i)=REAL(tb,KIND=RealKind)
-         highC(i)=REAL(tc,KIND=RealKind)
-         highD(i)=REAL(td,KIND=RealKind)
-         highE(i)=REAL(te,KIND=RealKind)
+         highA(i)=REAL(ta,KIND=dp)
+         highB(i)=REAL(tb,KIND=dp)
+         highC(i)=REAL(tc,KIND=dp)
+         highD(i)=REAL(td,KIND=dp)
+         highE(i)=REAL(te,KIND=dp)
        CASE ('3')
          READ(iLine,2) tf,tg,ta,tb,tc,n
-         highF(i)=REAL(tf,KIND=RealKind)
-         highG(i)=REAL(tg,KIND=RealKind)
-         lowA(i)=REAL(ta,KIND=RealKind)
-         lowB(i)=REAL(tb,KIND=RealKind)
-         lowC(i)=REAL(tc,KIND=RealKind)
+         highF(i)=REAL(tf,KIND=dp)
+         highG(i)=REAL(tg,KIND=dp)
+         lowA(i)=REAL(ta,KIND=dp)
+         lowB(i)=REAL(tb,KIND=dp)
+         lowC(i)=REAL(tc,KIND=dp)
        CASE ('4')
         !READ(iLine,4) td,te,tf,tg,ta,n
         READ(iLine,4) td,te,tf,tg,n
-        lowD(i)=REAL(td,KIND=RealKind)
-        lowE(i)=REAL(te,KIND=RealKind)
-        lowF(i)=REAL(tf,KIND=RealKind)
-        lowG(i)=REAL(tg,KIND=RealKind)
-       ! H0_29815R(i)=REAL(ta,KIND=RealKind)
+        lowD(i)=REAL(td,KIND=dp)
+        lowE(i)=REAL(te,KIND=dp)
+        lowF(i)=REAL(tf,KIND=dp)
+        lowG(i)=REAL(tg,KIND=dp)
+       ! H0_29815R(i)=REAL(ta,KIND=dp)
        CASE DEFAULT
         CONTINUE
       END SELECT
@@ -359,19 +359,19 @@ CONTAINS
     INTEGER :: nduct, nEducts, nProducts
     INTEGER :: fPosPlus , fPosEq, fPosFw
     INTEGER :: idxDuctE(6),idxDuctP(6)
-    REAL(RealKind) :: KoefDuctE(6), KoefDuctP(6)
+    REAL(dp) :: KoefDuctE(6), KoefDuctP(6)
     CHARACTER(20)  :: NamesDuctE(6),NamesDuctP(6)
-    REAL(RealKind), ALLOCATABLE :: valDucts(:)
+    REAL(dp), ALLOCATABLE :: valDucts(:)
     !
     !INTEGEr :: TableNspc
     CHARACTER(15) :: units
-    REAL(RealKind) :: tmpReal,tmpReal2,tmpReal3,tmpReal4
+    REAL(dp) :: tmpReal,tmpReal2,tmpReal3,tmpReal4
     !
     LOGICAL :: bR
     LOGICAL :: nxtReac
     LOGICAL :: ende
     !
-    REAL(RealKind) :: Rcal = 1.987d0
+    REAL(dp) :: Rcal = 1.987d0
     !
     CALL OpenFile(UnitReac,TRIM(DataReac),'sys')
     REWIND UnitReac
@@ -471,9 +471,9 @@ CONTAINS
           READ(LocString(iWS:),*,IOSTAT=io_err) tmpReal
 
           IF (io_err == 0 ) THEN
-            ReactionSystem(iReac)%Constants(i)   = REAL(tmpReal,KIND=RealKind)
+            ReactionSystem(iReac)%Constants(i)   = REAL(tmpReal,KIND=dp)
             IF (bR) &
-            ReactionSystem(iReac+1)%Constants(i) = REAL(tmpReal,KIND=RealKind)
+            ReactionSystem(iReac+1)%Constants(i) = REAL(tmpReal,KIND=dp)
           ELSE
             WRITE(*,*) ''
             WRITE(*,*) '   Something went wrong reading the Arrhenius parameter'
@@ -581,7 +581,7 @@ CONTAINS
             READ(LocString,*,IOSTAT=io_err) tmpReal, tmpReal2, tmpReal3
 
             IF ( io_err == 0 ) THEN
-              ReactionSystem(iReac+1)%Constants = REAL([tmpReal,tmpReal2,tmpReal3], KIND=RealKind)
+              ReactionSystem(iReac+1)%Constants = REAL([tmpReal,tmpReal2,tmpReal3], KIND=dp)
             ELSE
               CALL  PrintError(io_err,iReac,LocString)
             END IF
@@ -638,7 +638,7 @@ CONTAINS
 
           IF ( io_err == 0 ) THEN
             nreakpress = nreakpress + 1
-            ReactionSystem(iReac)%LowConst  = REAL([tmpReal,tmpReal2,tmpReal3], KIND=RealKind)
+            ReactionSystem(iReac)%LowConst  = REAL([tmpReal,tmpReal2,tmpReal3], KIND=dp)
             ReactionSystem(iReac)%HighConst = ReactionSystem(iReac)%Constants
             IF (bR) THEN
               nreakpress = nreakpress + 1
@@ -657,7 +657,7 @@ CONTAINS
 
           IF ( io_err == 0 ) THEN
             nreakpress = nreakpress + 1
-            ReactionSystem(iReac)%HighConst = REAL([tmpReal,tmpReal2,tmpReal3], KIND=RealKind)
+            ReactionSystem(iReac)%HighConst = REAL([tmpReal,tmpReal2,tmpReal3], KIND=dp)
             ReactionSystem(iReac)%LowConst  = ReactionSystem(iReac)%Constants
             IF (bR) THEN
               nreakpress = nreakpress + 1
@@ -685,7 +685,7 @@ CONTAINS
 
           IF ( io_err == 0 ) THEN
             nreakgtroe = nreakgtroe + 1
-            ReactionSystem(iReac)%TroeConst = REAL([tmpReal,tmpReal2,tmpReal3,tmpReal4], KIND=RealKind)
+            ReactionSystem(iReac)%TroeConst = REAL([tmpReal,tmpReal2,tmpReal3,tmpReal4], KIND=dp)
             IF (bR) THEN
               ReactionSystem(iReac+1)%TroeConst  = ReactionSystem(iReac)%TroeConst
               nreakgtroe = nreakgtroe + 1
@@ -830,19 +830,19 @@ CONTAINS
     ! out:
     INTEGER,        ALLOCATABLE, INTENT(INOUT) :: indM(:)
     CHARACTER(*),   ALLOCATABLE, INTENT(INOUT) :: spcM(:)
-    REAL(RealKind), ALLOCATABLE, INTENT(INOUT) :: aM(:)
+    REAL(dp), ALLOCATABLE, INTENT(INOUT) :: aM(:)
     ! in:
     CHARACTER(*), INTENT(IN) :: Line
     INTEGER,      INTENT(IN) :: iRow
     ! temp:
     INTEGER,        ALLOCATABLE :: tindM(:)
     CHARACTER(20),  ALLOCATABLE :: tspcM(:)
-    REAL(RealKind), ALLOCATABLE :: taM(:)
+    REAL(dp), ALLOCATABLE :: taM(:)
 
     CHARACTER(LEN(Line)) :: locLine
     INTEGER :: nSpc, kl1, kl2, io_err
     INTEGER :: presentSpc
-    REAL(RealKind) :: tmp
+    REAL(dp) :: tmp
 
     locLine = Line
 
@@ -892,7 +892,7 @@ CONTAINS
       READ(locLine(kl1+1:kl1+kl2-1),*,IOSTAT=io_err) tmp
 
       IF ( io_err == 0 ) THEN
-        aM(nSpc) = REAL(tmp,KIND=RealKind)
+        aM(nSpc) = REAL(tmp,KIND=dp)
         locLine  = ADJUSTL(locLine(kl1+kl2+1:))
       ELSE
         WRITE(*,*) '   Error reading thirdbody species!'
@@ -910,10 +910,10 @@ CONTAINS
 !         FUNCTIONS FOR  CONVERTING MOLE FRACTION; MASS FRACTION; MOLAR CONCENTRATION 
   
   FUNCTION MassFr_to_MoleFr(MassFr) RESULT(MoleFr)
-    REAL(RealKind), ALLOCATABLE :: MoleFr(:)
-    REAL(RealKind), INTENT(IN)  :: MassFr(:)     ! Mass fraction 
+    REAL(dp), ALLOCATABLE :: MoleFr(:)
+    REAL(dp), INTENT(IN)  :: MassFr(:)     ! Mass fraction 
     !TEMP
-    REAL(RealKind) :: W     ! mean molecular weight of a mixture
+    REAL(dp) :: W     ! mean molecular weight of a mixture
 
     W = MeanMolecularWeight( MassFr=MassFr )
     MoleFr   = MassFr * W * rMW
@@ -922,9 +922,9 @@ CONTAINS
 
   
   FUNCTION MassFr_To_MoleConc(MassFr,rho) RESULT(MoleConc)
-    REAL(RealKind), ALLOCATABLE :: MoleConc(:) ! Concentration  [mol/cm3]
-    REAL(RealKind), INTENT(IN)  :: MassFr(:)   ! Mass fraction  [g/g]
-    REAL(RealKind), INTENT(IN)  :: rho         ! Mass density   [g/cm3] 
+    REAL(dp), ALLOCATABLE :: MoleConc(:) ! Concentration  [mol/cm3]
+    REAL(dp), INTENT(IN)  :: MassFr(:)   ! Mass fraction  [g/g]
+    REAL(dp), INTENT(IN)  :: rho         ! Mass density   [g/cm3] 
   
     MoleConc = rho * MassFr * rMW 
 
@@ -932,9 +932,9 @@ CONTAINS
 
   
   FUNCTION MoleFr_to_MassFr(MoleFr) RESULT(MassFr)
-    REAL(RealKind), ALLOCATABLE :: MassFr(:)  ! Mass fraction [g/g]
-    REAL(RealKind), INTENT(IN)  :: MoleFr(:)  ! Mole fraction  [mol/mol]
-    REAL(RealKind) :: W   ! mean molecular weight of a mixture
+    REAL(dp), ALLOCATABLE :: MassFr(:)  ! Mass fraction [g/g]
+    REAL(dp), INTENT(IN)  :: MoleFr(:)  ! Mole fraction  [mol/mol]
+    REAL(dp) :: W   ! mean molecular weight of a mixture
    
     W = MeanMolecularWeight( MoleFr=MoleFr ) 
     MassFr  = MW * MoleFr / W
@@ -943,9 +943,9 @@ CONTAINS
 
 
   FUNCTION MoleConc_to_MassFr(MoleConc) RESULT(MassFr)
-    REAL(RealKind), ALLOCATABLE :: MassFr(:)  ! Mass fraction [g/g]
-    REAL(RealKind), INTENT(IN)  :: MoleConc(:)  ! Mole fraction  [mol/cm3]
-    REAL(RealKind) :: W   ! mean molecular weight of a mixture
+    REAL(dp), ALLOCATABLE :: MassFr(:)  ! Mass fraction [g/g]
+    REAL(dp), INTENT(IN)  :: MoleConc(:)  ! Mole fraction  [mol/cm3]
+    REAL(dp) :: W   ! mean molecular weight of a mixture
    
     MassFr  = MW * MoleConc / SUM( MoleConc * MW )
 
@@ -953,13 +953,13 @@ CONTAINS
 
 
   FUNCTION MoleFr_To_MoleConc(MoleFr,rho,Press,Temp) RESULT(MoleConc)
-    REAL(RealKind), ALLOCATABLE :: MoleConc(:)      ! Mole concentration
-    REAL(RealKind), INTENT(IN)  :: MoleFr(:)        ! Mole fraction 
-    REAL(RealKind), INTENT(IN), OPTIONAL  :: rho    ! [g/cm3]
-    REAL(RealKind), INTENT(IN), OPTIONAL  :: Press  ! [dyn/cm2]
-    REAL(RealKind), INTENT(IN), OPTIONAL  :: Temp   ! [K]
+    REAL(dp), ALLOCATABLE :: MoleConc(:)      ! Mole concentration
+    REAL(dp), INTENT(IN)  :: MoleFr(:)        ! Mole fraction 
+    REAL(dp), INTENT(IN), OPTIONAL  :: rho    ! [g/cm3]
+    REAL(dp), INTENT(IN), OPTIONAL  :: Press  ! [dyn/cm2]
+    REAL(dp), INTENT(IN), OPTIONAL  :: Temp   ! [K]
 
-    REAL(RealKind)              :: W
+    REAL(dp)              :: W
 
     IF (PRESENT(rho)) THEN
       W = MeanMolecularWeight( MoleFr=MoleFr )
@@ -978,9 +978,9 @@ CONTAINS
 !***************************************************************************************************
 
   FUNCTION Pressure(MoleConc,Temp) RESULT(P)
-    REAL(RealKind) :: P           ! Pressure in [Pa]
-    REAL(RealKind), INTENT(IN)  :: MoleConc(:) ! in [mol/cm3] 
-    REAL(RealKind), INTENT(IN)  :: Temp        ! in [K]
+    REAL(dp) :: P           ! Pressure in [Pa]
+    REAL(dp), INTENT(IN)  :: MoleConc(:) ! in [mol/cm3] 
+    REAL(dp), INTENT(IN)  :: Temp        ! in [K]
                         
     P = SUM( MoleConc ) * Temp * Rerg * dyncm2_to_Pa ! Rerg in [erg/mol/K]
  
@@ -988,8 +988,8 @@ CONTAINS
   
 
   FUNCTION Density(MoleConc) RESULT(rho)
-    REAL(RealKind) :: rho          ! in [kg/cm3]
-    REAL(RealKind), INTENT(IN)  :: MoleConc(:)  ! in [mol/cm3]
+    REAL(dp) :: rho          ! in [kg/cm3]
+    REAL(dp), INTENT(IN)  :: MoleConc(:)  ! in [mol/cm3]
     
     rho = kilo * SUM( MoleConc * MW ) 
 
@@ -997,10 +997,10 @@ CONTAINS
   
 
   FUNCTION MeanMolecularWeight(MassFr,MoleFr,MoleConc) RESULT(W)
-    REAL(RealKind) :: W
-    REAL(RealKind), INTENT(IN), OPTIONAL :: MassFr(:)
-    REAL(RealKind), INTENT(IN), OPTIONAL :: MoleFr(:)
-    REAL(RealKind), INTENT(IN), OPTIONAL :: MoleConc(:)
+    REAL(dp) :: W
+    REAL(dp), INTENT(IN), OPTIONAL :: MassFr(:)
+    REAL(dp), INTENT(IN), OPTIONAL :: MoleFr(:)
+    REAL(dp), INTENT(IN), OPTIONAL :: MoleConc(:)
 
     IF      ( PRESENT(MassFr) ) THEN
       W = ONE / SUM( MassFr * rMW )
@@ -1019,14 +1019,14 @@ CONTAINS
   !is the mass average mixture specific  heat at constant volume,
   SUBROUTINE MassAveMixSpecHeat(cvmixture,dUdT,MassFr,MoleConc,rho)
     !IN
-    REAL(RealKind) :: dUdT(:)                 ! in [-]
-    REAL(RealKind), OPTIONAL :: MassFr(:)     ! in [g/g]
-    REAL(RealKind), OPTIONAL :: MoleConc(:)   ! in [mol/cm3]
-    REAL(RealKind), OPTIONAL :: rho    
+    REAL(dp) :: dUdT(:)                 ! in [-]
+    REAL(dp), OPTIONAL :: MassFr(:)     ! in [g/g]
+    REAL(dp), OPTIONAL :: MoleConc(:)   ! in [mol/cm3]
+    REAL(dp), OPTIONAL :: rho    
     !OUT
-    REAL(RealKind) :: cvmixture         ! in [J/kg/K]
+    REAL(dp) :: cvmixture         ! in [J/kg/K]
     !TEMP
-    REAL(RealKind) :: ravgConc          ! in [cm3/mol][mol/g]
+    REAL(dp) :: ravgConc          ! in [cm3/mol][mol/g]
 
     IF (PRESENT(MoleConc)) THEN
       !ravgConc  = ONE / SUM( MoleConc * MW )  
@@ -1080,7 +1080,7 @@ CONTAINS
     CHARACTER(*), INTENT(IN) :: String
     !
     INTEGER :: NextSpecies
-    REAL(RealKind) :: Koeff
+    REAL(dp) :: Koeff
     !
     ! check if spc has coef
     IF (SCAN(String(1:1),CKSetNumber)>0) THEN
@@ -1101,12 +1101,12 @@ CONTAINS
     !OUT
     INTEGER        :: nE, nP
     INTEGER        :: edIndex(6),prIndex(6)
-    REAL(RealKind) :: edKoeff(6),prKoeff(6)
+    REAL(dp) :: edKoeff(6),prKoeff(6)
     CHARACTER(20)  :: edNames(6),prNames(6)
     !TEMP
     CHARACTER(LEN(inLine)) :: Line
     INTEGER :: PosPlus,PosEq, lenEq
-    REAL(RealKind) :: fac
+    REAL(dp) :: fac
     INTEGER :: NxtSpc
     !
     !
@@ -1198,7 +1198,7 @@ CONTAINS
   SUBROUTINE GatherReactionTypeIndex()
     
     INTEGER :: iR, cnt , cnt2
-    REAL(RealKind), PARAMETER :: big = -99999999999999.d0
+    REAL(dp), PARAMETER :: big = -99999999999999.d0
 
     ! allocate index arrays for specific reaction type
     ALLOCATE( RTind%iArr(neq),  RTind%iLind(neq), RTind%iTroe(neq),      &
@@ -1326,7 +1326,7 @@ CONTAINS
     INTEGER :: i, j, jj, nnz
     INTEGER :: nTB_i
     INTEGER, ALLOCATABLE        :: tmpCol(:), pVec(:) 
-    REAL(RealKind), ALLOCATABLE :: tmpVal(:)
+    REAL(dp), ALLOCATABLE :: tmpVal(:)
 
     CALL New_CSR(A,RTind%nTBodyExtra,nspc,nnz)
 

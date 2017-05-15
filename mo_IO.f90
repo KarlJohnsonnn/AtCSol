@@ -73,11 +73,11 @@ MODULE mo_IO
   END SUBROUTINE Print_Run_Param
   !
   !
-  SUBROUTINE Output_Statistics(TRead,TSymb,TFac,TSolve,TRates,TJac,TInte,TAll,TSend,TNcdf, TErr)
+  SUBROUTINE Output_Statistics(TRead,TSymb,TFac,TSolve,TRates,TJac,TInte,TAll,TSend,TNcdf, TErr, TRhs)
     !
-    REAL(RealKind) :: TRead,TSymb,TFac,TSolve,TRates,TJac,TInte,TAll,TSend, TNcdf, TErr
-    REAL(RealKind) :: maxTRead,maxTSymb,maxTFac,maxTSolve,maxTRates,maxTJac &
-    &               , maxTInte,maxTAll,maxTSend,maxtNcdf,maxTErr
+    REAL(dp) :: TRead,TSymb,TFac,TSolve,TRates,TJac,TInte,TAll,TSend, TNcdf, TErr, TRhs
+    REAL(dp) :: maxTRead,maxTSymb,maxTFac,maxTSolve,maxTRates,maxTJac &
+    &               , maxTInte,maxTAll,maxTSend,maxtNcdf,maxTErr,maxTRhs
     !
     CALL GetMaxTimes(maxTRead,TRead)
     CALL GetMaxTimes(maxTRates,TRates)
@@ -90,6 +90,7 @@ MODULE mo_IO
     CALL GetMaxTimes(maxTAll,TAll)
     CALL GetMaxTimes(maxTNcdf,TNcdf)
     CALL GetMaxTimes(maxTErr,TErr)
+    CALL GetMaxTimes(maxTRhs,TRhs)
     !
     IF (MPI_ID==0) THEN
       ! print the statistics
@@ -119,6 +120,7 @@ MODULE mo_IO
       WRITE(*,299) ' Time for integration              =', maxTInte-maxTNcdf,' [sec]'
       WRITE(*,*)   ' -------------------------------------+-----------------------------------'
       WRITE(*,299) '          - factorisation          =', maxTFac  ,' [sec]'
+      WRITE(*,299) '          - right hand side calc   =', maxTRhs  ,' [sec]'
       WRITE(*,299) '          - solve linear Systems   =', maxTSolve,' [sec]'
       WRITE(*,299) '          - Rates                  =', maxTRates,' [sec]'
       IF(MPI_np>1) WRITE(*,299) '          - Ratessend              =', maxTSend ,' [sec]'
@@ -160,8 +162,8 @@ MODULE mo_IO
   SUBROUTINE SaveTimeStp(Unit,nsteps,tnew,h,y)
     INTEGER :: Unit
     INTEGER :: nsteps
-    REAL(RealKind) :: tnew, h
-    REAL(RealKind) :: y(:)
+    REAL(dp) :: tnew, h
+    REAL(dp) :: y(:)
     IF (MPI_ID==0) THEN
       ! Output Label
       !199 format(I6,3X,E18.12,4X,E18.12,4X,2(E16.6,1X) )
@@ -235,8 +237,8 @@ MODULE mo_IO
   !
   !
   SUBROUTINE DebugPrint1(yvec,rvec,stepsize,time)
-    REAL(RealKind) :: yvec(:),rvec(:)
-    REAL(RealKind) :: stepsize, time
+    REAL(dp) :: yvec(:),rvec(:)
+    REAL(dp) :: stepsize, time
     !
     WRITE(*,*) '----------------------------'
     WRITE(*,*) 'debug h, t      :: ', stepsize , time

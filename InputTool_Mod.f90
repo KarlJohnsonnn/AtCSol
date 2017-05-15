@@ -42,13 +42,13 @@ SUBROUTINE LineFile(Back,Start1,Start2,End,Name1,Name2 &
   CHARACTER(*), OPTIONAL :: Start1,Start2
   CHARACTER(*) :: End
   CHARACTER(*), OPTIONAL :: Name1,Name2
-  REAL(RealKind), OPTIONAL :: R1,R2,R3,R4,R5,R6,R7,R8
-  REAL(RealKind), OPTIONAL :: R(:)
+  REAL(dp), OPTIONAL :: R1,R2,R3,R4,R5,R6,R7,R8
+  REAL(dp), OPTIONAL :: R(:)
 
   CHARACTER(300) :: Line, tLine
   INTEGER :: i,is
   INTEGER, PARAMETER :: LenWork=20
-  REAL(RealKind) :: Work(LenWork)
+  REAL(dp) :: Work(LenWork)
   INTEGER :: slash
 
   Back=.FALSE.

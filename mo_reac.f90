@@ -15,7 +15,7 @@
 
     INTEGER, PARAMETER     :: a_unit  = 2   &
                              ,a_gas_u = 2
-    REAL(RealKind) :: dcon1,dcon2
+    REAL(dp) :: dcon1,dcon2
 
 !--------------------------------------------------------------
 !---  Reaction Mechanism
@@ -78,7 +78,7 @@
 !---  reaction structures
     TYPE reactant
        INTEGER :: i_spc
-       REAL(RealKind) :: d_koef
+       REAL(dp) :: d_koef
     END TYPE reactant
 
     TYPE reaction
@@ -103,16 +103,16 @@
        INTEGER, POINTER :: reac_si_nr(:)
        INTEGER, POINTER :: reac_so_nr(:)
 
-       REAL(RealKind), POINTER  :: last_rate(:,:)
-       REAL(RealKind), POINTER  :: back_rate(:,:)
-       REAL(RealKind), POINTER  :: v(:,:)
-       REAL(RealKind), POINTER  :: w(:,:)
-       REAL(RealKind), POINTER :: dparam(:)  
+       REAL(dp), POINTER  :: last_rate(:,:)
+       REAL(dp), POINTER  :: back_rate(:,:)
+       REAL(dp), POINTER  :: v(:,:)
+       REAL(dp), POINTER  :: w(:,:)
+       REAL(dp), POINTER :: dparam(:)  
 
        LOGICAL :: odd = .FALSE.
 
-       REAL(RealKind) :: fac_exp
-       REAL(RealKind) :: fac_A             
+       REAL(dp) :: fac_exp
+       REAL(dp) :: fac_A             
 
        TYPE (reactant), POINTER :: reactant(:)
 
@@ -131,7 +131,7 @@
     INTEGER :: nDIM=0
     INTEGER :: nDIMcl=0
     INTEGER :: nDIMex=0
-    REAL(RealKind) :: rNspc
+    REAL(dp) :: rNspc
 
     INTEGER :: nreakgas=0,nreakhenry=0,nreakdissoc=0,nreakaqua=0, nreaksolid=0
     INTEGER :: nreakgphoto=0,nreakgconst=0,nreakgtemp=0,nreakgtroe=0,nreakgspec=0
@@ -147,12 +147,12 @@
 
 !--------------------------------------------------------------
 !--    passive species, indices of Henry species
-    REAL(RealKind), ALLOCATABLE :: ykat(:,:)
+    REAL(dp), ALLOCATABLE :: ykat(:,:)
     INTEGER, ALLOCATABLE :: ind_henry(:,:)
     CHARACTER(20), ALLOCATABLE :: ReactionTypes(:)
 
 !--    mass transfer coefficient, kBig
-    REAL(RealKind):: dkmt, kBig
+    REAL(dp):: dkmt, kBig
 !
 !--------------------------------------------------------------
 !--    species names 
@@ -196,52 +196,52 @@
     LOGICAL              :: hasRO2
     INTEGER, ALLOCATABLE :: RO2(:)          ! Species-Index of peroxyradical
     INTEGER              :: nRO2            ! Number of Gasphase-Peroxyradicals in mechanism
-    REAL(RealKind), ALLOCATABLE :: SumRO2(:)       ! Summation of all gasphase peroxyradicals in everey cell
+    REAL(dp), ALLOCATABLE :: SumRO2(:)       ! Summation of all gasphase peroxyradicals in everey cell
 !--    aqueous phase
     LOGICAL              :: hasRO2aq
     INTEGER, ALLOCATABLE :: RO2aq(:)          ! Species-Index of peroxyradical
     INTEGER              :: nRO2aq            ! Number of aqueos phase peroxy radicals in mechanism
-    REAL(RealKind), ALLOCATABLE :: SumRO2aq(:)       ! Summation of all aqueopus phase peroxyradicals in everey cell
+    REAL(dp), ALLOCATABLE :: SumRO2aq(:)       ! Summation of all aqueopus phase peroxyradicals in everey cell
 !
 !--------------------------------------------------------------
 !--    Aerosol species properties
-    REAL(RealKind), ALLOCATABLE :: Charge(:)       ! charge of ions
-    REAL(RealKind), ALLOCATABLE :: SolubInd(:)     ! solubility index
-    REAL(RealKind), ALLOCATABLE :: MolMass(:)      ! molar mass of species
-    REAL(RealKind), ALLOCATABLE :: SpcDens(:)      ! density of species
-    REAL(RealKind), ALLOCATABLE :: OrgIndex(:)     ! carbon atoms
+    REAL(dp), ALLOCATABLE :: Charge(:)       ! charge of ions
+    REAL(dp), ALLOCATABLE :: SolubInd(:)     ! solubility index
+    REAL(dp), ALLOCATABLE :: MolMass(:)      ! molar mass of species
+    REAL(dp), ALLOCATABLE :: SpcDens(:)      ! density of species
+    REAL(dp), ALLOCATABLE :: OrgIndex(:)     ! carbon atoms
     CHARACTER(2), ALLOCATABLE :: CC(:)      ! compound class
-    REAL(RealKind), ALLOCATABLE :: ActIndex(:)     ! Computation of Activity coefficients index 
+    REAL(dp), ALLOCATABLE :: ActIndex(:)     ! Computation of Activity coefficients index 
 
 !--    Input from impactor measurements
     INTEGER :: nImpac = 0                 & ! number of impactor stages
               ,nMode  = 0                 & ! number of input modes
               ,ntImp  = 0                   ! number of impactor species
     INTEGER, ALLOCATABLE :: ImpInd(:)       ! indices of impactor species
-    REAL(RealKind), ALLOCATABLE :: BdImpac(:)      ! boundaries of stages
-    REAL(RealKind), ALLOCATABLE :: FracImpac(:,:)  ! mass fractions per stage
-    REAL(RealKind), ALLOCATABLE :: DryMod(:,:)     ! modal input masses per fractions
+    REAL(dp), ALLOCATABLE :: BdImpac(:)      ! boundaries of stages
+    REAL(dp), ALLOCATABLE :: FracImpac(:,:)  ! mass fractions per stage
+    REAL(dp), ALLOCATABLE :: DryMod(:,:)     ! modal input masses per fractions
 
 !--    Input from impactor measurements
     INTEGER :: ntAConc = 0                   ! number  of initialized concentrations
     INTEGER, ALLOCATABLE :: AConcInd(:)      ! indices of initialized concentrations
-    REAL(RealKind), ALLOCATABLE :: AquaConc(:)      ! initial aqueous phase concentrations 
+    REAL(dp), ALLOCATABLE :: AquaConc(:)      ! initial aqueous phase concentrations 
                                              ! after activation
 !--------------------------------------------------------------
 !--    input arrays
-    !REAL(RealKind):: tcur
-    !REAL(RealKind), ALLOCATABLE :: y_iconc(:)
-    REAL(RealKind), ALLOCATABLE :: InitValAct(:)
-    REAL(RealKind), ALLOCATABLE :: InitValKat(:)
+    !REAL(dp):: tcur
+    !REAL(dp), ALLOCATABLE :: y_iconc(:)
+    REAL(dp), ALLOCATABLE :: InitValAct(:)
+    REAL(dp), ALLOCATABLE :: InitValKat(:)
 
-    !REAL(RealKind), ALLOCATABLE :: y_emi(:)
-    REAL(RealKind), ALLOCATABLE :: henry_diff(:)
-    REAL(RealKind), ALLOCATABLE :: henry_accom(:)
+    !REAL(dp), ALLOCATABLE :: y_emi(:)
+    REAL(dp), ALLOCATABLE :: henry_diff(:)
+    REAL(dp), ALLOCATABLE :: henry_accom(:)
 
 !--------------------------------------------------------------
 !--    deposition and emissions
-    REAL(RealKind), ALLOCATABLE :: vd(:)
-    REAL(RealKind), ALLOCATABLE :: y_e(:)
+    REAL(dp), ALLOCATABLE :: vd(:)
+    REAL(dp), ALLOCATABLE :: y_e(:)
 
 !--------------------------------------------------------------
     
@@ -249,15 +249,15 @@
     CHARACTER(6),ALLOCATABLE  :: ThRefDataCode(:)
     CHARACTER(2),ALLOCATABLE  :: ThAtoms(:,:)           ! (:,4)
     INTEGER,ALLOCATABLE       :: ThnAtoms(:,:)          ! (:,4)
-    REAL(RealKind),ALLOCATABLE :: ThTempRange(:,:)      ! (:,2)
-    REAL(RealKind),ALLOCATABLE :: ThMolMass(:)
+    REAL(dp),ALLOCATABLE :: ThTempRange(:,:)      ! (:,2)
+    REAL(dp),ALLOCATABLE :: ThMolMass(:)
     CHARACTER(1),ALLOCATABLE  :: ThPhase(:)
-    REAL(RealKind),ALLOCATABLE :: lowA(:),lowB(:),lowC(:),lowD(:),lowE(:),lowF(:),lowG(:)
-    REAL(RealKind),ALLOCATABLE :: highA(:),highB(:),highC(:),highD(:),highE(:),highF(:),highG(:)
-    REAL(RealKind),ALLOCATABLE :: H0_29815R(:)
-    REAL(RealKind),ALLOCATABLE :: SwitchTemp(:)
+    REAL(dp),ALLOCATABLE :: lowA(:),lowB(:),lowC(:),lowD(:),lowE(:),lowF(:),lowG(:)
+    REAL(dp),ALLOCATABLE :: highA(:),highB(:),highC(:),highD(:),highE(:),highF(:),highG(:)
+    REAL(dp),ALLOCATABLE :: H0_29815R(:)
+    REAL(dp),ALLOCATABLE :: SwitchTemp(:)
     !
-    REAL(RealKind) :: y_total
+    REAL(dp) :: y_total
     !
     !
     INTEGER :: loc_diagCnt, loc_rateCnt, loc_concCnt, glob_diagCnt
@@ -269,15 +269,15 @@
     !
     LOGICAL :: combustion=.FALSE.                      ! flag for combustion mechanism
     !
-    REAL(RealKind), ALLOCATABLE :: GFE(:), DGFEdT(:)
-    REAL(RealKind), ALLOCATABLE :: DelGFE(:), DDelGFEdT(:)
+    REAL(dp), ALLOCATABLE :: GFE(:), DGFEdT(:)
+    REAL(dp), ALLOCATABLE :: DelGFE(:), DDelGFEdT(:)
     !
-    REAL(RealKind), ALLOCATABLE :: MW(:)    ! molecular weight (combustion)
-    REAL(RealKind), ALLOCATABLE :: rMW(:)    !1/ molecular weight (combustion)
+    REAL(dp), ALLOCATABLE :: MW(:)    ! molecular weight (combustion)
+    REAL(dp), ALLOCATABLE :: rMW(:)    !1/ molecular weight (combustion)
     !
     ! more speedchem stuff
-    REAL(RealKind) :: rho, rRho   ! rho = density, rRho=kilo/rho
-    REAL(RealKind), ALLOCATABLE :: SCperm(:)
+    REAL(dp) :: rho, rRho   ! rho = density, rRho=kilo/rho
+    REAL(dp), ALLOCATABLE :: SCperm(:)
 
     !
     ! indix arrays for different reaction types 
@@ -311,6 +311,7 @@
       INTEGER, ALLOCATABLE :: iFAC_H2(:),  iFAC_O2N2(:), iFAC_M(:),    iFAC_O2(:),   iFAC_N2(:)
       INTEGER, ALLOCATABLE :: iFAC_H2O(:), iFAC_RO2(:),  iFAC_O2O2(:), iFAC_aH2O(:), iFAC_RO2aq(:)
       INTEGER, ALLOCATABLE :: iHOaqua(:)
+      INTEGER, ALLOCATABLE :: iPHOTOkpp(:), iPHOTO2kpp(:), iPHOTO3kpp(:)
     END TYPE ReacTypeIndex_TR
 
     INTEGER :: nPHOTabc=0, nPHOTab=0, nPHOTmcm=0, nCONST=0, nTEMP1=0, nTEMP2=0, nTEMP3=0, nTEMP4=0
@@ -323,71 +324,70 @@
     INTEGER :: nFACTOR=0, nFAC_H2=0, nFAC_O2N2=0, nFAC_M=0, nFAC_O2=0, nFAC_N2=0
     INTEGER :: nFAC_H2O=0, nFAC_RO2=0, nFAC_O2O2=0, nFAC_aH2O=0, nFAC_RO2aq=0
     INTEGER :: nHOaqua=0
+    INTEGER :: nPHOTOkpp=0, nPHOTO2kpp=0, nPHOTO3kpp=0
 
     TYPE(ReacTypeIndex_TR) :: RTind2
 
 
     TYPE ReacTypeParameter_CK
       ! different kinds of arrhenius parameter
-      REAL(RealKind), ALLOCATABLE :: A(:),    b(:),    E(:)
-      REAL(RealKind), ALLOCATABLE :: A0(:),   b0(:),   E0(:)
-      REAL(RealKind), ALLOCATABLE :: AX(:),   bX(:),   EX(:)
-      REAL(RealKind), ALLOCATABLE :: Ainf(:), binf(:), Einf(:)
+      REAL(dp), ALLOCATABLE :: A(:),    b(:),    E(:)
+      REAL(dp), ALLOCATABLE :: A0(:),   b0(:),   E0(:)
+      REAL(dp), ALLOCATABLE :: AX(:),   bX(:),   EX(:)
+      REAL(dp), ALLOCATABLE :: Ainf(:), binf(:), Einf(:)
       ! Troe parameter
-      REAL(RealKind), ALLOCATABLE :: T1(:), T2(:), T3(:), T4(:)
+      REAL(dp), ALLOCATABLE :: T1(:), T2(:), T3(:), T4(:)
     END TYPE ReacTypeParameter_CK
 
     TYPE(ReacTypeParameter_CK) :: RTpar
 
     TYPE ReacTypeParameter_TR
       ! different kinds of arrhenius parameter
-      REAL(RealKind), ALLOCATABLE :: PHOTabc(:,:)     ! nPHOTabc x 3
-      REAL(RealKind), ALLOCATABLE :: PHOTab(:,:)      ! nPHOTab x 2
-      REAL(RealKind), ALLOCATABLE :: PHOTmcm(:,:)     ! nPHOTmcm x 3
-      REAL(RealKind), ALLOCATABLE :: CONST(:)         ! nCONST x 1
-      REAL(RealKind), ALLOCATABLE :: TEMP1(:,:), TEMP2(:,:), TEMP3(:,:), TEMP4(:,:) ! nTEMPi x 2
-      REAL(RealKind), ALLOCATABLE :: TROE(:,:)        ! nTROE x 4
-      REAL(RealKind), ALLOCATABLE :: TROEf(:,:)       ! nTROEf x 5
-      REAL(RealKind), ALLOCATABLE :: TROEq(:,:)       ! nTROEq x 6
-      REAL(RealKind), ALLOCATABLE :: TROEqf(:,:)      ! nTROEqf x 7
-      REAL(RealKind), ALLOCATABLE :: TROExp(:,:)      ! nTROExp x 5
-      REAL(RealKind), ALLOCATABLE :: TROEmcm(:,:)     ! nTROExp x 10
-      REAL(RealKind), ALLOCATABLE :: SPEC1(:,:), SPEC2(:,:)  ! nSPEC1,2 x 2
-      REAL(RealKind), ALLOCATABLE :: SPEC3(:,:)       ! nSPEC3 x 6
-      REAL(RealKind), ALLOCATABLE :: SPEC4(:,:)       ! nSPEC4 x 4
-      REAL(RealKind), ALLOCATABLE :: SPEC1mcm(:,:), SPEC2mcm(:,:)  ! nSPEC1mcm,2 x 3
-      REAL(RealKind), ALLOCATABLE :: SPEC3mcm(:,:)    ! nSPEC3mcm x 2
-      REAL(RealKind), ALLOCATABLE :: SPEC4mcm(:,:), SPEC5mcm(:,:), SPEC6mcm(:,:), SPEC8mcm(:,:)  ! nSPEC4,5,6mcm x 4
-      REAL(RealKind), ALLOCATABLE :: SPEC7mcm(:,:)    ! nSPEC7mcm x 6
-      REAL(RealKind), ALLOCATABLE :: S4H2O(:,:)       ! nS4H2o x 4
-      REAL(RealKind), ALLOCATABLE :: T1H2O(:,:)       ! nT1H2o x 2
-      REAL(RealKind), ALLOCATABLE :: Meskhidze(:,:)   ! nMeskhidze x 7
-      REAL(RealKind), ALLOCATABLE :: ASPEC1(:,:), ASPEC3(:,:) ! nASPEC1,3 x 2
-      REAL(RealKind), ALLOCATABLE :: ASPEC2(:,:), ASPEC4(:,:) ! nAPSEC2,4 x 3
-      REAL(RealKind), ALLOCATABLE :: DTEMP(:,:), DTEMP5(:,:)  ! nDTEMP,5 x 3
-      REAL(RealKind), ALLOCATABLE :: DTEMP2(:,:), DTEMP3(:,:), DTEMP4(:,:)  ! nDTEMP2,3,4 x 4
-      REAL(RealKind), ALLOCATABLE :: DCONST(:,:)        ! nDCONST x 2
-      REAL(RealKind), ALLOCATABLE :: HENRY(:,:)         ! nHENRY x 2
-      !REAL(RealKind), ALLOCATABLE :: FACTOR(:)          ! nFACTOR x 1
-      !REAL(RealKind), ALLOCATABLE :: iFAC_H2(:), iFAC_O2N2(:), iFAC_M(:), iFAC_O2(:), iFAC_N2(:)
-      !REAL(RealKind), ALLOCATABLE :: iFAC_H2O(:), iFAC_RO2(:), iFAC_O2O2(:), iFAC_aH2O(:), iFAC_RO2aq(:)
-      REAL(RealKind), ALLOCATABLE :: HOaqua(:)
+      REAL(dp), ALLOCATABLE :: PHOTabc(:,:)     ! nPHOTabc x 3
+      REAL(dp), ALLOCATABLE :: PHOTab(:,:)      ! nPHOTab x 2
+      REAL(dp), ALLOCATABLE :: PHOTmcm(:,:)     ! nPHOTmcm x 3
+      REAL(dp), ALLOCATABLE :: CONST(:)         ! nCONST x 1
+      REAL(dp), ALLOCATABLE :: TEMP1(:,:), TEMP2(:,:), TEMP3(:,:), TEMP4(:,:) ! nTEMPi x 2
+      REAL(dp), ALLOCATABLE :: TROE(:,:)        ! nTROE x 4
+      REAL(dp), ALLOCATABLE :: TROEf(:,:)       ! nTROEf x 5
+      REAL(dp), ALLOCATABLE :: TROEq(:,:)       ! nTROEq x 6
+      REAL(dp), ALLOCATABLE :: TROEqf(:,:)      ! nTROEqf x 7
+      REAL(dp), ALLOCATABLE :: TROExp(:,:)      ! nTROExp x 5
+      REAL(dp), ALLOCATABLE :: TROEmcm(:,:)     ! nTROExp x 10
+      REAL(dp), ALLOCATABLE :: SPEC1(:,:), SPEC2(:,:)  ! nSPEC1,2 x 2
+      REAL(dp), ALLOCATABLE :: SPEC3(:,:)       ! nSPEC3 x 6
+      REAL(dp), ALLOCATABLE :: SPEC4(:,:)       ! nSPEC4 x 4
+      REAL(dp), ALLOCATABLE :: SPEC1mcm(:,:), SPEC2mcm(:,:)  ! nSPEC1mcm,2 x 3
+      REAL(dp), ALLOCATABLE :: SPEC3mcm(:,:)    ! nSPEC3mcm x 2
+      REAL(dp), ALLOCATABLE :: SPEC4mcm(:,:), SPEC5mcm(:,:), SPEC6mcm(:,:), SPEC8mcm(:,:)  ! nSPEC4,5,6mcm x 4
+      REAL(dp), ALLOCATABLE :: SPEC7mcm(:,:)    ! nSPEC7mcm x 6
+      REAL(dp), ALLOCATABLE :: S4H2O(:,:)       ! nS4H2o x 4
+      REAL(dp), ALLOCATABLE :: T1H2O(:,:)       ! nT1H2o x 2
+      REAL(dp), ALLOCATABLE :: Meskhidze(:,:)   ! nMeskhidze x 7
+      REAL(dp), ALLOCATABLE :: ASPEC1(:,:), ASPEC3(:,:) ! nASPEC1,3 x 2
+      REAL(dp), ALLOCATABLE :: ASPEC2(:,:), ASPEC4(:,:) ! nAPSEC2,4 x 3
+      REAL(dp), ALLOCATABLE :: DTEMP(:,:), DTEMP5(:,:)  ! nDTEMP,5 x 3
+      REAL(dp), ALLOCATABLE :: DTEMP2(:,:), DTEMP3(:,:), DTEMP4(:,:)  ! nDTEMP2,3,4 x 4
+      REAL(dp), ALLOCATABLE :: DCONST(:,:)        ! nDCONST x 2
+      REAL(dp), ALLOCATABLE :: HENRY(:,:)         ! nHENRY x 2
+      REAL(dp), ALLOCATABLE :: HOaqua(:)
+      REAL(dp), ALLOCATABLE :: PHOTOkpp(:), PHOTO2kpp(:), PHOTO3kpp(:) ! nPHOTOi x 1
     END TYPE ReacTypeParameter_TR
 
     TYPE(ReacTypeParameter_TR) :: RTpar2
 
 
-    INTEGER, ALLOCATABLE        :: first_orderKAT(:,:) ! reaction number where stoech coef == ONE
-    INTEGER, ALLOCATABLE        :: first_order(:,:) ! reaction number where stoech coef == ONE
-    INTEGER, ALLOCATABLE        :: second_order(:,:) ! reactions where species have second order 
-    INTEGER, ALLOCATABLE        :: higher_order(:,:) ! higher order reactions
-    REAL(RealKind), ALLOCATABLE :: ahigher_order(:) ! higher order reactions contains also fractions and noninteger values
+    INTEGER, ALLOCATABLE  :: first_orderKAT(:,:) ! reaction number where stoech coef == ONE
+    INTEGER, ALLOCATABLE  :: first_order(:,:) ! reaction number where stoech coef == ONE
+    INTEGER, ALLOCATABLE  :: second_order(:,:) ! reactions where species have second order 
+    INTEGER, ALLOCATABLE  :: higher_order(:,:) ! higher order reactions
+    REAL(dp), ALLOCATABLE :: ahigher_order(:) ! higher order reactions contains also fractions and noninteger values
     INTEGER :: nFirst_order=0, nSecond_order=0, nHigher_order=0, nFirst_orderKAT=0
 
     ! array for Troe reactions
-    REAL(RealKind), ALLOCATABLE :: vlog10_Pr(:),      &
-                                 & vlog10_Fcent(:),   &
-                                 & vPr(:),            &
-                                 & vcTroe(:), vn1Troe(:)
+    REAL(dp), ALLOCATABLE :: vlog10_Pr(:),      &
+                           & vlog10_Fcent(:),   &
+                           & vPr(:),            &
+                           & vcTroe(:), vn1Troe(:)
     !
 END MODULE mo_reac

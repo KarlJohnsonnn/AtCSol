@@ -4,16 +4,16 @@ MODULE Meteo_Mod
 
   IMPLICIT NONE
   
-  REAL(RealKind), PARAMETER :: Temp=280.0d0 !298.15d0
-  REAL(RealKind), PARAMETER :: Cp=1004.0D0
-  REAL(RealKind), PARAMETER :: Cv=717.0D0
-  REAL(RealKind), PARAMETER :: RhoC=1.14D0
-  REAL(RealKind), PARAMETER :: Pres=850.d0 ! hPa
-  REAL(RealKind), PARAMETER :: p0=1013.25d0 ! hPa Normaldruck
-  REAL(RealKind), PARAMETER :: Rd=Cp-Cv
-  REAL(RealKind), PARAMETER :: mAir=2.46d19/Temp*298.15d0*Pres/p0*1.0d0
+  REAL(dp), PARAMETER :: Temp=280.0d0 !298.15d0
+  REAL(dp), PARAMETER :: Cp=1004.0D0
+  REAL(dp), PARAMETER :: Cv=717.0D0
+  REAL(dp), PARAMETER :: RhoC=1.14D0
+  REAL(dp), PARAMETER :: Pres=850.d0 ! hPa
+  REAL(dp), PARAMETER :: p0=1013.25d0 ! hPa Normaldruck
+  REAL(dp), PARAMETER :: Rd=Cp-Cv
+  REAL(dp), PARAMETER :: mAir=2.46d19/Temp*298.15d0*Pres/p0*1.0d0
 
-  REAL(RealKind), PARAMETER :: mol2part   = 6.02295d17            &
+  REAL(dp), PARAMETER :: mol2part   = 6.02295d17            &
   &                          , GasConst_R = 0.082056d0            &   ! [in l*atm/mol/K]
   &                          , InvRefTemp = 1.0D0/298.15D0        &
   &                          , RefTemp    = 298.15D0              &
@@ -30,22 +30,22 @@ MODULE Meteo_Mod
   &                          , MM_h2o     = 18.01534d0            &
   &                          , h2o_push   = 6.023d20/MM_h2o       &
   &                          , densi      = 1.0545184035426323d0 
-   REAL(RealKind) :: mH2O
+   REAL(dp) :: mH2O
 
-  REAL(RealKind), PARAMETER :: LWCconst=2.0d-8       ! [l/m3] no cloud 
-  REAL(RealKind), PARAMETER :: NCC=1000d0
+  REAL(dp), PARAMETER :: LWCconst=2.0d-8       ! [l/m3] no cloud 
+  REAL(dp), PARAMETER :: NCC=1000d0
 
-  !REAL(RealKind), PARAMETER :: R_const=8.344598d0 ! [ J / mol / K ] = [ kg * m2 / s2 / mol /K ]
-  REAL(RealKind), PARAMETER :: R_const=8.3144621d0 ! [ J / mol / K ] = [ kg * m2 / s2 / mol /K ]
-  REAL(RealKind) :: PressR=Pres/R_const
+  !REAL(dp), PARAMETER :: R_const=8.344598d0 ! [ J / mol / K ] = [ kg * m2 / s2 / mol /K ]
+  REAL(dp), PARAMETER :: R_const=8.3144621d0 ! [ J / mol / K ] = [ kg * m2 / s2 / mol /K ]
+  REAL(dp) :: PressR=Pres/R_const
 
 !-- more LWC stuff for pseudo function 
-      REAL(RealKind) :: LWCbounds(6) ! boundaries for linear pseudo lwc function
+      REAL(dp) :: LWCbounds(6) ! boundaries for linear pseudo lwc function
 
 CONTAINS 
 
 SUBROUTINE ThirdPartyKoeff(Time)
-  REAL(RealKind) :: Time
+  REAL(dp) :: Time
 
   mH2O=rhum*densi*h2o_push
   
@@ -58,9 +58,9 @@ FUNCTION pseudoLWC(RealTime)  RESULT(LWC)
   !
   IMPLICIT NONE
   !
-  REAL(RealKind) :: LWC
-  REAL(RealKind) :: RealTime
-  REAL(RealKind) :: Time
+  REAL(dp) :: LWC
+  REAL(dp) :: RealTime
+  REAL(dp) :: Time
   !
   !         LWC
   !           /|\       fake LWC function (periodicly)
@@ -118,8 +118,8 @@ END FUNCTION
 
     IMPLICIT NONE
 
-    REAL(RealKind) :: pH
-    REAL(RealKind) :: ya(ntAqua)   ! molar density
+    REAL(dp) :: pH
+    REAL(dp) :: ya(ntAqua)   ! molar density
     INTEGER :: jt
 
     pH = ZERO

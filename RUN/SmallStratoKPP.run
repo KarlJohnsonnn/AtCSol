@@ -1,13 +1,12 @@
  &SCENARIO
   BSP         = 'SmallStratoKPP'
-  pHSet       = 1
-  LWCLevelmax = 2.d-8
-  LWCLevelmin = 3.d-6 
-  constLWC    = 0
-  Ladebalken  = 0
+  Ladebalken  = 1
   ErrorLog    = 0
-  matrixPrint = .false.  
-  NetCdfPrint = .false.
+  MatrixPrint = .false.
+  DebugPrint  = .false.
+  NetCdfPrint = .true. 
+  TempEq      = .false. 
+  ChemKin     = .false.        ! input mechanism in ChemKin notation
  /END
  &FILES
   ChemFile = 'CHEM/SmallStratoKPP'
@@ -33,6 +32,8 @@
   solveLA   = 'ex'  
   ImpEuler  = 0
   ODEsolver = 'METHODS/TSRosWRodas3.fort'
+  !ODEsolver = 'LSODE'
+  Vectorized = .true.
  /END
  &ORDERING
   OrderingStrategie  = 8

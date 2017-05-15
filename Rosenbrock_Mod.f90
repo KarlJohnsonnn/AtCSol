@@ -24,51 +24,51 @@ MODULE Rosenbrock_Mod
     INTEGER :: Order                                ! Classical approximation order of the method
     INTEGER :: nStage                               ! Number of stages
     INTEGER :: pinterp                              ! Interpolation order
-    REAL(RealKind) :: ga                            ! Diagonalentry gamma
-    REAL(RealKind) :: pow                           ! needed for sitepsize control pow=1/nstage
-    REAL(RealKind), ALLOCATABLE :: Asum(:)          ! Row sum of A
-    REAL(RealKind), ALLOCATABLE :: Alpha(:,:)       ! Propagation table, strictly lower triangular
-    REAL(RealKind), ALLOCATABLE :: a(:,:)           ! Propagation table, strictly lower triangular (converted Alpha)
-    REAL(RealKind), ALLOCATABLE :: Gamma(:,:)       ! Stage table, lower triangular with nonzero diagonal
-    REAL(RealKind), ALLOCATABLE :: iGamma(:,:)      ! inverse Stage table
-    REAL(RealKind), ALLOCATABLE :: C(:,:)           ! Stage table, lower triangular with nonzero diagonal (converted Gamma)
-    REAL(RealKind), ALLOCATABLE :: B(:)             ! Step completion table
-    REAL(RealKind), ALLOCATABLE :: m(:)             ! Step completion table(converted B)
-    REAL(RealKind), ALLOCATABLE :: Be(:)            ! Step completion table for embedded method of order one less
-    REAL(RealKind), ALLOCATABLE :: me(:)            ! Step completion table for embedded method of order one less (converted Be)
-    REAL(RealKind), ALLOCATABLE :: binterpt(:,:)    ! Dense output formula
+    REAL(dp) :: ga                            ! Diagonalentry gamma
+    REAL(dp) :: pow                           ! needed for sitepsize control pow=1/nstage
+    REAL(dp), ALLOCATABLE :: Asum(:)          ! Row sum of A
+    REAL(dp), ALLOCATABLE :: Alpha(:,:)       ! Propagation table, strictly lower triangular
+    REAL(dp), ALLOCATABLE :: a(:,:)           ! Propagation table, strictly lower triangular (converted Alpha)
+    REAL(dp), ALLOCATABLE :: Gamma(:,:)       ! Stage table, lower triangular with nonzero diagonal
+    REAL(dp), ALLOCATABLE :: iGamma(:,:)      ! inverse Stage table
+    REAL(dp), ALLOCATABLE :: C(:,:)           ! Stage table, lower triangular with nonzero diagonal (converted Gamma)
+    REAL(dp), ALLOCATABLE :: B(:)             ! Step completion table
+    REAL(dp), ALLOCATABLE :: m(:)             ! Step completion table(converted B)
+    REAL(dp), ALLOCATABLE :: Be(:)            ! Step completion table for embedded method of order one less
+    REAL(dp), ALLOCATABLE :: me(:)            ! Step completion table for embedded method of order one less (converted Be)
+    REAL(dp), ALLOCATABLE :: binterpt(:,:)    ! Dense output formula
   END TYPE RosenbrockMethod_T
   
   
   TYPE IntArgs
     INTEGER :: nep                                  ! length y vector
-    REAL(RealKind) :: Tend                          ! end of integration intervall
+    REAL(dp) :: Tend                          ! end of integration intervall
     INTEGER :: Tdir                                 ! direction (1 if t is ascending, -1 if t is descending)
-    REAL(RealKind), ALLOCATABLE :: f0(:)            ! first rhs eval
-    REAL(RealKind), ALLOCATABLE :: threshold(:)     ! ATol/RTol
-    REAL(RealKind) :: hmax                          ! max step size
-    REAL(RealKind) :: hTspan
-    REAL(RealKind), ALLOCATABLE :: ATol(:)          ! absolute tolerances AtolGas
-    REAL(RealKind) :: RTol                          ! relative tolerance RtolROW
-    REAL(RealKind) :: RTolpow
+    REAL(dp), ALLOCATABLE :: f0(:)            ! first rhs eval
+    REAL(dp), ALLOCATABLE :: threshold(:)     ! ATol/RTol
+    REAL(dp) :: hmax                          ! max step size
+    REAL(dp) :: hTspan
+    REAL(dp), ALLOCATABLE :: ATol(:)          ! absolute tolerances AtolGas
+    REAL(dp) :: RTol                          ! relative tolerance RtolROW
+    REAL(dp) :: RTolpow
   END TYPE IntArgs
 
   TYPE Out
-    REAL(RealKind), ALLOCATABLE :: y(:)    ! y-vector at Tend
+    REAL(dp), ALLOCATABLE :: y(:)    ! y-vector at Tend
     INTEGER :: nsteps     = 0              ! # succ. steps
     INTEGER :: nfailed    = 0              ! # failed steps
     INTEGER :: nRateEvals = 0              ! # Rate evaluation
     INTEGER :: npds       = 0              ! # Jacobian evaluation
     INTEGER :: ndecomps   = 0              ! # LU factorisation
     INTEGER :: nsolves    = 0              ! # solved lin algebra
-    REAL(RealKind) :: Ttimestep = 0.0d0  ! mean Time for one ROW step
+    REAL(dp) :: Ttimestep = 0.0d0  ! mean Time for one ROW step
   END TYPE Out
   TYPE(Out) :: Output
 
   TYPE(IntArgs), PUBLIC :: Args                     ! Initial arguments  
   
-  REAL(RealKind), PRIVATE :: timerStart
-  REAL(RealKind), ALLOCATABLE :: LUvalsFix(:)
+  REAL(dp), PRIVATE :: timerStart
+  REAL(dp), ALLOCATABLE :: LUvalsFix(:)
 
   INTEGER, ALLOCATABLE :: LU_Perm(:)
 
@@ -88,7 +88,7 @@ MODULE Rosenbrock_Mod
     !   - RosenbrockMethod_T ... coefficients of the chosen one 
     !-------------------------------------------------------------
     ! Temporary variables: 
-    REAL(RealKind), ALLOCATABLE :: ID(:,:)
+    REAL(dp), ALLOCATABLE :: ID(:,:)
     INTEGER, ALLOCATABLE :: IPIV(:)
     INTEGER :: INFO
 
@@ -199,9 +199,9 @@ MODULE Rosenbrock_Mod
     ! Input:
     !   - Tspan
     !   - aTol, rTolROW
-    REAL(RealKind) :: Tspan(2)               
-    REAL(RealKind) :: aTol(2)
-    REAL(RealKind) :: rTolROW
+    REAL(dp) :: Tspan(2)               
+    REAL(dp) :: aTol(2)
+    REAL(dp) :: rTolROW
     !
     ALLOCATE(ThresholdStepSizeControl(nDIM))
     ThresholdStepSizeControl(:ntGas)=AtolGas/RTolROW
@@ -262,23 +262,23 @@ MODULE Rosenbrock_Mod
     !        - Tspan 
     !        - Y0  ( initial vector )
     !        - Jacobian matrix
-    REAL(RealKind), INTENT(IN) :: t, pow
-    REAL(RealKind), INTENT(IN) :: Y(nspc)
+    REAL(dp), INTENT(IN) :: t, pow
+    REAL(dp), INTENT(IN) :: Y(nspc)
     TYPE(CSR_Matrix_T), INTENT(IN) :: Jac
-    REAL(RealKind) :: Rate(neq)
-    REAL(RealKind) :: DRatedT(neq)     ! part. derv. rate over temperatur vector
+    REAL(dp) :: Rate(neq)
+    REAL(dp) :: DRatedT(neq)     ! part. derv. rate over temperatur vector
     !-------------------------------------------------
     ! Output:
     !        - initial step size
-    REAL(RealKind)  , INTENT(OUT) :: absh
-    REAL(RealKind) :: h, hmin 
-    REAL(RealKind) :: f0(nspc)
+    REAL(dp)  , INTENT(OUT) :: absh
+    REAL(dp) :: h, hmin 
+    REAL(dp) :: f0(nspc)
     !-------------------------------------------------
     !
     ! Temp vars:
-    REAL(RealKind) :: tdel, rh
-    REAL(RealKind), DIMENSION(nspc) ::  wt, DfDt, Tmp, f1, zeros
-    REAL(RealKind) :: sqrteps=SQRT(eps)
+    REAL(dp) :: tdel, rh
+    REAL(dp), DIMENSION(nspc) ::  wt, DfDt, Tmp, f1, zeros
+    REAL(dp) :: sqrteps=SQRT(eps)
     ! DEBUG
     INTEGER :: i  
 
@@ -338,8 +338,8 @@ MODULE Rosenbrock_Mod
     !   - RCo............ Rosenbrock method
     !   - Temp........... actual Temperatur (optional for TempEq)
     !
-    REAL(RealKind),    INTENT(IN) :: Y0(nDIM)
-    REAL(RealKind),    INTENT(IN) :: t, h
+    REAL(dp),    INTENT(IN) :: Y0(nDIM)
+    REAL(dp),    INTENT(IN) :: t, h
     TYPE(RosenbrockMethod_T)      :: RCo
     LOGICAL, OPTIONAL, INTENT(IN) :: Euler
     !--------------------------------------------------------
@@ -348,37 +348,39 @@ MODULE Rosenbrock_Mod
     !   - err............ error calc with embedded formula.
     !   - TempNew........ new temperature (optional for TempEq)
     !
-    REAL(RealKind), INTENT(OUT) :: YNew(nDIM)
-    REAL(RealKind), INTENT(OUT)   :: err
+    REAL(dp), INTENT(OUT) :: YNew(nDIM)
+    REAL(dp), INTENT(OUT)   :: err
     INTEGER       , INTENT(OUT)   :: errind(1,1)
     !-------------------------------------------------------
     ! TemporarY variables:
     !
-    REAL(RealKind), DIMENSION(nDIM)            :: Y,  Yhat, fRhs
-    REAL(RealKind), DIMENSION(nspc)            :: Yrh, U, UMat, dUdT, dCdt, d2UdT2 
-    REAL(RealKind), DIMENSION(nspc)            :: Jac_CT, Jac_TC
-    REAL(RealKind), DIMENSION(nDIMex)          :: bb
+    REAL(dp), DIMENSION(nDIM)            :: Y,  Yhat, fRhs
+    REAL(dp), DIMENSION(nspc)            :: Yrh, U, UMat, dUdT, dCdt, d2UdT2 
+    REAL(dp), DIMENSION(nspc)            :: Jac_CT, Jac_TC
+    REAL(dp), DIMENSION(nDIMex)          :: bb
     !
-    REAL(RealKind) :: k( nDIM , RCo%nStage )
+    REAL(dp) :: k( nDIM , RCo%nStage )
     !
-    REAL(RealKind) :: Tarr(10)
-    REAL(RealKind) :: Rate(neq), rRate(neq)
-    REAL(RealKind) :: DRatedT(neq)        
-    REAL(RealKind) :: dTdt, Jac_TT
+    REAL(dp) :: Tarr(10)
+    REAL(dp) :: Rate(neq), rRate(neq)
+    REAL(dp) :: DRatedT(neq)        
+    REAL(dp) :: dTdt, Jac_TT
       
-    REAL(RealKind) :: tt
-    REAL(RealKind) :: cv ! mass average mixture specific heat at constant volume
-    REAL(RealKind) :: dcvdT ! mass average mixture specific heat at constant volume
-    REAL(RealKind) :: X
-    REAL(RealKind) :: Press
+    REAL(dp) :: tt
+    REAL(dp) :: cv ! mass average mixture specific heat at constant volume
+    REAL(dp) :: dcvdT ! mass average mixture specific heat at constant volume
+    REAL(dp) :: X
+    REAL(dp) :: Press
 
-    REAL(RealKind) :: TimeErrCalc0
+    REAL(dp) :: TimeErrCalc0, TimeRhsCalc0
     !
     ! fuer verlgeich mit speedchem, andere spc reihenfolge
     !
-    INTEGER :: iStg, jStg, i          ! increments
+    INTEGER :: iStg, jStg, i, j          ! increments
     LOGICAL :: dprint=.false.
     INTEGER :: iprnt
+
+    REAL(dp) :: CM(nDIM)
 
     dprint = DebugPrint   !init run
     !
@@ -592,6 +594,7 @@ MODULE Rosenbrock_Mod
         !END IF
       END IF
       
+      TimeRhsCalc0 = MPI_WTIME()
       !--- Calculate the right hand side of the linear System
       IF ( CLASSIC ) THEN
 
@@ -630,6 +633,7 @@ MODULE Rosenbrock_Mod
         END IF
 
       END IF
+      TimeRhsCalc = TimeRhsCalc + MPI_WTIME() - TimeRhsCalc0
       
       timerStart  = MPI_WTIME()
       SOLVE_LINEAR_SYSTEM: IF ( useSparseLU ) THEN  
@@ -726,6 +730,15 @@ MODULE Rosenbrock_Mod
     !  print*, ''
     !  print*, ' Press ENTER to calculate next step '
     !  read(*,*) 
+    !  IF (error <= ONE) THEN
+    !    DO i=1,nDIM
+    !      tmp_CM = ZERO
+    !      !1DO j=1,nDIM
+    !      tmp_CM = tmp_CM + (Y0(i)/dCdT(j) * Jac_CC%Val(Jac_CC%RowPtr(i):Jac_CC%RowPtr(i+1)-1)
+    !      !END DO
+    !      CM(i) = DAXPY_Sparse(Jac_CC,(Y0(i)/dCdT(:) *  )  )
+    !    END DO
+    !  END IF
     !END IF
    
   END SUBROUTINE Rosenbrock
@@ -733,11 +746,11 @@ MODULE Rosenbrock_Mod
 
   SUBROUTINE ERROR(err,En_Index,ynew,yhat,ATol,RTol,t)
     !
-    REAL(RealKind) :: err
-    REAL(RealKind), DIMENSION(:) :: ynew, yhat, ATol
-    REAL(RealKind) :: RTol, t
+    REAL(dp) :: err
+    REAL(dp), DIMENSION(:) :: ynew, yhat, ATol
+    REAL(dp) :: RTol, t
     !
-    REAL(RealKind) :: scalTol(nDIM), En_Values(nDIM)
+    REAL(dp) :: scalTol(nDIM), En_Values(nDIM)
     INTEGER :: En_Index(1,1)
     !
     scalTol       = ONE / (ATol + MAX( ABS(yhat) , ABS(ynew) ) * RTol )  ! scaling strategie

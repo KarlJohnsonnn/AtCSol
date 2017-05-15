@@ -29,7 +29,7 @@ MODULE Chemsys_Mod
   TYPE Duct_T
     CHARACTER(LenName) :: Species=''
     CHARACTER(20)      :: Type
-    REAL(RealKind)     :: Koeff
+    REAL(dp)     :: Koeff
   END TYPE Duct_T
   !
   ! LIST FORM
@@ -39,7 +39,7 @@ MODULE Chemsys_Mod
     CHARACTER(LenName) :: Factor
     TYPE(Duct_T)  , POINTER   :: Educt(:)=>NULL(),                  &
     &                            Product(:)=>NULL()
-    REAL(RealKind), POINTER   :: Constants(:)=>NULL()
+    REAL(dp), POINTER   :: Constants(:)=>NULL()
     TYPE(Duct_T)  , POINTER   :: InActEduct(:)=>NULL(),             &
     &                            InActProduct(:)=>NULL()
     INTEGER                   :: nInActEd=0, nInActPro=0
@@ -56,12 +56,12 @@ MODULE Chemsys_Mod
     LOGICAL             :: brX=.FALSE.       ! logical for explicite reverse reaction
     CHARACTER(LenName)  :: Factor
     CHARACTER(2)        :: direction
-    REAL(RealKind)      :: SumAqCoef     
+    REAL(dp)      :: SumAqCoef     
     TYPE(Duct_T)  , ALLOCATABLE     :: Educt(:), Product(:)
-    REAL(RealKind), ALLOCATABLE     :: Constants(:)
-    REAL(RealKind), ALLOCATABLE     :: LowConst(:), HighConst(:)
-    REAL(RealKind), ALLOCATABLE     :: TroeConst(:)
-    REAL(RealKind), ALLOCATABLE     :: InActEduct(:), InActProduct(:)
+    REAL(dp), ALLOCATABLE     :: Constants(:)
+    REAL(dp), ALLOCATABLE     :: LowConst(:), HighConst(:)
+    REAL(dp), ALLOCATABLE     :: TroeConst(:)
+    REAL(dp), ALLOCATABLE     :: InActEduct(:), InActProduct(:)
     INTEGER                         :: nInActEd=0, nInActPro=0
     INTEGER                         :: nActEd=0  , nActPro=0
     INTEGER                         :: NumConst=0
@@ -70,7 +70,7 @@ MODULE Chemsys_Mod
     LOGICAL                         :: TBextra=.FALSE.
     INTEGER, ALLOCATABLE            :: TBidx(:)
     CHARACTER(100), ALLOCATABLE     :: TBspc(:)
-    REAL(RealKind), ALLOCATABLE     :: TBalpha(:)
+    REAL(dp), ALLOCATABLE     :: TBalpha(:)
     CHARACTER(LenName), ALLOCATABLE :: InActEductSpc(:)
   END TYPE ReactionStruct_T
   !
@@ -83,7 +83,7 @@ MODULE Chemsys_Mod
   !
   TYPE Species_T
     CHARACTER(LenName) :: Species=''
-    REAL(RealKind)     :: Hf=0.0d0, Gf=0.0d0, Cp=0.0d0
+    REAL(dp)     :: Hf=0.0d0, Gf=0.0d0, Cp=0.0d0
   END TYPE Species_T
   !
   !
@@ -94,20 +94,20 @@ MODULE Chemsys_Mod
   !
   TYPE AFRAC_T
     CHARACTER(LenName) :: Species=''
-    REAL(RealKind) :: MolMass           ! [g/mol]
+    REAL(dp) :: MolMass           ! [g/mol]
     INTEGER        :: Charge            ! ladung (+,-,++,--,...)
-    REAL(RealKind) :: SolubInd          ! Löslichkeitsindex
-    REAL(RealKind) :: Frac1             ! [g/g]
+    REAL(dp) :: SolubInd          ! Löslichkeitsindex
+    REAL(dp) :: Frac1             ! [g/g]
   END TYPE AFRAC_T
   !
   TYPE(AFRAC_T), ALLOCATABLE :: InitAFrac(:)
   !
   !
   TYPE SPEK_T
-    REAL(RealKind) :: Radius            ! [m]   radius partivle
-    REAL(RealKind) :: wetRadius         ! [m]   radius droplett
-    REAL(RealKind) :: Number            ! [#/cm3]
-    REAL(RealKind) :: Density           ! [kg/m3]
+    REAL(dp) :: Radius            ! [m]   radius partivle
+    REAL(dp) :: wetRadius         ! [m]   radius droplett
+    REAL(dp) :: Number            ! [#/cm3]
+    REAL(dp) :: Density           ! [kg/m3]
   END TYPE SPEK_T
   !
   TYPE(SPEK_T), ALLOCATABLE :: SPEK(:)
@@ -174,15 +174,15 @@ MODULE Chemsys_Mod
   CHARACTER(20) :: Filename !='Salt'
   CHARACTER(20) :: IniName  !='Salt'
   !
-  REAL(RealKind), PARAMETER :: RGas=8.3145d0
-  REAL(RealKind), PARAMETER :: TRef=280.0d0 !298.15d0
+  REAL(dp), PARAMETER :: RGas=8.3145d0
+  REAL(dp), PARAMETER :: TRef=280.0d0 !298.15d0
   !
   TYPE(Reaction_T), POINTER :: Current
   TYPE(ReactionStruct_T), ALLOCATABLE :: ReactionSystem(:)
   TYPE(ListReaction_T), ALLOCATABLE :: CompleteReactionList(:)
   !
   !
-  REAL(RealKind), ALLOCATABLE :: Emis(:)          & ! emission values
+  REAL(dp), ALLOCATABLE :: Emis(:)          & ! emission values
   !&                            , InitValAct(:)    & ! initial values activ spc
   &                            , InitValInAct(:)    ! initial values inactiv spc
   !
@@ -191,9 +191,9 @@ MODULE Chemsys_Mod
   INTEGER, ALLOCATABLE :: RO2idxG(:) , RO2idxA(:)
   !
   !
-  !REAL(RealKind) :: aH2O
+  !REAL(dp) :: aH2O
   !
-  REAL(RealKind), ALLOCATABLE :: sumBAT(:)         ! sum_j=1,n_s (b_ij-a_ij),  i el. N_R
+  REAL(dp), ALLOCATABLE :: sumBAT(:)         ! sum_j=1,n_s (b_ij-a_ij),  i el. N_R
   !
   CONTAINS
   ! ------------------------------------
@@ -315,6 +315,11 @@ MODULE Chemsys_Mod
           CALL InsertReaction(ListRGas,Line,TypeR)
           !print*, 'gasTypeR = ', TypeR
           SELECT CASE (TypeR)
+            CASE ('PHOTO','PHOTO2','PHOTO3') ! kpp style photolytic reactions
+              IF (TypeR=='PHOTO')  nPHOTOkpp  = nPHOTOkpp  + 1
+              IF (TypeR=='PHOTO2') nPHOTO2kpp = nPHOTO2kpp + 1
+              IF (TypeR=='PHOTO3') nPHOTO3kpp = nPHOTO3kpp + 1
+              nreakgphoto = nreakgphoto+1
             CASE ('PHOTAB','PHOTABC','PHOTMCM')
               IF (TypeR=='PHOTAB')   nPHOTab  = nPHOTab  + 1
               IF (TypeR=='PHOTABC')  nPHOTabc = nPHOTabc + 1
@@ -435,202 +440,6 @@ MODULE Chemsys_Mod
       Out=.TRUE.
     END IF
   END SUBROUTINE ReadReaction
-  !========
-  !
-  SUBROUTINE mkParty(ReacStruct)
-    TYPE(ReactionStruct_T) :: ReacStruct(:)
-    !
-    INTEGER, ALLOCATABLE :: DuctsPHOTOreac(:)     &
-    &                     , DuctsCONSTreac(:)     &
-    &                     , DuctsTEMPreac(:)      &
-    &                     , DuctsTROEreac(:)      &
-    &                     , DuctsSPECIALreac(:)   &
-    &                     , DuctsHENRYreac(:)     &
-    &                     , DuctsAPHOTOreac(:)    &
-    &                     , DuctsACONSTreac(:)    & 
-    &                     , DuctsATEMPreac(:)     & 
-    &                     , DuctsASPECIALreac(:)  & 
-    &                     , DuctsDISSreac(:)      & 
-    &                     , DuctsSEQUIreac(:)     & 
-    &                     , DuctsSSPECIALreac(:)  & 
-    &                     , DuctsSTEMPreac(:)     &
-    &                     , DuctsPARTIreac(:)     &
-    &                     , DuctsMICPHYSreac(:)     
-    !
-    INTEGER :: cntPHOTO=0, cntCONST=0,  cntTEMP=0      &
-    &        , cntTROE=0 , cntSPEC=0                   &
-    &        , cntHENRY=0, cntAPHOTO=0, cntACONST=0    &
-    &        , cntATEMP=0, cntASPEC=0,  cntDISS=0      &
-    &        , cntSEQUI=0, cntSTEMP=0,  cntSSPEC=0     &
-    &        , cntPARTI=0, cntMICPHYS=0
-    !
-    INTEGER, ALLOCATABLE :: PermVec(:)
-    INTEGER :: i, j, ColLen
-    !
-    ALLOCATE(DuctsPHOTOreac(2*nspc))
-    ALLOCATE(DuctsCONSTreac(3*nspc))
-    ALLOCATE(DuctsTEMPreac(5*nspc))
-    ALLOCATE(DuctsTROEreac(2*nspc))
-    ALLOCATE(DuctsSPECIALreac(2*nspc))
-    ALLOCATE(DuctsHENRYreac(2*nspc))
-    ALLOCATE(DuctsAPHOTOreac(2*nspc))
-    ALLOCATE(DuctsACONSTreac(2*nspc))
-    ALLOCATE(DuctsATEMPreac(2*nspc))
-    ALLOCATE(DuctsASPECIALreac(2*nspc))
-    ALLOCATE(DuctsDISSreac(2*nspc))
-    ALLOCATE(DuctsSEQUIreac(2*nspc))
-    ALLOCATE(DuctsSSPECIALreac(2*nspc))
-    ALLOCATE(DuctsSTEMPreac(2*nspc))
-    ALLOCATE(DuctsPARTIreac(2*nspc))
-    ALLOCATE(DuctsMICPHYSreac(2*nspc))
-    ALLOCATE(PermVec(2*nspc))
-    DuctsPHOTOreac=0
-    DuctsCONSTreac=0
-    DuctsTEMPreac=0
-    DuctsTROEreac=0
-    DuctsSPECIALreac=0
-    DuctsHENRYreac=0
-    DuctsAPHOTOreac=0
-    DuctsACONSTreac=0
-    DuctsATEMPreac=0
-    DuctsASPECIALreac=0
-    DuctsDISSreac=0
-    DuctsSEQUIreac=0
-    DuctsSSPECIALreac=0
-    DuctsSTEMPreac=0
-    DuctsPARTIreac=0
-    DuctsMICPHYSreac=0
-    PermVec=0
-    !
-    DO i=1,neq
-      SELECT CASE (ReacStruct(i)%Type)
-        CASE ('GAS')
-          SELECT CASE (ReacStruct(i)%TypeConstant)
-            CASE ('PHOTO','PHOTAB','PHOTABC','PHOTMCM')
-              DO j=1,SIZE(ReacStruct(i)%Educt)
-                cntPHOTO=cntPHOTO+1
-                DuctsPHOTOreac(cntPHOTO)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
-                &                                                         %Species)
-              END DO
-            CASE ('CONST')
-              DO j=1,SIZE(ReacStruct(i)%Educt)
-                cntCONST=cntCONST+1
-                DuctsCONSTreac(cntCONST)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
-                &                                                         %Species)
-              END DO
-            CASE ('TEMP','TEMP1','TEMP2','TEMPX')
-              DO j=1,SIZE(ReacStruct(i)%Educt)
-                cntTEMP=cntTEMP+1
-                DuctsTEMPreac(cntTEMP)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
-                &                                                         %Species)
-              END DO
-            CASE ('TROE','TROEF','TROEQ','PRESSX')
-              DO j=1,SIZE(ReacStruct(i)%Educt)
-                cntTROE=cntTROE+1
-                DuctsTROEreac(cntTROE)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
-                &                                                         %Species)
-              END DO
-            CASE ('SPEC1','SPEC2','SPEC3','SPEC4','SPEC1MCM','SPEC2MCM',            &
-            &     'SPEC3MCM','SPEC4MCM','SPEC5MCM','SPEC6MCM','SPEC7MCM','SPEC8MCM')
-              DO j=1,SIZE(ReacStruct(i)%Educt)
-                cntSPEC=cntSPEC+1
-                DuctsSPECIALreac(cntSPEC)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
-                &                                                         %Species)
-              END DO
-            CASE ('SPECIAL')
-          END SELECT
-        CASE ('HENRY')
-              DO j=1,SIZE(ReacStruct(i)%Educt)
-                cntHENRY=cntHENRY+1
-                DuctsHENRYreac(cntHENRY)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
-                &                                                         %Species)
-              END DO
-        CASE ('AQUA')
-          SELECT CASE (ReacStruct(i)%TypeConstant)
-            CASE ('PHOTO','PHOTAB','PHOTABC','PHOTMCM')
-              DO j=1,SIZE(ReacStruct(i)%Educt)
-                cntAPHOTO=cntAPHOTO+1
-                DuctsAPHOTOreac(cntAPHOTO)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
-                &                                                         %Species)
-              END DO
-            CASE ('CONST')
-              DO j=1,SIZE(ReacStruct(i)%Educt)
-                cntACONST=cntACONST+1
-                DuctsACONSTreac(cntACONST)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
-                &                                                         %Species)
-              END DO
-            CASE ('TEMP','TEMP1','TEMP3')
-              DO j=1,SIZE(ReacStruct(i)%Educt)
-                cntATEMP=cntATEMP+1
-                DuctsATEMPreac(cntATEMP)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
-                &                                                         %Species)
-              END DO
-            CASE ('SPECIAL')
-              DO j=1,SIZE(ReacStruct(i)%Educt)
-                cntASPEC=cntASPEC+1
-                DuctsASPECIALreac(cntASPEC)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
-                &                                                         %Species)
-              END DO
-          END SELECT
-        CASE ('DISS')
-          SELECT CASE (ReacStruct(i)%TypeConstant)
-            CASE ('DTEMP','DTEMP2','DTEMP3','DTEMP4','DTEMP5','MESKHIDZE')
-              DO j=1,SIZE(ReacStruct(i)%Educt)
-                cntDISS=cntDISS+1
-                DuctsDISSreac(cntDISS)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
-                &                                                         %Species)
-              END DO
-          END SELECT
-        CASE ('SOLID')
-          SELECT CASE (ReacStruct(i)%TypeConstant)
-            CASE ('EQUI')
-              DO j=1,SIZE(ReacStruct(i)%Educt)
-                cntSEQUI=cntSEQUI+1
-                DuctsSEQUIreac(cntSEQUI)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
-                &                                                         %Species)
-              END DO
-            CASE ('DTEMP3')
-              DO j=1,SIZE(ReacStruct(i)%Educt)
-                cntSTEMP=cntSTEMP+1
-                DuctsSTEMPreac(cntSTEMP)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
-                &                                                         %Species)
-              END DO
-            CASE ('SPECIAL')
-              DO j=1,SIZE(ReacStruct(i)%Educt)
-                cntSSPEC=cntSSPEC+1
-                DuctsSSPECIALreac(cntSSPEC)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
-                &                                                         %Species)
-              END DO
-          END SELECT
-        CASE ('PARTI')
-          DO j=1,SIZE(ReacStruct(i)%Educt)
-            cntPARTI=cntPARTI+1
-            DuctsPARTIreac(cntPARTI)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
-            &                                                         %Species)
-          END DO
-        CASE ('MICROPHYS')
-          DO j=1,SIZE(ReacStruct(i)%Educt)
-            cntMICPHYS=cntMICPHYS+1
-            DuctsMICPHYSreac(cntMICPHYS)=PositionSpeciesAll(ReacStruct(i)%Educt(j)  &
-            &                                                         %Species)
-          END DO
-      END SELECT
-    END DO
-    CALL CompressParty(DuctsPHOTOreac,PermVec,ColLen)
-    CALL CompressParty(DuctsCONSTreac,PermVec,ColLen)
-    CALL CompressParty(DuctsTEMPreac,PermVec,ColLen)
-    CALL CompressParty(DuctsTROEreac,PermVec,ColLen)
-    CALL CompressParty(DuctsSPECIALreac,PermVec,ColLen)
-    CALL CompressParty(DuctsHENRYreac,PermVec,ColLen)
-    CALL CompressParty(DuctsACONSTreac,PermVec,ColLen)
-    CALL CompressParty(DuctsAPHOTOreac,PermVec,ColLen)
-    CALL CompressParty(DuctsATEMPreac,PermVec,ColLen)
-    CALL CompressParty(DuctsASPECIALreac,PermVec,ColLen)
-    CALL CompressParty(DuctsDISSreac,PermVec,ColLen)
-    CALL CompressParty(DuctsSEQUIreac,PermVec,ColLen)
-    CALL CompressParty(DuctsSTEMPreac,PermVec,ColLen)
-    CALL CompressParty(DuctsSSPECIALreac,PermVec,ColLen)
-  END SUBROUTINE mkParty
   !
   !
   SUBROUTINE CompressParty(Ducts,Perm,Len)
@@ -684,7 +493,7 @@ MODULE Chemsys_Mod
     CALL DATE_AND_TIME(Date,Time,VALUES=Value)
     !
     WRITE(Unit,*) ' ==========================================================='
-    WRITE(Unit,*) ' ========                 MODMEP / TESTVERSION      ========'
+    WRITE(Unit,*) ' ========  0-dim Simulation of chemical mechanisms  ========'
     WRITE(Unit,*) ' ========     Output -  Chemical Reaction Data      ========'
     WRITE(Unit,*) ' ==========================================================='
     WRITE(Unit,*) ''
@@ -828,7 +637,7 @@ MODULE Chemsys_Mod
     INTEGER :: ProductCnt=0
     !
     INTEGER, ALLOCATABLE :: tmpColA(:),tmpColB(:)
-    REAL(RealKind), ALLOCATABLE :: tmpValA(:),tmpValB(:)
+    REAL(dp), ALLOCATABLE :: tmpValA(:),tmpValB(:)
     INTEGER, ALLOCATABLE :: APermVec(:)
     INTEGER :: AColLen
     INTEGER :: cntEQ1, cntEQ2, cntNEQ1 
@@ -1109,8 +918,8 @@ MODULE Chemsys_Mod
     INTEGER, ALLOCATABLE :: tmpFO1(:), tmpFO2(:)
     INTEGER, ALLOCATABLE :: tmpSO1(:), tmpSO2(:)
     INTEGER, ALLOCATABLE :: tmpHO1(:), tmpHO2(:)
-    REAL(RealKind), ALLOCATABLE :: atmpHO(:)
-    REAL(RealKind), PARAMETER :: big = -99999999999999.d0
+    REAL(dp), ALLOCATABLE :: atmpHO(:)
+    REAL(dp), PARAMETER :: big = -99999999999999.d0
 
     nnz = A%nnz
 
@@ -1168,15 +977,15 @@ MODULE Chemsys_Mod
   SUBROUTINE InputChemicalData(InitFileName,DataFileName,MeteoFileName)
     CHARACTER(*) :: InitFileName, DataFileName, MeteoFileName
      !
-    !REAL(RealKind), ALLOCATABLE :: GasInAct(:), AqInAct(:)
+    !REAL(dp), ALLOCATABLE :: GasInAct(:), AqInAct(:)
     !
     INTEGER, PARAMETER :: GasRateUnit=0 ! ???
     INTEGER :: jt, i, iPos
-    REAL(RealKind) :: pi43, LWC
+    REAL(dp) :: pi43, LWC
     CHARACTER(60) :: string = ''
     !
     ! for pH Start
-    REAL(RealKind) :: kappa
+    REAL(dp) :: kappa
     !
     pi43=4.0d0/3.0d0*PI
     !
@@ -1367,15 +1176,15 @@ MODULE Chemsys_Mod
   !
   !
   SUBROUTINE Read_SpeciesData(y_acc,y_diff,FileName)
-    REAL(RealKind) :: y_acc(:) , y_diff(:) 
+    REAL(dp) :: y_acc(:) , y_diff(:) 
     CHARACTER(*) :: FileName
     !
     !
     CHARACTER(100) :: SpeciesName
     INTEGER :: iPos, i
     LOGICAL :: Back=.FALSE.
-    REAL(RealKind) :: mm, alpha, dg, c1
-    REAL(RealKind) :: nue
+    REAL(dp) :: mm, alpha, dg, c1
+    REAL(dp) :: nue
     CHARACTER(10) :: ro2d
     CHARACTER(10) :: c2
     INTEGER :: slash
@@ -1512,10 +1321,10 @@ MODULE Chemsys_Mod
   !
   SUBROUTINE Read_EMISS(FileName,Emi)
     CHARACTER(*) :: FileName
-    REAL(RealKind) :: Emi(:)
+    REAL(dp) :: Emi(:)
     !
     INTEGER :: iPos
-    REAL(RealKind) :: c1
+    REAL(dp) :: c1
     CHARACTER(20) :: SpeciesName
     LOGICAL :: Back=.FALSE.
     !
@@ -1540,11 +1349,11 @@ MODULE Chemsys_Mod
   SUBROUTINE Read_GASini(FileName,GASact,InAct)
     CHARACTER(*) :: FileName
     !
-    REAL(RealKind) :: GASact(:)
-    REAL(RealKind) :: InAct(:)
+    REAL(dp) :: GASact(:)
+    REAL(dp) :: InAct(:)
     !
     INTEGER :: iPos
-    REAL(RealKind) :: c1
+    REAL(dp) :: c1
     CHARACTER(20) :: SpeciesName
     LOGICAL :: Back=.FALSE.
     !
@@ -1641,12 +1450,12 @@ MODULE Chemsys_Mod
   END SUBROUTINE Read_Diag
   !
   SUBROUTINE Read_AQUAini(AQUAact,AquaInAct,FileName)
-    REAL(RealKind) :: AQUAact(:)
-    REAL(RealKind) :: AquaInAct(:)
+    REAL(dp) :: AQUAact(:)
+    REAL(dp) :: AquaInAct(:)
     CHARACTER(*) :: FileName
     !
     INTEGER :: iPos
-    REAL(RealKind) :: c1
+    REAL(dp) :: c1
     CHARACTER(20) :: SpeciesName
     LOGICAL :: Back
     !
@@ -1684,7 +1493,7 @@ MODULE Chemsys_Mod
     TYPE(AFRAC_T), ALLOCATABLE :: AFrac(:)
     !
     INTEGER :: cnt
-    REAL(RealKind) :: c1,c2,c3,c4
+    REAL(dp) :: c1,c2,c3,c4
     CHARACTER(20) :: SpeciesName
     LOGICAL :: Back=.FALSE.
     !
@@ -1732,9 +1541,9 @@ MODULE Chemsys_Mod
     TYPE(SPEK_T), ALLOCATABLE :: SPEK(:)
     !
     INTEGER :: cnt
-    REAL(RealKind) :: c1,c2,c3
+    REAL(dp) :: c1,c2,c3
     LOGICAL :: Back
-    REAL(RealKind) :: LWC
+    REAL(dp) :: LWC
     !
     ! Read SPEK values
     CALL OpenIniFile(FileName)
@@ -1760,10 +1569,10 @@ MODULE Chemsys_Mod
       !
       ! HIER KÖNNTE MAL WIEDER WAS PASSIEREN
       IF (c1<1.0d0) THEN
-        SPEK(1)%Radius=REAL(c1,KIND=RealKind)
-        SPEK(1)%Number=REAL(c2,KIND=RealKind)
+        SPEK(1)%Radius=REAL(c1,KIND=dp)
+        SPEK(1)%Number=REAL(c2,KIND=dp)
         SPEK(1)%wetRadius=(3.0d0/4.0d0/PI*LWC/SPEK(1)%Number)**(1.0d0/3.0d0)
-        SPEK(1)%Density=REAL(c3,KIND=RealKind)
+        SPEK(1)%Density=REAL(c3,KIND=dp)
       END IF
     END DO
     CALL CloseIniFile
@@ -1775,7 +1584,7 @@ MODULE Chemsys_Mod
     !
     !
     INTEGER :: i
-    REAL(RealKind) :: c1
+    REAL(dp) :: c1
     CHARACTER(80) :: SpeciesName
     CHARACTER(5) :: ro2d
     LOGICAL :: Back
@@ -1903,7 +1712,7 @@ MODULE Chemsys_Mod
   !
   SUBROUTINE ExtractConstants(String,Constants,Type)
     CHARACTER(*) :: String
-    REAL(RealKind), POINTER :: Constants(:)
+    REAL(dp), POINTER :: Constants(:)
     CHARACTER(*) :: Type
     !
     INTEGER :: NumColon,PosColon,PosName,PosComment
@@ -1913,7 +1722,7 @@ MODULE Chemsys_Mod
     CHARACTER(LEN(String)) :: LocString
     CHARACTER(LEN(String)) :: LocString1
     CHARACTER(LEN(String)) :: NameConstant
-    REAL(RealKind) :: Dummy
+    REAL(dp) :: Dummy
     INTEGER :: is
     !
     LocString=String
@@ -2046,7 +1855,7 @@ MODULE Chemsys_Mod
     INTEGER :: NumInActDucts
     !
     INTEGER :: PosMinus,PosPlus,NumSpec,PosSpecies
-    REAL(RealKind) :: PreFac !NumberSpecies
+    REAL(dp) :: PreFac !NumberSpecies
     CHARACTER(LenLine) :: Species
     CHARACTER(LEN(String)) :: LocString
     INTEGER :: sbL, sbR
@@ -2615,7 +2424,6 @@ MODULE Chemsys_Mod
     IF (PRESENT(LAqua)) THEN 
       nList=nList+1
       CompleteReactionList(nList)=LAqua
-      idxHp=PositionSpeciesAll('Hp')
     END IF
     IF (PRESENT(LDiss)) THEN 
       nList=nList+1
@@ -2655,10 +2463,6 @@ MODULE Chemsys_Mod
         ReacStruct(i)%Line3=Current%Line3
         ReacStruct(i)%Factor=Current%Factor
          
-        !IF ( Current%Type == 'HENRY') THEN! .AND. Current%TypeConstant == 'CONST') THEN
-        !  print*, ' henry bla = ',Current%TypeConstant
-        !END IF
-
         CALL GatherReacFACTOR(i,icntFAC,Current%Factor)
 
         ! forward direaction
@@ -2689,7 +2493,6 @@ MODULE Chemsys_Mod
         IF (Current%Type=='HENRY') THEN
           ReacStruct(i)%direction='GA'
           ReacStruct(i)%HenrySpc=PositionSpeciesAll(ReacStruct(i)%Educt(1)%Species)
-          !ReacStruct(i)%Constants(1)=ReacStruct(i)%Constants(1)
 
           icnt(29) = icnt(29) + 1
           RTind2%iHENRY(icnt(29),1) = i
@@ -2885,7 +2688,7 @@ MODULE Chemsys_Mod
   END SUBROUTINE GatherReacFACTOR
 
   SUBROUTINE GatherReacArrays(iR,icnt,Typ,TypeR,C,bR)
-    REAL(RealKind), INTENT(IN) :: C(:)
+    REAL(dp), INTENT(IN) :: C(:)
     CHARACTER(*),   INTENT(IN) :: Typ
     CHARACTER(*),   INTENT(IN) :: TypeR
     INTEGER,        INTENT(IN) :: iR
@@ -2921,11 +2724,6 @@ MODULE Chemsys_Mod
         icnt(7) = icnt(7) + 1
         RTind2%iTEMP3(icnt(7)) = iR 
         RTpar2%TEMP3(icnt(7),:) = C 
-        !IF ( Typ == 'HENRY') THEN
-        !  icnt(7) = icnt(7) + 1
-        !  RTind2%iTEMP3(icnt(7)) = iR + 1
-        !  RTpar2%TEMP3(icnt(7),:) = C 
-        !END IF
       CASE ('TEMP4') 
         icnt(8) = icnt(8) + 1
         RTind2%iTEMP4(icnt(8)) = iR 
@@ -3061,6 +2859,22 @@ MODULE Chemsys_Mod
         RTind2%iMeskhidze(icnt(40),1)  = iR
         RTind2%iMeskhidze(icnt(40),2)  = iR + 1
         RTpar2%Meskhidze(icnt(40),:) = C 
+      CASE ('PHOTO') 
+        icnt(41) = icnt(41) + 1
+        RTind2%iPHOTOkpp(icnt(41)) = iR
+        RTpar2%PHOTOkpp(icnt(41))  = C(1)
+      CASE ('PHOTO2') 
+        icnt(42) = icnt(42) + 1
+        RTind2%iPHOTO2kpp(icnt(42)) = iR
+        RTpar2%PHOTO2kpp(icnt(42))  = C(1)
+      CASE ('PHOTO3') 
+        icnt(43) = icnt(43) + 1
+        RTind2%iPHOTO3kpp(icnt(43)) = iR
+        RTpar2%PHOTO3kpp(icnt(43))  = C(1)
+      CASE DEFAULT
+        WRITE(*,*) ''
+        WRITE(*,*) ' Reaction Type unknown:  ',TypeR,'  --> check input file'
+        WRITE(*,*) ''
     END SELECT
 
   END SUBROUTINE GatherReacArrays
@@ -3114,11 +2928,11 @@ MODULE Chemsys_Mod
 
 
   SUBROUTINE CompressDoubleArray(Array)
-    REAL(RealKind), ALLOCATABLE, INTENT(INOUT) :: Array(:)
-    REAL(RealKind), ALLOCATABLE :: tmpArray(:)
+    REAL(dp), ALLOCATABLE, INTENT(INOUT) :: Array(:)
+    REAL(dp), ALLOCATABLE :: tmpArray(:)
     
     INTEGER :: i, N, cnt
-    REAL(RealKind), PARAMETER :: big = -99999999999999.d0
+    REAL(dp), PARAMETER :: big = -99999999999999.d0
     
     N = COUNT( Array /= big )
     ALLOCATE(tmpArray(N))
@@ -3179,13 +2993,16 @@ MODULE Chemsys_Mod
     ALLOCATE( RTind2%iDCONST(nDCONST,2), RTind2%iMeskhidze(nMeskhidze,2) )
     ALLOCATE( RTpar2%DCONST(nDCONST,2),  RTpar2%Meskhidze(nMeskhidze,7) )
     
-    ALLOCATE( RTind2%iFAC_H2(nFAC_H2), RTind2%iFAC_O2N2(nFAC_O2N2), RTind2%iFAC_M(nFAC_M),          &
+    ALLOCATE( RTind2%iFAC_H2(nFAC_H2), RTind2%iFAC_O2N2(nFAC_O2N2), RTind2%iFAC_M(nFAC_M),        &
             & RTind2%iFAC_O2(nFAC_O2), RTind2%iFAC_N2(nFAC_N2), RTind2%iFAC_H2O(nFAC_H2O),        &
             & RTind2%iFAC_RO2(nFAC_RO2), RTind2%iFAC_O2O2(nFAC_O2O2), RTind2%iFAC_aH2O(nFAC_aH2O),&
             & RTind2%iFAC_RO2aq(nFAC_RO2aq) )
 
     !  dim1 = iReac, dim2= iSpc, dim3 = iR_g->a / iR_a->g
     ALLOCATE( RTind2%iHENRY(nHENRY,4) )
+
+    ALLOCATE( RTind2%iPHOTOkpp(nPHOTOkpp), RTind2%iPHOTO2kpp(nPHOTO2kpp), RTind2%iPHOTO3kpp(nPHOTO3kpp),& 
+            & RTpar2%PHOTOkpp(nPHOTOkpp),  RTpar2%PHOTO2kpp(nPHOTO2kpp),  RTpar2%PHOTO3kpp(nPHOTO3kpp)  )
 
   END SUBROUTINE AllocateRTarrays
 END MODULE Chemsys_Mod

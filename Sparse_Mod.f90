@@ -45,14 +45,14 @@ MODULE Sparse_Mod
     INTEGER, ALLOCATABLE  :: Permu(:)           ! permutation vector (markowitz)
     INTEGER, ALLOCATABLE  :: InvPer(:)          ! invers permutation (inv markowitz)
     INTEGER, ALLOCATABLE  :: LUperm(:)          ! 
-    REAL(RealKind), ALLOCATABLE :: Val(:)
+    REAL(dp), ALLOCATABLE :: Val(:)
   END TYPE CSR_Matrix_T
   !
   TYPE SpRowIndColInd_T     !standart Rowindex, standart columnindex
     INTEGER :: m=0,n=0
     INTEGER, POINTER :: RowInd(:)
     INTEGER, POINTER :: ColInd(:)
-    REAL(RealKind), POINTER :: Val(:)
+    REAL(dp), POINTER :: Val(:)
   END TYPE SpRowIndColInd_T
   !
   TYPE SpRowColD_T
@@ -162,7 +162,7 @@ MODULE Sparse_Mod
 
   SUBROUTINE CSR_to_FULL(CSR,Full)
     TYPE(CSR_Matrix_T),  INTENT(IN)  :: CSR
-    REAL(RealKind),      INTENT(OUT) :: Full(CSR%m,CSR%n)
+    REAL(dp),      INTENT(OUT) :: Full(CSR%m,CSR%n)
 
     INTEGER :: i,j,jj 
     
@@ -364,7 +364,7 @@ MODULE Sparse_Mod
     !
     INTEGER :: r(A%n),c(A%n),RowPiv(A%n)
     INTEGER :: i,j,l,jj,ip,ip1(1),iPiv
-    REAL(RealKind) :: md 
+    REAL(dp) :: md 
     LOGICAL :: ins
     !
     ! für testzwecke
@@ -834,8 +834,8 @@ MODULE Sparse_Mod
     TYPE(CSR_Matrix_T), INTENT(INOUT) :: C
     !
     INTEGER :: i,j,jj,k,kk
-    REAL(RealKind) :: ajj
-    REAL(RealKind) :: temp(MAX(A%m,A%n,B%n))
+    REAL(dp) :: ajj
+    REAL(dp) :: temp(MAX(A%m,A%n,B%n))
     temp=ZERO
     !
     DO i=1,A%m
@@ -951,8 +951,8 @@ MODULE Sparse_Mod
     ! Temp variables
     INTEGER, ALLOCATABLE :: tmpCol(:)
     INTEGER, ALLOCATABLE :: perm(:)
-    REAL(RealKind), ALLOCATABLE :: tmpBVal(:)
-    REAL(RealKind), ALLOCATABLE :: tmpVal(:)
+    REAL(dp), ALLOCATABLE :: tmpBVal(:)
+    REAL(dp), ALLOCATABLE :: tmpVal(:)
     INTEGER :: lenColIndA, lenColIndB
     INTEGER :: i, ii, j, jj, k ,kk
     !
@@ -988,8 +988,8 @@ MODULE Sparse_Mod
     !
     INTEGER, ALLOCATABLE :: tmpCol(:)
     INTEGER, ALLOCATABLE :: perm(:)
-    REAL(RealKind), ALLOCATABLE :: tmpBVal(:)
-    REAL(RealKind), ALLOCATABLE :: tmpVal(:)
+    REAL(dp), ALLOCATABLE :: tmpBVal(:)
+    REAL(dp), ALLOCATABLE :: tmpVal(:)
     INTEGER :: lenColIndA, lenColIndB
     INTEGER :: i
     !
@@ -1078,12 +1078,12 @@ MODULE Sparse_Mod
   !
   SUBROUTINE CompressList(ColInd,Val)
     INTEGER, ALLOCATABLE :: ColInd(:)
-    REAL(RealKind), ALLOCATABLE, OPTIONAL :: Val(:)
+    REAL(dp), ALLOCATABLE, OPTIONAL :: Val(:)
     !
     INTEGER :: i,j,iList,MemberCol
     INTEGER :: TempListCol(SIZE(ColInd))
-    REAL(RealKind) :: MemberVal
-    REAL(RealKind) :: TempListVal(SIZE(ColInd))
+    REAL(dp) :: MemberVal
+    REAL(dp) :: TempListVal(SIZE(ColInd))
     LOGICAL :: Insert
     !
     TempListVal=ZERO
@@ -1123,12 +1123,12 @@ MODULE Sparse_Mod
     TYPE(CSR_Matrix_T), INTENT(INOUT) :: JacCC
     TYPE(CSR_Matrix_T), INTENT(IN) :: gMat
     TYPE(CSR_Matrix_T), INTENT(IN) :: aMat
-    REAL(RealKind), INTENT(IN) :: rVec(aMat%m)
-    REAL(RealKind), INTENT(IN) :: yVec(aMat%n)
+    REAL(dp), INTENT(IN) :: rVec(aMat%m)
+    REAL(dp), INTENT(IN) :: yVec(aMat%n)
     !
     INTEGER :: i,j,jj,k,kk
-    REAL(RealKind) :: ajj
-    REAL(RealKind) :: temp(MAX(gMat%m,gMat%n,aMat%n))
+    REAL(dp) :: ajj
+    REAL(dp) :: temp(MAX(gMat%m,gMat%n,aMat%n))
     !
     temp=ZERO
     !
@@ -1160,11 +1160,11 @@ MODULE Sparse_Mod
   ! JacTC = -1/cv/rho [C_v*dTdt + U^T*JacCC]
   SUBROUTINE Jacobian_TC(JacTC,JacCC,cv,dUdT,dTdt,U,rRho)
     TYPE(CSR_Matrix_T), INTENT(IN)  :: JacCC
-    REAL(RealKind),     INTENT(IN)  :: cv , dTdt, rRho
-    REAL(RealKind),     INTENT(IN)  :: dUdT(:), U(:)
-    REAL(RealKind),     INTENT(OUT) :: JacTC(JacCC%m)
+    REAL(dp),     INTENT(IN)  :: cv , dTdt, rRho
+    REAL(dp),     INTENT(IN)  :: dUdT(:), U(:)
+    REAL(dp),     INTENT(OUT) :: JacTC(JacCC%m)
     !
-    REAL(RealKind) :: tmpJacVal(JacCC%m)
+    REAL(dp) :: tmpJacVal(JacCC%m)
 
     CALL DAX_sparse(tmpJacVal,JacCC,U)
 
@@ -1176,10 +1176,10 @@ MODULE Sparse_Mod
   ! JacTC = -1/cv [C_v*dTdt + U^T*JacCC]
   SUBROUTINE Jacobian_CT(JacCT,gMat,Dr,Kvec)
     TYPE(CSR_Matrix_T), INTENT(IN)  :: gMat
-    REAL(RealKind),     INTENT(IN)  :: Dr(:), Kvec(:)
-    REAL(RealKind),     INTENT(OUT) :: JacCT(gMat%m)
+    REAL(dp),     INTENT(IN)  :: Dr(:), Kvec(:)
+    REAL(dp),     INTENT(OUT) :: JacCT(gMat%m)
     !
-    REAL(RealKind) :: dRatedT(gMat%n)
+    REAL(dp) :: dRatedT(gMat%n)
 
     ! deriv. of reaction rate with resp. to temperature
     dRatedT = Dr * Kvec 
@@ -1190,10 +1190,10 @@ MODULE Sparse_Mod
 
   ! JacTT = -1/cv/rho [dTdT*dcvdT+C_v*dCdt + U^T*JacCC]
   SUBROUTINE Jacobian_TT(JacTT,JacCT,cv,dcvdT,dTdt,dUdT,dcdt,U,rRho)
-    REAL(RealKind), INTENT(IN)  :: JacCT(:)
-    REAL(RealKind), INTENT(IN)  :: cv , dcvdT , dTdt , rRho
-    REAL(RealKind), INTENT(IN)  :: dUdT(:) , dCdt(:) , U(:)
-    REAL(RealKind), INTENT(OUT) :: JacTT
+    REAL(dp), INTENT(IN)  :: JacCT(:)
+    REAL(dp), INTENT(IN)  :: cv , dcvdT , dTdt , rRho
+    REAL(dp), INTENT(IN)  :: dUdT(:) , dCdt(:) , U(:)
+    REAL(dp), INTENT(OUT) :: JacTT
     !
     JacTT = - milli * rRho/cv  *                &
           &   (  dTdT*dcvdT/cv + SUM(dUdT*dCdt) &
@@ -1206,12 +1206,12 @@ MODULE Sparse_Mod
   SUBROUTINE Miter_Classic(Miter,h,g,J1,J2,J3,J4)
     !
     TYPE(CSR_Matrix_T),       INTENT(INOUT) :: Miter
-    REAL(RealKind),           INTENT(IN)    :: h, g
+    REAL(dp),           INTENT(IN)    :: h, g
     TYPE(CSR_Matrix_T),       INTENT(IN)    :: J1
-    REAL(RealKind), OPTIONAL, INTENT(IN)    :: J2(:), J3(:), J4
+    REAL(dp), OPTIONAL, INTENT(IN)    :: J2(:), J3(:), J4
     !
     INTEGER :: i,j,jj,cnt
-    REAL(RealKind) :: hg
+    REAL(dp) :: hg
    
     Miter%Val = ZERO
     hg  = h*g
@@ -1248,7 +1248,7 @@ MODULE Sparse_Mod
   SUBROUTINE BuildSymbolicClassicMatrix(CL,Jac,RowGamma)
     TYPE(CSR_Matrix_T), INTENT(OUT) :: CL
     TYPE(CSR_Matrix_T), INTENT(IN)  :: Jac
-    REAL(RealKind),     INTENT(IN)  :: RowGamma
+    REAL(dp),     INTENT(IN)  :: RowGamma
 
     TYPE(CSR_Matrix_T) :: Id
     TYPE(CSR_Matrix_T) :: CL0
@@ -1317,7 +1317,7 @@ MODULE Sparse_Mod
   SUBROUTINE BuildSymbolicExtendedMatrix(EX,A,BAT,g)
     TYPE(CSR_Matrix_T), INTENT(OUT) :: EX
     TYPE(CSR_Matrix_T), INTENT(IN) :: A, BAT
-    REAL(RealKind),     INTENT(IN) :: g
+    REAL(dp),     INTENT(IN) :: g
 
     !
     INTEGER :: i, ndim, nnzBig
@@ -1463,10 +1463,10 @@ MODULE Sparse_Mod
 
     ! Set values to block matrix
     TYPE(CSR_Matrix_T), INTENT(INOUT) :: LU  
-    REAL(RealKind), INTENT(IN) :: invD_r(:), KVec(:)
-    REAL(RealKind), INTENT(IN) :: D_c(:), UVec(:)
-    REAL(RealKind), INTENT(IN) :: X
-    REAL(RealKind), INTENT(IN), OPTIONAL :: FixValues(:)
+    REAL(dp), INTENT(IN) :: invD_r(:), KVec(:)
+    REAL(dp), INTENT(IN) :: D_c(:), UVec(:)
+    REAL(dp), INTENT(IN) :: X
+    REAL(dp), INTENT(IN), OPTIONAL :: FixValues(:)
 
     IF (PRESENT(FixValues)) LU%Val = FixValues
     
@@ -1543,7 +1543,7 @@ MODULE Sparse_Mod
   !
   ! PRINT SPARSE MATRIX (compressed Row format)
   SUBROUTINE PrintRhs(Rhs,FileName)
-    REAL(RealKind) :: Rhs(:)
+    REAL(dp) :: Rhs(:)
     CHARACTER(*), OPTIONAL :: FileName
     !
     INTEGER :: i
@@ -1748,7 +1748,7 @@ MODULE Sparse_Mod
   SUBROUTINE PrintSparse2(n,rowind,colind,val,FileName)
     INTEGER :: rowind(:)
     INTEGER :: colind(:)
-    REAL(RealKind) :: val(:)
+    REAL(dp) :: val(:)
     INTEGER :: n
     CHARACTER(*), OPTIONAL :: FileName
     !
@@ -1819,9 +1819,9 @@ MODULE Sparse_Mod
   SUBROUTINE DAXPY_sparse(Rhs,A,X,Y)
     !IN
     TYPE(CSR_Matrix_T), INTENT(IN)  :: A
-    REAL(RealKind),     INTENT(IN)  :: X(:), Y(:)
+    REAL(dp),     INTENT(IN)  :: X(:), Y(:)
     !OUT
-    REAL(RealKind),     INTENT(OUT) :: Rhs(A%m)
+    REAL(dp),     INTENT(OUT) :: Rhs(A%m)
     !TEMP
     INTEGER :: i, rp_i, rp_i1  ! RowPtr(i), RowPtr(i+1)-1
    
@@ -1836,9 +1836,9 @@ MODULE Sparse_Mod
   SUBROUTINE DAX_sparse(Rhs,A,X)
     !IN
     TYPE(CSR_Matrix_T), INTENT(IN)  :: A
-    REAL(RealKind),     INTENT(IN)  :: X(:)
+    REAL(dp),     INTENT(IN)  :: X(:)
     !OUT
-    REAL(RealKind),     INTENT(OUT) :: Rhs(A%m)
+    REAL(dp),     INTENT(OUT) :: Rhs(A%m)
     !TEMP
     INTEGER :: i, rp_i, rp_i1  ! RowPtr(i), RowPtr(i+1)-1
    
@@ -1852,7 +1852,7 @@ MODULE Sparse_Mod
 
   ! Print ordinary matrix or vector
   SUBROUTINE PM(M)
-    REAL(RealKind), INTENT(IN) :: M(:,:)
+    REAL(dp), INTENT(IN) :: M(:,:)
     INTEGER :: i
     !
     DO i=1,SIZE(M,1)
@@ -1863,7 +1863,7 @@ MODULE Sparse_Mod
   !
   ! Print ordinary  vector
   SUBROUTINE PV(V)
-    REAL(RealKind), INTENT(IN) :: V(:)
+    REAL(dp), INTENT(IN) :: V(:)
     INTEGER :: i
     !
     DO i=1,SIZE(V)
@@ -1874,7 +1874,7 @@ MODULE Sparse_Mod
   !
   SUBROUTINE WriteSpRowIndColInd_T(Mat,rhs)
     TYPE(sprowindcolind_t) :: Mat
-    REAL(RealKind) :: rhs(:)
+    REAL(dp) :: rhs(:)
     !
     INTEGER :: i
     !
@@ -1935,8 +1935,8 @@ MODULE Sparse_Mod
   SUBROUTINE SparseLU(A)
     TYPE(CSR_Matrix_T) :: A
     !
-    REAL(RealKind) :: w(A%n)
-    REAL(RealKind) :: alpha
+    REAL(dp) :: w(A%n)
+    REAL(dp) :: alpha
     INTEGER :: i,j,jj,kk
     !INTEGER :: OPCOUNT
 
@@ -1967,10 +1967,10 @@ MODULE Sparse_Mod
   !
   SUBROUTINE SolveSparse(LU,rhs)
     TYPE(CSR_Matrix_T), INTENT(INOUT) :: LU
-    REAL(RealKind) :: Rhs(:)
+    REAL(dp) :: Rhs(:)
     !
     INTEGER :: i,jj
-    REAL(RealKind) :: b(LU%n)
+    REAL(dp) :: b(LU%n)
     
     b( LU%Permu ) = Rhs      
     

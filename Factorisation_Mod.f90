@@ -9,7 +9,7 @@ MODULE Factorisation_Mod
   IMPLICIT NONE
 
   TYPE(DMUMPS_STRUC) :: Mumps_Par
-  REAL(RealKind), PRIVATE :: timerEnd,timerStart
+  REAL(dp), PRIVATE :: timerEnd,timerStart
   INTEGER, ALLOCATABLE :: MAPPING(:)
   INTEGER, ALLOCATABLE :: loc_diagPtr(:)
   INTEGER, ALLOCATABLE :: glob_diagPtr(:)
@@ -201,7 +201,7 @@ SUBROUTINE InitMumps(A,givenPermutaion)
 END SUBROUTINE InitMumps
 
 SUBROUTINE MumpsLU(MatrixValues)
-  REAL(RealKind), INTENT(IN) :: MatrixValues(:)
+  REAL(dp), INTENT(IN) :: MatrixValues(:)
   
   ! classic matrix version
   Mumps_Par%A   = MatrixValues     ! ganze matrix wird übergeben
@@ -210,7 +210,7 @@ SUBROUTINE MumpsLU(MatrixValues)
 END SUBROUTINE MumpsLU
 
 SUBROUTINE Factorize(loc_Rate,loc_Conc)
-  REAL(RealKind), INTENT(IN) :: loc_Rate(:), loc_Conc(:)
+  REAL(dp), INTENT(IN) :: loc_Rate(:), loc_Conc(:)
   !
   INTEGER :: i !, idx_R, idx_D, idx_C
   !
@@ -246,7 +246,7 @@ SUBROUTINE Factorize(loc_Rate,loc_Conc)
 END SUBROUTINE Factorize
 
 SUBROUTINE MumpsSolve(Rhs)
-  REAL(RealKind) :: Rhs(:)
+  REAL(dp) :: Rhs(:)
 
   Mumps_Par%JOB=3
   Mumps_Par%Rhs(:)=Rhs(:)

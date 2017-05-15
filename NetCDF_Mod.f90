@@ -14,7 +14,7 @@ MODULE NetCDF_Mod
   INTEGER, ALLOCATABLE :: OutNetcdfSpc(:)
   CHARACTER(1),   ALLOCATABLE :: OutNetcdfPhase(:) !g=gas , a=aqua
   INTEGER              :: OutNetcdfANZ, OutNetcdfDIM
-  REAL(RealKind)       :: altit               ! altitude
+  REAL(dp)       :: altit               ! altitude
   !
   INTEGER :: x_varid,y_varid,z_varid,rec_varid, LWC_varid, traj_varid
   INTEGER :: StepSize_varid, Gassum_varid, Aquasum_varid, wetRadius_varid
@@ -34,7 +34,7 @@ MODULE NetCDF_Mod
   ! -- Input parameter --
   !
   !
-  REAL(RealKind) ::  StartNetcdf      &  ! First Time for Netcdf Output
+  REAL(dp) ::  StartNetcdf      &  ! First Time for Netcdf Output
   &                 ,EndNetcdf           ! End Time of Netcdf Output
   !
   ! -- Output parameter --
@@ -396,10 +396,10 @@ END SUBROUTINE InitNetCDF
 !
 
 
-     REAL(RealKind), INTENT(IN)    ::  y(:)         ! Concentrations of Species
-     REAL(RealKind), INTENT(INOUT) ::  yout(:)      ! Output Array
-     REAL(RealKind) ::  Time               ! Model Time
-     REAL(RealKind) :: actLWC
+     REAL(dp), INTENT(IN)    ::  y(:)         ! Concentrations of Species
+     REAL(dp), INTENT(INOUT) ::  yout(:)      ! Output Array
+     REAL(dp) ::  Time               ! Model Time
+     REAL(dp) :: actLWC
 
      !-- internal variable
      INTEGER :: jt,  idx, iDiagSpc
@@ -457,20 +457,20 @@ END SUBROUTINE InitNetCDF
   INTEGER :: time_ind         ! step number
 
   ! other stuff
-  REAL(RealKind) :: otherStuff(6)! (/actLWC, StepSize, Gassum, Aquasum, wetRadius, Zenith/)
-  REAL(RealKind) :: Schwefel
-  REAL(RealKind) :: Error
+  REAL(dp) :: otherStuff(6)! (/actLWC, StepSize, Gassum, Aquasum, wetRadius, Zenith/)
+  REAL(dp) :: Schwefel
+  REAL(dp) :: Error
   INTEGER :: ErrInd(1,1)
   INTEGER :: ncid
   !
-  REAL(RealKind) :: t                 ! Current time [in seconds]
+  REAL(dp) :: t                 ! Current time [in seconds]
   !
-  REAL(RealKind) :: yOut(OutNetcdfDIM)               ! Output Array
-  REAL(RealKind) :: timeLoc
+  REAL(dp) :: yOut(OutNetcdfDIM)               ! Output Array
+  REAL(dp) :: timeLoc
   !
   !-- internal variable
   INTEGER :: jt
-  REAL(RealKind), PARAMETER :: y_Min = 1.E-40    ! minimum for logarithmic plot
+  REAL(dp), PARAMETER :: y_Min = 1.E-40    ! minimum for logarithmic plot
   CHARACTER(80) :: NetcdfFile
   !
   !------------------------------------------------------------------

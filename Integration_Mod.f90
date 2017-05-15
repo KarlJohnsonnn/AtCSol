@@ -24,10 +24,10 @@ MODULE Integration_Mod
   IMPLICIT NONE
   !
   TYPE PI_Param
-    REAL(RealKind) :: Kp
-    REAL(RealKind) :: KI
-    REAL(RealKind) :: ThetaMAX
-    REAL(RealKind) :: rho
+    REAL(dp) :: Kp
+    REAL(dp) :: KI
+    REAL(dp) :: ThetaMAX
+    REAL(dp) :: rho
   END TYPE PI_Param
   !
   TYPE(PI_Param) :: PI_norm, PI_rej
@@ -46,10 +46,10 @@ MODULE Integration_Mod
     !   - RtolRow ........ rel. tolerance for Rosenbrock-Wanner-Method
     !   - method...........Rosenbrock-Wanner-Method
     !   - PrintSpc ....... print spc PrintSpc(1:3)
-    REAL(RealKind) :: y_iconc(nspc)
-    REAL(RealKind) :: Tspan(2)
-    REAL(RealKind) :: Atol(2)
-    REAL(RealKind) :: RtolROW
+    REAL(dp) :: y_iconc(nspc)
+    REAL(dp) :: Tspan(2)
+    REAL(dp) :: Atol(2)
+    REAL(dp) :: RtolROW
     CHARACTER(*) :: method
     !-------------------------------------------------------------------
     ! Output:
@@ -66,21 +66,21 @@ MODULE Integration_Mod
     INTEGER, ALLOCATABLE :: InvPermu(:)
     INTEGER, ALLOCATABLE :: PivOrder(:)
     ! 
-    REAL(RealKind) :: Y0(nDIM)
-    REAL(RealKind) :: Y(nDIM)       ! current y vector
+    REAL(dp) :: Y0(nDIM)
+    REAL(dp) :: Y(nDIM)       ! current y vector
     !
-    REAL(RealKind) :: t             ! current time
-    REAL(RealKind) :: timepart
-    REAL(RealKind) :: StartTimer
+    REAL(dp) :: t             ! current time
+    REAL(dp) :: timepart
+    REAL(dp) :: StartTimer
 
-    REAL(RealKind) :: Rate(neq)
-    REAL(RealKind) :: DRatedT(neq)     ! part. derv. rate over temperatur vector
-    REAL(RealKind) :: h, hmin, absh, tnew, tmp, hOld
-    REAL(RealKind) :: error, errorOld
-    REAL(RealKind) :: tmp_tb
-    REAL(RealKind) :: actLWC, zen, wetRad
+    REAL(dp) :: Rate(neq)
+    REAL(dp) :: DRatedT(neq)     ! part. derv. rate over temperatur vector
+    REAL(dp) :: h, hmin, absh, tnew, tmp, hOld
+    REAL(dp) :: error, errorOld
+    REAL(dp) :: tmp_tb
+    REAL(dp) :: actLWC, zen, wetRad
     INTEGER        :: errind(1,1)
-    REAL(RealKind) :: ErrVals(nspc)
+    REAL(dp) :: ErrVals(nspc)
     ! 
     INTEGER :: iBar=-1              ! waitbar increment
     INTEGER :: i, k
@@ -91,7 +91,7 @@ MODULE Integration_Mod
     ! for NetCDF
     INTEGER :: iStpNetCDF 
     INTEGER :: itime_NetCDF
-    REAL(RealKind), ALLOCATABLE :: yNcdf(:)     ! current output vector
+    REAL(dp), ALLOCATABLE :: yNcdf(:)     ! current output vector
     !
     LOGICAL :: done=.FALSE.
     LOGICAL :: failed
@@ -104,9 +104,9 @@ MODULE Integration_Mod
     ! LSODE Parameter
     INTEGER :: ITOL , ITASK , ISTATE, IOPT, MF, LIW, LRW
     INTEGER, ALLOCATABLE :: IWORK(:)
-    REAL(RealKind), ALLOCATABLE :: RWORK(:)
+    REAL(dp), ALLOCATABLE :: RWORK(:)
     !
-    REAL(RealKind) :: RTOL1 , ATOL1(nDIM)
+    REAL(dp) :: RTOL1 , ATOL1(nDIM)
 
     !
     !
@@ -497,7 +497,7 @@ MODULE Integration_Mod
         IF (MPI_ID==0) WRITE(*,*) '  Start Integration............. '; WRITE(*,*) ' '
 
         t        = Tspan(1)
-        timepart = (Tspan(2)-Tspan(1)) / REAL(nOutP - 1, RealKind)
+        timepart = (Tspan(2)-Tspan(1)) / REAL(nOutP - 1, dp)
         tnew     = t + timepart
 
         MAIN_LOOP_LSODE: DO k = 1 , nOutP-1
@@ -587,7 +587,7 @@ MODULE Integration_Mod
         IF (MPI_ID==0) WRITE(*,*) '  Start Integration............. '; WRITE(*,*) ' '
 
         t        = Tspan(1)
-        timepart = (Tspan(2)-Tspan(1)) / REAL(nOutP - 1, RealKind)
+        timepart = (Tspan(2)-Tspan(1)) / REAL(nOutP - 1, dp)
         tnew     = t + timepart
 
         MAIN_LOOP_LSODES: DO k = 1 , nOutP-1
@@ -758,18 +758,18 @@ MODULE Integration_Mod
   !
   !
   SUBROUTINE PI_StepsizeControl(hnew,Tol,er,erOld,h,hOld,PI_Par,RCo)
-    REAL(RealKind) :: hnew
+    REAL(dp) :: hnew
     !
     !
-    REAL(RealKind) :: Tol       ! rel tol
-    REAL(RealKind) :: er        ! lokal error step n 
-    REAL(RealKind) :: erOld     ! lokal error step n-1
-    REAL(RealKind) :: h         ! stepsize n
-    REAL(RealKind) :: hOld      ! stepsize n-1
+    REAL(dp) :: Tol       ! rel tol
+    REAL(dp) :: er        ! lokal error step n 
+    REAL(dp) :: erOld     ! lokal error step n-1
+    REAL(dp) :: h         ! stepsize n
+    REAL(dp) :: hOld      ! stepsize n-1
     TYPE(PI_Param) :: PI_Par    ! PI control parameter
     TYPE(RosenbrockMethod_T)  :: RCo
     !
-    REAL(RealKind) :: htmp
+    REAL(dp) :: htmp
     !
     !
     htmp = ( Tol/er )**(0.7d0*RCo%pow)* ( erOld/Tol )**(0.4d0*RCo%pow) * h
@@ -785,13 +785,13 @@ MODULE Integration_Mod
 
   SUBROUTINE FRhs(NEQ1, T, Y, YDOT)
     INTEGER        :: NEQ1
-    REAL(RealKind) :: T , Y(NEQ1) , YDOT(NEQ1)
+    REAL(dp) :: T , Y(NEQ1) , YDOT(NEQ1)
     !
-    REAL(RealKind) :: dCdt(nspc)
-    REAL(RealKind) :: Rate(neq) , DRate(neq)
-    REAL(RealKind) :: Tarr(8)
-    REAL(RealKind) :: U(nspc) , dUdT(nspc)
-    REAL(RealKind) :: cv
+    REAL(dp) :: dCdt(nspc)
+    REAL(dp) :: Rate(neq) , DRate(neq)
+    REAL(dp) :: Tarr(8)
+    REAL(dp) :: U(nspc) , dUdT(nspc)
+    REAL(dp) :: cv
 
 
     ! MASS CONSERVATION

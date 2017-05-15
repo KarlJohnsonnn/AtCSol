@@ -24,7 +24,7 @@ PROGRAM MAIN_CHEMIE
   !
   CHARACTER(80)   :: Filename0 = ''        ! *.run file
   !
-  REAL(RealKind)  :: Atol(2)
+  REAL(dp)  :: Atol(2)
   INTEGER         :: i,j,nSchwefel
   INTEGER         :: io_err,  STAT
   !
@@ -35,12 +35,12 @@ PROGRAM MAIN_CHEMIE
 
   ! temp variables for molecular weights
   CHARACTER(16)   :: tmpchar0 = '-'
-  REAL(RealKind)  :: tmpMW0
+  REAL(dp)  :: tmpMW0
   INTEGER         :: tmpPos, tmpCnt
 
   ! convertion from mole to mass to conc
-  REAL(RealKind), ALLOCATABLE   :: MoleFrac(:), MassFrac(:), MoleConc(:)
-  REAL(RealKind)                :: Press_in_dyncm2
+  REAL(dp), ALLOCATABLE   :: MoleFrac(:), MassFrac(:), MoleConc(:)
+  REAL(dp)                :: Press_in_dyncm2
   !
   !================================================================
   !===                     MAIN Programm
@@ -117,44 +117,53 @@ PROGRAM MAIN_CHEMIE
       CALL GatherReactionTypeIndex
     END IF
    
-    !CALL PrintReactionSystem(ReactionSysteM)
-    !--- Read molecular mass
-   
-    CALL Read_MolecularWeights(MW,MWeights,MWUnit,nspc)
-
-    ALLOCATE( rMW(nspc) )  
-    rMW = ZERO
-    rMW = ONE / MW
-    
-    ALLOCATE( MoleFrac(ntGas)   , MassFrac(ntGas) )
+    !--- Read initial values
     ALLOCATE( InitValAct(ntGas) , y_e(ntGas) )
     ALLOCATE( InitValKat(ntKat) )
-    MoleFrac    = ZERO           ! mole fraction 
-    MassFrac    = ZERO           ! mole fraction 
-    InitValAct  = ZERO           ! mol/cm3 
 
-    CALL Read_GASini    ( InitFile , MoleFrac , InitValKat )
-    CALL Read_EMISS     ( InitFile , y_e )
+    IF ( MWeights /= '' ) THEN
+      CALL Read_MolecularWeights(MW,MWeights,MWUnit,nspc)
 
-    !Press = Pressure0               ! initial pressure in [Pa]
-    Press_in_dyncm2 = Pressure0 * Pa_to_dyncm2
+      ALLOCATE( rMW(nspc) )  
+      rMW = ZERO
+      rMW = ONE / MW
+      
+      ALLOCATE( MoleFrac(ntGas)   , MassFrac(ntGas) )
+      MoleFrac    = ZERO           ! mole fraction 
+      MassFrac    = ZERO           ! mass fraction 
+      InitValAct  = ZERO           ! mol/cm3 
 
-    MassFrac = MoleFr_To_MassFr( MoleFrac ) 
-    
-    MoleConc = MoleFr_To_MoleConc( MoleFrac,               &
-                                 & Press = Press_in_dyncm2,&
-                                 & Temp  = Temperature0    )
+      CALL Read_GASini    ( InitFile , MoleFrac , InitValKat )
+      CALL Read_EMISS     ( InitFile , y_e )
+
+      !Press = Pressure0               ! initial pressure in [Pa]
+      Press_in_dyncm2 = Pressure0 * Pa_to_dyncm2
+
+      MassFrac = MoleFr_To_MassFr( MoleFrac ) 
+      
+      MoleConc = MoleFr_To_MoleConc( MoleFrac,               &
+                                   & Press = Press_in_dyncm2,&
+                                   & Temp  = Temperature0    )
+    ELSE
+      IF (MPI_ID == 0 ) THEN
+        WRITE(*,*) ''
+        WRITE(*,*) '  No molecular weights are given.  '
+        WRITE(*,*) '       ---> Initial Values in [mole/cm3] '
+        WRITE(*,*) ''
+      END IF
+      CALL Read_GASini    ( InitFile , MoleConc , InitValKat )
+      CALL Read_EMISS     ( InitFile , y_e )
+    END IF
     
     ! Initialising reactor density
     rho  = Density( MoleConc )
     !rRho = kilo/rho       ! in [cm3/g]
     rRho = mega/rho       ! in [cm3/g]
-
     !InitValAct = MassFrac
     InitValAct = MoleConc
 
-
   ELSE
+
     IF ( MPI_ID==0 ) WRITE(*,*) ' ---->  Fix Temperature'
     CALL ReadSystem( ChemFile )
   
@@ -227,7 +236,7 @@ PROGRAM MAIN_CHEMIE
     Atol    = (/ AtolGas , AtolAqua /)
   END IF
 
-  rNspc = ONE/REAL(nspc,KIND=RealKind)
+  rNspc = ONE/REAL(nspc,KIND=dp)
 
   !-----------------------------------------------------------------------
   ! --- If more than one argument is passed set new tolerance and ROS methode
@@ -284,7 +293,7 @@ PROGRAM MAIN_CHEMIE
   CALL Output_Statistics( Time_Read       , TimeSymbolic  , TimeFac       &
   &                     , TimeSolve       , TimeRates     , TimeJac       &
   &                     , TimeIntegrationE, Timer_Finish  , TimeRateSend  &
-  &                     , TimeNetCDF      , TimeErrCalc                   )
+  &                     , TimeNetCDF      , TimeErrCalc   , TimeRhsCalc   )
   WRITE(*,*) ''
   !---------------------------------------------------------------
   ! --- Close MPI 
