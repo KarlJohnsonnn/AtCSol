@@ -1,0 +1,55 @@
+  ********************************************************************************************
+   
+   Chemical Mechanism ::              INORG
+      System contains ::                       200  reactions
+                                                82  species
+   
+   All reactions including species :: CO2
+   
+     + Number of Reactions where CO2 is involved:            4
+         - Number of consuming Reactions:            1
+         - Number of producing Reactions:            3
+ 
+  ********************************************************************************************
+   Reaction Number   ::           15
+   Reaction Class    :: GAS
+   Constant Type     :: PHOTABC
+   Reaction          :: PAA           =     MO2   +   CO2   +    HO
+   Order of Reaction ::            1
+   Factor            ::  NONE
+   Constants         ::    6.1000000000000000E-009   9.1700900000000001       0.72585000000000000     
+  ********************************************************************************************
+ 
+ 
+  ********************************************************************************************
+   Reaction Number   ::           50
+   Reaction Class    :: GAS
+   Constant Type     :: SPEC1
+   Reaction          :: CO  +  HO   =  HO2   + CO2
+   Order of Reaction ::            2
+   Factor            ::  NONE
+   Constants         ::    1.4999999999999999E-013   2.4390000000000001E-020
+  ********************************************************************************************
+ 
+ 
+  ********************************************************************************************
+   Reaction Number   ::          169
+   Reaction Class    :: HENRY
+   Constant Type     :: TEMP3
+   Reaction          :: CO2 = aCO2
+   Order of Reaction ::            1
+   Factor            ::  NONE
+   Constants         ::    3.1099999999999999E-002   2423.0000000000000     
+  ********************************************************************************************
+ 
+ 
+  ********************************************************************************************
+   Reaction Number   ::          170
+   Reaction Class    :: HENRY
+   Constant Type     :: TEMP3
+   Reaction          :: aCO2 = CO2
+   Order of Reaction ::            1
+   Factor            ::  NONE
+   Constants         ::    3.1099999999999999E-002   2423.0000000000000     
+  ********************************************************************************************
+ 

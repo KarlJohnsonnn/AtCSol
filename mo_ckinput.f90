@@ -452,7 +452,7 @@ CONTAINS
           bR=.TRUE.
           ReactionSystem(iReac+1)%Type = 'GAS'    ! all gaseous
           ReactionSystem(iReac+1)%bR   = .TRUE.    ! all gaseous
-          ReactionSystem(iReac+1)%Line2='BackReaction'
+          ReactionSystem(iReac+1)%Line2='reverse reaction'
           nreakgtemp = nreakgtemp + 1
         ELSE 
           fPosFw = INDEX(iLine,'=>')
@@ -521,22 +521,30 @@ CONTAINS
                        & LocString , TRIM(EqSign))
 
         ! place species, stoecho coefs and type in reactionsystem struct
+        ReactionSystem(iReac)%nActEd = nEducts
         ALLOCATE(ReactionSystem(iReac)%Educt(nEducts))
-        IF (bR) ALLOCATE(ReactionSystem(iReac+1)%Product(nEducts))
+        IF (bR) THEN
+          ALLOCATE(ReactionSystem(iReac+1)%Product(nEducts))
+          ReactionSystem(iReac+1)%nActEd = nProducts
+        END IF
         
         DO i=1,nEducts
-          ReactionSystem(iReac)%Educt(i)%Type   = 'GAS'                ! immer gas in chemkin?
+          ReactionSystem(iReac)%Educt(i)%Type   = 'GAS'
           ReactionSystem(iReac)%Educt(i)%Species= NamesDuctE(i)
           ReactionSystem(iReac)%Educt(i)%Koeff  = KoefDuctE(i)
           IF (bR) THEN
-            ReactionSystem(iReac+1)%Product(i)%Type   = 'GAS'                ! immer gas in chemkin?
+            ReactionSystem(iReac+1)%Product(i)%Type   = 'GAS'
             ReactionSystem(iReac+1)%Product(i)%Species= NamesDuctE(i)
             ReactionSystem(iReac+1)%Product(i)%Koeff  = KoefDuctE(i)
           END IF
         END DO
 
+        ReactionSystem(iReac)%nActPro = nProducts
         ALLOCATE(ReactionSystem(iReac)%Product(nProducts))
-        IF (bR) ALLOCATE(ReactionSystem(iReac+1)%Educt(nProducts))
+        IF (bR) THEN
+          ALLOCATE(ReactionSystem(iReac+1)%Educt(nProducts))
+          ReactionSystem(iReac+1)%nActPro = nEducts
+        END IF
 
         DO i=1,nProducts
           ReactionSystem(iReac)%Product(i)%Type   = 'GAS'                ! immer gas in chemkin?

@@ -86,6 +86,10 @@ MODULE Sparse_Mod
  
   TYPE(SpRowIndColInd_T) :: MiterFact
   !
+  ! analysis matrix  (connectivity method)
+  TYPE(CSR_Matrix_T) :: CM_1, CM_1T
+
+  !
   CONTAINS
   !
   !
@@ -156,7 +160,7 @@ MODULE Sparse_Mod
       Mat%RowPtr(i+1)=Mat%RowPtr(i)+1
       Mat%ColInd(i)=i
     END DO
-    Mat%Val=1.0d0
+    Mat%Val = ONE
   END SUBROUTINE SparseID
   !
 
@@ -166,7 +170,7 @@ MODULE Sparse_Mod
 
     INTEGER :: i,j,jj 
     
-    Full = 0.0d0
+    Full = ZERO
     DO i=1,CSR%m
       DO jj=CSR%RowPtr(i),CSR%RowPtr(i+1)-1
         j = CSR%ColInd(jj)
@@ -175,6 +179,53 @@ MODULE Sparse_Mod
     END DO
 
   END SUBROUTINE CSR_to_FULL
+
+  FUNCTION Copy_CSR(orig) RESULT(copy)
+    TYPE(CSR_Matrix_T),  INTENT(IN)  :: orig
+    TYPE(CSR_Matrix_T)               :: copy
+
+    CALL New_CSR(copy,orig%m,orig%n,orig%nnz)
+    copy%RowPtr = orig%RowPtr
+    copy%ColInd = orig%ColInd
+    copy%Val    = orig%Val
+    IF (orig%XPtr/=-42) copy%XPtr = orig%XPtr
+    IF (ALLOCATED(orig%DiagPtr)) THEN
+      ALLOCATE(copy%DiagPtr(SIZE(orig%DiagPtr)))
+      copy%DiagPtr   = orig%DiagPtr
+    END IF
+    IF (ALLOCATED(orig%DiagPtr_P)) THEN
+      ALLOCATE(copy%DiagPtr_P(SIZE(orig%DiagPtr_P)))
+      copy%DiagPtr_P = orig%DiagPtr_P
+    END IF
+    IF (ALLOCATED(orig%DiagPtr_R)) THEN
+      ALLOCATE(copy%DiagPtr_R(SIZE(orig%DiagPtr_R)))
+      copy%DiagPtr_R = orig%DiagPtr_R
+    END IF
+    IF (ALLOCATED(orig%DiagPtr_C)) THEN
+      ALLOCATE(copy%DiagPtr_C(SIZE(orig%DiagPtr_C)))
+      copy%DiagPtr_C = orig%DiagPtr_C
+    END IF
+    IF (ALLOCATED(orig%RowVectorPtr)) THEN
+      ALLOCATE(copy%RowVectorPtr(SIZE(orig%RowVectorPtr)))
+      copy%RowVectorPtr = orig%RowVectorPtr
+    END IF
+    IF (ALLOCATED(orig%ColVectorPtr)) THEN
+      ALLOCATE(copy%ColVectorPtr(SIZE(orig%ColVectorPtr)))
+      copy%ColVectorPtr = orig%ColVectorPtr
+    END IF
+    IF (ALLOCATED(orig%Permu)) THEN
+      ALLOCATE(copy%Permu(SIZE(orig%Permu)))
+      copy%Permu  = orig%Permu
+    END IF
+    IF (ALLOCATED(orig%InvPer)) THEN
+      ALLOCATE(copy%InvPer(SIZE(orig%InvPer)))
+      copy%InvPer = orig%InvPer
+    END IF
+    IF (ALLOCATED(orig%LUperm)) THEN
+      ALLOCATE(copy%LUperm(SIZE(orig%LUperm)))
+      copy%LUperm = orig%LUperm
+    END IF
+  END FUNCTION Copy_CSR
 
   !
   SUBROUTINE RowColDToCSR(CSR,SpRow,m,n)
@@ -461,13 +512,8 @@ MODULE Sparse_Mod
   !
   !
   SUBROUTINE Swap(i,j)
-    INTEGER :: i,j
-    !
-    INTEGER :: iTemp
-    !  
-    iTemp=i
-    i=j
-    j=iTemp
+    INTEGER :: i, j, iTemp
+    iTemp=i;    i=j;    j=iTemp
   END SUBROUTINE Swap
   !
   !
@@ -1114,6 +1160,47 @@ MODULE Sparse_Mod
     IF (PRESENT(Val)) Val=TempListVal(1:iList)
   END SUBROUTINE CompressList
   !
+  ! SPARSE JACOBIMATRIX CALC
+  SUBROUTINE ConnectivityMethode(JacCC,gMat,aMat,r,y,doty)
+    !
+    ! jMat = gMat*Dr*aMat*invDy;
+    !
+    TYPE(CSR_Matrix_T), INTENT(INOUT) :: JacCC
+    TYPE(CSR_Matrix_T), INTENT(IN) :: gMat
+    TYPE(CSR_Matrix_T), INTENT(IN) :: aMat
+    REAL(dp), INTENT(IN) :: r(aMat%m)
+    REAL(dp), INTENT(IN) :: y(aMat%n)
+    REAL(dp), INTENT(IN) :: doty(aMat%n)
+    !
+    INTEGER :: i,j,jj,k,kk
+    REAL(dp) :: ajj
+    REAL(dp) :: temp(MAX(gMat%m,gMat%n,aMat%n))
+    !
+    temp=ZERO
+    !
+    JacCC%Val=ZERO
+    !
+    DO i=1,gMat%m
+
+      DO jj=gMat%RowPtr(i),gMat%RowPtr(i+1)-1
+        j   = gMat%ColInd(jj)
+        ajj = gMat%Val(jj)*r(j)
+
+        DO kk=aMat%RowPtr(j),aMat%RowPtr(j+1)-1
+          k = aMat%ColInd(kk)
+          temp(k) = temp(k) + (ajj*aMat%Val(kk)/doty(k))**2
+        END DO
+
+      END DO
+
+      DO jj=JacCC%RowPtr(i),JacCC%RowPtr(i+1)-1
+        j = JacCC%ColInd(jj)
+        JacCC%Val(jj) = temp(j)
+        temp(j) = ZERO
+      END DO
+
+    END DO
+  END SUBROUTINE ConnectivityMethode
   !
   ! SPARSE JACOBIMATRIX CALC
   SUBROUTINE Jacobian_CC(JacCC,gMat,aMat,rVec,yVec)

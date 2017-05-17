@@ -724,22 +724,21 @@ MODULE Rosenbrock_Mod
     !print*, 't,h, kvecs = ', t,h,SUM(k(:,1))
     !stop
     
-    !IF (dprint) THEN
+    IF (dprint) THEN
     !  print*,'debug::     Error     =  ', err, '  Error index  =  ', errind
     !  print*, '------------------------------------------------------------------------------'
     !  print*, ''
     !  print*, ' Press ENTER to calculate next step '
     !  read(*,*) 
-    !  IF (error <= ONE) THEN
-    !    DO i=1,nDIM
-    !      tmp_CM = ZERO
-    !      !1DO j=1,nDIM
-    !      tmp_CM = tmp_CM + (Y0(i)/dCdT(j) * Jac_CC%Val(Jac_CC%RowPtr(i):Jac_CC%RowPtr(i+1)-1)
-    !      !END DO
-    !      CM(i) = DAXPY_Sparse(Jac_CC,(Y0(i)/dCdT(:) *  )  )
-    !    END DO
-    !  END IF
-    !END IF
+      IF (err <= ONE) THEN
+        CALL ConnectivityMethode(  CM_1 , BAT  , A , Rate , Y , dCdt )
+        CALL TransposeSparse( CM_1T , CM_1 )
+        DO i=1,nDIM
+          CM(i) = SUM( CM_1T%Val( CM_1T%RowPtr(i):CM_1T%RowPtr(i+1)-1 ) ) 
+        END DO
+        print*, 'CM= ',CM
+      END IF
+    END IF
    
   END SUBROUTINE Rosenbrock
 

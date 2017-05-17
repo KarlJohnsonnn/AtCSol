@@ -13,7 +13,7 @@ MODULE Integration_Mod
   USE mo_IO
   USE mo_reac
   USE mo_ckinput, ONLY: Density
-  USE Sparse_Mod, ONLY: A,B,BA,BAT
+  USE Sparse_Mod, ONLY: A,B,BA,BAT,CM_1
   USE Sparse2_Mod
   USE Chemsys_Mod
   USE Rosenbrock_Mod
@@ -251,6 +251,9 @@ MODULE Integration_Mod
       ! also assign constant matrix parts like (beta-alpha)^T, alpha
       IF ( CLASSIC ) THEN
         CALL BuildSymbolicClassicMatrix(  Miter , Jac_CC  , RCo%ga )
+        IF (DebugPrint) THEN
+          CM_1 = Copy_CSR(Jac_CC)
+        END IF
       ELSE
         CALL BuildSymbolicExtendedMatrix( Miter , A , BAT , RCo%ga ) 
       END IF

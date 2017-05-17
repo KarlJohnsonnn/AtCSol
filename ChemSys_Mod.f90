@@ -29,19 +29,18 @@ MODULE Chemsys_Mod
   TYPE Duct_T
     CHARACTER(LenName) :: Species=''
     CHARACTER(20)      :: Type
-    REAL(dp)     :: Koeff
+    REAL(dp)           :: Koeff
+    INTEGER            :: iSpecies = 0
   END TYPE Duct_T
   !
   ! LIST FORM
   TYPE Reaction_T
-    CHARACTER(20)       :: Type, TypeConstant
+    CHARACTER(20)      :: Type, TypeConstant
     CHARACTER(LenLine) :: Line1, Line2, Line3
     CHARACTER(LenName) :: Factor
-    TYPE(Duct_T)  , POINTER   :: Educt(:)=>NULL(),                  &
-    &                            Product(:)=>NULL()
-    REAL(dp), POINTER   :: Constants(:)=>NULL()
-    TYPE(Duct_T)  , POINTER   :: InActEduct(:)=>NULL(),             &
-    &                            InActProduct(:)=>NULL()
+    TYPE(Duct_T)  , POINTER   :: Educt(:)=>NULL(), Product(:)=>NULL()
+    REAL(dp), POINTER         :: Constants(:)=>NULL()
+    TYPE(Duct_T)  , POINTER   :: InActEduct(:)=>NULL(), InActProduct(:)=>NULL()
     INTEGER                   :: nInActEd=0, nInActPro=0
     TYPE(Reaction_T), POINTER :: Next=>NULL()
   END TYPE Reaction_T
@@ -49,29 +48,23 @@ MODULE Chemsys_Mod
   ! ARRAY FORM
   TYPE ReactionStruct_T
     CHARACTER(20)       :: Type,  TypeConstant
-    CHARACTER(LenLine)  :: Line1           &
-    &                    , Line2=''        &  ! Line2 = BackReaction if nessessary
-    &                    , Line3=''
-    LOGICAL             :: bR=.FALSE.       ! logical for reverse reaction
-    LOGICAL             :: brX=.FALSE.       ! logical for explicite reverse reaction
+    CHARACTER(LenLine)  :: Line1='' , Line2='' , Line3=''
+    LOGICAL             :: bR = .FALSE. , brX = .FALSE. 
     CHARACTER(LenName)  :: Factor
     CHARACTER(2)        :: direction
     REAL(dp)      :: SumAqCoef     
-    TYPE(Duct_T)  , ALLOCATABLE     :: Educt(:), Product(:)
-    REAL(dp), ALLOCATABLE     :: Constants(:)
-    REAL(dp), ALLOCATABLE     :: LowConst(:), HighConst(:)
-    REAL(dp), ALLOCATABLE     :: TroeConst(:)
-    REAL(dp), ALLOCATABLE     :: InActEduct(:), InActProduct(:)
-    INTEGER                         :: nInActEd=0, nInActPro=0
-    INTEGER                         :: nActEd=0  , nActPro=0
-    INTEGER                         :: NumConst=0
-    INTEGER                         :: HenrySpc=0
-    LOGICAL                         :: TB=.FALSE.
-    LOGICAL                         :: TBextra=.FALSE.
-    INTEGER, ALLOCATABLE            :: TBidx(:)
-    CHARACTER(100), ALLOCATABLE     :: TBspc(:)
-    REAL(dp), ALLOCATABLE     :: TBalpha(:)
-    CHARACTER(LenName), ALLOCATABLE :: InActEductSpc(:)
+    TYPE(Duct_T)  , ALLOCATABLE :: Educt(:), Product(:)
+    REAL(dp), ALLOCATABLE       :: Constants(:)
+    REAL(dp), ALLOCATABLE       :: LowConst(:), HighConst(:), TroeConst(:) ! combustion press dep reactions
+    REAL(dp), ALLOCATABLE       :: InActEduct(:), InActProduct(:)
+    INTEGER                     :: nInActEd = 0, nInActPro = 0, nActEd = 0, nActPro = 0
+    INTEGER                     :: nConst = 0
+    INTEGER                     :: HenrySpc = 0
+    LOGICAL                     :: TB = .FALSE. , TBextra=.FALSE.
+    INTEGER, ALLOCATABLE        :: TBidx(:)
+    CHARACTER(100), ALLOCATABLE :: TBspc(:)
+    REAL(dp), ALLOCATABLE       :: TBalpha(:)
+    CHARACTER(LenName), ALLOCATABLE :: InActEductSpc(:), InActProductSpc(:)
   END TYPE ReactionStruct_T
   !
   !
@@ -2387,7 +2380,7 @@ MODULE Chemsys_Mod
     TYPE(ReactionStruct_T), ALLOCATABLE :: ReacStruct(:)
     TYPE(ListReaction_T) , OPTIONAL :: LGas, LHenry, LAqua, LDiss,                   &
     &                                  LSolid, LPartic, LMicro
-    INTEGER :: i, j, iList, TmpArraySize
+    INTEGER :: i, j, iList, iEq
     INTEGER :: nList
 
     INTEGER :: icnt(47), icntFAC(10), iHen
@@ -2443,56 +2436,57 @@ MODULE Chemsys_Mod
     END IF
 
     ALLOCATE( ReacStruct(neq) )
-    ALLOCATE( ReactionTypes(neq) )
     !
     CALL AllocateRTarrays
     !
     i=1
     iHen = 0
-    icnt(:)    = 0
-    icntFAC(:) = 0
+    icnt = 0
+    icntFAC = 0
     !
     DO iList=1,nList
       Current=>CompleteReactionList(iList)%Start
       DO WHILE (ASSOCIATED(Current)) 
-        ReacStruct(i)%Type=Current%Type
-        ReactionTypes(i)=Current%Type
-        ReacStruct(i)%TypeConstant=Current%TypeConstant
-        ReacStruct(i)%Line1=Current%Line1
-        ReacStruct(i)%Line2=Current%Line2
-        ReacStruct(i)%Line3=Current%Line3
-        ReacStruct(i)%Factor=Current%Factor
+        ReacStruct(i)%Type   = Current%Type
+        ReacStruct(i)%Line1  = Current%Line1
+        ReacStruct(i)%Line2  = Current%Line2
+        ReacStruct(i)%Line3  = Current%Line3
+        ReacStruct(i)%Factor = Current%Factor
+        ReacStruct(i)%TypeConstant = Current%TypeConstant
          
         CALL GatherReacFACTOR(i,icntFAC,Current%Factor)
 
         ! forward direaction
-        CALL GatherReacArrays(i,icnt,Current%Type,Current%TypeConstant,Current%Constants,.FALSE.)
+        CALL GatherReacArrays( i , icnt ,           &
+                             & Current%Type ,       &
+                             & Current%TypeConstant,&
+                             & Current%Constants    )
         !
-        TmpArraySize=SIZE(Current%Educt)
-        ReacStruct(i)%nActEd=tmpArraySize
-        ALLOCATE(ReacStruct(i)%Educt(TmpArraySize))
-        DO j=1,TmpArraySize
-          ReacStruct(i)%Educt(j)%Species=Current%Educt(j)%Species
-          ReacStruct(i)%Educt(j)%Type=Current%Educt(j)%Type
-          ReacStruct(i)%Educt(j)%Koeff=Current%Educt(j)%Koeff
+        ReacStruct(i)%nActEd  = SIZE(Current%Educt)
+        ReacStruct(i)%nActPro = SIZE(Current%Product)
+        ALLOCATE( ReacStruct(i)%Educt(ReacStruct(i)%nActEd),   &
+                & ReacStruct(i)%Product(ReacStruct(i)%nActPro) )
+
+        DO j = 1 , ReacStruct(i)%nActEd
+          ReacStruct(i)%Educt(j)%Species  = Current%Educt(j)%Species
+          ReacStruct(i)%Educt(j)%Type     = Current%Educt(j)%Type
+          ReacStruct(i)%Educt(j)%Koeff    = Current%Educt(j)%Koeff
+          ReacStruct(i)%Educt(j)%iSpecies = PositionSpeciesAll(Current%Educt(j)%Species)
         END DO
-        !
-        TmpArraySize=SIZE(Current%Product)
-        ReacStruct(i)%nActPro=TmpArraySize
-        ALLOCATE(ReacStruct(i)%Product(TmpArraySize))
-        DO j=1,TmpArraySize
-          ReacStruct(i)%Product(j)%Species=Current%Product(j)%Species
-          ReacStruct(i)%Product(j)%Type=Current%Product(j)%Type
-          ReacStruct(i)%Product(j)%Koeff=Current%Product(j)%Koeff
+        DO j = 1 , ReacStruct(i)%nActPro
+          ReacStruct(i)%Product(j)%Species  = Current%Product(j)%Species
+          ReacStruct(i)%Product(j)%Type     = Current%Product(j)%Type
+          ReacStruct(i)%Product(j)%Koeff    = Current%Product(j)%Koeff
+          ReacStruct(i)%Product(j)%iSpecies = PositionSpeciesAll(Current%Product(j)%Species)
         END DO
+        
+        ReacStruct(i)%nConst  = SIZE(Current%Constants)
+        ALLOCATE(ReacStruct(i)%Constants(ReacStruct(i)%nConst))
+        ReacStruct(i)%Constants = Current%Constants
         !
-        ReacStruct(i)%NumConst=SIZE(Current%Constants)
-        ALLOCATE(ReacStruct(i)%Constants(ReacStruct(i)%NumConst))
-        ReacStruct(i)%Constants=Current%Constants
-        !
-        IF (Current%Type=='HENRY') THEN
-          ReacStruct(i)%direction='GA'
-          ReacStruct(i)%HenrySpc=PositionSpeciesAll(ReacStruct(i)%Educt(1)%Species)
+        IF ( Current%Type == 'HENRY' ) THEN
+          ReacStruct(i)%direction = 'GA'
+          ReacStruct(i)%HenrySpc  = PositionSpeciesAll(ReacStruct(i)%Educt(1)%Species)
 
           icnt(29) = icnt(29) + 1
           RTind2%iHENRY(icnt(29),1) = i
@@ -2502,110 +2496,101 @@ MODULE Chemsys_Mod
         END IF
         !
         !
-        TmpArraySize=SIZE(Current%Educt)
-        ALLOCATE(ReacStruct(i)%InActEduct(TmpArraySize))
-        ALLOCATE(ReacStruct(i)%InActEductSpc(TmpArraySize))
-        DO j=1,TmpArraySize
-          ReacStruct(i)%InActEduct(j)=Current%InActEduct(j)%Koeff
-          ReacStruct(i)%InActEductSpc(j)=Current%InActEduct(j)%Species
-          IF ( Current%InActEduct(j)%Species /= '') THEN
-            nFirst_orderKAT = nFirst_orderKAT + 1
+        ReacStruct(i)%nInActEd  = Current%nInActEd
+        ReacStruct(i)%nInActPro = Current%nInActPro
+        ALLOCATE( ReacStruct(i)%InActEduct(Current%nInActEd),      &
+                & ReacStruct(i)%InActEductSpc(Current%nInActEd),   & 
+                & ReacStruct(i)%InActProduct(Current%nInActPro),   &
+                & ReacStruct(i)%InActProductSpc(Current%nInActPro) )
+
+        DO j = 1 , Current%nInActEd
+          ReacStruct(i)%InActEduct(j)    = Current%InActEduct(j)%Koeff
+          ReacStruct(i)%InActEductSpc(j) = Current%InActEduct(j)%Species
+          nFirst_orderKAT = nFirst_orderKAT + 1
+        END DO
+        DO j = 1 , Current%nInActPro
+          ReacStruct(i)%InActProduct(j)    = Current%InActProduct(j)%Koeff    
+          ReacStruct(i)%InActProductSpc(j) = Current%InActProduct(j)%Species
+        END DO
+        
+        ReacStruct(i)%SumAqCoef = SUM(Current%Educt%Koeff) - ONE
+       
+        IF (ReacStruct(i)%nInActEd > 0 ) THEN
+          IF (TRIM(ADJUSTL(ReacStruct(i)%InActEductSpc(1)))=='[aH2O]') THEN 
+            ReacStruct(i)%SumAqCoef = ReacStruct(i)%SumAqCoef + ONE
           END IF
-        END DO
-        !
-        TmpArraySize=SIZE(Current%InActProduct)
-        ALLOCATE(ReacStruct(i)%InActProduct(TmpArraySize))
-        DO j=1,TmpArraySize
-          ReacStruct(i)%InActProduct(j)=Current%InActProduct(j)%Koeff    
-        END DO
-        !    
-        ReacStruct(i)%nInActEd=Current%nInActEd
-        ReacStruct(i)%nInActPro=Current%nInActPro
-        !
-        ReacStruct(i)%SumAqCoef=SUM(Current%Educt(:)%Koeff)-ONE
-        !
-        !IF (TRIM(ADJUSTL(ReacStruct(i)%InActEductSpc(1)))=='[aH2O]') THEN 
-        !  ReacStruct(i)%SumAqCoef=ReacStruct(i)%SumAqCoef+1
-        !END IF
+        END IF
         IF ( ReacStruct(i)%Type=='AQUA'.OR. ReacStruct(i)%Type=='DISS' ) THEN
-          IF ( ReacStruct(i)%SumAqCoef > ZERO ) THEN
-            nHOaqua = nHOaqua + 1
-          END IF
+          IF ( ReacStruct(i)%SumAqCoef > ZERO ) nHOaqua = nHOaqua + 1
         END IF
         !
         ! for equilibrium reactions save <-- direction
         SELECT CASE (Current%Type)
           CASE ('DISS','HENRY')
             i=i+1
-            ReacStruct(i)%Type=Current%Type
-            ReactionTypes(i)=Current%Type
-            ReacStruct(i)%TypeConstant=Current%TypeConstant
-            ReacStruct(i)%Line1=Current%Line1
-            ReacStruct(i)%Line2='BackReaction'
-            ReacStruct(i)%bR=.TRUE.
-            ReacStruct(i)%Line3=Current%Line3
-            ReacStruct(i)%Factor=Current%Factor
+            iEq = INDEX(Current%Line1,' = ')
+            ReacStruct(i)%Type   = Current%Type
+            ReacStruct(i)%Line1  = TRIM(Current%Line1(iEq+3:))//' = '//TRIM(Current%Line1(:iEq))
+            ReacStruct(i)%Line2  = 'reverse reaction'
+            ReacStruct(i)%bR     = .TRUE.
+            ReacStruct(i)%Line3  = Current%Line3
+            ReacStruct(i)%Factor = Current%Factor
+            ReacStruct(i)%TypeConstant = Current%TypeConstant
             CALL GatherReacFACTOR(i,icntFAC,Current%Factor)
            
-            !
-            TmpArraySize=SIZE(Current%Product)
-            ReacStruct(i)%nActEd=TmpArraySize
-            ALLOCATE(ReacStruct(i)%Educt(TmpArraySize))
-            DO j=1,TmpArraySize
-              ReacStruct(i)%Educt(j)%Species=Current%Product(j)%Species
-              ReacStruct(i)%Educt(j)%Type=Current%Product(j)%Type
-              ReacStruct(i)%Educt(j)%Koeff=Current%Product(j)%Koeff
+            ReacStruct(i)%nActEd  = SIZE(Current%Product)
+            ReacStruct(i)%nActPro = SIZE(Current%Educt)
+            ALLOCATE( ReacStruct(i)%Educt(ReacStruct(i)%nActEd),   &
+                    & ReacStruct(i)%Product(ReacStruct(i)%nActPro) )
+
+            DO j=1,ReacStruct(i)%nActEd
+              ReacStruct(i)%Educt(j)%Species  = Current%Product(j)%Species
+              ReacStruct(i)%Educt(j)%Type     = Current%Product(j)%Type
+              ReacStruct(i)%Educt(j)%Koeff    = Current%Product(j)%Koeff
+              ReacStruct(i)%Educt(j)%iSpecies = PositionSpeciesAll(Current%Product(j)%Species)
             END DO
-            !
-            TmpArraySize=SIZE(Current%Educt)
-            ReacStruct(i)%nActPro=TmpArraySize
-            ALLOCATE(ReacStruct(i)%Product(TmpArraySize))
-            DO j=1,TmpArraySize
-              ReacStruct(i)%Product(j)%Species=Current%Educt(j)%Species
-              ReacStruct(i)%Product(j)%Type=Current%Educt(j)%Type
-              ReacStruct(i)%Product(j)%Koeff=Current%Educt(j)%Koeff
+            DO j=1,ReacStruct(i)%nActPro
+              ReacStruct(i)%Product(j)%Species  = Current%Educt(j)%Species
+              ReacStruct(i)%Product(j)%Type     = Current%Educt(j)%Type
+              ReacStruct(i)%Product(j)%Koeff    = Current%Educt(j)%Koeff
+              ReacStruct(i)%Product(j)%iSpecies = PositionSpeciesAll(Current%Educt(j)%Species)
             END DO
+            
+            ReacStruct(i)%nConst = SIZE(Current%Constants)
+            ALLOCATE(ReacStruct(i)%Constants(ReacStruct(i)%nConst))
+            ReacStruct(i)%Constants = Current%Constants
             !
-            ReacStruct(i)%NumConst=SIZE(Current%Constants)
-            ALLOCATE(ReacStruct(i)%Constants(ReacStruct(i)%NumConst))
-            ReacStruct(i)%Constants=Current%Constants
-            !
-            IF (Current%Type=='HENRY') THEN
-              ReacStruct(i)%direction='AG'
-              ReacStruct(i)%HenrySpc=PositionSpeciesAll(ReacStruct(i)%Product(1)%Species)
+            IF ( Current%Type == 'HENRY' ) THEN
+              ReacStruct(i)%direction = 'AG'
+              ReacStruct(i)%HenrySpc  = PositionSpeciesAll(ReacStruct(i)%Product(1)%Species)
             END IF
             !
-            !
-            TmpArraySize=SIZE(Current%InActProduct)
-            ALLOCATE(ReacStruct(i)%InActEduct(TmpArraySize))
-            ALLOCATE(ReacStruct(i)%InActEductSpc(TmpArraySize))
-            DO j=1,TmpArraySize
-              ReacStruct(i)%InActEduct(j)=Current%InActProduct(j)%Koeff
-              ReacStruct(i)%InActEductSpc(j)=Current%InActProduct(j)%Species
-              IF ( Current%InActProduct(j)%Species /= '') THEN
-                nFirst_orderKAT = nFirst_orderKAT + 1
+            ReacStruct(i)%nInActEd  = Current%nInActPro
+            ReacStruct(i)%nInActPro = Current%nInActEd
+            ALLOCATE( ReacStruct(i)%InActEduct(Current%nInActPro),   &
+                    & ReacStruct(i)%InActEductSpc(Current%nInActPro),& 
+                    & ReacStruct(i)%InActProduct(Current%nInActEd),   &
+                    & ReacStruct(i)%InActProductSpc(Current%nInActEd) )
+
+            DO j = 1 , Current%nInActPro
+              ReacStruct(i)%InActEduct(j)    = Current%InActProduct(j)%Koeff
+              ReacStruct(i)%InActEductSpc(j) = Current%InActProduct(j)%Species
+              nFirst_orderKAT = nFirst_orderKAT + 1
+            END DO
+            DO j = 1 , Current%nInActEd
+              ReacStruct(i)%InActProduct(j)    = Current%InActEduct(j)%Koeff    
+              ReacStruct(i)%InActProductSpc(j) = Current%InActEduct(j)%Species
+            END DO
+            
+            ReacStruct(i)%SumAqCoef = SUM(Current%Product%Koeff) - ONE
+            
+            IF (ReacStruct(i)%nInActEd > 0 ) THEN
+              IF (TRIM(ADJUSTL(ReacStruct(i)%InActEductSpc(1)))=='[aH2O]') THEN 
+                ReacStruct(i)%SumAqCoef = ReacStruct(i)%SumAqCoef + ONE
               END IF
-            END DO
-            !
-            TmpArraySize=SIZE(Current%InActEduct)
-            ALLOCATE(ReacStruct(i)%InActProduct(TmpArraySize))
-            DO j=1,TmpArraySize
-              ReacStruct(i)%InActProduct(j)=Current%InActEduct(j)%Koeff    
-            END DO
-            !    
-            ReacStruct(i)%nInActEd=Current%nInActPro
-            ReacStruct(i)%nInActPro=Current%nInActEd
-            !
-            !
-            ReacStruct(i)%SumAqCoef=SUM(Current%Product(:)%Koeff)-1.0d0
-            !
-            IF (TRIM(ADJUSTL(ReacStruct(i)%InActEductSpc(1)))=='[aH2O]') THEN 
-              ReacStruct(i)%SumAqCoef=ReacStruct(i)%SumAqCoef+1
             END IF
             IF ( ReacStruct(i)%Type=='AQUA'.OR. ReacStruct(i)%Type=='DISS' ) THEN
-              IF ( ReacStruct(i)%SumAqCoef > ZERO ) THEN
-                nHOaqua = nHOaqua + 1
-             END IF
+              IF ( ReacStruct(i)%SumAqCoef > ZERO ) nHOaqua = nHOaqua + 1
             END IF
             !
         END SELECT
@@ -2625,10 +2610,9 @@ MODULE Chemsys_Mod
 
     DO i=1,neq
       
-      IF ( ReacStruct(i)%InActEductSpc(1) /= '') THEN
+      IF ( ReacStruct(i)%nInActEd > 0 ) THEN
         nFirst_orderKAT = nFirst_orderKAT + 1
         first_orderKAT(nfirst_orderKAT,1) = i
-        !first_orderKAT(nfirst_orderKAT,2) = PositionSpeciesAll(ReacStruct(i)%InActEductSpc(1))
         first_orderKAT(nfirst_orderKAT,2) = PositionSpeciesAll(ReacStruct(i)%InActEductSpc(1)) - nspc
       END IF
       
@@ -2687,12 +2671,11 @@ MODULE Chemsys_Mod
     END SELECT
   END SUBROUTINE GatherReacFACTOR
 
-  SUBROUTINE GatherReacArrays(iR,icnt,Typ,TypeR,C,bR)
+  SUBROUTINE GatherReacArrays(iR,icnt,Typ,TypeR,C)
     REAL(dp), INTENT(IN) :: C(:)
     CHARACTER(*),   INTENT(IN) :: Typ
     CHARACTER(*),   INTENT(IN) :: TypeR
     INTEGER,        INTENT(IN) :: iR
-    LOGICAL,        INTENT(IN) :: bR
     INTEGER,        INTENT(INOUT) :: icnt(47)
 
     SELECT CASE ( TypeR )
@@ -3003,6 +2986,79 @@ MODULE Chemsys_Mod
 
     ALLOCATE( RTind2%iPHOTOkpp(nPHOTOkpp), RTind2%iPHOTO2kpp(nPHOTO2kpp), RTind2%iPHOTO3kpp(nPHOTO3kpp),& 
             & RTpar2%PHOTOkpp(nPHOTOkpp),  RTpar2%PHOTO2kpp(nPHOTO2kpp),  RTpar2%PHOTO3kpp(nPHOTO3kpp)  )
-
   END SUBROUTINE AllocateRTarrays
+
+  SUBROUTINE SearchReactions(Species)
+    CHARACTER(*) :: Species
+    CHARACTER(80) :: tmpSpc
+    INTEGER :: iR, jD, uPath
+    INTEGER :: cRcnt, pRcnt
+
+    uPath = 13
+    tmpSpc = TRIM(ADJUSTL(Species))
+    cRcnt = 0
+    pRcnt = 0
+
+    OPEN ( UNIT=uPath , FILE='REACTION_PATHS/'//TRIM(tmpSpc)//'_path.txt' , STATUS='REPLACE' )
+    WRITE(uPath,*) ' ********************************************************************************************'
+    WRITE(uPath,*) '  '
+    WRITE(uPath,*) '  Chemical Mechanism ::              ', TRIM(BSP)
+    WRITE(uPath,*) '     System contains ::              ', neq , ' reactions'
+    WRITE(uPath,*) '                                     ', nspc, ' species'
+    WRITE(uPath,*) '  '
+    WRITE(uPath,*) '  All reactions including species :: ', TRIM(tmpSpc)
+    WRITE(uPath,*) '  '
+
+    DO iR = 1 , neq
+      ! Check educts
+      DO jD = 1 , ReactionSystem(iR)%nActEd
+        IF (TRIM(ReactionSystem(iR)%Educt(jD)%Species) == TRIM(tmpSpc))   cRcnt = cRcnt + 1
+      END DO
+      ! Check products
+      DO jD = 1 , ReactionSystem(iR)%nActPro
+        IF (TRIM(ReactionSystem(iR)%Product(jD)%Species) == TRIM(tmpSpc)) pRcnt = pRcnt + 1
+      END DO
+    END DO
+
+    WRITE(uPath,*) '    + Number of Reactions where ',TRIM(tmpSpc),' is involved: ', cRcnt+pRcnt
+    WRITE(uPath,*) '        - Number of consuming Reactions: ', cRcnt
+    WRITE(uPath,*) '        - Number of producing Reactions: ', pRcnt
+
+    DO iR = 1 , neq
+      ! Check educts
+      DO jD = 1 , ReactionSystem(iR)%nActEd
+        IF (TRIM(ReactionSystem(iR)%Educt(jD)%Species) == TRIM(tmpSpc)) THEN
+          CALL PrintReaction(iR,uPath)
+        END IF
+      END DO
+      ! Check products
+      DO jD = 1 , ReactionSystem(iR)%nActPro
+        IF (TRIM(ReactionSystem(iR)%Product(jD)%Species) == TRIM(tmpSpc)) THEN
+          CALL PrintReaction(iR,uPath)
+        END IF
+      END DO
+    END DO
+
+    CLOSE( UNIT=13 )
+
+    WRITE(*,*) '  All reactions containing ',TRIM(tmpSpc), &
+    &          ' saved in REACTION_PATHs/'//TRIM(tmpSpc)//'_path.txt'
+  END SUBROUTINE SearchReactions
+
+  SUBROUTINE PrintReaction(iR,Unit)
+    INTEGER :: iR
+    INTEGER :: Unit
+
+    WRITE(Unit,*) ''
+    WRITE(Unit,*) ' ********************************************************************************************'
+    WRITE(Unit,*) '  Reaction Number   :: ', iR
+    WRITE(Unit,*) '  Reaction Class    :: ', TRIM(ReactionSystem(iR)%Type)
+    WRITE(Unit,*) '  Constant Type     :: ', TRIM(ReactionSystem(iR)%TypeConstant)
+    WRITE(Unit,*) '  Reaction          :: ', TRIM(ReactionSystem(iR)%Line1)
+    WRITE(Unit,*) '  Order of Reaction :: ', INT(SUM(ReactionSystem(iR)%Educt%Koeff))
+    WRITE(Unit,*) '  Factor            :: ', TRIM(ReactionSystem(iR)%Factor)
+    WRITE(Unit,*) '  Constants         :: ', ReactionSystem(iR)%Constants
+    WRITE(Unit,*) ' ********************************************************************************************'
+    WRITE(Unit,*) ''
+  END SUBROUTINE PrintReaction
 END MODULE Chemsys_Mod

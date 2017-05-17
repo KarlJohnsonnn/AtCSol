@@ -6,7 +6,7 @@
   constLWC = .false.                     ! 0 = konstanter LWC wert, 0 /= pseudo LWC funktion wird benutzt
   Ladebalken = 1                   ! 0 = kein ladebalken, 0 /= ladebalken aktiv
   ErrorLog = 0                      ! 0 = no error output, 0 /= error output direkt auf bildschirm
-  DebugPrint  = .false.            ! DEBUGGING Rosenbrock 
+  DebugPrint  = .true.            ! DEBUGGING Rosenbrock 
   MatrixPrint = .false.            ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
   NetCdfPrint = .true.            ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
  /END
@@ -34,7 +34,7 @@
   AtolAqua = 1.0d-7                             ! abs. Toleranzen für aquatische Stoffe
   Error_Est= 2
   PI_StepSize = .false.
-  solveLA = 'ex'                                ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
+  solveLA = 'cl'                                ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
   !ODEsolver = 'bwEuler'
   ODEsolver = 'METHODS/TSRosWRodas3.fort'
   !ODEsolver ='LSODE'    ! Rosenbrock-Wanner Verfahrenskoeffizienten

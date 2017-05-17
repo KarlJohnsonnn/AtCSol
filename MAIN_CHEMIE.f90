@@ -18,7 +18,6 @@ PROGRAM MAIN_CHEMIE
   USE mo_MPI
   USE mo_IO
   USE mo_ckinput
-  !USE Euler_Mod
   USE NetCDF_Mod
   IMPLICIT NONE
   !
@@ -113,9 +112,7 @@ PROGRAM MAIN_CHEMIE
     !--- richtigen index holen, da TB unsortiert eingelesen wurde
     CALL GatherTBindex
 
-    IF (Vectorized) THEN
-      CALL GatherReactionTypeIndex
-    END IF
+    IF (Vectorized) CALL GatherReactionTypeIndex
    
     !--- Read initial values
     ALLOCATE( InitValAct(ntGas) , y_e(ntGas) )
@@ -125,16 +122,13 @@ PROGRAM MAIN_CHEMIE
       CALL Read_MolecularWeights(MW,MWeights,MWUnit,nspc)
 
       ALLOCATE( rMW(nspc) )  
-      rMW = ZERO
       rMW = ONE / MW
       
       ALLOCATE( MoleFrac(ntGas)   , MassFrac(ntGas) )
       MoleFrac    = ZERO           ! mole fraction 
       MassFrac    = ZERO           ! mass fraction 
-      InitValAct  = ZERO           ! mol/cm3 
 
       CALL Read_GASini    ( InitFile , MoleFrac , InitValKat )
-      CALL Read_EMISS     ( InitFile , y_e )
 
       !Press = Pressure0               ! initial pressure in [Pa]
       Press_in_dyncm2 = Pressure0 * Pa_to_dyncm2
@@ -152,8 +146,8 @@ PROGRAM MAIN_CHEMIE
         WRITE(*,*) ''
       END IF
       CALL Read_GASini    ( InitFile , MoleConc , InitValKat )
-      CALL Read_EMISS     ( InitFile , y_e )
     END IF
+    CALL Read_EMISS     ( InitFile , y_e )
     
     ! Initialising reactor density
     rho  = Density( MoleConc )
@@ -181,11 +175,9 @@ PROGRAM MAIN_CHEMIE
    
     !----------------------------------------------------------------
     ! --- Build the reaction system
-    CALL AllListsToArray( ReactionSystem  &
-    &                    , ListRGas       &
-    &                    , ListRHenry     &
-    &                    , ListRAqua      &
-    &                    , ListRDiss      )
+    CALL AllListsToArray( ReactionSystem  , ListRGas       &
+    &                    , ListRHenry     , ListRAqua      &
+    &                    , ListRDiss                       )
     !
     !----------------------------------------------------------------
     ! --- print reactions and build A, B and (B-A) structure
@@ -274,10 +266,19 @@ PROGRAM MAIN_CHEMIE
   !-----------------------------------------------------------------------
   !--- print input parameter, method, tols, etc.
   CALL Print_Run_Param()
-  !print*, 'NTypes%AquaPhoto=',NTypes%AquaPhoto
-  !print*, 'NTypes%Spec1MCM=',NTypes%Spec1MCM
-  !print*, 'NTypes%Spec1MCM=',NTypes%GasConst
-  !stop
+
+
+  !-----------------------------------------------------------------------
+  !--- Routines for pathway analysis
+  IF (MPI_ID==0) THEN
+    WRITE(*,*)
+    DO i = 1 , SIZE(OutNetcdfSpc)
+      CALL SearchReactions(y_name(OutNetcdfSpc(i)))
+    END DO
+    WRITE(*,*)
+  END IF
+  !stop 'MAIN'
+  
   !-----------------------------------------------------------------------
   CALL Integrate (  InitValAct(1:nspc)   &  ! initial concentrations activ species
   &               , Tspan                &  ! integration invervall
@@ -286,8 +287,7 @@ PROGRAM MAIN_CHEMIE
   &               , ODEsolver     )         ! methode for solving the ode
   !---------------------------------------------------------------
   ! --- stop timer and print output statistics
-  Timer_Finish = MPI_WTIME()
-  Timer_Finish = Timer_Finish - Timer_Start + Time_Read
+  Timer_Finish = MPI_WTIME() - Timer_Start + Time_Read
   !
   ! Print statistics
   CALL Output_Statistics( Time_Read       , TimeSymbolic  , TimeFac       &

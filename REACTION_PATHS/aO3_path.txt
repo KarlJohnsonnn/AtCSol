@@ -1,0 +1,66 @@
+  ********************************************************************************************
+   
+   Chemical Mechanism ::              INORG
+      System contains ::                       200  reactions
+                                                82  species
+   
+   All reactions including species :: aO3
+   
+     + Number of Reactions where aO3 is involved:            5
+         - Number of consuming Reactions:            4
+         - Number of producing Reactions:            1
+ 
+  ********************************************************************************************
+   Reaction Number   ::          159
+   Reaction Class    :: HENRY
+   Constant Type     :: TEMP3
+   Reaction          :: O3 = aO3
+   Order of Reaction ::            1
+   Factor            ::  NONE
+   Constants         ::    1.1400000000000000E-002   2300.0000000000000     
+  ********************************************************************************************
+ 
+ 
+  ********************************************************************************************
+   Reaction Number   ::          160
+   Reaction Class    :: HENRY
+   Constant Type     :: TEMP3
+   Reaction          :: aO3 = O3
+   Order of Reaction ::            1
+   Factor            ::  NONE
+   Constants         ::    1.1400000000000000E-002   2300.0000000000000     
+  ********************************************************************************************
+ 
+ 
+  ********************************************************************************************
+   Reaction Number   ::          178
+   Reaction Class    :: AQUA
+   Constant Type     :: TEMP3
+   Reaction          :: aSO2  + aO3  = HSO4m   + aO2  + Hp - [aH2O]
+   Order of Reaction ::            2
+   Factor            ::  NONE
+   Constants         ::    24000.000000000000        0.0000000000000000     
+  ********************************************************************************************
+ 
+ 
+  ********************************************************************************************
+   Reaction Number   ::          179
+   Reaction Class    :: AQUA
+   Constant Type     :: TEMP3
+   Reaction          :: HSO3m  + aO3  = SO4mm  + Hp  + aO2
+   Order of Reaction ::            2
+   Factor            ::  NONE
+   Constants         ::    370000.00000000000       -5530.0000000000000     
+  ********************************************************************************************
+ 
+ 
+  ********************************************************************************************
+   Reaction Number   ::          180
+   Reaction Class    :: AQUA
+   Constant Type     :: TEMP3
+   Reaction          :: SO3mm  + aO3  = SO4mm  + aO2
+   Order of Reaction ::            2
+   Factor            ::  NONE
+   Constants         ::    1500000000.0000000       -5280.0000000000000     
+  ********************************************************************************************
+ 

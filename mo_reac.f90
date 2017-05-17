@@ -149,7 +149,6 @@
 !--    passive species, indices of Henry species
     REAL(dp), ALLOCATABLE :: ykat(:,:)
     INTEGER, ALLOCATABLE :: ind_henry(:,:)
-    CHARACTER(20), ALLOCATABLE :: ReactionTypes(:)
 
 !--    mass transfer coefficient, kBig
     REAL(dp):: dkmt, kBig

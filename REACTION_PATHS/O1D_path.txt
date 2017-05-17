@@ -1,0 +1,55 @@
+  ********************************************************************************************
+   
+   Chemical Mechanism ::              INORG
+      System contains ::                       200  reactions
+                                                82  species
+   
+   All reactions including species :: O1D
+   
+     + Number of Reactions where O1D is involved:            4
+         - Number of consuming Reactions:            3
+         - Number of producing Reactions:            1
+ 
+  ********************************************************************************************
+   Reaction Number   ::            2
+   Reaction Class    :: GAS
+   Constant Type     :: PHOTABC
+   Reaction          :: O3            =     O1D
+   Order of Reaction ::            1
+   Factor            ::  NONE
+   Constants         ::    3.2199999999999997E-005   4.4503700000000004       0.78027999999999997     
+  ********************************************************************************************
+ 
+ 
+  ********************************************************************************************
+   Reaction Number   ::           24
+   Reaction Class    :: GAS
+   Constant Type     :: TEMP1
+   Reaction          :: O1D     =  O3PX   + [N2]
+   Order of Reaction ::            1
+   Factor            :: $N2
+   Constants         ::    1.7999999999999999E-011  -110.00000000000000     
+  ********************************************************************************************
+ 
+ 
+  ********************************************************************************************
+   Reaction Number   ::           25
+   Reaction Class    :: GAS
+   Constant Type     :: TEMP1
+   Reaction          :: O1D    =  O3PX  +  [O2]
+   Order of Reaction ::            1
+   Factor            :: $O2
+   Constants         ::    3.1999999999999999E-011  -70.000000000000000     
+  ********************************************************************************************
+ 
+ 
+  ********************************************************************************************
+   Reaction Number   ::           26
+   Reaction Class    :: GAS
+   Constant Type     :: CONST
+   Reaction          :: O1D  =  HO   +  HO
+   Order of Reaction ::            1
+   Factor            :: $H2O
+   Constants         ::    2.1999999999999999E-010
+  ********************************************************************************************
+ 

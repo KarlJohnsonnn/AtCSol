@@ -2415,18 +2415,5 @@
       ReacConst=Constants(1)
     END SUBROUTINE EquiCompute
 
-    SUBROUTINE PrintReaction(iR)
-      INTEGER :: iR
-
-      WRITE(*,*) ' ********************************************************************************************'
-      WRITE(*,*) '  ReactionNumber= ', iR
-      WRITE(*,*) '  Reaction      = ', TRIM(ReactionSystem(iR)%Line1)
-      WRITE(*,*) '  FACTOR        = ', TRIM(ReactionSystem(iR)%Line2)
-      WRITE(*,*) '  TYPE          = ', TRIM(ReactionSystem(iR)%Type)
-      WRITE(*,*) '  TYPE Constant = ', TRIM(ReactionSystem(iR)%TypeConstant)
-      WRITE(*,*) '  Constants     = ', ReactionSystem(iR)%Constants
-      WRITE(*,*) ' ********************************************************************************************'
-      WRITE(*,*) 
-    END SUBROUTINE PrintReaction
 
   END MODULE Rates_Mod

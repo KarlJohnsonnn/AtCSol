@@ -32,11 +32,11 @@
 /END
  &NUMERICS
   RtolROW  = 1.0d-3                            ! rel. Toleranz für Rosenbrock-Wanner Fehlersteuerung
-  AtolGas  = 1.0d-5                             ! abs. Toleranzen für gasförmige Stoffe 
-  AtolAqua = 1.0d-5                             ! abs. Toleranzen für aquatische Stoffe
+  AtolGas  = 1.0d-4                             ! abs. Toleranzen für gasförmige Stoffe 
+  AtolAqua = 1.0d-4                             ! abs. Toleranzen für aquatische Stoffe
   Error_Est= 2                                  ! Error estimation = 2 -> 2-norm, else maxnorm
   PI_StepSize = .false.                         ! Gustafsson, Söderlind
-  solveLA = 'ex'                                ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
+  solveLA = 'cl'                                ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
   ImpEuler = 0                                  ! 0=kein impliziter Euler, 1=impliziter Euler (kein ROW!!)
   ODEsolver = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
   !ODEsolver = 'LSODE'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
