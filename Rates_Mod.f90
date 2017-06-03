@@ -24,7 +24,7 @@
     REAL(dp) :: LAT=45.0_dp
     REAL(dp) :: LONG=0.0_dp
     REAL(dp) :: fac_exp=1.0_dp, fac_A=1.0_dp
-    Integer :: iDat=010619
+    INTEGER  :: IDAT=010619
     !
     ! some factors for calculating Troe press dep. reactions
     REAL(dp) :: rFacEq      ! factor nessesary for equilibrium constant
@@ -223,10 +223,10 @@
           vMeff = ONE
           IF ( nFACTOR > 0 ) CALL vEffectiveMolecularity( vMeff, y_conc(1:nspc), LWC )
           
-          ! ====== Compute the rate constant for specific reaction type ===
+          ! ====== Compute the rate constant for specific reaction type
           CALL vComputeRateConstant( vk, dvK_dT, T, Time, chi, mAir, y_conc, vMeff )
 
-          ! ===== correct unit of concentrations higher order aqueous reactions
+          ! ===== correct unit of concentrations for higher order aqueous reactions
           IF ( ntAqua > 0 ) THEN
             InitValKat(aH2O_ind) = aH2O*LWC
             vAquaFac = ONE / (LWC*mol2part)**RTpar2%HOaqua
@@ -249,9 +249,11 @@
         
         Rate  = vMeff * vk * vProd
         
-        !do j=1,neq; WRITE(987,*) 'DBg:: i, k , prd, Rate =', j, vK(j), vProd(j), Rate(j); enddo
-        !stop ' rates mod '
-
+        !WRITE(*,*) ''
+        !DO j=1,neq
+        !  WRITE(*,*) 'j,Time,Meff,k,prd,Rate =', &
+        !  &           j,Time,vMeff(j),vK(j),vProd(j),Rate(j)
+        !END DO
       ELSE
 
         LOOP_OVER_ALL_REACTIONS: DO ii = 1 , loc_rateCnt
@@ -822,12 +824,12 @@
       IF(IIY.EQ.IIYEAR) IMN(2) = 29
       !
       !  count days from Dec.31,1973 to Jan 1, YEAR, then add to 2,442,047.5
-      YREF =  2442047.5
+      YREF =  2442047.5_dp
       NYEARS = IYEAR - 1974
       LEAP = (NYEARS+1)/4
       IF(NYEARS.LE.-1) LEAP = (NYEARS-2)/4
       NOLEAP = NYEARS - LEAP
-      YR = YREF + 365.*NOLEAP + 366.*LEAP
+      YR = YREF + 365.0_dp*NOLEAP + 366.0_dp*LEAP
       !
       IJD = 0
       IN = IMTH - 1
@@ -842,51 +844,51 @@
       !
       !      print julian days current "ijd"
       JD = IJD + (YR - YREF)
-      D = JD + GMT/24.0
+      D = JD + GMT/24.0_dp
       !
       !      calc geom mean longitude
-      ML = 279.2801988 + .9856473354*D + 2.267d-13*D*D
+      ML = 279.2801988_dp + .9856473354_dp*D + 2.267e-13_dp*D*D
       RML = ML*DR
       !
       !      calc equation of time in sec
       !      w = mean long of perigee
       !      e = eccentricity
       !      epsi = mean obliquity of ecliptic
-      W = 282.4932328 + 4.70684d-5*D + 3.39d-13*D*D
+      W = 282.4932328_dp + 4.70684e-5_dp*D + 3.39e-13_dp*D*D
       WR = W*DR
-      EC = 1.6720041d-2 - 1.1444d-9*D - 9.4d-17*D*D
-      EPSI = 23.44266511 - 3.5626d-7*D - 1.23d-15*D*D
+      EC = 1.6720041e-2_dp - 1.1444e-9_dp*D - 9.4e-17_dp*D*D
+      EPSI = 23.44266511_dp - 3.5626e-7_dp*D - 1.23e-15_dp*D*D
       PEPSI = EPSI*DR
-      YT = (TAN(PEPSI/2.0))**2
+      YT = (TAN(PEPSI*rTWO))**2
       CW = COS(WR)
       SW = SIN(WR)
-      SSW = SIN(2.0*WR)
-      EYT = 2.*EC*YT
-      FEQT1 = SIN(RML)*(-EYT*CW - 2.*EC*CW)
-      FEQT2 = COS(RML)*(2.*EC*SW - EYT*SW)
-      FEQT3 = SIN(2.*RML)*(YT - (5.*EC*EC/4.)*(CW*CW-SW*SW))
-      FEQT4 = COS(2.*RML)*(5.*EC**2*SSW/4.)
-      FEQT5 = SIN(3.*RML)*(EYT*CW)
-      FEQT6 = COS(3.*RML)*(-EYT*SW)
-      FEQT7 = -SIN(4.*RML)*(.5*YT*YT)
+      SSW = SIN(TWO*WR)
+      EYT = TWO*EC*YT
+      FEQT1 = SIN(RML)*(-EYT*CW - TWO*EC*CW)
+      FEQT2 = COS(RML)*(TWO*EC*SW - EYT*SW)
+      FEQT3 = SIN(TWO*RML)*(YT - (FIVE*EC*EC*rFOUR)*(CW*CW-SW*SW))
+      FEQT4 = COS(TWO*RML)*(FIVE*EC**2*SSW*rFOUR)
+      FEQT5 = SIN(THREE*RML)*(EYT*CW)
+      FEQT6 = COS(THREE*RML)*(-EYT*SW)
+      FEQT7 = -SIN(FOUR*RML)*(rTWO*YT*YT)
       FEQT = FEQT1 + FEQT2 + FEQT3 + FEQT4 + FEQT5 + FEQT6 + FEQT7
-      EQT = FEQT*13751.0
+      EQT = FEQT*13751.0_dp
       !
       !   convert eq of time from sec to deg
-      REQT = EQT/240.
+      REQT = EQT/240.0_dp
       !
       !   calc right ascension in rads
       RA = ML - REQT
       RRA = RA*DR
       !
       !   calc declination in rads, deg
-      TAB = 0.43360*SIN(RRA)
+      TAB = 0.43360_dp*SIN(RRA)
       RDECL = ATAN(TAB)
       DECL = RDECL/DR
       !
       !   calc local hour angle
-      LBGMT = 12.0 - EQT/3600. + LONG*24./360.
-      LZGMT = 15.0*(GMT - LBGMT)
+      LBGMT = 12.0_dp - EQT/HOUR + LONG*24.0_dp/360.0_dp
+      LZGMT = 15.0_dp*(GMT - LBGMT)
       ZPT = LZGMT*DR
       CSZ = SIN(RLT)*SIN(RDECL) + COS(RLT)*COS(RDECL)*COS(ZPT)
       ZR = ACOS(CSZ)
@@ -897,7 +899,7 @@
       AZIMUTH = RAZ/DR
       !
       !--- set Zenith Angle
-      Chi =  1.745329252D-02 * ZR/DR
+      Chi =  1.745329252e-02_dp * ZR/DR
     END FUNCTION Zenith
   !========================================================================!
   !                          GASEOUS REACTIONS                             !

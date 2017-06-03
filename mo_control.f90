@@ -133,67 +133,67 @@ INTEGER        :: nOutP
 !-----------------------------------------------------------------
 !
 !---  constants
-    REAL(dp), PARAMETER :: HOUR       = 3600.d0            &
-&                              , secday     = 4.32d04            &
-&                              , hourday    = 24.0d0             &
-&                              , mONE       = -1.d0              &
-&                              , Pi         = 4.0d0*ATAN(1.0d0)  &
-&                              , DR         = Pi / 180.d0        &  
-&                              , PiHalf     = 2.0d0*ATAN(1.0d0)  & 
-&                              , Pi34       = 3.0d0/4.0d0/Pi     & 
-&                              , eps        = EPSILON(1.0d0)     &  ! such that 1+eps>1 with working precision
-&                              , small      = TINY(1.0d0)        &  ! smallest pos. real value
-&                              , epsY       = 1.0d-7             &
-&                              , SI_am      = 1.66053892173d-27  &  ! Atomic mass unit  [kg]  
-&                              , SI_na      = 6.0221412927d+23   &  ! Avogadro's number [1/mol]
-&                              , SI_kB      = 1.380648813d-23    &  ! Bolzmann constant [J/K]
-&                              , SI_Gas     = SI_na * SI_kB         ! Gas constant      [J/mol/K]
+    REAL(dp), PARAMETER :: HOUR       = 3600.0_dp           &
+&                        , secday     = 4.32d+04            &
+&                        , hourday    = 24.0_dp             &
+&                        , Pi         = 4.0_dp*ATAN(1.0_dp) &
+&                        , DR         = Pi / 180.0_dp       &  
+&                        , PiHalf     = 2.0_dp*ATAN(1.0_dp) & 
+&                        , Pi34       = 3.0_dp/4.0_dp/Pi    & 
+&                        , eps        = EPSILON(1.0_dp)     &  ! such that 1+eps>1 with working precision
+&                        , small      = TINY(1.0_dp)        &  ! smallest pos. real value
+&                        , epsY       = 1.0d-7              &
+&                        , SI_am      = 1.66053892173d-27   &  ! Atomic mass unit  [kg]  
+&                        , SI_na      = 6.02214129270d+23   &  ! Avogadro's number [1/mol]
+&                        , SI_kB      = 1.38064881300d-23   &  ! Bolzmann constant [J/K]
+&                        , SI_Gas     = SI_na * SI_kB          ! Gas constant      [J/mol/K]
 !
 !--- Real number constants
-  REAL(dp), PARAMETER ::   ZERO    =     0.0d0   & 
-&                       ,  ONE     =     1.0d0   & 
-&                       ,  TWO     =     2.0d0  ,   rTWO     =   ONE/tWO     &
-&                       ,  THREE   =     3.0d0  ,   rTHREE   =   ONE/THREE   &
-&                       ,  FOUR    =     4.0d0  ,   rFOUR    =   ONE/FOUR    &
-&                       ,  FIVE    =     5.0d0  ,   rFIVE    =   ONE/FIVE    &
-&                       ,  SIX     =     6.0d0  ,   rSIX     =   ONE/SIX     &
-&                       ,  SEVEN   =     7.0d0  ,   rSEVEN   =   ONE/SEVEN   &
-&                       ,  EIGHT   =     8.0d0  ,   rEIGHT   =   ONE/EIGHT   &
-&                       ,  NINE    =     9.0d0  ,   rNINE    =   ONE/NINE    &
-&                       ,  TEN     =    10.0d0  ,   rTEN     =   ONE/TEN     &
-&                       ,  ELEVN   =    11.0d0  ,   rELEVN   =   ONE/ELEVN   &
-&                       ,  TWELV   =    12.0d0  ,   rTWELV   =   ONE/TWELV   &
-&                       , TWENTY   =    20.0d0  ,   rTWENTY  =   ONE/TWENTY  &
-&                       , mTHIRTY  =   -30.0d0  &
-&                       , rm300    = mONE/300.d0,   r300     =   ONE/300.d0
+  REAL(dp), PARAMETER ::   ZERO    =     0.0_dp   & 
+&                       ,  ONE     =     1.0_dp  ,   mONE     =   -1.0_dp     & 
+&                       ,  TWO     =     2.0_dp  ,   rTWO     =   ONE/tWO     &
+&                       ,  THREE   =     3.0_dp  ,   rTHREE   =   ONE/THREE   &
+&                       ,  FOUR    =     4.0_dp  ,   rFOUR    =   ONE/FOUR    &
+&                       ,  FIVE    =     5.0_dp  ,   rFIVE    =   ONE/FIVE    &
+&                       ,  SIX     =     6.0_dp  ,   rSIX     =   ONE/SIX     &
+&                       ,  SEVEN   =     7.0_dp  ,   rSEVEN   =   ONE/SEVEN   &
+&                       ,  EIGHT   =     8.0_dp  ,   rEIGHT   =   ONE/EIGHT   &
+&                       ,  NINE    =     9.0_dp  ,   rNINE    =   ONE/NINE    &
+&                       ,  TEN     =    10.0_dp  ,   rTEN     =   ONE/TEN     &
+&                       ,  ELEVN   =    11.0_dp  ,   rELEVN   =   ONE/ELEVN   &
+&                       ,  TWELV   =    12.0_dp  ,   rTWELV   =   ONE/TWELV   &
+&                       , TWENTY   =    20.0_dp  ,   rTWENTY  =   ONE/TWENTY  &
+&                       , mTHIRTY  =   -30.0_dp  &
+&                       , rm300    = mONE/300.0_dp,   r300     =   ONE/300.0_dp
 !
 !--- Orders of magnitude
   REAL(dp), PARAMETER ::   nano    =     1.0d-09    &
-&                             , micro    =     1.0d-06    &
-&                             , milli    =     1.0d-03    &
-&                             , kilo     =     1.0d+03    &
-&                             , mega     =     1.0d+06    &
-&                             , tera     =     1.0d+09
+&                      , micro    =     1.0d-06    &
+&                      , milli    =     1.0d-03    &
+&                      , kilo     =     1.0d+03    &
+&                      , mega     =     1.0d+06    &
+&                      , tera     =     1.0d+09
+
 !
 !--- Natural logarithms
-  REAL(dp), PARAMETER ::    ln10   =     LOG(TEN)    &
-&                             ,  rln10   = ONE/LOG(TEN)
+  REAL(dp), PARAMETER ::   ln10   =     LOG(TEN)    &
+&                      ,  rln10   = ONE/LOG(TEN)
 !
 !--- minimum values if there is no sun
-  REAL(dp), PARAMETER ::    EyChiZmin  =  9.357d-14
+  REAL(dp), PARAMETER :: EyChiZmin  =  9.357d-14
 !
 !
 !--- Unit Conversion constants
 !
 !     Pressure
-  REAL(dp)      , PARAMETER :: bar_to_dyncm2 = 1.0d06
+  REAL(dp)      , PARAMETER :: bar_to_dyncm2 = 1.0d+06
   REAL(dp)      , PARAMETER :: dyncm2_to_Pa  = 1.0d-01
   REAL(dp)      , PARAMETER :: Pa_to_dyncm2  = 1.0d+01
-  REAL(dp)      , PARAMETER :: bar_to_Pa     = 1.0d05
-  REAL(dp)      , PARAMETER :: atm_to_Pa     = 101325.0d0
+  REAL(dp)      , PARAMETER :: bar_to_Pa     = 1.0d+05
+  REAL(dp)      , PARAMETER :: atm_to_Pa     = 101325.0
 !
 !     Energy
-  REAL(dp)      , PARAMETER :: cal_to_joule  = 4.184d0
+  REAL(dp)      , PARAMETER :: cal_to_joule  = 4.184
   REAL(dp)      , PARAMETER :: joule_to_cal  = ONE / cal_to_joule
   REAL(dp)      , PARAMETER :: joule_to_kcal = milli * joule_to_cal
   REAL(dp)      , PARAMETER :: kcal_to_joule = kilo * cal_to_joule
@@ -203,7 +203,7 @@ INTEGER        :: nOutP
 !--- Physical constants ********************************************
 
 !     Universal gas constant [J / mol / K]
-  REAL(dp), PARAMETER :: R         = 8.31446210000000D0     
+  REAL(dp), PARAMETER :: R         = 8.31446210000000
   REAL(dp), PARAMETER :: rR        = ONE/R
 
 !
@@ -231,6 +231,7 @@ INTEGER        :: nOutP
 !---  Output control 
 !-----------------------------------------------------------------
 
+    LOGICAL :: Bar = .FALSE.            ! flag for the loading bar
 
 !-- number of Qt-Output variable
     INTEGER :: nQtGas  = 0      & ! number of gas phase species

@@ -20,7 +20,8 @@
  /END
  &TIMES
   tAnf    = 0.0d0
-  tEnd    = 84600.0d0
+  !tEnd    = 84600.0d0
+  tEnd    = 2592000.0d0
   Dust    = 0.5d0
   idate   = 010621     
   rlat    = 45.d0     
@@ -37,11 +38,10 @@
   AtolAqua = 1.0d-5
   Error_Est = 2
   PI_StepSize = .FALSE.
-  solveLA = 'ex'  
+  solveLA = 'cl'
   ODEsolver = 'METHODS/TSRosWRodas3.fort'
   !ODEsolver = 'LSODE'
   Vectorized = .true.
-  !Vectorized = .false.
  /END
  &ORDERING
   OrderingStrategie  = 8

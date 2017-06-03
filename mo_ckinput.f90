@@ -8,7 +8,8 @@ MODULE mo_ckinput
   &                    , UnitGas, UnitAqua, ListGas2, Species_T             &
   &                    , ListToHashTable, HashTableToList, SortList         &
   &                    , PositionSpeciesGas,PositionSpeciesAll              &
-  &                    , CompressIntegerArray, CompressDoubleArray
+  &                    , CompressIntegerArray, CompressDoubleArray          &
+  &                    , ListAtoms, PositionAtom
   !
   USE mo_reac
   USE mo_control
@@ -77,7 +78,7 @@ CONTAINS
     END IF
     
     ALLOCATE(MW0(nspc),SCperm(nspc))  
-    MW0    = -1.0d0
+    MW0    = mONE
     SCperm = -1
     tmpCnt = 0
 
@@ -88,9 +89,9 @@ CONTAINS
       IF ( io_err == 0 ) THEN
         tmpPos  = PositionSpeciesAll( tmpChar0 )
         IF ( tmpPos > 0 ) THEN 
-          IF (MW0(tmpPos)<0.0d0) i = i+1
+          IF (MW0(tmpPos) < ZERO) i = i+1
           tmpCnt = tmpCnt + 1
-          MW0(tmpPos)    = REAL( tmpMW0 , dp )
+          MW0(tmpPos) = REAL( tmpMW0 , dp )
           SCperm(i) = tmpPos
         ELSE
           WRITE(*,*) ' Species: ',TRIM(tmpChar0)//'  not in mechnism.'
@@ -119,7 +120,7 @@ CONTAINS
     CHARACTER(30) :: SpeciesInfo(nspc)
     CHARACTER(6)  :: RefDataCode(nSpc)
     CHARACTER(2)  :: Atoms(nSpc,4)
-    INTEGER       :: nAtoms(nSpc,4)
+    INTEGER       :: iAtoms(nSpc,4)
     REAL(8)       :: TempRange(nSpc,3)
     REAL(8)       :: MolMass(nSpc)
     CHARACTER(1)  :: Phase(nSpc)
@@ -127,7 +128,7 @@ CONTAINS
     REAL(8)       :: H0_29815R(nspc)
     REAL(8),ALLOCATABLE :: ThermSwitchTemp(:)
     !
-    INTEGER :: i,j,n, cnt
+    INTEGER :: i, j, n, cnt, k
     INTEGER :: idxWhiteSpace
     INTEGER :: ALLOC_ERR
     CHARACTER(30) :: tSpcName
@@ -150,6 +151,9 @@ CONTAINS
     ALLOCATE(lowA(nspc),lowB(nspc),lowC(nspc),lowD(nspc),lowE(nspc),lowF(nspc),lowG(nspc),STAT=ALLOC_ERR)
     ALLOCATE(highA(nspc),highB(nspc),highC(nspc),highD(nspc),highE(nspc),highF(nspc),highG(nspc),STAT=ALLOC_ERR)
     ALLOCATE(ThermSwitchTemp(nspc))
+    ALLOCATE( AtomicMatrix(SIZE(ThAtoms),nspc) )
+    !print*, 'size = ', SIZE(AtomicMatrix)
+
     lowA = -9999999999.0d0
     REWIND(UnitThermo)
     !
@@ -160,9 +164,7 @@ CONTAINS
       READ(UnitThermo,*) iLine
       IF ( MAXVAL(INDEX(iLine,(/'THERMO','thermo'/))) > 0 ) THEN
         READ(UnitThermo,*) thin1, thin2, thin3
-        ThermoIntervall(1)  = REAL(thin1,dp)
-        ThermoIntervall(2)  = REAL(thin2,dp)
-        ThermoIntervall(3)  = REAL(thin3,dp)
+        ThermoIntervall = REAL([thin1,thin2,thin3],dp)
         EXIT
       END IF
     END DO
@@ -182,49 +184,58 @@ CONTAINS
       SELECT CASE (rNumber)
         CASE ('1')
           READ(iLine,1) tSpcName
-          i=PositionSpeciesAll(tSpcName(1:INDEX(tSpcName,' ')-1))
+          i = PositionSpeciesAll(tSpcName(1:INDEX(tSpcName,' ')-1))
 
           IF ( i <= 0 ) THEN
             READ(UnitThermo,*) iLine
             READ(UnitThermo,*) iLine
             READ(UnitThermo,*) iLine
           ELSE
-            cnt=cnt+1
+            cnt = cnt + 1
             !
-            READ(iLine,1) tSpcName,RefDataCode(i),(Atoms(i,j),  &
-            &       nAtoms(i,j),j=1,4),Phase(i),ta,tb,tc,n
-            idxWhiteSpace=INDEX(tSpcName,' ')
-            !
+            READ(iLine,1) tSpcName ,  RefDataCode(i) ,         &
+            &             ( Atoms(i,j) , iAtoms(i,j),j=1,4 ) , &
+            &             Phase(i) , ta , tb , tc , n
+
+
+            idxWhiteSpace = INDEX(tSpcName,' ')
+
+            DO k = 1,4
+              j = PositionAtom(Atoms(i,k))
+              IF ( j > 0 ) AtomicMatrix(j,i) = iAtoms(i,k)
+            END DO
+
             WRITE(Species(i),*) tSpcName(1:idxWhiteSpace-1)
             WRITE(SpeciesInfo(i),*) tSpcName(idxWhiteSpace:)
             !
-            TempRange(i,1)=REAL(ta,KIND=dp)
-            TempRange(i,2)=REAL(tb,KIND=dp)
-            TempRange(i,3)=REAL(tc,KIND=dp)
+            TempRange(i,:) = REAL([ta,tb,tc],KIND=dp)
+            !TempRange(i,1)=REAL(ta,KIND=dp)
+            !TempRange(i,2)=REAL(tb,KIND=dp)
+            !TempRange(i,3)=REAL(tc,KIND=dp)
             ThermSwitchTemp(i)=TempRange(i,3)
             MolMass(i)=REAL(tc,KIND=dp)
           END IF
        CASE ('2')
          READ(iLine,2) ta,tb,tc,td,te,n
-         highA(i)=REAL(ta,KIND=dp)
-         highB(i)=REAL(tb,KIND=dp)
-         highC(i)=REAL(tc,KIND=dp)
-         highD(i)=REAL(td,KIND=dp)
-         highE(i)=REAL(te,KIND=dp)
+         highA(i) = REAL(ta,KIND=dp)
+         highB(i) = REAL(tb,KIND=dp)
+         highC(i) = REAL(tc,KIND=dp)
+         highD(i) = REAL(td,KIND=dp)
+         highE(i) = REAL(te,KIND=dp)
        CASE ('3')
          READ(iLine,2) tf,tg,ta,tb,tc,n
-         highF(i)=REAL(tf,KIND=dp)
-         highG(i)=REAL(tg,KIND=dp)
-         lowA(i)=REAL(ta,KIND=dp)
-         lowB(i)=REAL(tb,KIND=dp)
-         lowC(i)=REAL(tc,KIND=dp)
+         highF(i) = REAL(tf,KIND=dp)
+         highG(i) = REAL(tg,KIND=dp)
+         lowA(i)  = REAL(ta,KIND=dp)
+         lowB(i)  = REAL(tb,KIND=dp)
+         lowC(i)  = REAL(tc,KIND=dp)
        CASE ('4')
         !READ(iLine,4) td,te,tf,tg,ta,n
         READ(iLine,4) td,te,tf,tg,n
-        lowD(i)=REAL(td,KIND=dp)
-        lowE(i)=REAL(te,KIND=dp)
-        lowF(i)=REAL(tf,KIND=dp)
-        lowG(i)=REAL(tg,KIND=dp)
+        lowD(i) = REAL(td,KIND=dp)
+        lowE(i) = REAL(te,KIND=dp)
+        lowF(i) = REAL(tf,KIND=dp)
+        lowG(i) = REAL(tg,KIND=dp)
        ! H0_29815R(i)=REAL(ta,KIND=dp)
        CASE DEFAULT
         CONTINUE
@@ -250,39 +261,48 @@ CONTAINS
     INTEGER, PARAMETER :: nMaxElements=130
     CHARACTER(100) :: iLine   !i =1,2,3,4
     CHARACTER(2)   :: tElem(nMaxElements)
-    CHARACTER(2),ALLOCATABLE   :: Elements(:)
+    !CHARACTER(2),ALLOCATABLE   :: Elements(:)
     !
-    INTEGER :: i
+    INTEGER :: i, nAtoms, iAtom
     INTEGER :: iWS
     !
     CALL OpenFile(UnitReac,DataReac(1:LEN(DataReac)-4),'sys')
     !
-    i=0
+    nAtoms=0
     DO
       READ(UnitReac,'(A80)') iLine
       !
       ! check if next line is end
       IF (iLine(1:3)=='END'.OR.iLine(1:3)=='end') THEN
-        CALL CutCArray(Elements,tElem,i)
+        CALL CutCArray(ThAtoms,tElem,nAtoms)
         EXIT
       END IF
       !
       IF (iLine(1:4)=='ELEM'.OR.iLine(1:4)=='elem') THEN
-        i=0
+        nAtoms = 0
         READ(UnitReac,'(A80)') iLine
+        iLine = ADJUSTL(iLine)
         !
         DO
-          i=i+1
-          iWS=INDEX(ADJUSTL(iLine),' ')
-          WRITE(tElem(i),'(A2)') ADJUSTL(iLine(:iWS-1))
-          iLine=ADJUSTL(iLine(iWS:))
-          !
           IF (iLine=='') EXIT
+          nAtoms = nAtoms + 1
+          iWS    = INDEX(ADJUSTL(iLine),' ')
+          WRITE(tElem(nAtoms),'(A2)') ADJUSTL(iLine(:iWS-1))
+          iLine = ADJUSTL(iLine(iWS:))
+          !
         END DO
       END IF
     END DO
     CALL CloseFile(UnitReac,DataReac(1:LEN(DataReac)-4),'sys')
 
+
+    CALL InitHashTable(ListAtoms,nAtoms)
+    iAtom = 0
+    DO i = 1,nAtoms
+      CALL InsertHash(ListAtoms,TRIM(ADJUSTL(ThAtoms(i))),iAtom)
+    END DO
+
+    !CALL PrintHashTable(ListAtoms)
   END SUBROUTINE Read_Elements
   !
   !

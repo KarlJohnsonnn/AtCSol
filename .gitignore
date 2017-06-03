@@ -12,3 +12,5 @@ list*
 *.SparseMat
 *.o
 *.mod
+REACTION_PATHS/*
+*.txt

@@ -15,6 +15,10 @@ MODULE NetCDF_Mod
   CHARACTER(1),   ALLOCATABLE :: OutNetcdfPhase(:) !g=gas , a=aqua
   INTEGER              :: OutNetcdfANZ, OutNetcdfDIM
   REAL(dp)       :: altit               ! altitude
+  
+  INTEGER :: iStpNetCDF 
+  INTEGER :: itime_NetCDF
+  REAL(dp), ALLOCATABLE :: yNcdf(:)     ! current output vector
   !
   INTEGER :: x_varid,y_varid,z_varid,rec_varid, LWC_varid, traj_varid
   INTEGER :: StepSize_varid, Gassum_varid, Aquasum_varid, wetRadius_varid

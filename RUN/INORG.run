@@ -43,7 +43,7 @@
   Vectorized = .true.
  /END
  &ORDERING
-  OrderingStrategie  = 8                  ! 8=Markowitz(SparseLU) , 1,..,7=Mumps Orderings  
+  OrderingStrategie  = 7                  ! 8=Markowitz(SparseLU) , 1,..,7=Mumps Orderings  
   ParOrdering = -1
  /END
  &ENTRAIN

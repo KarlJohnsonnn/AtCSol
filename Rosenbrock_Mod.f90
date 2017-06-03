@@ -38,7 +38,7 @@ MODULE Rosenbrock_Mod
     REAL(dp), ALLOCATABLE :: me(:)            ! Step completion table for embedded method of order one less (converted Be)
     REAL(dp), ALLOCATABLE :: binterpt(:,:)    ! Dense output formula
   END TYPE RosenbrockMethod_T
-  
+
   
   TYPE IntArgs
     INTEGER :: nep                                  ! length y vector
@@ -63,7 +63,9 @@ MODULE Rosenbrock_Mod
     INTEGER :: nsolves    = 0              ! # solved lin algebra
     REAL(dp) :: Ttimestep = 0.0d0  ! mean Time for one ROW step
   END TYPE Out
+
   TYPE(Out) :: Output
+  TYPE(RosenbrockMethod_T) :: RCo  
 
   TYPE(IntArgs), PUBLIC :: Args                     ! Initial arguments  
   
@@ -294,7 +296,7 @@ MODULE Rosenbrock_Mod
     !print*, 'debug:: sum(f0)=', SUM(f0)
     !stop
     wt    = MAX( ABS(Y) , ThresholdStepSizeControl(1:nspc) )
-    rh    = ( 1.25D0 * MAXVAL( ABS(f0(:)/wt(:)) ) )/(RTolRow**pow)
+    rh    = ( 1.25_dp * MAXVAL( ABS(f0(:)/wt(:)) ) )/(RTolRow**pow)
     absh  = MIN( maxStp , Tspan(2)-Tspan(1) )
     IF ( absh * rh > ONE )  absh = ONE / rh
     !print*, 'Debug:: f0 = ', f0, SUM(Y_e), SUM(Rate)
@@ -317,7 +319,7 @@ MODULE Rosenbrock_Mod
     CALL DAXPY_sparse( Tmp , Jac , f0 , zeros )
     DfDt  = DfDt  + Tmp
   
-    rh    = 1.25D0  * SQRT( rTWO * MAXVAL( ABS(DfDt/wt) ) ) / RTolRow**pow
+    rh    = 1.25_dp * SQRT( rTWO * MAXVAL( ABS(DfDt/wt) ) ) / RTolRow**pow
    
     absh  = MIN( maxStp , Tspan(2)-Tspan(1) )
     IF ( absh * rh > ONE )  absh = ONE / rh
@@ -332,14 +334,15 @@ MODULE Rosenbrock_Mod
   SUBROUTINE Rosenbrock(Y0,t,h,RCo,err,errind,YNew,Euler)
     !--------------------------------------------------------
     ! Input:
-    !   - Y0............. actual concentrations Y 
+    !   - Y0............. concentrations at Time = t
     !   - t.............. time
     !   - h.............. step size
     !   - RCo............ Rosenbrock method
-    !   - Temp........... actual Temperatur (optional for TempEq)
+    !   - Temp........... Temperatur at Time = t (optional for TempEq)
+    !   - Euler.......... if .true. --> use backward Euler method
     !
-    REAL(dp),    INTENT(IN) :: Y0(nDIM)
-    REAL(dp),    INTENT(IN) :: t, h
+    REAL(dp),          INTENT(IN) :: Y0(nDIM)
+    REAL(dp),          INTENT(IN) :: t, h
     TYPE(RosenbrockMethod_T)      :: RCo
     LOGICAL, OPTIONAL, INTENT(IN) :: Euler
     !--------------------------------------------------------
@@ -350,7 +353,7 @@ MODULE Rosenbrock_Mod
     !
     REAL(dp), INTENT(OUT) :: YNew(nDIM)
     REAL(dp), INTENT(OUT)   :: err
-    INTEGER       , INTENT(OUT)   :: errind(1,1)
+    INTEGER , INTENT(OUT)   :: errind(1,1)
     !-------------------------------------------------------
     ! TemporarY variables:
     !

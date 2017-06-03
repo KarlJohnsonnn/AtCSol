@@ -1,6 +1,6 @@
  &SCENARIO
   BSP         = 'SmallStratoKPP'
-  Ladebalken  = 1
+  Ladebalken  = 0
   ErrorLog    = 0
   MatrixPrint = .false.
   DebugPrint  = .false.
@@ -16,7 +16,9 @@
  /END
  &TIMES
   tAnf    = 0.0d0
-  tEnd    = 86400.0d0
+  tEnd    = 2592000.0d0
+  !tAnf    = 0.0d0
+  !tEnd    = 86400.0d0
   Dust    = 0.5d0
   idate   = 010619     
   rlat    = 45.d0     

@@ -417,96 +417,87 @@ MODULE Sparse_Mod
     INTEGER :: i,j,l,jj,ip,ip1(1),iPiv
     REAL(dp) :: md 
     LOGICAL :: ins
-    !
-    ! für testzwecke
-    ALLOCATE(MarkowitzCounts(A%n,2))
-    MarkowitzCounts=0
-    !
-    c=0
-    DO i=1,A%n
-      A%InvPer(i)=i
-      A%Permu(i)=i
+  
+    c = 0
+    DO i = 1 , A%n
+      A%InvPer(i) = i
+      A%Permu(i)  = i
       ! Compute initial Markowitz count
-      r(i)=A%RowPtr(2,i)-A%RowPtr(1,i)+1
-      DO jj=A%RowPtr(1,i),A%RowPtr(2,i)
-        c(A%ColInd(jj))=c(A%ColInd(jj))+1
+      r(i) = A%RowPtr(2,i) - A%RowPtr(1,i) + 1
+      DO jj = A%RowPtr(1,i) , A%RowPtr(2,i)
+        c(A%ColInd(jj)) = c(A%ColInd(jj)) + 1
       END DO
     END DO
-    !
-    ! MAIN LOOP
-    DO i=1,A%n
-      ip=0
-      md=1.d99
-      DO j=i,A%n
-        IF (((r(j)-1)*(c(j)-1)<=md)) THEN
-          md=(r(j)-1)*(c(j)-1)
-          ip=j
-          !
-          ! neu test
-          MarkowitzCounts(i,1)=md
-          IF ( (r(j)-1)*(c(j)-1) == md )  MarkowitzCounts(i,2)=MarkowitzCounts(i,2)+1
-          !
+    
+    MAIN_LOOP: DO i = 1 , A%n
+      ip = 0
+      md = 1.d99
+      DO j = i , A%n
+        IF ( (r(j)-1)*(c(j)-1) <= md ) THEN
+          md = (r(j)-1)*(c(j)-1)
+          ip = j
         END IF
       END DO
-      !print*, 'markocnts :::   ',i, MarkowitzCounts(i,1), MarkowitzCounts(i,2)
-      ! 
+      
       ! wird nie erreicht?
       IF (ip==0) THEN
-        ip1(:)=MINLOC((r(i:A%n)-1)*(c(i:A%n)-1))+(i-1)
-        ip=ip1(1)
-        MarkowitzCounts(i,1)=ip1(1)
-        MarkowitzCounts(i,2)=SIZE(ip1)
-        print*, 'ip1(1)=',ip1(1), SIZE(ip1)
+        ip1(:) = MINLOC((r(i:A%n)-1)*(c(i:A%n)-1))+(i-1)
+        ip = ip1(1)
+        MarkowitzCounts(i,1) = ip1(1)
+        MarkowitzCounts(i,2) = SIZE(ip1)
       END IF
       !
-      CALL Swap(A%InvPer(i),A%InvPer(ip))
-      CALL Swap(r(i),r(ip))
-      CALL Swap(c(i),c(ip))
-      CALL Swap(A%RowPtr(1,i),A%RowPtr(1,ip))
-      CALL Swap(A%RowPtr(2,i),A%RowPtr(2,ip))
-      A%Permu(A%InvPer(i))=i
-      A%Permu(A%InvPer(ip))=ip
-      IF (A%last==i) THEN
-        A%last=ip
-      ELSE IF (A%last==ip) THEN
-        A%last=i
+      CALL Swap( r(i) , r(ip) )
+      CALL Swap( c(i) , c(ip) )
+      CALL Swap( A%InvPer(i)   , A%InvPer(ip) )
+      CALL Swap( A%RowPtr(1,i) , A%RowPtr(1,ip) )
+      CALL Swap( A%RowPtr(2,i) , A%RowPtr(2,ip) )
+      
+      A%Permu(A%InvPer(i))  = i
+      A%Permu(A%InvPer(ip)) = ip
+
+      IF ( A%last == i ) THEN
+        A%last = ip
+      ELSE IF ( A%last == ip ) THEN
+        A%last = i
       END IF
       !
       ! Update
-      iPiv=0
-      DO jj=A%RowPtr(1,i),A%RowPtr(2,i)
-        IF (A%Permu(A%ColInd(jj))>i) THEN
-          iPiv=iPiv+1 
-          RowPiv(iPiv)=A%ColInd(jj)
-          c(A%Permu(A%ColInd(jj)))=c(A%Permu(A%ColInd(jj)))-1 
+      iPiv = 0
+      DO jj = A%RowPtr(1,i) , A%RowPtr(2,i)
+        IF ( A%Permu(A%ColInd(jj)) > i ) THEN
+          iPiv = iPiv + 1 
+          RowPiv(iPiv) = A%ColInd(jj)
+          c(A%Permu(A%ColInd(jj))) = c(A%Permu(A%ColInd(jj))) - 1
         END IF
       END DO
-      IF (iPiv>0) THEN
-        DO j=i+1,A%n
-          DO jj=A%RowPtr(1,j),A%RowPtr(2,j)
-            IF (A%Permu(A%ColInd(jj))==i) THEN
-              r(j)=r(j)-1 
-              c(i)=c(i)-1
-              DO l=1,iPiv
-                CALL Insert_SpRowColD(A,j,RowPiv(l),ins)
+      IF ( iPiv > 0 ) THEN
+        DO j = i+1 , A%n
+          DO jj = A%RowPtr(1,j) , A%RowPtr(2,j)
+            IF ( A%Permu(A%ColInd(jj)) == i ) THEN
+              r(j) = r(j) - 1 
+              c(i) = c(i) - 1
+              DO l = 1 , iPiv
+                CALL Insert_SpRowColD( A, j, RowPiv(l), ins)
                 IF (ins) THEN
-                  c(A%Permu(RowPiv(l)))=c(A%Permu(RowPiv(l)))+1
-                  r(j)=r(j)+1
+                  c(A%Permu(RowPiv(l))) = c(A%Permu(RowPiv(l))) + 1
+                  r(j) = r(j) + 1
                 END IF
               END DO
               EXIT
             END IF
           END DO
-          IF (c(i)==1) EXIT
+          IF ( c(i) == 1 ) EXIT
         END DO
       END IF
-    END DO
-    DO i=1,A%n
-      DO jj=A%RowPtr(1,i),A%RowPtr(2,i)
-        A%ColInd(jj)=A%Permu(A%ColInd(jj))
+    END DO MAIN_LOOP
+
+    DO i = 1 , A%n
+      DO jj = A%RowPtr(1,i) , A%RowPtr(2,i)
+        A%ColInd(jj) = A%Permu(A%ColInd(jj))
       END DO
-      CALL SortVec(A%ColInd(A%RowPtr(1,i):A%RowPtr(2,i)))
-      A%nnz=A%nnz+SIZE(A%ColInd(A%RowPtr(1,i):A%RowPtr(2,i)))
+      CALL SortVec( A%ColInd(A%RowPtr(1,i):A%RowPtr(2,i)) )
+      A%nnz = A%nnz + SIZE(A%ColInd(A%RowPtr(1,i):A%RowPtr(2,i)))
     END DO
   END SUBROUTINE SymbLU_SpRowColD_M
   !
@@ -1937,15 +1928,24 @@ MODULE Sparse_Mod
  
 
 
-  ! Print ordinary matrix or vector
-  SUBROUTINE PM(M)
+  ! Print ordinary real matrix or vector
+  SUBROUTINE PM_real(M)
     REAL(dp), INTENT(IN) :: M(:,:)
     INTEGER :: i
     !
     DO i=1,SIZE(M,1)
         WRITE(*,*) M(i,:)
     END DO
-  END SUBROUTINE PM
+  END SUBROUTINE PM_real
+  ! Print ordinary integer matrix or vector
+  SUBROUTINE PM_int(M)
+    INTEGER, INTENT(IN) :: M(:,:)
+    INTEGER :: i
+    !
+    DO i=1,SIZE(M,1)
+        WRITE(*,'(*(X,I3))') M(i,:)
+    END DO
+  END SUBROUTINE PM_int
   !
   !
   ! Print ordinary  vector

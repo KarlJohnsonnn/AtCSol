@@ -32,40 +32,40 @@ MODULE mo_IO
       WRITE(*,*)   ''
       WRITE(*,*)   '  Run - Paramter:'
       WRITE(*,*)   ''
-      WRITE(*,*)   '      Mechanism:         ', TRIM(ChemFile)//'.sys'
+      WRITE(*,*)   '      Mechanism:             ', TRIM(ChemFile)//'.sys'
       IF (NetCdfPrint) THEN
-        WRITE(*,*)   '      NetCDF-File:       ', 'NetCDF/'//TRIM(BSP)//'.nc'
+        WRITE(*,*)   '      NetCDF-File:           ', 'NetCDF/'//TRIM(BSP)//'.nc'
       ELSE
-        WRITE(*,*)   '      NetCDF-File:       ', '*** no NetCDF output ***'
+        WRITE(*,*)   '      NetCDF-File:           ', '*** no NetCDF output ***'
       END IF
-      WRITE(*,*)   '      Initials:          ', InitFile
-      WRITE(*,*)   '      ODE solver:        ', ODEsolver
+      WRITE(*,*)   '      Initials:              ', InitFile
+      WRITE(*,*)   '      ODE solver:            ', ODEsolver
       IF (ODEsolver/='LSODE') THEN
         IF (solveLA=='cl') THEN 
-          WRITE(*,*)   '      Version:           classic'
+          WRITE(*,*)   '      Linear Algebra:        classic'
         ELSE
-          WRITE(*,*)   '      Version:           extended'
+          WRITE(*,*)   '      Linear Algebra:        extended'
         END IF
         IF (Error_Est==2) THEN
-          WRITE(*,*)   '      Error Estimation:  euklid norm'
+          WRITE(*,*)   '      Error Estimation:      euklid norm'
         ELSE
-          WRITE(*,*)   '      Error Estimation:  maximum norm'
+          WRITE(*,*)   '      Error Estimation:      maximum norm'
         END IF
         IF (OrderingStrategie==8) THEN
-          WRITE(*,*)   '      linSolve:          sparse LU, Markowitz ordering scheme'
+          WRITE(*,*)   '      Solve linear Systems:  sparse LU, Markowitz ordering scheme'
         ELSE 
-          WRITE(*,*)   '      linSolve:          MUMPS, ordering stragegie:  ',OrderingStrategie 
+          WRITE(*,*)   '      Solve linear Systems:  MUMPS, ordering stragegie:  ',OrderingStrategie 
         END IF
       END IF
       WRITE(*,*)   ''
       IF(ImpEuler/=1) THEN
         WRITE(*,*)   '  Tolerance:   '
         WRITE(*,*)   ''
-        WRITE(*,'(A34,2X,Es8.2)')   '      relative Rosenbrock        = ',RtolROW
-        WRITE(*,'(A34,2X,Es8.2)')   '      absolute (gaseous species) = ',AtolGas
-        IF (ntAqua>0) WRITE(*,'(A34,2X,Es8.2)')   '      absolute (aqueous species) = ',AtolAqua
+        WRITE(*,'(A34,2X,Es8.2)')   '      Relative Rosenbrock        = ',RtolROW
+        WRITE(*,'(A34,2X,Es8.2)')   '      Absolute (gaseous species) = ',AtolGas
+        IF (ntAqua>0) WRITE(*,'(A34,2X,Es8.2)')   '      Absolute (aqueous species) = ',AtolAqua
         IF ( TempEq ) THEN
-          WRITE(*,'(A34,2X,Es8.2)')   '      absolute Temperature       = ',AtolTemp
+          WRITE(*,'(A34,2X,Es8.2)')   '      Absolute Temperature       = ',AtolTemp
         END IF
       END IF
       WRITE(*,*)   ''
@@ -119,9 +119,9 @@ MODULE mo_IO
       WRITE(*,299) ' Time writing NetCDF-File          =', maxTNcdf,' [sec]'
       WRITE(*,299) ' Time for integration              =', maxTInte-maxTNcdf,' [sec]'
       WRITE(*,*)   ' -------------------------------------+-----------------------------------'
-      WRITE(*,299) '          - factorisation          =', maxTFac  ,' [sec]'
-      WRITE(*,299) '          - right hand side calc   =', maxTRhs  ,' [sec]'
-      WRITE(*,299) '          - solve linear Systems   =', maxTSolve,' [sec]'
+      WRITE(*,299) '          - Factorisation          =', maxTFac  ,' [sec]'
+      WRITE(*,299) '          - Right hand side calc   =', maxTRhs  ,' [sec]'
+      WRITE(*,299) '          - Solve linear Systems   =', maxTSolve,' [sec]'
       WRITE(*,299) '          - Rates                  =', maxTRates,' [sec]'
       IF(MPI_np>1) WRITE(*,299) '          - Ratessend              =', maxTSend ,' [sec]'
       WRITE(*,299) '          - Jacobian               =', maxTJac  ,' [sec]'

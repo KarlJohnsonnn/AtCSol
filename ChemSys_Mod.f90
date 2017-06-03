@@ -106,20 +106,6 @@ MODULE Chemsys_Mod
   TYPE(SPEK_T), ALLOCATABLE :: SPEK(:)
   !
   !
-  TYPE NReacType_T
-    INTEGER :: GasPhoto, GasPhotAB, GasPhotABC, GasPhotMCM        &
-    &        , GasConst, Temp, Temp1, Temp2, Temp3, Troe, Troef   &
-    &        , TroeQ, Spec1, Spec2, Spec3, Spec4, Spec1MCM        &
-    &        , Spec2MCM, Spec3MCM, SPec4MCM, Spec5MCM, Spec6MCM   &
-    &        , Spec7MCM, Spec8MCM, S4H2O, Henry, AquaPhoto        &
-    &        , AquaPhotAB, AquaPhotABC, AquaPhotMCM, AquaConst    &
-    &        , AquaTemp, AquaTemp1, AquaTemp2, AquaTemp3, Special & 
-    &        , DTemp, DTemp1, DTemp2, DTemp3, DTemp4, DTemp5      &
-    &        , Meskhidze, Equi, SolidSpecial, Parti, Microphys, SolidDTemp3
-  END TYPE NReacType_T
-  !
-  TYPE(NReacType_T) :: NTypes
-  !
   TYPE(Element_T) :: Elements(11)=(/                   &
   &                                 Element_T('(')     &
   &                                ,Element_T(')')     &
@@ -141,7 +127,7 @@ MODULE Chemsys_Mod
   &                              ListRMicro
   !
   TYPE(hash_tbl_sll)          :: ListAqua, ListGas, ListSolid,           &
-  &                              ListPartic, ListNonReac
+  &                              ListPartic, ListNonReac, ListAtoms
   !
   TYPE(Species_T), ALLOCATABLE, TARGET :: ListAqua2(:), ListGas2(:),     &
   &                                       ListSolid2(:), ListPartic2(:), &
@@ -177,7 +163,7 @@ MODULE Chemsys_Mod
   !
   REAL(dp), ALLOCATABLE :: Emis(:)          & ! emission values
   !&                            , InitValAct(:)    & ! initial values activ spc
-  &                            , InitValInAct(:)    ! initial values inactiv spc
+  &                      , InitValInAct(:)    ! initial values inactiv spc
   !
   !
   CHARACTER(LenName), ALLOCATABLE :: RO2spcG(:) , RO2spcA(:)
@@ -739,17 +725,12 @@ MODULE Chemsys_Mod
       !----------------------------------------------------
       ! Tupel: (SpeziesIndex,-Koeffzien) für alle aktiven Edukte (links)
       ! Tupel: (SpeziesIndex,+Koeffzien) für alle aktiven Produkte (rechts)
-      !WRITE(Unit,'(7X,I5,3X,F6.3)',ADVANCE='NO')                                  &
-      !&                   ( PositionSpeciesAll(ActiveEduct(i)%Species)            &
-      !&                  ,  -ActiveEduct(i)%Koeff,i=1,NumActiveEduct     )        
-      !WRITE(Unit,'(7X,I5,3X,F6.3)',ADVANCE='NO')                                  &
-      !&                  ,( PositionSpeciesAll(ActiveProduct(i)%Species)          &
-      !&                  ,   ActiveProduct(i)%Koeff,i=1,NumActiveProduct )
-      WRITE(Unit,*)                                 &
-      &                   ( PositionSpeciesAll(ActiveEduct(i)%Species)            &
-      &                  ,  -ActiveEduct(i)%Koeff,i=1,NumActiveEduct     )        &
-      &                  ,( PositionSpeciesAll(ActiveProduct(i)%Species)          &
+      WRITE(Unit,'(*(7X,I5,3X,F6.3))', ADVANCE='NO')                     &
+      &                   ( PositionSpeciesAll(ActiveEduct(i)%Species)   &
+      &                  ,  -ActiveEduct(i)%Koeff,i=1,NumActiveEduct )   &
+      &                  ,( PositionSpeciesAll(ActiveProduct(i)%Species) &
       &                  ,   ActiveProduct(i)%Koeff,i=1,NumActiveProduct )
+      WRITE(Unit,*) ''
       !
       IF (ReactionSystem(iLoop)%TypeConstant=='SPECIAL') THEN
         WRITE(Unit,*) ReactionSystem(iLoop)%                                    &
@@ -1548,6 +1529,8 @@ MODULE Chemsys_Mod
     !
     ALLOCATE(SPEK(INT(c1))) 
     !
+    print*, 'modes = ', c1
+    stop
     LWC=pseudoLWC(tAnf)
     cnt=1
     REWIND(InputUnit_Initials)
@@ -1561,11 +1544,13 @@ MODULE Chemsys_Mod
       IF (Back)   EXIT
       !
       ! HIER KÖNNTE MAL WIEDER WAS PASSIEREN
-      IF (c1<1.0d0) THEN
-        SPEK(1)%Radius=REAL(c1,KIND=dp)
-        SPEK(1)%Number=REAL(c2,KIND=dp)
-        SPEK(1)%wetRadius=(3.0d0/4.0d0/PI*LWC/SPEK(1)%Number)**(1.0d0/3.0d0)
-        SPEK(1)%Density=REAL(c3,KIND=dp)
+      IF (c1 < ONE) THEN
+        cnt = cnt + 1
+        SPEK(cnt)%Radius = REAL(c1,KIND=dp)
+        SPEK(cnt)%Number = REAL(c2,KIND=dp)
+        !SPEK(cnt)%wetRadius=(3.0d0/4.0d0/PI*LWC/SPEK(1)%Number)**(1.0d0/3.0d0)
+        SPEK(cnt)%wetRadius = (Pi34*LWC/SPEK(cnt)%Number)**(rTHREE)*0.1_dp
+        SPEK(cnt)%Density = REAL(c3,KIND=dp)
       END IF
     END DO
     CALL CloseIniFile
@@ -2024,53 +2009,62 @@ MODULE Chemsys_Mod
     END IF
   END FUNCTION PositionSpecies
   !
+  FUNCTION PositionAtom(Atom) RESULT(Pos)
+    CHARACTER(*) :: Atom
+    !
+    INTEGER :: Pos
+    ! 
+    Pos = 0
+    Pos = GetHash(ListAtoms,TRIM(ADJUSTL(Atom)))
+  END FUNCTION PositionAtom
   !
-  FUNCTION PositionSpeciesAll(Species)
+  !
+  FUNCTION PositionSpeciesAll(Species) RESULT(Pos)
     CHARACTER(*) :: Species
     !
-    INTEGER :: PositionSpeciesAll
+    INTEGER :: Pos
     !
     ! 
-    PositionSpeciesAll=0
+    Pos=0
     !
     ! Combustion system
     IF ( TempEq ) THEN
-      PositionSpeciesAll=-1
-      PositionSpeciesAll=GetHash(ListGas,TRIM(ADJUSTL(Species)))
+      Pos=-1
+      Pos=GetHash(ListGas,TRIM(ADJUSTL(Species)))
     ELSE
     ! tropospheric system
       IF (Species(1:1)=='p') THEN
-        PositionSpeciesAll=GetHash(ListPartic,TRIM(ADJUSTL(Species))) 
-        IF (PositionSpeciesAll>0) THEN
-          PositionSpeciesAll=PositionSpeciesAll+ntGAS+ntAQUA+ntSOLID         
+        Pos = GetHash(ListPartic,TRIM(ADJUSTL(Species))) 
+        IF (Pos>0) THEN
+          Pos = Pos + ntGAS + ntAQUA + ntSOLID         
         END IF
       ! 
       ! AQUA 
       ELSE IF (Species(1:1)=='a'.OR.SCAN(Species,'pm')>0) THEN
-        PositionSpeciesAll=GetHash(ListAqua,TRIM(ADJUSTL(Species)))
-        IF (PositionSpeciesAll>0) THEN
-          PositionSpeciesAll=PositionSpeciesAll+ntGAS
+        Pos = GetHash(ListAqua,TRIM(ADJUSTL(Species)))
+        IF (Pos>0) THEN
+          Pos = Pos + ntGAS
         END IF
       !
       ! SOLID
       ELSE IF (Species(1:1)=='s') THEN
-        PositionSpeciesAll=GetHash(ListSolid,TRIM(ADJUSTL(Species)))      
-        IF (PositionSpeciesAll>0) THEN
-          PositionSpeciesAll=PositionSpeciesAll+ntGAS+ntAQUA         
+        Pos = GetHash(ListSolid,TRIM(ADJUSTL(Species)))      
+        IF (Pos>0) THEN
+          Pos = Pos + ntGAS + ntAQUA         
         END IF
       !
       ! NonReac
       ELSE IF (Species(1:1)=='['.AND.                                  &
       &        Species(LEN(TRIM(Species)):LEN(TRIM(Species)))==']'.AND.&
       &        LEN(TRIM(Species))<maxLENinActDuct) THEN
-        PositionSpeciesAll=GetHash(ListNonReac,TRIM(ADJUSTL(Species)))    
-        IF (PositionSpeciesAll>0) THEN
+        Pos = GetHash(ListNonReac,TRIM(ADJUSTL(Species)))    
+        IF (Pos>0) THEN
           !PositionSpeciesAll=PositionSpeciesAll+ntGAS+ntAQUA+ntSOLID+ntPart
-          PositionSpeciesAll=PositionSpeciesAll+ntGAS+ntAQUA+ntSOLID+ntPart
+          Pos = Pos + ntGAS + ntAQUA + ntSOLID + ntPart
         END IF
       ! GAS
       ELSE
-        PositionSpeciesAll=GetHash(ListGas,TRIM(ADJUSTL(Species)))
+        Pos = GetHash(ListGas,TRIM(ADJUSTL(Species)))
       END IF
     END IF
   END FUNCTION PositionSpeciesAll

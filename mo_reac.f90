@@ -170,16 +170,16 @@
 &                                 ,Aqua_Name_Netcdf(:)       &
 &                                 ,Aqua_LongName(:)          &
 &                                 ,Sum_Aqua_Name_Netcdf(:,:)
-    CHARACTER(20), ALLOCATABLE  :: ReacName_Gas(:)  &
-&                                 ,ReacName_Hen(:)  &
-&                                 ,ReacName_Diss(:) &
-&                                 ,ReacName_Aqua(:) &
-&                                 ,ReacName_Sol(:)
-    INTEGER,  ALLOCATABLE       :: Gas_anz(:)  &
-&                                 ,Aqua_anz(:) &
-&                                 ,Hen_anz(:)  &
-&                                 ,Diss_anz(:) &
-&                                 ,Sol_anz(:)
+!    CHARACTER(20), ALLOCATABLE  :: ReacName_Gas(:)  &
+!&                                 ,ReacName_Hen(:)  &
+!&                                 ,ReacName_Diss(:) &
+!&                                 ,ReacName_Aqua(:) &
+!&                                 ,ReacName_Sol(:)
+!    INTEGER,  ALLOCATABLE       :: Gas_anz(:)  &
+!&                                 ,Aqua_anz(:) &
+!&                                 ,Hen_anz(:)  &
+!&                                 ,Diss_anz(:) &
+!&                                 ,Sol_anz(:)
     INTEGER, PARAMETER          :: ndiag_gas = 11  &
 &                                 ,ndiag_aq = 16  
     CHARACTER(60), ALLOCATABLE  :: Diag_Name_Netcdf(:) &
@@ -195,12 +195,12 @@
     LOGICAL              :: hasRO2
     INTEGER, ALLOCATABLE :: RO2(:)          ! Species-Index of peroxyradical
     INTEGER              :: nRO2            ! Number of Gasphase-Peroxyradicals in mechanism
-    REAL(dp), ALLOCATABLE :: SumRO2(:)       ! Summation of all gasphase peroxyradicals in everey cell
+!    REAL(dp), ALLOCATABLE :: SumRO2(:)       ! Summation of all gasphase peroxyradicals in everey cell
 !--    aqueous phase
     LOGICAL              :: hasRO2aq
     INTEGER, ALLOCATABLE :: RO2aq(:)          ! Species-Index of peroxyradical
     INTEGER              :: nRO2aq            ! Number of aqueos phase peroxy radicals in mechanism
-    REAL(dp), ALLOCATABLE :: SumRO2aq(:)       ! Summation of all aqueopus phase peroxyradicals in everey cell
+!    REAL(dp), ALLOCATABLE :: SumRO2aq(:)       ! Summation of all aqueopus phase peroxyradicals in everey cell
 !
 !--------------------------------------------------------------
 !--    Aerosol species properties
@@ -244,17 +244,17 @@
 
 !--------------------------------------------------------------
     
-    CHARACTER(18),ALLOCATABLE :: ThSpecies(:)
-    CHARACTER(6),ALLOCATABLE  :: ThRefDataCode(:)
-    CHARACTER(2),ALLOCATABLE  :: ThAtoms(:,:)           ! (:,4)
-    INTEGER,ALLOCATABLE       :: ThnAtoms(:,:)          ! (:,4)
-    REAL(dp),ALLOCATABLE :: ThTempRange(:,:)      ! (:,2)
-    REAL(dp),ALLOCATABLE :: ThMolMass(:)
-    CHARACTER(1),ALLOCATABLE  :: ThPhase(:)
-    REAL(dp),ALLOCATABLE :: lowA(:),lowB(:),lowC(:),lowD(:),lowE(:),lowF(:),lowG(:)
-    REAL(dp),ALLOCATABLE :: highA(:),highB(:),highC(:),highD(:),highE(:),highF(:),highG(:)
-    REAL(dp),ALLOCATABLE :: H0_29815R(:)
-    REAL(dp),ALLOCATABLE :: SwitchTemp(:)
+    CHARACTER(18), ALLOCATABLE :: ThSpecies(:)
+    CHARACTER(6),  ALLOCATABLE :: ThRefDataCode(:)
+    CHARACTER(2),  ALLOCATABLE :: ThAtoms(:)           ! (:,4)
+    INTEGER,       ALLOCATABLE :: ThnAtoms(:,:)          ! (:,4)
+    REAL(dp),      ALLOCATABLE :: ThTempRange(:,:)      ! (:,2)
+    REAL(dp),      ALLOCATABLE :: ThMolMass(:)
+    CHARACTER(1),  ALLOCATABLE :: ThPhase(:)
+    REAL(dp),      ALLOCATABLE :: lowA(:),lowB(:),lowC(:),lowD(:),lowE(:),lowF(:),lowG(:)
+    REAL(dp),      ALLOCATABLE :: highA(:),highB(:),highC(:),highD(:),highE(:),highF(:),highG(:)
+    REAL(dp),      ALLOCATABLE :: H0_29815R(:)
+    REAL(dp),      ALLOCATABLE :: SwitchTemp(:)
     !
     REAL(dp) :: y_total
     !
@@ -375,6 +375,7 @@
 
     TYPE(ReacTypeParameter_TR) :: RTpar2
 
+    INTEGER, ALLOCATABLE  :: AtomicMatrix(:,:)  ! dim = (nspc, natoms), where natoms = number of different elements in the system
 
     INTEGER, ALLOCATABLE  :: first_orderKAT(:,:) ! reaction number where stoech coef == ONE
     INTEGER, ALLOCATABLE  :: first_order(:,:) ! reaction number where stoech coef == ONE
