@@ -11,7 +11,7 @@
   NetCdfPrint = .true.            ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
  /END
  &FILES
-  ChemFile = 'CHEM/Rober'
+  SysFile  = 'CHEM/Rober'
   DataFile = 'DAT/RACM.dat'
   InitFile = 'INI/Rober.ini'
   MetFile  = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)

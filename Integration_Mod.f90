@@ -14,11 +14,7 @@ MODULE Integration_Mod
   USE mo_reac
   USE mo_ckinput, ONLY: Density
   USE Sparse_Mod, ONLY: Jac_CC
-  !USE Sparse2_Mod
-  !USE Chemsys_Mod
   USE Rosenbrock_Mod
-  !USE Rates_Mod
-  USE Factorisation_Mod
   USE NetCDF_Mod
   USE Meteo_Mod, ONLY: Temp, cv
   IMPLICIT NONE
@@ -61,6 +57,7 @@ MODULE Integration_Mod
     ! Temporary variables:
     !
     REAL(dp) :: Y0(nDIM), Y(nDIM)       ! old, current y vector
+    REAL(dp) :: avgRate(neq)
     !
     REAL(dp) :: t             ! current time
     REAL(dp) :: timepart
@@ -70,7 +67,7 @@ MODULE Integration_Mod
     REAL(dp) :: error, errorOld
     REAL(dp) :: tmp_tb
     REAL(dp) :: actLWC, zen, wetRad
-    INTEGER  :: errind(1,1)
+    INTEGER  :: ierr(1,1)
     REAL(dp) :: ErrVals(nspc)
     ! 
     INTEGER :: iBar=-1              ! waitbar increment
@@ -86,7 +83,7 @@ MODULE Integration_Mod
     !-----------------------------
     ! LSODE Parameter
     INTEGER :: ITOL , ITASK , ISTATE, IOPT, MF, LIW, LRW
-    INTEGER, ALLOCATABLE :: IWORK(:)
+    INTEGER,  ALLOCATABLE :: IWORK(:)
     REAL(dp), ALLOCATABLE :: RWORK(:)
     !
     REAL(dp) :: RTOL1 , ATOL1(nDIM)
@@ -94,8 +91,8 @@ MODULE Integration_Mod
     
     Y0(1:nspc)  = y_iconc(:)
     Y(1:nspc)   = y_iconc(:)
-   
-    IF ( TempEq ) THEN
+
+    IF ( Teq ) THEN
       !--- initial temperature
       Y0(nDIM) = Temperature0     ! = 750 [K] aus speedchem debug
       Y(nDIM)  = Temperature0     ! = 750 [K]
@@ -107,6 +104,7 @@ MODULE Integration_Mod
     
     ! this is for the waitbar
     tmp_tb = (Tspan(2)-Tspan(1)) * 0.01_dp
+
     
     SELECT CASE (TRIM(method(1:7)))
 
@@ -143,13 +141,14 @@ MODULE Integration_Mod
             failed  = .FALSE.                   ! no failed attempts
             !
             ! Rosenbrock Timestep 
-            CALL Rosenbrock(  Y0            &       ! current concentration
+            CALL Rosenbrock(  Y             &       ! new concentration
+            &               , error         &       ! error value
+            &               , ierr          &       ! max error component
+            &               , avgRate       &       ! average rate of reaction (flux)
+            &               , Y0            &       ! current concentration 
             &               , t             &       ! current time
             &               , h             &       ! stepsize
             &               , RCo           &       ! Rosenbrock parameter
-            &               , error         &       ! error value
-            &               , errind        &       ! max error component
-            &               , Y             &       ! new concentration 
             &               , Euler=.FALSE. )       ! new concentration 
             !
             tnew  = t + h
@@ -195,7 +194,7 @@ MODULE Integration_Mod
               zen = Zenith(t)
               IF ( ntAqua > 0 ) THEN
                 actLWC  = pseudoLWC(t)
-                wetRad  = (Pi34*actLWC/SPEK(1)%Number)**(rTHREE)*0.1_dp
+                wetRad  = (Pi34*actLWC/Frac%Number(1))**(rTHREE)*0.1_dp
               END IF
               ! save data in NetCDF File
               CALL SetOutputNCDF(  Y,    yNcdf, t ,  actLWC)
@@ -209,7 +208,7 @@ MODULE Integration_Mod
               &                    , SUM(Y(ntGas+1:ntGas+ntAqua))  &
               &                    , wetRad                        &
               &                    , zen                        /) &
-              &                 , errind                           &
+              &                 , ierr                           &
               &                 , SUM(y(iDiag_Schwefel))           &
               &                 , error                            )
               !
@@ -297,7 +296,7 @@ MODULE Integration_Mod
             zen = Zenith(t)
             IF ( ntAqua > 0 ) THEN
               actLWC  = pseudoLWC(t)
-              wetRad  = (Pi34*actLWC/SPEK(1)%Number)**(rTHREE)*0.1_dp
+              wetRad  = (Pi34*actLWC/Frac%Number(1))**(rTHREE)*0.1_dp
             END IF
 
             ! save data in NetCDF File
@@ -312,9 +311,9 @@ MODULE Integration_Mod
                             &     , SUM(Y(ntGas+1:ntGas+ntAqua))  &    ! Sum aqua conc
                             &     , wetRad                        &    ! wet radius
                             &     , zen               /)          &  ! zenith
-                            & , errind                 &  ! max error index = 0
+                            & , ierr                 &  ! max error index = 0
                             & , ZERO                   &  ! Sum sulfuric conc
-                            & , error                 )   ! error 
+                            & , error                  )   ! error 
             
             TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
           END IF
@@ -387,7 +386,7 @@ MODULE Integration_Mod
             zen = Zenith(t)
             IF ( ntAqua > 0 ) THEN
               actLWC  = pseudoLWC(t)
-              wetRad  = (Pi34*actLWC/SPEK(1)%Number)**(rTHREE)*0.1_dp
+              wetRad  = (Pi34*actLWC/Frac%Number(1))**(rTHREE)*0.1_dp
             END IF
 
             ! save data in NetCDF File
@@ -402,9 +401,9 @@ MODULE Integration_Mod
                             &     , SUM(Y(ntGas+1:ntGas+ntAqua))  &    ! Sum aqua conc
                             &     , wetRad                        &    ! wet radius
                             &     , zen               /)          &  ! zenith
-                            & , errind                 &  ! max error index = 0
+                            & , ierr                 &  ! max error index = 0
                             & , ZERO                   &  ! Sum sulfuric conc
-                            & , error                 )   ! error 
+                            & , error                  )   ! error 
             
             TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
           END IF
@@ -436,14 +435,15 @@ MODULE Integration_Mod
             done = .TRUE.
           END IF
 
-          CALL Rosenbrock(  Y0            &       ! current concentration
+          CALL Rosenbrock(  Y             &       ! new concentration
+          &               , error         &       ! error value
+          &               , ierr          &       ! max error component
+          &               , avgRate       &       ! average rate of reaction (flux)
+          &               , Y0            &       ! current concentration 
           &               , t             &       ! current time
           &               , h             &       ! stepsize
           &               , RCo           &       ! Rosenbrock parameter
-          &               , error         &       ! error value
-          &               , errind        &       ! max error component
-          &               , Y             &       ! new concentration 
-          &               , Euler=.TRUE.  )       ! specifies backward Euler method
+          &               , Euler=.FALSE. )       ! new concentration 
 
           tnew = t + h
           IF (done) THEN
@@ -461,7 +461,7 @@ MODULE Integration_Mod
               zen = Zenith(t)
               IF ( ntAqua > 0 ) THEN
                 actLWC  = pseudoLWC(t)
-                wetRad  = (Pi34*actLWC/SPEK(1)%Number)**(rTHREE)*0.1_dp
+                wetRad  = (Pi34*actLWC/Frac%Number(1))**(rTHREE)*0.1_dp
               END IF
               ! save data in NetCDF File
               TimeNetCDFA = MPI_WTIME()
@@ -476,9 +476,9 @@ MODULE Integration_Mod
               &                    , SUM(Y(ntGas+1:ntGas+ntAqua))  &
               &                    , wetRad                        &
               &                    , zen                        /) &
-              &                 , errind                           &
+              &                 , ierr                           &
               &                 , SUM(y(iDiag_Schwefel))           &
-              &                 , error                            )
+              &                 , error                            ) 
               !
               TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
             END IF
@@ -566,20 +566,21 @@ MODULE Integration_Mod
     !
     REAL(dp) :: dCdt(nspc)
     REAL(dp) :: Rate(neq) , DRate(neq)
-    REAL(dp) :: Tarr(8)
+    REAL(dp) :: Tarr(10)
     REAL(dp) :: U(nspc) , dUdT(nspc)
     REAL(dp) :: c_v
 
 
-    ! MASS CONSERVATION
-    CALL ReactionRatesAndDerivative( T , Y , Rate , DRate)
-    CALL DAXPY_sparse( dCdt , BAT , Rate , Y_e )  ! [mol/cm3/s]
     
-    YDOT(1:nspc) =  dCdt
+    IF (Teq) THEN         ! OUT:   IN:
+      ! MASS CONSERVATION
+      CALL ReactionRatesAndDerivative_ChemKin( T , Y , Rate , DRate)
+      CALL DAXPY_sparse( dCdt , BAT , Rate , Y_e )  ! [mol/cm3/s]
     
-    ! ENERGY CONSERVATION
-    IF (TempEq) THEN         ! OUT:   IN:
-      CALL UpdateTempArray   ( Tarr , Y(NEQ1) )
+      YDOT(1:nspc) =  dCdt
+
+      ! ENERGY CONSERVATION
+      Tarr = UpdateTempArray   ( Y(NEQ1) )
       CALL InternalEnergy    (  U   , Tarr )
       CALL DiffInternalEnergy( dUdT , Tarr) 
       CALL MassAveMixSpecHeat( c_v  , dUdT               &
@@ -587,6 +588,12 @@ MODULE Integration_Mod
                              &      , rho=rho          ) 
     
       YDOT(NEQ1) = - SUM( U * dCdt ) * rRho / c_v   ! rRho=mega/rho 
+    ELSE
+      ! MASS CONSERVATION
+      CALL ReactionRates_Tropos( T , Y , Rate )
+      CALL DAXPY_sparse( dCdt , BAT , Rate , Y_e )  ! [mol/cm3/s]
+      
+      YDOT(1:nspc) =  dCdt
     END IF
 
   END SUBROUTINE FRhs

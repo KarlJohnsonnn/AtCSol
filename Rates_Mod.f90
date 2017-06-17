@@ -40,7 +40,7 @@
     !======================================================================!
     !      Calculate the Rates for current concentraions and time
     !======================================================================!
-    SUBROUTINE ReactionRatesAndDerivative(Time,Y_in,Rate,DRatedT)
+    SUBROUTINE ReactionRatesAndDerivative_ChemKin(Time,Y_in,Rate,DRatedT)
       !--------------------------------------------------------------------!
       ! Input: 
       !   - Time
@@ -55,19 +55,14 @@
       REAL(dp) :: DRatedT(neq)
       !--------------------------------------------------------------------!
       ! Temporary variables:
-      REAL(dp) :: y_conc(nDIM)
-      REAL(dp) :: chi(3), LWC
+      REAL(dp) :: Conc(nspc)
       REAL(dp) :: T(10)
-      REAL(dp) :: k,       vK(neq)
+      REAL(dp) :: k,       vK(neq),   vKaqua(nAreak,ntFrac)
       REAL(dp) :: Prod,    vProd(neq) 
-      REAL(dp) :: AquaFac, vAquaFac(nHOAqua)
       REAL(dp) :: DkdT,    dvK_dT(neq)   
       REAL(dp) :: Meff,    vMeff(neq)
       INTEGER :: iReac, ii, j
       ! 
-      ! TempEq
-      REAL(dp) :: Temp_in
-      !
       REAL(dp) :: tmpK(neq), dtmpK(neq)
       
       ! temp arrays for chemkin input (temp depended)
@@ -79,7 +74,6 @@
       REAL(dp) :: vrKeq(RTind%nEqui), DeRdT(RTind%nEqui)
       REAL(dp) :: rRcT
 
-      REAL(dp) :: tHenry(nHENRY,2)
       !==================================================================!
       !===============calc rates for ReactionSystem======================!
       !==================================================================!
@@ -88,6 +82,154 @@
       
       Rate    = ZERO
       DRatedT = ZERO
+
+      !--- Concentration
+      Conc = Y_in(1:nspc)
+      
+      T = UpdateTempArray ( Y_in(nDIM) )
+      CALL GibbsFreeEnergie( GFE , T )
+      CALL CalcDeltaGibbs  ( DelGFE )
+      rFacEq = mega * R * T(1) * rPatm  ! in [cm3/mol]
+      !
+      CALL CalcDiffGibbsFreeEnergie( DGFEdT , T )
+      CALL CalcDiffDeltaGibbs( DDelGFEdT )
+
+      !*************************************************************
+      ! --- compute rate of all reactions ---
+      !*************************************************************
+      !
+      ! initializing vector components
+      vMeff = ONE; DF_PDdT = Zero; 
+
+      ! calculate effective molecularity of the reactions
+      IF ( RTind%nTBody>0 ) THEN
+        vMeff( RTind%iTBody ) = SUM( Conc )
+
+        IF ( RTind%nTBodyExtra>0) THEN
+          CALL DAX_sparse( vMeffX, TB_sparse, Conc )
+          vMeff(RTind%iTBodyExtra) = vMeff(RTind%iTBodyExtra) - vMeffX
+        END IF
+
+      END IF
+
+      ! ====== Compute the rate constant for specific reaction type
+      !
+      rRcT = rRcal*T(6)
+
+      ! normal Arrhenius
+      IF ( RTind%nArr>0 )  THEN
+        tmpK(RTind%iArr)  = RTpar%A*EXP(RTpar%b*T(8) - RTpar%E*rRcT)
+        dtmpK(RTind%iArr) = (RTpar%b + RTpar%E*rRcT)*T(6)
+      END IF
+     
+      ! Backward reaction with explicitly given Arrhenius parameters
+      IF ( RTind%nXrev>0 ) THEN
+        tmpK(RTind%iXrev)  = RTpar%AX*EXP(RTpar%bX*T(8) - RTpar%EX*rRcT)
+        dtmpK(RTind%iXrev) = (RTpar%bX + RTpar%EX*rRcT)*T(6)
+      END IF
+
+      ! reduced pressure value for falloff reactions
+      vFTL = ONE;        vdFTL_dT = ONE
+      Dk0dT = ZERO;      DkinfdT  = ZERO
+
+      IF ( RTind%nLow>0 ) THEN
+        ! Low pressure Arrhenius
+        k0    = RTpar%A0*EXP(RTpar%b0*T(8) - RTpar%E0*rRcT)
+        Dk0dT(RTind%iLow)    = RTpar%b0 + RTpar%E0*rRcT
+        ! High pressure Arrhenius
+        kinf    = RTpar%Ainf*EXP(RTpar%binf*T(8) - RTpar%Einf*rRcT)
+        DkinfdT(RTind%iHigh) = RTpar%binf + RTpar%Einf*rRcT
+
+        vPr = ONE
+
+        k0M = k0 * vMeff(RTind%iLow)
+        vrkinfpk0M = ONE / (kinf + k0M)
+
+        vdFTL_dT(RTind%iLow) = vMeff(RTind%iTroe)*k0*kinf*(vrkinfpk0M*vrkinfpk0M) &
+        &                    * (Dk0dT(RTind%iLow) - DkinfdT(RTind%iHigh))*T(6)
+
+        vPr(RTind%iLow)    = k0M / (kinf+k0M)
+
+        tmpK(RTind%iLow)   = kinf
+        dtmpK(RTind%iHigh) = DkinfdT(RTind%iHigh)
+      END IF
+      
+      ! reverse reaction, calculating the equi constant 
+      IF (RTind%nEqui>0) THEN
+        vrKeq = EXP(DelGFE(RTind%iEqui)) * rFacEq**(-sumBAT(RTind%iEqui))
+        DeRdT = sumBAT(RTind%iEqui)*T(6) + DDelGFEdT(RTind%iEqui) 
+
+        tmpK(RTind%iEqui)  = tmpK(RTind%iEqui) * vrKeq
+        dtmpK(RTind%iEqui) = dtmpK(RTind%iEqui) + DeRdT 
+      END IF
+
+      ! rate constants according to Lindemann's form
+      IF ( RTind%nLind>0 ) THEN
+        vFTL(RTind%iLind)    = vPr(RTind%iLind)
+        DF_PDdT(RTind%iLind) = vdFTL_dT(RTind%iLind)
+        vMeff(RTind%iLind)   = ONE
+      END IF
+
+      ! rate constants according to Troe's form
+      IF ( RTind%nTroe>0 ) THEN
+        vFTL(RTind%iTroe)    = TroeFactorVec(T)
+        DF_PDdT(RTind%iTroe) = DTroeFactorVec(Dk0dT,DkinfdT,vdFTL_dT,T)
+        vMeff(RTind%iTroe)   = ONE
+      END IF
+
+      vK      = vFTL * tmpK
+      dvK_dT  = (DF_PDdT + dtmpK)*T(6)
+      DRatedT = dvK_dT
+
+
+      ! ==== Law of mass action productories
+      vProd = MassActionProducts( Conc )
+      
+      Rate  = vMeff * vk * vProd
+      
+      !WRITE(*,*) ''
+      !DO j=1,neq
+      !  WRITE(*,*) 'j,Time,Meff,k,prd,Rate =', &
+      !  &           j,Time,vMeff(j),vK(j),vProd(j),Rate(j)
+      !END DO
+
+      TimeRates = TimeRates + MPI_WTIME() - TimeRateA
+
+      !stop 'ratesmod'
+    END SUBROUTINE ReactionRatesAndDerivative_ChemKin
+
+    !======================================================================!
+    !      Calculate the Rates for current concentraions and time
+    !======================================================================!
+    SUBROUTINE ReactionRates_Tropos(Time,Y_in,Rate)
+      !--------------------------------------------------------------------!
+      ! Input: 
+      !   - Time
+      !   - y_conc
+!     REAL(dp), INTENT(IN) :: Time
+      REAL(dp) :: Time
+      REAL(dp), INTENT(IN) :: Y_in(nDIM)
+      !--------------------------------------------------------------------!
+      ! Output:
+      !   - Rate vector
+      REAL(dp) :: Rate(neq)
+      !--------------------------------------------------------------------!
+      ! Temporary variables:
+      REAL(dp) :: Conc(nspc)
+      REAL(dp) :: chi(3), LWC
+      REAL(dp) :: T(10)
+      REAL(dp) :: Meff(neq) , k(neq) , Prod(neq)
+      REAL(dp) :: AquaFac(nHOAqua)
+      
+      !REAL(dp) :: tHenry(nHENRY,2)
+      REAL(dp) :: tHenry(nHENRY,2,ntFrac)
+      !==================================================================!
+      !===============calc rates for ReactionSystem======================!
+      !==================================================================!
+     
+      TimeRateA = MPI_WTIME()
+      
+      Rate = ZERO
 
       ! --- Compute zenith for photo reactions
       IF (nreakgphoto>0) THEN
@@ -98,324 +240,94 @@
         chi(3) = UpdateSun(Time)
       END IF
      
-      ! --- Compute the liquid water content 
-      IF (nreakaqua>0) LWC = pseudoLWC(Time)
       
-      IF ( TempEq ) THEN
-        
-        Temp_in  = Y_in(nDIM)
-
-        !--- Concentration
-        y_conc(1:nspc) = Y_in(1:nspc)
-        
-        !--- Temperature
-        y_conc(nDIM)   = Temp_in 
-
-        CALL UpdateTempArray ( T   , Temp_in )
-        CALL GibbsFreeEnergie( GFE , T )
-        CALL CalcDeltaGibbs  ( DelGFE )
-        rFacEq = mega * R * T(1) * rPatm  ! in [cm3/mol]
-        !
-        CALL CalcDiffGibbsFreeEnergie( DGFEdT , T )
-        CALL CalcDiffDeltaGibbs( DDelGFEdT )
-
-      ELSE
-
-        T(1)   = 280.0_dp    ! = 280 [K]
-        CALL UpdateTempArray ( T   , T(1) )
-        y_conc = Y_in
-
-      END IF
+      Conc = Y_in
+      T = UpdateTempArray ( 280.0_dp )
       
       !*************************************************************
       ! --- compute rate of all reactions (gas,henry,aqua,diss) ---
       !*************************************************************
-      IF ( Vectorized ) THEN
-        IF ( Chemkin ) THEN 
-          ! ====== Computing effective molecularity 
-          !
-          ! initializing vector components
-          vMeff = ONE; DF_PDdT = Zero; 
 
-          ! calculate effective molecularity of the reactions
-          IF ( RTind%nTBody>0 ) THEN
-            vMeff( RTind%iTBody ) = SUM( y_conc(1:nspc) )
-
-            IF ( RTind%nTBodyExtra>0) THEN
-              CALL DAX_sparse(vMeffX,TB_sparse,y_conc(1:nspc))
-              vMeff(RTind%iTBodyExtra) = vMeff(RTind%iTBodyExtra) - vMeffX
-            END IF
-
-          END IF
-
-          ! ====== Compute the rate constant for specific reaction type
-          !
-          rRcT = rRcal*T(6)
-
-          ! normal Arrhenius
-          IF ( RTind%nArr>0 )  THEN
-            tmpK(RTind%iArr)  = RTpar%A*EXP(RTpar%b*T(8) - RTpar%E*rRcT)
-            dtmpK(RTind%iArr) = (RTpar%b + RTpar%E*rRcT)*T(6)
-          END IF
-         
-          ! Backward reaction with explicitly given Arrhenius parameters
-          IF ( RTind%nXrev>0 ) THEN
-            tmpK(RTind%iXrev)  = RTpar%AX*EXP(RTpar%bX*T(8) - RTpar%EX*rRcT)
-            dtmpK(RTind%iXrev) = (RTpar%bX + RTpar%EX*rRcT)*T(6)
-          END IF
-
-          ! reduced pressure value for falloff reactions
-          vFTL = ONE;        vdFTL_dT = ONE
-          Dk0dT = ZERO;      DkinfdT  = ZERO
-
-          IF ( RTind%nLow>0 ) THEN
-            ! Low pressure Arrhenius
-            k0    = RTpar%A0*EXP(RTpar%b0*T(8) - RTpar%E0*rRcT)
-            Dk0dT(RTind%iLow)    = RTpar%b0 + RTpar%E0*rRcT
-            ! High pressure Arrhenius
-            kinf    = RTpar%Ainf*EXP(RTpar%binf*T(8) - RTpar%Einf*rRcT)
-            DkinfdT(RTind%iHigh) = RTpar%binf + RTpar%Einf*rRcT
-
-            vPr = ONE
-
-            k0M = k0 * vMeff(RTind%iLow)
-            vrkinfpk0M = ONE / (kinf + k0M)
-
-            vdFTL_dT(RTind%iLow) = vMeff(RTind%iTroe)*k0*kinf*(vrkinfpk0M*vrkinfpk0M) &
-            &                    * (Dk0dT(RTind%iLow) - DkinfdT(RTind%iHigh))*T(6)
-
-            vPr(RTind%iLow)    = k0M / (kinf+k0M)
-
-            tmpK(RTind%iLow)   = kinf
-            dtmpK(RTind%iHigh) = DkinfdT(RTind%iHigh)
-          END IF
-          
-          ! reverse reaction, calculating the equi constant 
-          IF (RTind%nEqui>0) THEN
-            vrKeq = EXP(DelGFE(RTind%iEqui)) * rFacEq**(-sumBAT(RTind%iEqui))
-            DeRdT = sumBAT(RTind%iEqui)*T(6) + DDelGFEdT(RTind%iEqui) 
-
-            tmpK(RTind%iEqui)  = tmpK(RTind%iEqui) * vrKeq
-            dtmpK(RTind%iEqui) = dtmpK(RTind%iEqui) + DeRdT 
-          END IF
-
-          ! rate constants according to Lindemann's form
-          IF ( RTind%nLind>0 ) THEN
-            vFTL(RTind%iLind)    = vPr(RTind%iLind)
-            DF_PDdT(RTind%iLind) = vdFTL_dT(RTind%iLind)
-            vMeff(RTind%iLind)   = ONE
-          END IF
-
-          ! rate constants according to Troe's form
-          IF ( RTind%nTroe>0 ) THEN
-            vFTL(RTind%iTroe)    = TroeFactorVec(T)
-            DF_PDdT(RTind%iTroe) = DTroeFactorVec(Dk0dT,DkinfdT,vdFTL_dT,T)
-            vMeff(RTind%iTroe)   = ONE
-          END IF
-
-          vK      = vFTL * tmpK
-          dvK_dT  = (DF_PDdT + dtmpK)*T(6)
-          DRatedT = dvK_dT
-
-        ELSE !if tropos data syntax
-
-          ! ====== Computing effective molecularity 
-          vMeff = ONE
-          IF ( nFACTOR > 0 ) CALL vEffectiveMolecularity( vMeff, y_conc(1:nspc), LWC )
-          
-          ! ====== Compute the rate constant for specific reaction type
-          CALL vComputeRateConstant( vk, dvK_dT, T, Time, chi, mAir, y_conc, vMeff )
-
-          ! ===== correct unit of concentrations for higher order aqueous reactions
-          IF ( ntAqua > 0 ) THEN
-            InitValKat(aH2O_ind) = aH2O*LWC
-            vAquaFac = ONE / (LWC*mol2part)**RTpar2%HOaqua
-            vk(RTind2%iHOaqua) = vk(RTind2%iHOaqua) * vAquaFac
-          END IF
-
-          !=== Compute mass transfer coefficient 
-          IF ( nHENRY > 0 ) THEN
-            CALL vMassTransfer( thenry, vk(RTind2%iHENRY(:,1)), T, LWC )
-            vk(RTind2%iHENRY(:,1)) = thenry(:,1)
-            vk(RTind2%iHENRY(:,3)) = thenry(:,2)
-          END IF
-
-          IF (TempEq) DRatedT = dvK_dT
-
-        END IF
-
-        ! ==== Law of mass action productories
-        vProd = MassActionProducts(y_conc(1:nspc))
-        
-        Rate  = vMeff * vk * vProd
-        
-        !WRITE(*,*) ''
-        !DO j=1,neq
-        !  WRITE(*,*) 'j,Time,Meff,k,prd,Rate =', &
-        !  &           j,Time,vMeff(j),vK(j),vProd(j),Rate(j)
-        !END DO
-      ELSE
-
-        LOOP_OVER_ALL_REACTIONS: DO ii = 1 , loc_rateCnt
-          
-          ! if more than one processor is used split rate calculation
-          !IF ( MPI_np>1 .AND. ParOrdering>=0 )  THEN
-          !  iReac = loc_RatePtr(ii)
-          !ELSE
-          iReac = ii
-          !END IF
-         
-          ! ====== Computing effective molecularity 
-          CALL EffectiveMolecularity( Meff , y_conc(1:nspc) , iReac , LWC )
-          
-          ! ====== Compute the rate constant for specific reaction type ===
-          CALL ComputeRateConstant( k , DkdT , T , Time , chi , mAir , iReac , y_conc , Meff )
-  
-          AQUATIC_REACTIONS: IF ( ntAqua > 0 ) THEN
-  
-            IF ( ReactionSystem(iReac)%Type == 'DISS' .OR. &
-            &    ReactionSystem(iReac)%Type == 'AQUA' ) THEN
-              ! ===== correct unit of concentrations
-              AquaFac = ONE / ( (LWC*mol2part)**ReactionSystem(iReac)%SumAqCoef )
-              k       = k * AquaFac
-            END IF
-  
-            IF ( ReactionSystem(iReac)%Type == 'HENRY' ) THEN
-              !=== Compute Henry mass transfer coefficient
-              CALL MassTransfer( k , T(1) , Time , iReac , LWC )
-            END IF
-  
-          END IF AQUATIC_REACTIONS
-
-          ! === Calculate the product of concentrations 
-          Prod = ONE
-          IF (ReactionSystem(iReac)%nInActEd/=0) THEN
-            SELECT CASE (ReactionSystem(iReac)%InActEductSpc(1))
-              CASE ('[H2O]')
-                Prod = Prod*H2O
-              CASE ('[N2]')
-                Prod = Prod*N2
-              CASE ('[O2]')
-                Prod = Prod*O2
-              CASE ('[aH2O]')
-                Prod = Prod*aH2O*LWC
-            END SELECT
-          END IF
-          !
-          ! ====================== Mass action products ===================
-          DO j = A%RowPtr(iReac) , A%RowPtr(iReac+1)-1
-            IF ( A%Val(j) == ONE ) THEN
-              Prod = Prod * y_conc(A%ColInd(j))
-            ELSE IF ( A%Val(j) == TWO ) THEN
-              Prod = Prod * y_conc(A%ColInd(j))*ABS(y_conc(A%ColInd(j)))
-            ELSE
-              Prod = Prod * y_conc(A%ColInd(j))**A%Val(j)
-            END IF
-          END DO
+      ! ====== Computing effective molecularity 
+      Meff = ONE
+      IF ( nFACTOR > 0 ) Meff = EffectiveMolecularity( Conc )
       
-          Rate(iReac) = Meff * k * Prod
-          IF (TempEq) DRatedT(iReac) = DkdT
-  
-          !WRITE(987,*) 'DBg:: i, k , prd, Rate =', iReac, k, Prod, Rate(iReac), Meff
-        END DO LOOP_OVER_ALL_REACTIONS
+      ! ====== Compute the rate constant for specific reaction type
+      CALL ComputeRateConstant( k, T, Time, chi, mAir, Conc, Meff )
+
+      ! ===== correct unit of concentrations for higher order aqueous reactions
+      IF ( ntAqua > 0 ) THEN
+        LWC = pseudoLWC(Time)
+        InitValKat(aH2O_ind) = aH2O*LWC
+        AquaFac = ONE / (LWC*mol2part)**RTpar2%HOaqua
+        k(RTind2%iHOaqua) = k(RTind2%iHOaqua) * AquaFac
       END IF
 
-      TimeRates = TimeRates + MPI_WTIME() - TimeRateA
+      !=== Compute mass transfer coefficient 
+      IF ( nHENRY > 0 ) THEN
+        thenry = MassTransfer( k(RTind2%iHENRY(:,1)), T, LWC )
+        k(RTind2%iHENRY(:,1)) = thenry(:,1,1)
+        k(RTind2%iHENRY(:,3)) = thenry(:,2,1)
+      END IF
 
-      !stop 'ratesmod'
-      !
+      ! ==== Law of mass action productories
+      Prod = MassActionProducts( Conc )
       
-      ! gather the values of the other processes
-      !CALL GatherAllPartitions(Rate,MyParties)
-      !IF (TempEq) CALL GatherAllPartitions(DRatedT,MyParties)
-    END SUBROUTINE ReactionRatesAndDerivative
+      Rate  = Meff * k * Prod
+      
+      !WRITE(*,*) ''
+      !DO j=1,neq
+      !  WRITE(*,*) 'j,Time,Meff,k,prd,Rate =', &
+      !  &           j,Time,vMeff(j),vK(j),vProd(j),Rate(j)
+      !END DO
+
+      TimeRates = TimeRates + MPI_WTIME() - TimeRateA
+      
+    END SUBROUTINE ReactionRates_Tropos
 
 
-    FUNCTION MassActionProducts(Conc) RESULT(vProd)
-      REAL(dp) :: vProd(neq)
-      REAL(dp), INTENT(IN)  :: Conc(nspc)
+    FUNCTION MassActionProducts(Conc) RESULT(Prod)
+      REAL(dp) :: Prod(neq)
+      REAL(dp) :: Conc(nspc)
       INTEGER :: i
 
-      vProd = ONE
+      Prod = ONE
       !
       ! stoechometric coefficients equal 1
       DO i=1,nFirst_order
-        vProd(first_order(i,1)) = vProd(first_order(i,1)) &
-         &                      * Conc(first_order(i,2))
+        Prod(first_order(i,1)) = Prod(first_order(i,1)) &
+         &                     * Conc(first_order(i,2))
       END DO
       !
       ! stoechometric coefficients equal 2
       DO i=1,nSecond_order
-        vProd(second_order(i,1)) = vProd(second_order(i,1))   &
-        &                        * Conc(second_order(i,2))    &
-        &                        * ABS(Conc(second_order(i,2)))
+        Prod(second_order(i,1)) = Prod(second_order(i,1))    &
+        &                       * Conc(second_order(i,2))    &
+        &                       * ABS(Conc(second_order(i,2)))
       END DO
       !
       ! stoechometric coefficients not equal 1 or 2
       DO i=1,nHigher_order
-        vProd(higher_order(i,1)) =  vProd(higher_order(i,1)) &
-        &                        *  Conc(higher_order(i,2))  &
-        &                        ** ahigher_order(i)
+        Prod(higher_order(i,1)) =  Prod(higher_order(i,1)) &
+        &                       *  Conc(higher_order(i,2)) &
+        &                       ** ahigher_order(i)
       END DO
       !
       ! if there are passive (katalytic) species e.g. [N2], [O2] or [aH2O]
       DO i=1,nfirst_orderKAT
-        vProd(first_orderKAT(i,1)) = vProd(first_orderKAT(i,1))    & 
-        &                          * InitValKat(first_orderKAT(i,2)) 
+        Prod(first_orderKAT(i,1)) = Prod(first_orderKAT(i,1))     & 
+        &                         * InitValKat(first_orderKAT(i,2)) 
       END DO
 
     END FUNCTION MassActionProducts
 
-
-    !=====================================================================!
-    ! === Converts the mass for Henry reactions Gas->Aqua , Aqua->Gas
-    !=====================================================================!
-    SUBROUTINE MassTransfer(k,Temp,Time,iReac,LWC)
-      REAL(dp) :: k
-      REAL(dp) :: Temp, Time, LWC
-      INTEGER :: iReac
-      !
-      REAL(dp) :: term_diff
-      REAL(dp) :: term_accom
-      REAL(dp) :: kmt
-      !
-      !
-      !---------------------------------------------------------------------------
-      term_diff   = henry_diff(ReactionSystem(iReac)%HenrySpc)               ! diffusion term
-      term_accom  = henry_accom(ReactionSystem(iReac)%HenrySpc) / SQRT(Temp)  ! accom term
-      !--------------------------------------------------------------------------!
-      !
-      ! Compute new wet radius for droplett class iFrac
-      SPEK(1)%wetRadius = (Pi34*LWC/SPEK(1)%Number)**(rTHREE)
-      !
-      !--  mass transfer coefficient
-      IF ( term_diff /= ZERO )  THEN   
-        kmt = ONE/(term_diff*SPEK(1)%wetRadius*SPEK(1)%wetRadius &
-        &                         + term_accom*SPEK(1)%wetRadius  )
-      ELSE
-        kmt = dkmt
-      END IF
-      !
-      !print*, 'Debug::   vor  k=',k
-      !print*, 'Debug::      kmt=',kmt
-      ! direaction GasSpecies-->AquaSpecies
-      IF (ReactionSystem(iReac)%direction=='GA') THEN  
-        k = milli * kmt * LWC ! orginal
-        !
-      ! direaction AquaSpecies-->GasSpecies  
-      ELSE 
-        k = kmt / ( k * GasConst_R * Temp)   !()=HenryConst*GasConstant*Temperatur
-      END IF
-      !print*, 'Debug:: gasconst=',GasConst_R
-      !print*, 'Debug::     henry_diff=',henry_diff(ReactionSystem(iReac)%HenrySpc)    
-      !print*, 'Debug::     henry_accom=',henry_accom(ReactionSystem(iReac)%HenrySpc)
-    END SUBROUTINE MassTransfer
-    SUBROUTINE vMassTransfer(k,kin,Temp,LWC)
-      REAL(dp) :: k(nHENRY,2), kin(nHENRY)
+    FUNCTION MassTransfer(kin,Temp,LWC) RESULT(k)
+      REAL(dp) :: k(nHENRY,2,ntFrac), kin(nHENRY)
       REAL(dp) :: Temp(:), LWC
       ! TEMO
-      REAL(dp), DIMENSION(nHENRY) :: term_diff, term_accom, kmt, kTemp
-      REAL(dp) :: wetRadius
+      REAL(dp) :: kmt(nHENRY,ntFrac)
+      REAL(dp) :: term_diff(nHENRY), term_accom(nHENRY)
+      REAL(dp) :: wetRadius(ntFrac)
       INTEGER :: i
       !
       !
@@ -425,157 +337,56 @@
       !--------------------------------------------------------------------------!
       !
       ! Compute new wet radius for droplett class iFrac
-      wetRadius = (Pi34*LWC/SPEK(1)%Number)**(rTHREE)
+      wetRadius(:) = (Pi34*LWC/Frac%Number(:))**(rTHREE)
       !
       !--  mass transfer coefficient
       kmt = dkmt  ! set minimal transfer coefficient
       FORALL ( i = 1:nHENRY , term_diff(i) /= ZERO )
-        kmt(i) = ONE / ( term_diff(i)*wetRadius*wetRadius + term_accom(i)*wetRadius )
+        kmt(i,:) = ONE / ( term_diff(i)*wetRadius(:)*wetRadius(:) + term_accom(i)*wetRadius(:) )
       END FORALL
 
       ! direaction GasSpecies-->AquaSpecies
-      k(:,1) = milli * kmt * LWC
+      k(:,1,:) = milli * kmt(:,:) * LWC
 
       ! direaction AquaSpecies-->GasSpecies  
-      k(:,2) = kmt / ( kin * GasConst_R * Temp(1))  ! (...) = HenryConst*GasConstant*Temperatur
+      DO i=1,ntFrac
+        k(:,2,i) = kmt(:,i) / ( kin(:) * GasConst_R * Temp(1))  ! (...) = HenryConst*GasConstant*Temperatur
+      END DO
 
-    END SUBROUTINE vMassTransfer
-    !
-    !=======================================================================!
-    ! ===  Select the Type of the Constant and calculate the value
-    !=======================================================================!
-    SUBROUTINE ComputeRateConstant(k,DkdT,T,Time,chi,mAir,iReac,y_conc,Meff)
-      REAL(dp), INTENT(INOUT) :: k, DkdT
-      REAL(dp), INTENT(IN) :: Time, mAir, chi(:)
-      REAL(dp), INTENT(IN) :: T(10)
-      REAL(dp), INTENT(IN) :: y_conc(:)
-      INTEGER,        INTENT(IN) :: iReac
-      REAL(dp), INTENT(INOUT), OPTIONAL :: Meff
-      REAL(dp) :: EqRate,BaRate,FoRate
+    END FUNCTION MassTransfer
+    
+    FUNCTION EffectiveMolecularity(Conc) RESULT(M)
+      !OUT
+      REAL(dp) :: M(neq)
+      !IN
+      REAL(dp) :: Conc(:)
       !
-      REAL(dp) :: k0, kinf
-      ! calc reaction constant
-      ! Skip photochemical reactions at night
-      BaRate = ZERO
-      DkdT   = ZERO
-      !
-      SELECT CASE (ReactionSystem(iReac)%TypeConstant)
-        CASE ('PHOTABC')
-          CALL PhoABCCompute(k,ReactionSystem(iReac)%Constants,Time,chi)  
-        CASE ('PHOTMCM')
-          CALL PhoMCMCompute(k,ReactionSystem(iReac)%Constants,Time,chi)  
-        CASE ('PHOTAB')
-          CALL PhoABCompute(k,ReactionSystem(iReac)%Constants,Time,chi)  
-        CASE ('CONST')
-          CALL ConstCompute(k,ReactionSystem(iReac)%Constants)
-        CASE ('TEMP1')
-          CALL Temp1Compute(k,ReactionSystem(iReac)%Constants,T(1))
-        CASE ('TEMP2')
-          CALL Temp2Compute(k,ReactionSystem(iReac)%Constants,T(1))
-        CASE ('TEMP3')                    ! Henry Rate calculation
-          CALL Temp3Compute(k,ReactionSystem(iReac)%Constants,T(1)) ! compute HenryConst
-        CASE ('TEMP4')
-          CALL Temp4Compute(k,ReactionSystem(iReac)%Constants,T(1))
-        CASE ('TEMPX')
-          ! new chemkin based routines
-          CALL TempXCompute(k,EqRate,FoRate,ReactionSystem(iReac)%Constants,T,iReac)
-          CALL DiffTempXCompute(DkdT,ReactionSystem(iReac)%Constants,T,iReac)
-        CASE ('PRESSX')
-          ! new chemkin based routines
-          CALL PressXCompute(k,k0,kinf,iReac,T,Meff)
-          CALL DiffPressXCompute(DkdT,k0,kinf,iReac,T,Meff)
-          Meff = ONE
-        CASE ('ASPEC1')
-          CALL Aspec1Compute(k,ReactionSystem(iReac)%Constants,T(1),y_conc)
-        CASE ('ASPEC2')
-          CALL Aspec2Compute(k,ReactionSystem(iReac)%Constants,T(1),y_conc)
-        CASE ('ASPEC3')
-          CALL Aspec3Compute(k,ReactionSystem(iReac)%Constants,T(1),y_conc)
-        CASE ('DCONST')
-          CALL DConstCompute(EqRate,BaRate,ReactionSystem(iReac)%Constants)  
-          CALL ReactionDirection(k,EqRate,BaRate,iReac)
-        CASE ('DTEMP')
-          CALL DTempCompute(EqRate,BaRate,ReactionSystem(iReac)%Constants,T(1))     
-          CALL ReactionDirection(k,EqRate,BaRate,iReac)
-        CASE ('DTEMP2')
-          CALL DTemp2Compute(EqRate,BaRate,ReactionSystem(iReac)%Constants,T(1))     
-          CALL ReactionDirection(k,EqRate,BaRate,iReac)
-        CASE ('DTEMP3')
-          CALL DTemp3Compute(EqRate,BaRate,ReactionSystem(iReac)%Constants,T(1))     
-          CALL ReactionDirection(k,EqRate,BaRate,iReac)
-        CASE ('DTEMP4')
-          CALL DTemp4Compute(EqRate,BaRate,ReactionSystem(iReac)%Constants,T(1))     
-          CALL ReactionDirection(k,EqRate,BaRate,iReac)
-        CASE ('DTEMP5')
-          CALL DTemp5Compute(EqRate,BaRate,ReactionSystem(iReac)%Constants,T(1))     
-          CALL ReactionDirection(k,EqRate,BaRate,iReac)
-        CASE ('TROE')
-          CALL TroeCompute(k,ReactionSystem(iReac)%Constants,T(1),mAir)
-        CASE ('TROEQ')
-          CALL TroeEqCompute(k,ReactionSystem(iReac)%Constants,T(1),mAir)
-        CASE ('TROEF')
-          CALL TroeFCompute(k,ReactionSystem(iReac)%Constants,T(1),mAir)
-        CASE ('TROEQF')
-          CALL TroeEqfCompute(k,ReactionSystem(iReac)%Constants,T(1),mAir)
-        CASE ('TROEXP')
-          CALL TroeXPCompute(k,ReactionSystem(iReac)%Constants,T(1),mAir)
-        CASE ('TROEMCM')
-          CALL TroeMCMCompute(k,ReactionSystem(iReac)%Constants,T(1),mAir)!
-        CASE ('SPEC1')
-          CALL Spec1Compute(k,ReactionSystem(iReac)%Constants,mAir)
-        CASE ('SPEC2')
-          CALL Spec2Compute(k,ReactionSystem(iReac)%Constants,T(1),mAir)
-        CASE ('SPEC3')
-          CALL Spec3Compute(k,ReactionSystem(iReac)%Constants,T(1),mAir)
-        CASE ('SPEC4')
-          CALL Spec4Compute(k,ReactionSystem(iReac)%Constants,T(1),mAir)
-        CASE ('SPEC1MCM')
-          CALL SPEC1MCMCompute(k,ReactionSystem(iReac)%Constants,T(1),mAir)
-        CASE ('SPEC2MCM')
-          CALL SPEC2MCMCompute(k,ReactionSystem(iReac)%Constants,T(1))
-        CASE ('SPEC3MCM')
-          CALL SPEC3MCMCompute(k,ReactionSystem(iReac)%Constants,mAir)
-        CASE ('SPEC4MCM')
-          CALL Spec4MCMCompute(k,ReactionSystem(iReac)%Constants,T(1))
-        CASE ('SPEC5MCM')
-          CALL Spec5MCMCompute(k,ReactionSystem(iReac)%Constants,T(1),mAir)
-        CASE ('SPEC6MCM')
-          CALL Spec6MCMCompute(k,ReactionSystem(iReac)%Constants,T(1))
-        CASE ('SPEC7MCM')
-          CALL Spec7MCMCompute(k,ReactionSystem(iReac)%Constants,T(1))
-        CASE ('SPEC8MCM')
-          CALL Spec8MCMCompute(k,ReactionSystem(iReac)%Constants,T(1),mAir)
-        CASE ('T1H2O')
-          CALL T1H2OCompute(k,ReactionSystem(iReac)%Constants,T(1))
-        CASE ('S4H2O')
-          CALL S4H2OCompute(k,ReactionSystem(iReac)%Constants,T(1),mAir)
-        CASE ('EQUI')
-          CALL EquiCompute(k,ReactionSystem(iReac)%Constants)
-        CASE ('PHOTO')    ! kpp
-          CALL PHOTO(k,ReactionSystem(iReac)%Constants,Time)
-        CASE ('PHOTO2')   ! kpp
-          CALL PHOTO2(k,ReactionSystem(iReac)%Constants,Time)
-        CASE ('PHOTO3')   ! kpp
-          CALL PHOTO3(k,ReactionSystem(iReac)%Constants,Time)
-        CASE DEFAULT
-          WRITE(*,*) 'Reaction  ',iReac,':   ',TRIM(ReactionSystem(iReac)%Line1)
-          WRITE(*,*) 'Unknown ReactionType: ',ADJUSTL(ReactionSystem(iReac)%TypeConstant)
-          CALL FinishMPI()
-          STOP 'STOP Rates_Mod'
-      END SELECT
-    END SUBROUTINE ComputeRateConstant
-    SUBROUTINE vComputeRateConstant(k,DkdT,T,Time,chi,mAir,y_conc,Meff)
-      REAL(dp), INTENT(OUT) :: k(neq), DkdT(neq)
+      M = ONE
+
+      IF(nFAC_H2>0)    M(RTind2%iFAC_H2)   = ((mH2*mair)**fac_exp)*fac_A
+      IF(nFAC_O2N2>0)  M(RTind2%iFAC_O2N2) = (((mO2*mair)*(mN2*mair))**fac_exp)*fac_A
+      IF(nFAC_M>0)     M(RTind2%iFAC_M)    = (mair**fac_exp)*fac_A
+      IF(nFAC_O2>0)    M(RTind2%iFAC_O2)   = ((mO2*mair)**fac_exp)*fac_A
+      IF(nFAC_N2>0)    M(RTind2%iFAC_N2)   = ((mN2*mair)**fac_exp)*fac_A
+      IF(nFAC_H2O>0)   M(RTind2%iFAC_H2O)  = (mH2O**fac_exp)*fac_A
+      IF(nFAC_RO2>0)   M(RTind2%iFAC_RO2)  = SUM(Conc(RO2))
+      IF(nFAC_O2O2>0)  M(RTind2%iFAC_O2O2) = (((mO2*mair)*(mO2*mair))**fac_exp)*fac_A
+      !IF(nFAC_aH2O>0) M(RTind2%iFAC_aH2O) = aH2OmolperL*LWC*mol2part
+      IF(nFAC_RO2aq>0) M(RTind2%iFAC_RO2aq) = SUM(Conc(RO2aq))
+
+    END FUNCTION EffectiveMolecularity
+
+    SUBROUTINE ComputeRateConstant(k,T,Time,chi,mAir,Conc,Meff)
+      REAL(dp), INTENT(OUT) :: k(neq)
       REAL(dp), INTENT(IN) :: Time, mAir, chi(:)
       REAL(dp), INTENT(IN) :: T(:)
-      REAL(dp), INTENT(IN) :: y_conc(:)
+      REAL(dp), INTENT(IN) :: Conc(:)
       REAL(dp), INTENT(INOUT) :: Meff(neq)
 
       REAL(dp) :: k_DC(nDCONST,2), k_T1(nDTEMP,2), k_T2(nDTEMP2,2), k_T3(nDTEMP3,2)
       REAL(dp) :: k_T4(nDTEMP4,2), k_T5(nDTEMP5,2), mesk(nMeskhidze,2)
 
-      
-      DkdT   = ZERO
+      k = ZERO
 
       ! *** Photolytic reactions
       IF (nPHOTAB>0)  k(RTind2%iPHOTab)  = vPhoABCompute ( Time, chi )
@@ -592,9 +403,9 @@
       IF (nTEMP4>0) k(RTind2%iTEMP4) = vTemp4Compute( T )
 
       ! *** specieal aqua reactions
-      IF (nASPEC1>0) k(RTind2%iASPEC1) = vAspec1Compute( T, y_conc(Hp_ind) )
-      IF (nASPEC2>0) k(RTind2%iASPEC2) = vAspec2Compute( T, y_conc(Hp_ind) )
-      IF (nASPEC3>0) k(RTind2%iASPEC3) = vAspec3Compute( T, y_conc(Hp_ind) )
+      IF (nASPEC1>0) k(RTind2%iASPEC1) = vAspec1Compute( T, Conc(Hp_ind) )
+      IF (nASPEC2>0) k(RTind2%iASPEC2) = vAspec2Compute( T, Conc(Hp_ind) )
+      IF (nASPEC3>0) k(RTind2%iASPEC3) = vAspec3Compute( T, Conc(Hp_ind) )
       
       ! *** dissociation reactions
       IF (nDCONST>0) THEN
@@ -663,111 +474,9 @@
       IF (nPHOTO2kpp>0) k(RTind2%iPHOTO2kpp) = vPhoto2kppCompute( Time, Chi(3) )
       IF (nPHOTO3kpp>0) k(RTind2%iPHOTO3kpp) = vPhoto3kppCompute( Time, Chi(3) )
 
-    END SUBROUTINE vComputeRateConstant
-    !
-    !
-    SUBROUTINE ReactionDirection(ReacConst,EquiRate,BackRate,iReac)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: EquiRate, BackRate
-      INTEGER :: iReac
-      !iReac
-      IF ( ReactionSystem(iReac)%bR ) THEN
-        ReacConst = BackRate
-      ELSE
-        ReacConst = EquiRate * BackRate
-      END IF
-    END SUBROUTINE ReactionDirection   
-    ! not nessessary anymore
-    !SUBROUTINE vReactionDirection(k,kEq,kBr)
-    !  REAL(dp)  :: k(:)
-    !  REAL(dp), INTENT(IN)    :: kEq(:), kBr(:)
-    !  
-    !  k(RTind2%iDback) = kBr
-    !  k(RTind2%iDforw) = kEq * kBr
-    !END SUBROUTINE vReactionDirection   
-    !
-    !=====================================================================!
-    ! ===  Multiplication with FACTOR
-    !=====================================================================!
-    !*****************************************************************
-    SUBROUTINE EffectiveMolecularity(M,Conc,iReac,LWC)
-      !OUT
-      REAL(dp), INTENT(OUT) :: M
-      !IN
-      REAL(dp), INTENT(IN)  :: Conc(:)
-      REAL(dp), INTENT(IN)  :: LWC
-      INTEGER, INTENT(IN) :: iReac
-      INTEGER :: i
-      !TEMP
-      !
-      !print*, 'debugg ro2=',SUM(y_conc(RO2))
-      !END DO
-      !stop
-      !
-      !
-      M = ONE
-      IF (ReactionSystem(iReac)%Factor(1:1)=='$') THEN
+    END SUBROUTINE ComputeRateConstant
+    
 
-        SELECT CASE (ReactionSystem(iReac)%Factor)
-          CASE ('$H2')
-            M=((mH2*mair)**fac_exp)*fac_A
-          CASE ('$O2N2')
-            M=(((mO2*mair)*(mN2*mair))**fac_exp)*fac_A
-          CASE ('$M')
-            M=(mair**fac_exp)*fac_A
-          CASE ('$O2')
-            M=((mO2*mair)**fac_exp)*fac_A
-          CASE ('$N2')
-            M=((mN2*mair)**fac_exp)*fac_A
-          CASE ('$H2O')
-            M=(mH2O**fac_exp)*fac_A
-          CASE ('$RO2')
-            M=SUM(Conc(RO2))
-          CASE ('$O2O2')
-            M=(((mO2*mair)**TWO)**fac_exp)*fac_A
-          CASE ('$aH2O')
-            !k=k*aH2OmolperL*LWC*mol2part
-          CASE ('$RO2aq')
-            M=SUM(Conc(RO2aq))
-          CASE ('$+M','$(+M)')
-            M=SUM(Conc)
-            IF (ALLOCATED(ReactionSystem(iReac)%TBidx)) THEN
-              M = M - SUM(( ONE - ReactionSystem(iReac)%TBalpha) &
-                &             * Conc(ReactionSystem(iReac)%TBidx))
-            END IF
-            !if (ireac==590.or.ireac==591) print*, '590,591 M = ',M
-          CASE DEFAULT
-            WRITE(*,*) 'Reaction: ',iReac
-            CALL FinishMPI()
-            STOP 'Unknown FACTOR (error at Rate calc)'
-        END SELECT
-
-      END IF
-
-    END SUBROUTINE EffectiveMolecularity
-    SUBROUTINE vEffectiveMolecularity(M,Conc,LWC)
-      !OUT
-      REAL(dp), INTENT(OUT) :: M(neq)
-      !IN
-      REAL(dp), INTENT(IN)  :: Conc(:)
-      REAL(dp), INTENT(IN)  :: LWC
-      !
-      M = ONE
-
-      IF(nFAC_H2>0)    M(RTind2%iFAC_H2)   = ((mH2*mair)**fac_exp)*fac_A
-      IF(nFAC_O2N2>0)  M(RTind2%iFAC_O2N2) = (((mO2*mair)*(mN2*mair))**fac_exp)*fac_A
-      IF(nFAC_M>0)     M(RTind2%iFAC_M)    = (mair**fac_exp)*fac_A
-      IF(nFAC_O2>0)    M(RTind2%iFAC_O2)   = ((mO2*mair)**fac_exp)*fac_A
-      IF(nFAC_N2>0)    M(RTind2%iFAC_N2)   = ((mN2*mair)**fac_exp)*fac_A
-      IF(nFAC_H2O>0)   M(RTind2%iFAC_H2O)  = (mH2O**fac_exp)*fac_A
-      IF(nFAC_RO2>0)   M(RTind2%iFAC_RO2)  = SUM(Conc(RO2))
-      IF(nFAC_O2O2>0)  M(RTind2%iFAC_O2O2) = (((mO2*mair)*(mO2*mair))**fac_exp)*fac_A
-      !IF(nFAC_aH2O>0) M(RTind2%iFAC_aH2O) = aH2OmolperL*LWC*mol2part
-      IF(nFAC_RO2aq>0) M(RTind2%iFAC_RO2aq) = SUM(Conc(RO2aq))
-
-    END SUBROUTINE vEffectiveMolecularity
-    !*****************************************************************
-    !
     !=========================================================================!
     !                  calculate sun 
     !=========================================================================!
@@ -901,6 +610,37 @@
       !--- set Zenith Angle
       Chi =  1.745329252e-02_dp * ZR/DR
     END FUNCTION Zenith
+
+    FUNCTION UpdateSun(Time) RESULT(Sun)
+      !--------------------------------------------------------------------
+      ! Input:
+      !   - Time
+      REAL(dp) :: Time
+      !--------------------------------------------------------------------!
+      ! Output:
+      !   - Sun
+      REAL(dp)  :: Sun
+      !--------------------------------------------------------------------!
+      ! Temporary variables:
+      REAL(dp), PARAMETER :: SunRise=4.50_dp, SunSet=19.50_dp
+      REAL(dp) :: Thour, Tlocal, Ttmp
+      !
+      Thour  = Time / HOUR
+      Tlocal = Thour - FLOOR(Thour/hourday)*hourday
+      !
+      IF( (Tlocal>=SunRise) .AND. (Tlocal<=SunSet) ) THEN
+        Ttmp = (TWO*Tlocal-SunRise-SunSet) / (SunSet-SunRise);
+        IF ( Ttmp >ZERO ) THEN
+          Ttmp =  Ttmp * Ttmp
+        ELSE
+          Ttmp = -Ttmp * Ttmp
+        END IF
+        Sun = (ONE+COS(Pi*Ttmp)) * rTWO
+      ELSE
+        Sun = ZERO
+      END IF
+    END FUNCTION UpdateSun
+   
   !========================================================================!
   !                          GASEOUS REACTIONS                             !
   !                          -----------------                             !
@@ -915,33 +655,6 @@
   !   - Reaction Constant                                                  !
   !------------------------------------------------------------------------!
 
-    !*****************************************************************
-    SUBROUTINE PhoABCCompute(ReacConst,Constants,Time,chi)
-      REAL(dp) :: ReacConst,Time
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Chi(:)
-      !
-      REAL(dp) :: ChiZ,yChiZ,EyChiZ
-      !
-      !CALL Zenith(Time,chi)
-      IF (Chi(1)<PiHalf) THEN
-        ChiZ=Chi(1)*Constants(3)
-        IF (ChiZ<PiHalf) THEN
-          yChiZ=Constants(2)*(One-One/COS(ChiZ))
-          IF (yChiZ>-30.0d0) THEN
-            EyChiZ=EXP(yChiZ)
-          ELSE
-            EyChiZ=9.357d-14
-          END IF
-        ELSE
-          EyChiZ=9.357d-14
-        END IF
-        ReacConst=Dust*Constants(1)*EyChiz
-      ELSE
-        ReacConst=ZERO
-      END IF
-    END SUBROUTINE PhoABCCompute
-    !
     FUNCTION vPhoABCCompute( Time, chi ) RESULT(kPHOTabc)
       REAL(dp)  :: kPHOTabc(nPHOTabc)
       REAL(dp), INTENT(IN)  :: Time, Chi(:)
@@ -967,21 +680,7 @@
         kPHOTabc = ZERO
       END IF
     END FUNCTION vPhoABCCompute
-    !*****************************************************************
-   
-    
-    !*****************************************************************
-    SUBROUTINE PhoABCompute(ReacConst,Constants,Time,Chi)
-      REAL(dp) :: ReacConst,Time,Chi(:)
-      REAL(dp) :: Constants(:)
-      !
-      !CALL Zenith(Time,chi)
-      IF (Chi(1)<PiHalf) THEN
-        ReacConst=Dust*Constants(1)*EXP(-Constants(2)/COS(Chi(1)))
-      ELSE
-        ReacConst=ZERO
-      END IF
-    END SUBROUTINE PhoABCompute
+
     FUNCTION vPhoABCompute(Time,Chi) RESULT(kPHOTab)
       REAL(dp)  :: kPHOTab(nPHOTab)
       REAL(dp), INTENT(IN)  :: Time, Chi(:)
@@ -992,25 +691,7 @@
         kPHOTab = ZERO
       END IF
     END FUNCTION vPhoABCompute
-    !*****************************************************************
-   
     
-    !*****************************************************************
-    SUBROUTINE PhoMCMCompute(ReacConst,Constants,Time,chi)
-      REAL(dp) :: ReacConst,Time
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Chi(:),chiz,ychiz
-      !
-      !CALL Zenith(Time,chi)
-      !---  MCM version
-      IF (Chi(1)<PiHalf) THEN
-        chiz=EXP(-Constants(3)*(One/COS(chi(1))))
-        ychiz=(COS(chi(1)))**(Constants(2))
-        ReacConst=Dust*Constants(1)*ychiz*chiz
-      ELSE
-        ReacConst=ZERO
-      END IF
-    END SUBROUTINE PhoMCMCompute
     FUNCTION vPhoMCMCompute(Time,Chi) RESULT(kPHOTmcm)
       REAL(dp)  :: kPHOTmcm(nPHOTmcm)
       REAL(dp), INTENT(IN)  :: Time, Chi(:)
@@ -1025,23 +706,15 @@
         kPHOTmcm = ZERO
       END IF
     END FUNCTION vPhoMCMCompute
-    !*****************************************************************
-    !
+    
     !
     !==========================================================================!
     ! ===  Constant reactions
     !==========================================================================!
-    !*****************************************************************
-    SUBROUTINE ConstCompute(ReacConst,Constants)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      ReacConst=Constants(1)
-    END SUBROUTINE ConstCompute
     FUNCTION vConstCompute() RESULT(kCONST)
       REAL(dp)  :: kCONST(nCONST)
       kCONST = RTpar2%CONST
     END FUNCTION vConstCompute
-    !*****************************************************************
     !
     !
     !==========================================================================!
@@ -1054,77 +727,35 @@
     ! Output:
     !   - Reaction constant
     !--------------------------------------------------------------------------!
-    !*****************************************************************
-    SUBROUTINE Temp1Compute(ReacConst,Constants,Temp)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      !
-      ReacConst=Constants(1)*EXP(-Constants(2)/Temp)
-    END SUBROUTINE Temp1Compute
     FUNCTION vTemp1Compute(Temp) RESULT(kTEMP1)
       REAL(dp)  :: kTEMP1(nTEMP1)
       REAL(dp), INTENT(IN)  :: Temp(:)
       
-      !print *, ' erste param = ',RTpar2%TEMP1(1,1) ,RTpar2%TEMP1(1,2)
-      !print *, ' erste temp1 = ',RTpar2%TEMP1(1,1) * EXP(-RTpar2%TEMP1(1,2)*Temp(6))
       kTEMP1 = RTpar2%TEMP1(:,1) * EXP(-RTpar2%TEMP1(:,2)*Temp(6))
     END FUNCTION vTemp1Compute
-    !*****************************************************************
-    !
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE Temp2Compute(ReacConst,Constants,Temp)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      !
-      ReacConst=Constants(1)*Temp*Temp*EXP(-Constants(2)/Temp)
-    END SUBROUTINE Temp2Compute
+    
     FUNCTION vTemp2Compute(Temp) RESULT(kTEMP2)
       REAL(dp)  :: kTEMP2(nTEMP2)
       REAL(dp), INTENT(IN)  :: Temp(:)
       !
       kTEMP2 = RTpar2%TEMP2(:,1) * Temp(2) * EXP( -RTpar2%TEMP2(:,2)*Temp(6) )
     END FUNCTION vTemp2Compute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE Temp3Compute(ReacConst,Constants,Temp)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      !
-      ReacConst=Constants(1)*EXP(Constants(2)*(One/Temp-InvRefTemp))
-    END SUBROUTINE Temp3Compute
+    
     FUNCTION vTemp3Compute(Temp) RESULT(kTEMP3)
       REAL(dp)  :: kTEMP3(nTEMP3)
       REAL(dp), INTENT(IN)  :: Temp(:)
       !
       kTEMP3 = RTpar2%TEMP3(:,1) * EXP( RTpar2%TEMP3(:,2)*(Temp(6) - InvRefTemp) )
     END FUNCTION vTemp3Compute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE Temp4Compute(ReacConst,Constants,Temp)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      !
-      ReacConst=Constants(1)*Temp*EXP(-Constants(2)/Temp)
-    END SUBROUTINE Temp4Compute
+    
     FUNCTION vTemp4Compute(Temp) RESULT(kTEMP4)
       REAL(dp)  :: kTEMP4(nTEMP4)
       REAL(dp), INTENT(IN)  :: Temp(:)
       !
       kTEMP4 = RTpar2%TEMP4(:,1) * Temp(1) * EXP( -RTpar2%TEMP4(:,2)*Temp(6) )
     END FUNCTION vTemp4Compute
-    !*****************************************************************
-    !
-    !
+    
+   
     !   ***************************************************************
     !   ** Species nondimensional gibbs potentials                   **
     !   ***************************************************************
@@ -1235,216 +866,6 @@
 
       !stop
     END SUBROUTINE scTHERMO
-    !
-    !
-    SUBROUTINE TempXCompute(k,rK_eq,kf,Const,T,iReac)
-      !OUT:
-      REAL(dp) :: k               ! Reaction rate constant
-      REAL(dp) :: kf              ! Forward rate constant
-      REAL(dp) :: rK_eq           ! reciprocal Equilibrium rate constant
-      !IN:
-      REAL(dp) :: Const(:)    ! Arrhenius parameter A,b,E_a
-      REAL(dp) :: T(:)            ! Temperature array SIZE=8
-      INTEGER :: iReac                  
-      !temp
-      REAL(dp) :: rRcT
-
-      rRcT = rRcal*T(6)
-      kf   = Const(1) * EXP(Const(2)*T(8) - Const(3)*rRcT)
-
-      IF ( ReactionSystem(iReac)%bR ) THEN
-        ! backward without extra coef, equiv constant nessesarry
-        ! compute inverse equiv. constant
-        ! explicite reverse reaction will be computed like 
-        ! standart forward reaction
-        rK_eq = EXP(+DelGFE(iReac)) * rFacEq**(-sumBAT(iReac))
-        k     = kf * rK_eq
-        !print*, ' deb:: rK_eq,Delgfe,rFacEq = ',rK_eq,rK_eq,rFacEq
-      ELSE
-        k     = Const(1) * EXP(Const(2)*T(8) - Const(3)*rRcT)
-      END IF
-    END SUBROUTINE TempXCompute
-    !
-    !
-    SUBROUTINE DiffTempXCompute(Dkcoef,Const,T,iReac)
-      REAL(dp) :: Dkcoef
-      REAL(dp) :: DfRdT, DbRdT, DeRdT
-      REAL(dp) :: Const(:)
-      REAL(dp) :: T(:)              ! temperatur array
-      INTEGER :: iReac
-      !
-      !TEMP
-      REAL(dp) :: rRcT
-
-      rRcT  = rRcal*T(6)
-      DfRdT = Const(2) + Const(3)*rRcT     ! (21) Perini
-     
-      IF ( ReactionSystem(iReac)%bR ) THEN
-        ! reverse reaction using equiv constant
-        DeRdT  = sumBAT(iReac)*T(6) + DDelGFEdT(iReac)   ! (23) Perini
-        Dkcoef = (DfRdT + DeRdT)*T(6)
-      ELSE
-        Dkcoef = DfRdT*T(6)
-      END IF
-  
-    END SUBROUTINE DiffTempXCompute
-    
-   
-    SUBROUTINE PressXCompute(k,k0,kinf,iR,T,Meff)
-      REAL(dp) :: k
-      !
-      REAL(dp) :: T(:)
-      REAL(dp) :: Meff
-      INTEGER :: iR
-      REAL(dp) :: FACtroe
-      REAL(dp) :: logF_Troe, log10_Fcent, log10_Pr
-      REAL(dp) :: cnd(3)
-      !
-      REAL(dp) :: k0 , k0M , kinf, rK_eq, Fcent, rRcT, FTL
-      REAL(dp) :: High(3), Low(3)
-    
-      IF (ReactionSystem(iR)%Line3=='LOW') THEN
-        High = ReactionSystem(iR)%Constants
-        Low  = ReactionSystem(iR)%LowConst
-      ELSE
-        High = ReactionSystem(iR)%HighConst
-        Low  = ReactionSystem(iR)%Constants
-      END IF
-
-      rRcT = rRcal*T(6)
-      k0   = Low(1)  * EXP(  Low(2)*T(8) -  Low(3)*rRcT )
-      kinf = High(1) * EXP( High(2)*T(8) - High(3)*rRcT )
-      
-      k0M  = k0*Meff
-      Pr   = k0M / (kinf+k0M)
-   
-      IF (ALLOCATED(ReactionSystem(iR)%TroeConst)) THEN
-        ! Troe form
-        FTL = TroeFactor(iR,T)
-      ELSE
-        ! Lind form
-        FTL = Pr
-      END IF
-     
-      ! direction (forward - backward)
-      IF ( ReactionSystem(iR)%bR ) THEN
-        rK_eq = EXP(+DelGFE(iR)) * rFacEq**(-sumBAT(iR))
-        k = kinf * FTL * rK_eq
-      ELSE
-        k = kinf * FTL
-      END IF
-
-    END SUBROUTINE PressXCompute
-
-
-    SUBROUTINE NumDiffPressXCompute(DiffFactor_PD,k,iR,T,Meff)
-      REAL(dp), INTENT(OUT) :: DiffFactor_PD
-
-      REAL(dp), INTENT(IN)  :: k, Meff, T(:)
-
-      REAL(dp) :: kdel, k0, kinf
-      INTEGER        :: iR
-      REAL(dp) :: Tdel(10)
-      REAL(dp) :: delTemp
-
-      delTemp = 1.0d-08
-
-      CALL UpdateTempArray(Tdel , T(1)+delTemp)
-      CALL PressXCompute(kdel, k0, kinf, iR, Tdel, Meff)
-
-      DiffFactor_PD = (kdel - k) / delTemp
-      DiffFactor_PD = DiffFactor_PD/k
-
-    END SUBROUTINE NumDiffPressXCompute
-
-
-    SUBROUTINE DiffPressXCompute(DiffFactor_PD,k0,kinf,iR,T,Meff)
-      !OUT
-      REAL(dp) :: DiffFactor_PD
-      !IN
-      INTEGER :: iR 
-      REAL(dp) :: k0, kinf, Meff
-      REAL(dp) :: cnd(3)
-      REAL(dp) :: T(10)
-      !Temp
-      REAL(dp) :: Dk0dT, DeRdT, DkinfdT, rRcT, rkinfpk0M
-      REAL(dp) :: dFTL_dT
-      REAL(dp) :: log10_Prc, log10_FTroe, dlog10_PrdT
-
-      REAL(dp) :: TempDiffFactor    ! forward or backward
-      REAL(dp) :: tmplog10
-      REAL(dp) :: DlogF_Troedlog_Pr, Dlog_F_TroedT
-      REAL(dp) :: DF_PDdT
-
-      REAL(dp) :: DF_PDdT_Troe
-      !
-      REAL(dp) :: High(3), Low(3)
-      !
-      IF (ReactionSystem(iR)%Line3=='LOW') THEN
-        High = ReactionSystem(iR)%Constants
-        Low  = ReactionSystem(iR)%LowConst
-      ELSE
-        High = ReactionSystem(iR)%HighConst
-        Low  = ReactionSystem(iR)%Constants
-      END IF
-     
-      ! Lind mechnism also nessesarry for Troe 
-      rRcT    = rRcal*T(6)
-      Dk0dT   =  Low(2) +  Low(3)*rRcT
-      DkinfdT = High(2) + High(3)*rRcT
-
-      rkinfpk0M = ONE / (kinf + k0*Meff)
-      dFTL_dT   = Meff*k0*kinf*(rkinfpk0M*rkinfpk0M) * (Dk0dT - DkinfdT)*T(6)
-      
-      IF (ALLOCATED(ReactionSystem(iR)%TroeConst)) THEN
-        ! Troe mechanism
-        DF_PDdT = DiffTroeFactor(Dk0dT,DkinfdT,dFTL_dT,T)
-      ELSE
-        ! Lind mechnism
-        DF_PDdT = dFTL_dT
-      END IF
-      
-      IF (ReactionSystem(iR)%bR) THEN
-        DeRdT  = - sumBAT(iR)*T(6) - DDelGFEdT(iR)
-        TempDiffFactor = DkinfdT - DeRdT
-      ELSE
-        TempDiffFactor = DkinfdT
-      END IF
-      !
-      DiffFactor_PD  = ( DF_PDdT + TempDiffFactor )*T(6)
-    
-    END SUBROUTINE DiffPressXCompute
-
-
-    FUNCTION TroeFactor(iR,T)
-      !OUT
-      REAL(dp) :: TroeFactor
-      !IN
-      INTEGER        :: iR
-      REAL(dp) :: T(:)
-      !TEMP
-      REAL(dp) :: Fcent, logF_Troe, FACtroe
-      REAL(dp) :: Troe(4)
-
-
-      Troe = ReactionSystem(iR)%TroeConst
-    
-      Fcent = (ONE - Troe(1)) * EXP(-T(1)/Troe(2)) &
-            &      + Troe(1)  * EXP(-T(1)/Troe(3)) &
-            &      +            EXP(-T(6)*Troe(4))
-      
-      log10_Fcent = LOG10(Fcent)
-      log10_Pr    = LOG10(Pr/(ONE-Pr))
-
-      cTroe = -0.40d0 - 0.67d0*log10_Fcent    ! will be used for deriv too 
-      n1Troe =  0.75d0 - 1.27d0*log10_Fcent
-      
-      FACtroe = (log10_Pr + cTroe) / (n1Troe - dTroe*(log10_Pr + cTroe))
-
-      logF_Troe  = log10_Fcent / (ONE + FACtroe*FACtroe)
-      TroeFactor = Pr * TEN**logF_Troe
-    
-    END FUNCTION TroeFactor
 
 
     FUNCTION TroeFactorVec(T)
@@ -1466,8 +887,8 @@
       vlog10_Fcent = LOG10(Fcent)
       vlog10_Pr    = LOG10(vPr(RTind%iTroe)/(ONE-vPr(RTind%iTroe)))
 
-      vcTroe  = -0.40d0 - 0.67d0*vlog10_Fcent    ! will be used for deriv too 
-      vn1Troe =  0.75d0 - 1.27d0*vlog10_Fcent
+      vcTroe  = -0.40e0_dp - 0.67e0_dp*vlog10_Fcent    ! will be used for deriv too 
+      vn1Troe =  0.75e0_dp - 1.27e0_dp*vlog10_Fcent
       
       FACtroe = (vlog10_Pr+vcTroe) / (vn1Troe-dTroe*(vlog10_Pr+vcTroe))
 
@@ -1480,35 +901,6 @@
       !stop
     
     END FUNCTION TroeFactorVec
-
-    FUNCTION DiffTroeFactor(Dk0dT,DkinfdT,dFTL_dT,T)
-      REAL(dp) :: DiffTroeFactor
-      !IN
-      REAL(dp) :: Dk0dT, DkinfdT, dFTL_dT, Pr
-      REAL(dp) :: T(:)
-      !TEMP
-      REAL(dp) :: dlog10_PrdT, log10_Prc, tmplog10
-      REAL(dp) :: DlogF_Troedlog_Pr, Dlog_F_TroedT
-      REAL(dp) :: log10_FTroe
-
-      ! Troe mechanism
-
-      dlog10_PrdT = rln10 * (Dk0dT - DkinfdT) * T(6)
-
-      log10_Prc   = log10_Pr + cTroe
-
-      DlogF_Troedlog_Pr = - TWO*n1Troe*log10_Fcent*log10_Prc             &
-                        &       * ( n1Troe - dTroe*log10_Prc )           &
-                        &  / (  n1Troe**2 - TWO*n1Troe*dTroe*log10_Prc +  &
-                        &      (dTroe**2 + ONE)*log10_Prc*log10_Prc  )**2
-
-      Dlog_F_TroedT     = DlogF_Troedlog_Pr * dlog10_PrdT
-      tmplog10          = log10_Prc   / (n1Troe - dTroe*log10_Prc)
-      log10_FTroe       = log10_Fcent / (ONE   + (tmplog10*tmplog10))
-
-      DiffTroeFactor    = TEN**log10_FTroe * (dFTL_dT + Pr*ln10*Dlog_F_TroedT)
-
-    END FUNCTION DiffTroeFactor
 
     FUNCTION DTroeFactorVec(Dk0dT,DkinfdT,dFTL_dT,T)
       REAL(dp) :: DTroeFactorVec(RTind%nTroe)
@@ -1540,7 +932,7 @@
 
     END FUNCTION DTroeFactorVec
 
-    SUBROUTINE UpdateTempArray(TempArr,Temperature)
+    FUNCTION UpdateTempArray(Temperature) RESULT(TempArr)
       REAL(dp) :: Temperature 
       REAL(dp) :: TempArr(10)
       !
@@ -1555,7 +947,7 @@
       TempArr(8)  = LOG(Temperature)           ! ln(T)
       TempArr(9)  = SQRT(Temperature)           ! ln(T)
       TempArr(10) = ONE / TempArr(9)
-    END SUBROUTINE UpdateTempArray
+    END FUNCTION UpdateTempArray
     !
     !
     !-------------------------------------------------------------------------
@@ -1608,66 +1000,26 @@
       END WHERE
       d2UdT2 = d2UdT2 * R
     END SUBROUTINE Diff2InternalEnergy
-    !
-    !===  Special reactions for Gas Phase Chemistry 
-    !===  (Check: current%str_type = 'GAS' in ReadChem, nfra=1)
-    !==========================================================================!
-    ! Input:
-    !   - Constants
-    !   - Temperatur
-    !   - mAir
+    
     !--------------------------------------------------------------------------!
-    ! Output:
-    !   - Reaction constant
-    !--------------------------------------------------------------------------!
-    !
-    !
-    !
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE TroeCompute(ReacConst,Constants,Temp,mAir)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp,k1,k2
-      REAL(dp) :: mAir
-      !
-      k1=mAir*Constants(1)*(Temp/300.0d0)**(-Constants(2))
-      k2=Constants(3)*(Temp/300.0d0)**(-Constants(4))
-      ReacConst=k1/(One+k1/k2)*0.6d0**(One/(One+(LOG10(k1/k2))*(LOG10(k1/k2))))
-    END SUBROUTINE TroeCompute
+    
     FUNCTION vTroeCompute(Temp,mAir) RESULT(kTROE)
       REAL(dp)  :: kTROE(nTROE)
       REAL(dp), INTENT(IN)  :: Temp(:) , mAir
       REAL(dp), DIMENSION(nTROE) :: k1, k2, log10_k1k2
-      REAL(dp), PARAMETER   :: F = 0.6d0 
+      REAL(dp), PARAMETER   :: F = 0.6_dp
       
       k1 = RTpar2%TROE(:,1) * (Temp(1)*r300)**(-RTpar2%TROE(:,2)) * mAir
       k2 = RTpar2%TROE(:,3) * (Temp(1)*r300)**(-RTpar2%TROE(:,4))
       log10_k1k2 = LOG10(k1/k2)
       kTROE = k1 / (One + k1/k2) * F**(One / (One + log10_k1k2*log10_k1k2) )
     END FUNCTION vTroeCompute
-    !*****************************************************************
-   
-    
-    !*****************************************************************
-    SUBROUTINE TroeMCMCompute(ReacConst,Constants,Temp,mAir)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp,k1,k2,fc
-      REAL(dp) :: mAir
-      !
-      k1=mAir*Constants(1)*(Temp/298.d0)**(Constants(2))*EXP(Constants(3)/Temp)
-      k2=Constants(4)*(Temp/298.d0)**(Constants(5))*EXP(Constants(6)/Temp)
-      fc=Constants(7)*EXP(Constants(8)/Temp)+Constants(9)*EXP(Temp/Constants(10))
-      ReacConst=k1/(One+k1/k2)*                                                  &
-      &         fc**(One/(One+(LOG10(k1/k2)/(0.75d0-1.27d0*LOG10(fc)))**2.0d0))
-    END SUBROUTINE TroeMCMCompute
+      
     FUNCTION vTroeMCMCompute(Temp,mAir) RESULT(kTROEmcm)
       REAL(dp)  :: kTROEmcm(nTROEmcm)
       REAL(dp), INTENT(IN)  :: Temp(:) , mAir
       REAL(dp), DIMENSION(nTROEmcm) :: k1, k2, Fc, tmpTROE
-      REAL(dp), PARAMETER   :: n=0.75d0, d=1.27d0
+      REAL(dp), PARAMETER   :: n=0.75_dp, d=1.27_dp
       !
       k1 = RTpar2%TROEmcm(:,1)*(Temp(1)*InvRefTemp)**RTpar2%TROEmcm(:,2)  &
       &  * EXP(RTpar2%TROEmcm(:,3)*Temp(6))*mAir
@@ -1678,21 +1030,8 @@
       tmpTROE  = LOG10(k1/k2)/(n - d*LOG10(fc))
       kTROEmcm = k1 / (One + k1/k2) * Fc**(One / (One + tmpTROE*tmpTROE))
     END FUNCTION vTroeMCMCompute
-    !*****************************************************************
-  
- 
-    !*****************************************************************
+
     !---  Troe with variable F factor
-    SUBROUTINE TroeFCompute(ReacConst,Constants,Temp,mAir) ! Barthel
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp,k1,k2
-      REAL(dp) :: mAir
-      !
-      k1=mAir*Constants(1)*(Temp/300.0d0)**(-Constants(2))
-      k2=Constants(3)*(Temp/300.0d0)**(-Constants(4))
-      ReacConst=k1/(One+k1/k2)*Constants(5)**(One/(One+(LOG10(k1/k2))*(LOG10(k1/k2))))
-    END SUBROUTINE TroeFCompute
     FUNCTION vTroeFCompute(Temp,mAir) RESULT(kTROEf)  ! Barthel
       REAL(dp)  :: kTROEf(nTROEf)
       REAL(dp), INTENT(IN)  :: Temp(:) , mAir
@@ -1703,27 +1042,13 @@
       log10_k1k2 = LOG10(k1/k2)
       kTROEf = k1 / (One+k1/k2) * RTpar2%TROEf(:,5)**(One / (One + log10_k1k2*log10_k1k2))
     END FUNCTION vTroeFCompute
-    !*****************************************************************
     
-   
-    !*****************************************************************
     !---  Troe equilibrium
-    SUBROUTINE TroeEqCompute(ReacConst,Constants,Temp,mAir)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp,k1,k2,k3
-      REAL(dp) :: mAir
-      !
-      k1=mAir*Constants(1)*(Temp/300.d0)**(-Constants(2))
-      k2=Constants(3)*(Temp/300.d0)**(-Constants(4))
-      k3=k1/(One+k1/k2)*0.6d0**(One/(One+(LOG10(k1/k2))*(LOG10(k1/k2))))
-      ReacConst=k3/(Constants(5)*EXP(Constants(6)/Temp))          
-    END SUBROUTINE TroeEqCompute
     FUNCTION vTroeEqCompute(Temp,mAir) RESULT(kTROEq)
       REAL(dp)  :: kTROEq(nTROEq)
       REAL(dp), INTENT(IN)  :: Temp(:) , mAir
       REAL(dp), DIMENSION(nTROEq) :: k1, k2, k3, log10_k1k2
-      REAL(dp), PARAMETER   :: F = 0.6d0 
+      REAL(dp), PARAMETER   :: F = 0.6_dp
       !
       k1 = RTpar2%TROEq(:,1)*(Temp(1)*r300)**(-RTpar2%TROEq(:,2)) * mAir
       k2 = RTpar2%TROEq(:,3)*(Temp(1)*r300)**(-RTpar2%TROEq(:,4))
@@ -1731,21 +1056,7 @@
       k3 = k1 / (One + k1/k2) * F**(One / (One + log10_k1k2*log10_k1k2))
       kTROEq = k3 / ( RTpar2%TROEq(:,5) * EXP(RTpar2%TROEq(:,6)*Temp(6)) )          
     END FUNCTION vTroeEqCompute
-    !*****************************************************************
     
-    !
-    !*****************************************************************
-    SUBROUTINE TroeEqfCompute(ReacConst,Constants,Temp,mAir) ! Barthel
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp,k1,k2,k3
-      REAL(dp) :: mAir
-      ! 
-      k1=mAir*Constants(1)*(Temp/300.d0)**(-Constants(2))
-      k2=Constants(3)*(Temp/300.0d0)**(-Constants(4))
-      k3=k1/(One+k1/k2)*Constants(7)**(One/(One+(LOG10(k1/k2))*(LOG10(k1/k2))))
-      ReacConst=k3/(Constants(5)*EXP(Constants(6)/Temp))          
-    END SUBROUTINE TroeEqfCompute
     FUNCTION vTroeEqfCompute(Temp,mAir) RESULT(kTROEqf) ! Barthel
       REAL(dp)  :: kTROEqf(nTROEqf)
       REAL(dp), INTENT(IN)  :: Temp(:) , mAir
@@ -1757,22 +1068,8 @@
       k3 = k1 / (One + k1/k2) * RTpar2%TROEqf(:,7)**(One / (One + log10_k1k2*log10_k1k2))
       kTROEqf = k3 / (RTpar2%TROEqf(:,5) * EXP(RTpar2%TROEqf(:,6)*Temp(6)))          
     END FUNCTION vTroeEqfCompute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
+
     !---  modified Troe with variable F factor
-    SUBROUTINE TroeXPCompute(ReacConst,Constants,Temp,mAir) ! Barthel
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp,k1,k2
-      REAL(dp) :: mAir
-      !
-      k1=mAir*Constants(1)*EXP(-Constants(2)/Temp)
-      k2=Constants(3)*EXP(-Constants(4)/Temp)
-      ReacConst=k1/(One+k1/k2)*Constants(5)**(One/(One+          &
-      &         (LOG10(k1/k2))*(LOG10(k1/k2)))) 
-    END SUBROUTINE TroeXPCompute
     FUNCTION vTroeXPCompute(Temp,mAir) RESULT(kTROExp)  ! Barthel
       REAL(dp)  :: kTROExp(nTROExp)
       REAL(dp), INTENT(IN)  :: Temp(:) , mAir
@@ -1783,61 +1080,21 @@
       log10_k1k2 = LOG10(k1/k2)
       kTROExp = k1 / (One + k1/k2) * RTpar2%TROExp(:,5)**(One / (One + log10_k1k2*log10_k1k2)) 
     END FUNCTION vTroeXPCompute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE Spec1Compute(ReacConst,Constants,mAir)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: mAir
-      !
-      ReacConst=Constants(1)*(1.0d0+mAir*Constants(2))
-    END SUBROUTINE Spec1Compute
+    
     FUNCTION vSpec1Compute(mAir) RESULT(kSPEC1)
       REAL(dp)  :: kSPEC1(nSPEC1)
       REAL(dp), INTENT(IN)  :: mAir
       !
       kSPEC1 = RTpar2%SPEC1(:,1) * (ONE + mAir * RTpar2%SPEC1(:,2))
-      !do globi=1,nSPEC1; print*, ' spec1 = ',RTind2%iSPEC1(globi), kSPEC1(globi); enddo
     END FUNCTION vSpec1Compute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE Spec2Compute(ReacConst,Constants,Temp,mAir)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      REAL(dp) :: mAir
-      ! 
-      ReacConst=mAir*Constants(1)*(Temp/300.0d0)**Constants(2)
-    END SUBROUTINE Spec2Compute
-    !
+    
     FUNCTION vSpec2Compute(Temp,mAir) RESULT(kSPEC2)
       REAL(dp)  :: kSPEC2(nSPEC2)
       REAL(dp), INTENT(IN)  :: Temp(:), mAir
       ! 
-      !print*, 'mAir ,temp(1), pars :: ',mAir,temp(1),RTpar2%SPEC2(:,:)
       kSPEC2 = mAir * RTpar2%SPEC2(:,1) * (Temp(1)*r300)**RTpar2%SPEC2(:,2)
-      !do globi=1,nSPEC2; print*, ' spec2 = ',RTind2%iSPEC2(globi), kSPEC2(globi); enddo
     END FUNCTION vSpec2Compute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE Spec3Compute(ReacConst,Constants,Temp,mAir)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp,k1,k2,k3
-      REAL(dp) :: mAir
-      !
-      k1=Constants(1)*EXP(Constants(2)/Temp)
-      k2=Constants(3)*EXP(Constants(4)/Temp)
-      k3=mAir*Constants(5)*EXP(Constants(6)/Temp)
-      ReacConst=k1+k3/(One+k3/k2)
     
-    END SUBROUTINE Spec3Compute
     FUNCTION vSpec3Compute(Temp,mAir) RESULT(kSPEC3)
       REAL(dp)  :: kSPEC3(nSPEC3)
       REAL(dp), INTENT(IN)  :: Temp(:), mAir
@@ -1847,21 +1104,8 @@
       k2 = RTpar2%SPEC3(:,3)*EXP(RTpar2%SPEC3(:,4)*Temp(6))
       k3 = RTpar2%SPEC3(:,5)*EXP(RTpar2%SPEC3(:,6)*Temp(6)) * mAir
       kSPEC3 = k1 + k3 / (One + k3/k2)
-      !do globi=1,nSPEC3; print*, ' spec3 = ',RTind2%iSPEC3(globi), kSPEC3(globi); enddo
     END FUNCTION vSpec3Compute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE Spec4Compute(ReacConst,Constants,Temp,mAir)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      REAL(dp) :: mAir
-      !
-      ReacConst=Constants(1)*EXP(Constants(2)/Temp)+       &
-      &         mAir*Constants(3)*EXP(Constants(4)/Temp)
-    END SUBROUTINE Spec4Compute
+    
     FUNCTION vSpec4Compute(Temp,mAir) RESULT(kSPEC4)
       REAL(dp)  :: kSPEC4(nSPEC4)
       REAL(dp), INTENT(IN)  :: Temp(:), mAir
@@ -1870,37 +1114,14 @@
       kSPEC4 = RTpar2%SPEC4(:,1) * EXP(RTpar2%SPEC4(:,2)*Temp(6)) +   &
       &        RTpar2%SPEC4(:,3) * EXP(RTpar2%SPEC4(:,4)*Temp(6)) * mAir 
     END FUNCTION vSpec4Compute
-    !
-    !*****************************************************************
-    !
-    !*****************************************************************
-    SUBROUTINE Spec1MCMCompute(ReacConst,Constants,Temp,mAir)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      REAL(dp) :: mAir
-      !
-      ReacConst=Constants(1)*(1.0d0+mAir*Constants(2)/     &
-      &         (Constants(3)*300.0d0/Temp))
-    END SUBROUTINE Spec1MCMCompute
+    
     FUNCTION vSpec1MCMCompute(Temp,mAir) RESULT(kSPEC1mcm)
       REAL(dp)  :: kSPEC1mcm(nSPEC1mcm)
       REAL(dp), INTENT(IN)  :: Temp(:), mAir
       
       kSPEC1mcm = RTpar2%SPEC1mcm(:,1)*(ONE + mAir*RTpar2%SPEC1mcm(:,2)*r300*Temp(1)/RTpar2%SPEC1mcm(:,3))
     END FUNCTION vSpec1MCMCompute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE Spec2MCMCompute(ReacConst,Constants,Temp)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      !
-      ReacConst=Constants(1)*(Temp/300.0d0)**              &
-      &         Constants(2)*EXP(Constants(3)/Temp)
-    END SUBROUTINE Spec2MCMCompute
+    
     FUNCTION vSpec2MCMCompute(Temp) RESULT(kSPEC2mcm)
       REAL(dp)  :: kSPEC2mcm(nSPEC2mcm)
       REAL(dp), INTENT(IN)  :: Temp(:)
@@ -1908,35 +1129,14 @@
       kSPEC2MCM = RTpar2%SPEC2mcm(:,1)*(Temp(1)*r300)**RTpar2%SPEC2mcm(:,2) &
                 * EXP(RTpar2%SPEC2mcm(:,3)*Temp(6))
     END FUNCTION vSpec2MCMCompute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE Spec3MCMCompute(ReacConst,Constants,mAir)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: mAir
-      !
-      ReacConst=Constants(1)*(1.0d0+mAir/Constants(2))
-    END SUBROUTINE Spec3MCMCompute
+    
     FUNCTION vSpec3MCMCompute(mAir) RESULT(kSPEC3mcm)
       REAL(dp)  :: kSPEC3mcm(nSPEC3mcm)
       REAL(dp), INTENT(IN)  :: mAir
       !
       kSPEC3mcm = RTpar2%SPEC3mcm(:,1)*(ONE + mAir/RTpar2%SPEC3mcm(:,2))
     END FUNCTION vSpec3MCMCompute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE Spec4MCMCompute(ReacConst,Constants,Temp)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      !
-      ReacConst=Constants(1)*(1.0d0+Constants(2)*                  &
-      &         EXP(Constants(3)/Temp)*H2O)*EXP(Constants(4)/Temp)
-    END SUBROUTINE Spec4MCMCompute
+    
     FUNCTION vSpec4MCMCompute(Temp) RESULT(kSPEC4mcm)
       REAL(dp)  :: kSPEC4mcm(nSPEC4mcm)
       REAL(dp), INTENT(IN)  :: Temp(:)
@@ -1945,43 +1145,18 @@
       &         * EXP(RTpar2%SPEC4mcm(:,3)*Temp(6))*H2O)           &
       &         * EXP(RTpar2%SPEC4mcm(:,4)*Temp(6))
     END FUNCTION vSpec4MCMCompute
-    !*****************************************************************
-    !
-    !*****************************************************************
-    SUBROUTINE Spec5MCMCompute(ReacConst,Constants,Temp,mAir)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp,k1,k2
-      REAL(dp) :: mAir
-      !
-      k1=Constants(1)*mAir*0.21d0*EXP(Constants(2)/Temp)
-      k2=Constants(3)*mAir*0.21d0*EXP(Constants(4)/Temp)
-      ReacConst=(k1*(One-k2))
-    END SUBROUTINE Spec5MCMCompute
+    
     FUNCTION vSpec5MCMCompute(Temp,mAir) RESULT(kSPEC5mcm)
       REAL(dp)  :: kSPEC5mcm(nSPEC5mcm)
       REAL(dp), INTENT(IN)  :: Temp(:), mAir
       REAL(dp), DIMENSION(nSPEC5mcm) :: k1, k2
-      REAL(dp), PARAMETER   :: F = 0.21d0
+      REAL(dp), PARAMETER   :: F = 0.21_dp
       !
       k1 = RTpar2%SPEC5mcm(:,1) * mAir * F * EXP(RTpar2%SPEC5mcm(:,2)*Temp(6))
       k2 = RTpar2%SPEC5mcm(:,3) * mAir * F * EXP(RTpar2%SPEC5mcm(:,4)*Temp(6))
       kSPEC5mcm = k1 * (One - k2)
     END FUNCTION vSpec5MCMCompute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE Spec6MCMCompute(ReacConst,Constants,Temp)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      REAL(dp) :: K_1,K_2
-      !
-      K_1=Constants(1)*EXP(Constants(2)/Temp)
-      K_2=Constants(3)*EXP(Constants(4)/Temp)
-      ReacConst=K_1*(1.0d0-K_2)
-    END SUBROUTINE Spec6MCMCompute
+    
     FUNCTION vSpec6MCMCompute(Temp) RESULT(kSPEC6mcm)
       REAL(dp)  :: kSPEC6mcm(nSPEC6mcm)
       REAL(dp), INTENT(IN)  :: Temp(:)
@@ -1991,20 +1166,7 @@
       k2 = RTpar2%SPEC6mcm(:,3)*EXP(RTpar2%SPEC6mcm(:,4)*Temp(6))
       kSPEC6mcm = k1 * (ONE - k2)
     END FUNCTION vSpec6MCMCompute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE Spec7MCMCompute(ReacConst,Constants,Temp)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      REAL(dp) :: K_1,K_2
-      !
-      K_1=Constants(1)*EXP(Constants(2)/Temp)
-      K_2=Constants(3)*EXP(Constants(4)/Temp)
-      ReacConst=K_1*(Constants(5)-Constants(6)/(One+K_2))
-    END SUBROUTINE Spec7MCMCompute
+    
     FUNCTION vSpec7MCMCompute(Temp) RESULT(kSPEC7mcm)
       REAL(dp)  :: kSPEC7mcm(nSPEC7mcm)
       REAL(dp), INTENT(IN)  :: Temp(:)
@@ -2014,44 +1176,18 @@
       k2 = RTpar2%SPEC7mcm(:,3)*EXP(RTpar2%SPEC7mcm(:,4)*Temp(6))
       kSPEC7mcm = k1 * (RTpar2%SPEC7mcm(:,5) - RTpar2%SPEC7mcm(:,6) / (One + k2))
     END FUNCTION vSpec7MCMCompute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE Spec8MCMCompute(ReacConst,Constants,Temp,mAir)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      REAL(dp) :: mAir
-      REAL(dp) :: K_1,K_2
-      !
-      K_1=Constants(1)*mAir*0.21d0*EXP(Constants(2)/Temp)
-      K_2=Constants(3)*mAir*0.21d0*EXP(Constants(4)/Temp)
-      ReacConst=K_1/((One+K_2)*Temp)
-    END SUBROUTINE Spec8MCMCompute
+    
     FUNCTION vSpec8MCMCompute(Temp,mAir) RESULT(kSPEC8mcm)
       REAL(dp)  :: kSPEC8mcm(nSPEC8mcm)
       REAL(dp), INTENT(IN)  :: Temp(:), mAir
       REAL(dp), DIMENSION(nSPEC8mcm) :: k1, k2
-      REAL(dp), PARAMETER   :: F = 0.21d0
+      REAL(dp), PARAMETER   :: F = 0.21_dp
       !
       k1 = RTpar2%SPEC8mcm(:,1) * mAir * F * EXP(RTpar2%SPEC8mcm(:,2)*Temp(6))
       k2 = RTpar2%SPEC8mcm(:,3) * mAir * F * EXP(RTpar2%SPEC8mcm(:,4)*Temp(6))
       kSPEC8mcm = k1 / (One + k2) * Temp(6)
     END FUNCTION vSpec8MCMCompute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE S4H2OCompute(ReacConst,Constants,Temp,mAir)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      REAL(dp) :: mAir
-      !
-      ReacConst=Constants(1)*EXP(Constants(2)/Temp)+      & 
-      &         mAir*Constants(3)*EXP(Constants(4)/Temp)
-    END SUBROUTINE S4H2OCompute
+    
     FUNCTION vS4H2OCompute(Temp,mAir) RESULT(kS4H2O)
       REAL(dp)  :: kS4H2O(nS4H2O)
       REAL(dp), INTENT(IN)  :: Temp(:), mAir
@@ -2059,86 +1195,21 @@
       kS4H2O = RTpar2%S4H2O(:,1) * EXP(RTpar2%S4H2O(:,2)*Temp(6))      & 
       &      + RTpar2%S4H2O(:,3) * EXP(RTpar2%S4H2O(:,4)*Temp(6)) * mAir
     END FUNCTION vS4H2OCompute
-    !*****************************************************************
-    !
-    !
-    !====================================================================!
-    ! === Photolysis reactions for KPP systems
-    !====================================================================!
-    FUNCTION UpdateSun(Time) RESULT(Sun)
-      !--------------------------------------------------------------------
-      ! Input:
-      !   - Time
-      REAL(dp) :: Time
-      !--------------------------------------------------------------------!
-      ! Output:
-      !   - Sun
-      REAL(dp)  :: Sun
-      !--------------------------------------------------------------------!
-      ! Temporary variables:
-      REAL(dp), PARAMETER :: SunRise=4.50d0, SunSet=19.50d0
-      REAL(dp) :: Thour, Tlocal, Ttmp
-      !
-      Thour  = Time / HOUR
-      Tlocal = Thour - FLOOR(Thour/hourday)*hourday
-      !
-      IF( (Tlocal>=SunRise) .AND. (Tlocal<=SunSet) ) THEN
-        Ttmp = (TWO*Tlocal-SunRise-SunSet) / (SunSet-SunRise);
-        IF ( Ttmp >ZERO ) THEN
-          Ttmp =  Ttmp * Ttmp
-        ELSE
-          Ttmp = -Ttmp * Ttmp
-        END IF
-        Sun = (ONE+COS(Pi*Ttmp)) * rTWO
-      ELSE
-        Sun = ZERO
-      END IF
-    END FUNCTION UpdateSun
-    !
-    !
-    SUBROUTINE PHOTO(ReacConst,Constants,Time)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Time
-      REAL(dp) :: Sun
-      !
-      SUN = UpdateSun(Time)
-      ReacConst=Constants(1)*Sun
-    END SUBROUTINE PHOTO
+    
     FUNCTION vPhotokppCompute(Time,Sun) RESULT(kPHOTO)
       REAL(dp) :: kPHOTO(nPHOTOkpp)
       REAL(dp) :: Time, Sun
       !
       kPHOTO = RTpar2%PHOTOkpp(:) * Sun
     END FUNCTION vPhotokppCompute
-    !
-    !
-    SUBROUTINE PHOTO2(ReacConst,Constants,Time)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Time
-      REAL(dp) :: Sun
-      !
-      SUN = UpdateSun(Time)
-      ReacConst=Constants(1)*Sun*Sun
-    END SUBROUTINE PHOTO2
+    
     FUNCTION vPhoto2kppCompute(Time,Sun) RESULT(kPHOTO2)
       REAL(dp) :: kPHOTO2(nPHOTO2kpp)
       REAL(dp) :: Time, Sun
       !
       kPHOTO2 = RTpar2%PHOTO2kpp(:) * Sun*Sun
     END FUNCTION vPhoto2kppCompute
-    !
-    !
-    SUBROUTINE PHOTO3(ReacConst,Constants,Time)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Time
-      REAL(dp) :: Sun
-      !
-      SUN = UpdateSun(Time)
-      ReacConst=Constants(1)*Sun*Sun*Sun
-    END SUBROUTINE PHOTO3
+    
     FUNCTION vPhoto3kppCompute(Time,Sun) RESULT(kPHOTO3)
       REAL(dp) :: kPHOTO3(nPHOTO3kpp)
       REAL(dp) :: Time, Sun
@@ -2158,50 +1229,14 @@
     ! Output:
     !   - Reaction Constant
     !----------------------------------------------------------------------!
-    SUBROUTINE T2H2OCompute(ReacConst,Constants,Temp)!,rHum)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-     ! REAL(dp) :: rHum
-      !
-     ! ReacConst=Rhum*Constants(1)*EXP(-Constants(2)/Temp)
-    END SUBROUTINE T2H2OCompute
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE DConstCompute(EquiRate,BackRate,Constants)
-      REAL(dp) :: EquiRate
-      REAL(dp) :: BackRate
-      REAL(dp) :: Constants(:)
-      !
-      EquiRate=Constants(1)
-      BackRate=Constants(2)
-    END SUBROUTINE DConstCompute
-    !SUBROUTINE vDConstCompute(kf,kb)
+    
     FUNCTION vDConstCompute() RESULT(k)
-      !REAL(dp)  :: kf(nDCONST_f), kb(nDCONST_b)
       REAL(dp)  :: k(nDCONST,2)
-      !print*, ' index const f =', RTind2%iDCONST_f
-      !print*, ' index const b =', RTind2%iDCONST_b
       !
-      !kb = RTpar2%DCONST(RTind2%iDCONST_b,2)
-      !kf = RTpar2%DCONST(RTind2%iDCONST_f,1) * kb
       k(:,2) = RTpar2%DCONST(:,2)
       k(:,1) = RTpar2%DCONST(:,1) * k(:,2)
     END FUNCTION vDConstCompute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE DTempCompute(EquiRate,BackRate,Constants,Temp)
-      REAL(dp) :: EquiRate
-      REAL(dp) :: BackRate
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      !
-      EquiRate=Constants(1)*EXP(Constants(2)*(ONE/Temp-InvRefTemp))
-      BackRate=Constants(3)
-    END SUBROUTINE DTempCompute
+    
     FUNCTION vDTempCompute(Temp) RESULT(k)
       REAL(dp)  :: k(nDTEMP,2)
       REAL(dp), INTENT(IN) :: Temp(:)
@@ -2209,19 +1244,7 @@
       k(:,2) = RTpar2%DTEMP(:,3)
       k(:,1) = RTpar2%DTEMP(:,1)*EXP(RTpar2%DTEMP(:,2)*(Temp(6)-InvRefTemp)) * k(:,2)
     END FUNCTION vDTempCompute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE DTemp2Compute(EquiRate,BackRate,Constants,Temp)  
-      REAL(dp) :: EquiRate
-      REAL(dp) :: BackRate
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      !
-      EquiRate=Constants(1)*EXP(Constants(2)*(ONE/Temp-InvRefTemp))
-      BackRate=Constants(3)*EXP(Constants(4)*(ONE/Temp-InvRefTemp))
-    END SUBROUTINE DTemp2Compute
+    
     FUNCTION vDTemp2Compute(Temp)   RESULT(k)
       REAL(dp)  :: k(nDTEMP2,2)
       REAL(dp), INTENT(IN) :: Temp(:)
@@ -2229,21 +1252,7 @@
       k(:,2) = RTpar2%DTEMP2(:,3)*EXP(RTpar2%DTEMP2(:,4)*(Temp(6)-InvRefTemp))
       k(:,1) = RTpar2%DTEMP2(:,1)*EXP(RTpar2%DTEMP2(:,2)*(Temp(6)-InvRefTemp)) * k(:,2)
     END FUNCTION vDTemp2Compute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE DTemp3Compute(EquiRate,BackRate,Constants,Temp)
-      REAL(dp) :: EquiRate
-      REAL(dp) :: BackRate
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      ! 
-      EquiRate=Constants(1)*EXP(Constants(2)*(RefTemp/Temp-ONE)              &
-      &                         +Constants(3)*(One-RefTemp/Temp              &
-      &                                           +LOG10(RefTemp/Temp)))
-      BackRate=Constants(4)
-    END SUBROUTINE DTemp3Compute
+    
     FUNCTION vDTemp3Compute(Temp) RESULT(k)
       REAL(dp)  :: k(nDTEMP3,2)
       REAL(dp), INTENT(IN)  :: Temp(:)
@@ -2252,20 +1261,7 @@
       k(:,1) = RTpar2%DTEMP3(:,1) * EXP(RTpar2%DTEMP3(:,2)*(RefTemp*Temp(6)-ONE)         &
       &      + RTpar2%DTEMP3(:,3)*(One-RefTemp*Temp(6) + LOG10(RefTemp*Temp(6)))) * k(:,2)
     END FUNCTION vDTemp3Compute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE DTemp4Compute(EquiRate,BackRate,Constants,Temp)
-      REAL(dp) :: EquiRate
-      REAL(dp) :: BackRate
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      !
-      EquiRate=Constants(1)*EXP(Constants(2)*(Temp*InvRefTemp-One)     &
-      &        +Constants(3)*(ONE+LOG(Temp*InvRefTemp)-Temp*InvRefTemp))
-      BackRate=ONE  ! OSSI
-    END SUBROUTINE DTemp4Compute
+    
     FUNCTION vDTemp4Compute(Temp) RESULT(k)
       REAL(dp)  :: k(nDTEMP4,2)
       REAL(dp), INTENT(IN)  :: Temp(:)
@@ -2275,20 +1271,7 @@
       &      * (Temp(1)*InvRefTemp-One) + RTpar2%DTEMP4(:,3)            &
       &      * (ONE+LOG(Temp(1)*InvRefTemp)-Temp(1)*InvRefTemp)) * k(:,2)
     END FUNCTION vDTemp4Compute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE DTemp5Compute(EquiRate,BackRate,Constants,Temp)
-      REAL(dp) :: EquiRate
-      REAL(dp) :: BackRate
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      !
-      EquiRate=Constants(1)*(Temp*InvRefTemp)**Constants(2)  &
-      &        *EXP(Constants(3)*(ONE/Temp-InvRefTemp))
-      BackRate=ONE  ! OSSI
-    END SUBROUTINE DTemp5Compute      
+    
     FUNCTION vDTemp5Compute(Temp) RESULT(k)
       REAL(dp)  :: k(nDTEMP5,2)
       REAL(dp), INTENT(IN)  :: Temp(:)
@@ -2297,21 +1280,7 @@
       k(:,1) = RTpar2%DTEMP5(:,1)*(Temp*InvRefTemp)**RTpar2%DTEMP4(:,2)  &
       &      * EXP(RTpar2%DTEMP5(:,3)*(Temp(6)-InvRefTemp)) * k(:,2)
     END FUNCTION vDTemp5Compute      
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE MeskhidzeCompute(EquiRate,BackRate,Constants,Temp)
-      REAL(dp) :: EquiRate
-      REAL(dp) :: BackRate
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      !
-      EquiRate=Constants(1)*(Temp/RefTemp)**Constants(2)        &
-      &        *EXP(Constants(3)*(One/Temp-One/RefTemp)) 
-      BackRate=Constants(4)*EXP(Constants(5)                    &
-      &        *(One/Temp-One/RefTemp))*Constants(7)!*(ActivityHp)**m
-    END SUBROUTINE MeskhidzeCompute
+    
     FUNCTION vMeskhidzeCompute(Temp) RESULT(k)
       REAL(dp)  :: k(nMeskhidze,2)
       REAL(dp), INTENT(IN)  :: Temp(:)
@@ -2321,22 +1290,7 @@
       k(:,1) = RTpar2%Meskhidze(:,1) * (Temp*InvRefTemp)**RTpar2%Meskhidze(:,2)  &
       &      * EXP(RTpar2%Meskhidze(:,3)*(Temp(6)-InvRefTemp)) * k(:,2)
     END FUNCTION vMeskhidzeCompute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE Aspec1Compute(ReacConst,Constants,Temp,y_conc)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      REAL(dp) :: y_conc(:)
-      !
-      IF (y_conc(Hp_ind)>ZERO) THEN
-          ReacConst=y_conc(Hp_ind)*(Constants(1)*               &
-            &              EXP(Constants(2)*(ONE/Temp-InvRefTemp)))/  &
-            &              (ONE+13.0d0*y_conc(Hp_ind))
-     END IF
-    END SUBROUTINE Aspec1Compute
+    
     FUNCTION vAspec1Compute(Temp,Hp) RESULT(kASPEC1)
       REAL(dp)  :: kASPEC1(nASPEC1)
       REAL(dp), INTENT(IN)  :: Temp(:), Hp
@@ -2345,21 +1299,7 @@
       kASPEC1 = Hp*(RTpar2%ASPEC1(:,1)*EXP(RTpar2%ASPEC1(:,2) & 
       &       * (Temp(6)-InvRefTemp)))/(ONE + x*Hp)
     END FUNCTION vAspec1Compute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE Aspec2Compute(ReacConst,Constants,Temp,y_conc)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      REAL(dp) :: y_conc(:)
-      !
-      IF (y_conc(Hp_ind)>ZERO) THEN
-          ReacConst=y_conc(Hp_ind)**Constants(2) *                       &
-            &         (Constants(1)*EXP(Constants(3)*(ONE/Temp-InvRefTemp)))
-     END IF
-    END SUBROUTINE Aspec2Compute
+    
     FUNCTION vAspec2Compute(Temp,Hp) RESULT(kASPEC2)
       REAL(dp)  :: kASPEC2(nASPEC2)
       REAL(dp), INTENT(IN)  :: Temp(:), Hp
@@ -2367,55 +1307,20 @@
       kASPEC2 = Hp**RTpar2%ASPEC2(:,2) *                       &
       &         (RTpar2%ASPEC2(:,1)*EXP(RTpar2%ASPEC2(:,3)*(Temp(6)-InvRefTemp)))
     END FUNCTION vAspec2Compute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE Aspec3Compute(ReacConst,Constants,Temp,y_conc)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      REAL(dp) :: y_conc(:)
-      !
-      IF (y_conc(Hp_ind)>ZERO) THEN
-        ReacConst=Constants(1)*EXP(Constants(2)*(-LOG10(y_conc(Hp_ind))))
-      END IF
-    END SUBROUTINE Aspec3Compute
+    
     FUNCTION vAspec3Compute(Temp,Hp) RESULT(kASPEC3)
       REAL(dp)  :: kASPEC3(nASPEC3)
       REAL(dp), INTENT(IN)  :: Temp(:), Hp
 
       kASPEC3 = RTpar2%ASPEC3(:,1)*EXP(RTpar2%ASPEC3(:,2)*(-LOG10(Hp)))
     END FUNCTION vAspec3Compute
-    !*****************************************************************
-    !
-    !
-    !*****************************************************************
-    SUBROUTINE T1H2OCompute(ReacConst,Constants,Temp)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      REAL(dp) :: Temp
-      !
-      ReacConst=Constants(1)*EXP(-Constants(2)/Temp)
-    END SUBROUTINE T1H2OCompute
+    
     FUNCTION vT1H2OCompute(Temp) RESULT(kT1H2O)
       REAL(dp)  :: kT1H2O(nT1H2O)
       REAL(dp), INTENT(IN)  :: Temp(:)
       
       kT1H2O = RTpar2%T1H2O(:,1)*EXP(-RTpar2%T1H2O(:,2)*Temp(6))
     END FUNCTION vT1H2OCompute
-    !*****************************************************************
-    !
-    !
-    ! ===============================================================
-    ! === Solid reactions
-    ! ===============================================================
-    SUBROUTINE EquiCompute(ReacConst,Constants)
-      REAL(dp) :: ReacConst
-      REAL(dp) :: Constants(:)
-      !
-      ReacConst=Constants(1)
-    END SUBROUTINE EquiCompute
 
 
   END MODULE Rates_Mod

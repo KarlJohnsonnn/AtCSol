@@ -96,14 +96,14 @@ MODULE Chemsys_Mod
   TYPE(AFRAC_T), ALLOCATABLE :: InitAFrac(:)
   !
   !
-  TYPE SPEK_T
-    REAL(dp) :: Radius            ! [m]   radius partivle
-    REAL(dp) :: wetRadius         ! [m]   radius droplett
-    REAL(dp) :: Number            ! [#/cm3]
-    REAL(dp) :: Density           ! [kg/m3]
-  END TYPE SPEK_T
+  TYPE FRACTION_T
+    REAL(dp), ALLOCATABLE :: Radius(:)    ! [m] radius particle
+    REAL(dp), ALLOCATABLE :: wetRadius(:) ! [m] radius droplett
+    REAL(dp), ALLOCATABLE :: Number(:)    ! [#/cm3]
+    REAL(dp), ALLOCATABLE :: Density(:)   ! [kg/m3]
+  END TYPE FRACTION_T
   !
-  TYPE(SPEK_T), ALLOCATABLE :: SPEK(:)
+  TYPE(FRACTION_T) :: Frac
   !
   !
   TYPE(Element_T) :: Elements(11)=(/                   &
@@ -532,6 +532,8 @@ MODULE Chemsys_Mod
     &    +nreaksolid             &
     &    +NumberReactionsPartic  &
     &    +NumberReactionsMicro
+
+    nAreak=2*nreakdissoc+nreakaqua
     !
     WRITE(Unit,*) ''
     WRITE(Unit,*) ' ================   Description of Reactions   =============='
@@ -1102,7 +1104,7 @@ MODULE Chemsys_Mod
       CALL Read_AQUAini( InitValAct(ntGas+1:), InitValKat(:), InitFileName )
       ntKat = ntKat + ntKatAqua
       CALL Read_AFRAC( InitAFrac, InitFileName )
-      CALL Read_SPEK( SPEK, InitFileName)
+      CALL Read_Frac( Frac , InitFileName )
       
       LWC  = pseudoLWC(tAnf)
      
@@ -1123,10 +1125,10 @@ MODULE Chemsys_Mod
         iPos=PositionSpeciesAll(InitAFrac(i)%Species)
         IF (iPos>0) THEN
           !
-          InitValAct(iPos) = SPEK(1)%Number * kilo          &  ! [#/m3]
+          InitValAct(iPos) = Frac%Number(1) * kilo           &  ! [#/m3]
           &                * InitAFrac(i)%Frac1              &  ! [g/g]
-          &                * (pi43*(SPEK(1)%Radius)**3)      &  ! [m3]
-          &                * SPEK(1)%Density                 &  ! [kg/m3]
+          &                * (pi43*(Frac%Radius(1))**3)      &  ! [m3]
+          &                * Frac%Density(1)                 &  ! [kg/m3]
           &                / (InitAFrac(i)%MolMass)             ! 1/[kg/mol] 
           InitValAct(iPos) = InitValAct(iPos) * mol2Part        ! *[molec/mol]
         END IF
@@ -1510,9 +1512,9 @@ MODULE Chemsys_Mod
   END SUBROUTINE Read_AFRAC
   !  
   !
-  SUBROUTINE Read_SPEK(SPEK,FileName)
+  SUBROUTINE Read_Frac(Fractions,FileName)
     CHARACTER(*) :: FileName
-    TYPE(SPEK_T), ALLOCATABLE :: SPEK(:)
+    TYPE(FRACTION_T) :: Fractions
     !
     INTEGER :: cnt
     REAL(dp) :: c1,c2,c3
@@ -1527,12 +1529,12 @@ MODULE Chemsys_Mod
     &              End    ='END_SPEK',   &
     &              R1=c1                 )
     !
-    ALLOCATE(SPEK(INT(c1))) 
+    ntFrac = INT(c1)
+    ALLOCATE( Fractions%Radius(ntFrac)   , Fractions%Number(ntFrac)    &
+    &       , Fractions%Density(ntFrac)  , Fractions%wetRadius(ntFrac) ) 
     !
-    print*, 'modes = ', c1
-    stop
-    LWC=pseudoLWC(tAnf)
-    cnt=1
+    LWC = pseudoLWC(tAnf)
+    cnt = 0
     REWIND(InputUnit_Initials)
     CALL ClearIniFile()
     DO 
@@ -1546,15 +1548,14 @@ MODULE Chemsys_Mod
       ! HIER KÖNNTE MAL WIEDER WAS PASSIEREN
       IF (c1 < ONE) THEN
         cnt = cnt + 1
-        SPEK(cnt)%Radius = REAL(c1,KIND=dp)
-        SPEK(cnt)%Number = REAL(c2,KIND=dp)
-        !SPEK(cnt)%wetRadius=(3.0d0/4.0d0/PI*LWC/SPEK(1)%Number)**(1.0d0/3.0d0)
-        SPEK(cnt)%wetRadius = (Pi34*LWC/SPEK(cnt)%Number)**(rTHREE)*0.1_dp
-        SPEK(cnt)%Density = REAL(c3,KIND=dp)
+        Fractions%Radius(cnt) = REAL(c1,KIND=dp)
+        Fractions%Number(cnt) = REAL(c2,KIND=dp)
+        Fractions%Density(cnt) = REAL(c3,KIND=dp)
+        Fractions%wetRadius(cnt) = (Pi34*LWC/Fractions%Number(cnt))**(rTHREE)*0.1_dp
       END IF
     END DO
     CALL CloseIniFile
-  END SUBROUTINE Read_SPEK
+  END SUBROUTINE Read_Frac
   !
   !
   SUBROUTINE InputDatFile(FileName)
@@ -2028,7 +2029,7 @@ MODULE Chemsys_Mod
     Pos=0
     !
     ! Combustion system
-    IF ( TempEq ) THEN
+    IF ( Teq ) THEN
       Pos=-1
       Pos=GetHash(ListGas,TRIM(ADJUSTL(Species)))
     ELSE
@@ -2178,6 +2179,8 @@ MODULE Chemsys_Mod
     CHARACTER(*) :: Filename
     !
     LOGICAL :: Out
+
+    FileName = FileName(:INDEX(FileName,'.')-1)
     !
     CALL InitHashTable(ListAqua,100)
     CALL InitHashTable(ListGas,100)

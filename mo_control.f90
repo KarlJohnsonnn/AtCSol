@@ -13,9 +13,11 @@
 
 !--- Files
       CHARACTER(80) :: MetFile           & ! Meteorology file
-&                     ,ChemFile          & ! Chemical mechanism
+&                     ,ChemFile          & ! Chem file (SPACCIM)
+&                     ,SysFile           & ! Chemical mechanism
 &                     ,InitFile          & ! Initial concentrations
 &                     ,DataFile          & ! Gas and Aqueous DATA
+&                     ,RedFile           & ! File for mechanism reduction
 &                     ,MWeights          & ! molecular weights of species 
 &                     ,NetcdfFileName    & ! NetCDF output file
 &                     ,ODEsolver    ! Method for Rosenbrock Integration
@@ -255,7 +257,7 @@ INTEGER        :: nOutP
     LOGICAL :: useMUMPS = .FALSE.
     LOGICAL :: useSparseLU = .FALSE.
 
-    LOGICAL :: TempEq  = .FALSE.
+    LOGICAL :: Teq  = .FALSE.
     LOGICAL :: ChemKin = .FALSE.
 
     LOGICAL :: Vectorized = .FALSE.

@@ -64,7 +64,7 @@ MODULE mo_IO
         WRITE(*,'(A34,2X,Es8.2)')   '      Relative Rosenbrock        = ',RtolROW
         WRITE(*,'(A34,2X,Es8.2)')   '      Absolute (gaseous species) = ',AtolGas
         IF (ntAqua>0) WRITE(*,'(A34,2X,Es8.2)')   '      Absolute (aqueous species) = ',AtolAqua
-        IF ( TempEq ) THEN
+        IF ( Teq ) THEN
           WRITE(*,'(A34,2X,Es8.2)')   '      Absolute Temperature       = ',AtolTemp
         END IF
       END IF
@@ -104,6 +104,7 @@ MODULE mo_IO
       WRITE(*,*)   '==========================================================================='
       WRITE(*,*)   '================================ Statistics ==============================='
       WRITE(*,*)   '==========================================================================='
+      WRITE(*,*)   ''
       WRITE(*,298) ' Number of successful time steps   =', Output%nsteps
       WRITE(*,298) ' Number of failed time step        =', Output%nfailed
       WRITE(*,298) ' Number of rate evaluations        =', Output%nRateEvals
@@ -111,9 +112,11 @@ MODULE mo_IO
       WRITE(*,298) ' Number of LU factorisations       =', Output%ndecomps
       WRITE(*,298) ' Number of solved linear systems   =', Output%nsolves
       WRITE(*,*)   ''
+      WRITE(*,*)   ''
       WRITE(*,*)   ' ========================================================================='
       WRITE(*,*)   ' ======================= max times of all processes ====================== '
       WRITE(*,*)   ' ========================================================================= '
+      WRITE(*,*)   ''
       WRITE(*,299) ' Time to read the input system     =', maxTRead,' [sec]'
       WRITE(*,299) ' Time for symbolic phase           =', maxTSymb,' [sec]'
       WRITE(*,299) ' Time writing NetCDF-File          =', maxTNcdf,' [sec]'
@@ -246,6 +249,41 @@ MODULE mo_IO
     WRITE(*,*) '      conc(1:3) :: ', yvec(1:3)
     WRITE(*,*) 
   END SUBROUTINE
+  !
+  !
+  SUBROUTINE CSR_to_GephiGraph(Matrix,Vnames,FileName)
+    USE csv_file
+
+    TYPE(CSR_Matrix_T) :: Matrix
+    CHARACTER(*)       :: FileName
+    CHARACTER(*)       :: Vnames(:)
+
+    CHARACTER(80), ALLOCATABLE :: idx(:,:)
+    INTEGER :: i, jj, cnt
+    
+    ALLOCATE(idx(Matrix%nnz,2))
+
+    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName))//'.csv',STATUS='UNKNOWN')
+    WRITE(99,*) 'Source,Target'
+    cnt = 0
+    DO i = 1 , Matrix%m
+      DO jj = Matrix%RowPtr(i) , Matrix%RowPtr(i+1)-1
+        cnt = cnt + 1
+
+        ! indizes
+        !idx(cnt,1) = i
+        !idx(cnt,2) = Matrix%ColInd(jj)
+        !CALL csv_write(99,idx(cnt,:),.TRUE.)
+
+        ! strings
+        idx(cnt,1) = TRIM(ADJUSTL(Vnames(i)))
+        idx(cnt,2) = TRIM(ADJUSTL(Vnames(Matrix%ColInd(jj))))
+        CALL csv_write(99,idx(cnt,:),.TRUE.)
+       
+      END DO
+    END DO
+    CLOSE(99)
+  END SUBROUTINE CSR_to_GephiGraph
   !
   !
 END MODULE mo_IO

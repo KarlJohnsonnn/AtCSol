@@ -17,10 +17,11 @@
       NAMELIST /SCENARIO/  Bsp,                                            &
 &               LwcLevelmin, LwcLevelmax, Ladebalken,  pHSet,              &
 &               constLWC, ErrorLog, MatrixPrint, NetCdfPrint, Temperature0,&
-&               Pressure0, DebugPrint, TempEq, ChemKin
+&               Pressure0, DebugPrint, ChemKin
 !
-      NAMELIST /FILES/  MetFile, ChemFile,MWeights, InitFile, DataFile,    &
-&               NetcdfFileName, MetUnit, ChemUnit, MWUnit, InitUnit, DataUnit
+      NAMELIST /FILES/  MetFile, SysFile,MWeights, InitFile, DataFile,    &
+&               NetcdfFileName, MetUnit, ChemUnit, MWUnit, InitUnit,       &
+&               DataUnit, RedFile
 !
       NAMELIST /TIMES/  tAnf, tEnd, idate, rlat, rlon, Dust, StpNetcdf,  &
 &               minStp, maxStp, nOutP
@@ -58,13 +59,14 @@
       MatrixPrint = .FALSE.       ! 0 = Print no matrix, 0 /= Print all matrices -> no simulation
       DebugPrint  = .FALSE.
       NetCdfPrint = .FALSE.
-      TempEq      = .FALSE.
       ChemKin     = .FALSE.
       Temperature0= 750.0d0
       Pressure0   = 2.0d5
 
 !--- Read SCENARIO namelist
       READ(15,SCENARIO)
+      
+      IF (ChemKin) Teq = .TRUE.
 
 !-----------------------------------------------------------------
 !---  Files
@@ -72,9 +74,10 @@
 !
 !--- CHARACTER(80) : Files
       MetFile    = 'MET/initial'             ! Meteorology file
-      ChemFile   = 'CHEM/'//TRIM(RunFile)//'.sys'    ! Chemical mechanism
+      SysFile   = 'CHEM/'//TRIM(RunFile)//'.sys'    ! Chemical mechanism
       DataFile   = 'CHEM/'//TRIM(RunFile)//'.dat'    ! Gas and aqueous phase data
       InitFile   = 'INI/'//TRIM(RunFile)//'.ini'     ! Initial concentrations
+      RedFile    = 'RED/'//TRIM(RunFile)//'.ctrl'    ! Controlfile for mechanism reduction
 
       NetcdfFileName = TRIM(Bsp)//'.nc'            ! Netcdf output file
 
@@ -93,10 +96,11 @@
       Bsp  = ADJUSTL(Bsp)
 
       MetFile  = ADJUSTL(MetFile)
-      ChemFile = ADJUSTL(ChemFile)
+      SysFile = ADJUSTL(SysFile)
       DataFile = ADJUSTL(DataFile)
       MWeights = ADJUSTL(MWeights)
       InitFile = ADJUSTL(InitFile)
+      RedFile  = ADJUSTL(RedFile)
 
       NetcdfFileName=ADJUSTL(NetcdfFileName)
 
@@ -105,19 +109,19 @@
 !-----------------------------------------------------------------
 !
 !--- REAL(8): Times ( < 0 in seconds, > 0 in hours, = 0  meteorology)
-      tAnf    =  0.d0        ! Model start time    [in h}
-      tEnd    =  0.d0        ! model end time      [in h}
+      tAnf    =  0.0_dp        ! Model start time    [in h}
+      tEnd    =  0.0_dp        ! model end time      [in h}
 
 !--- REAL(8): Times in seconds.
-      StpNetcdf   = 0.d0      ! Time step for Netcdf output      [in sec]
+      StpNetcdf   = 0.0_dp      ! Time step for Netcdf output      [in sec]
 
       nOutP = 100
 
 !---  Photolysis (Here: FEBUKO chemistry-case I)
       idate = 011027          ! Date: yymmdd  (21.June 2001)
-      rlat  = 5.065d+01       ! latitude  [grad] (Schmuecke)
-      rlon  = 1.077d+01       ! longitude [grad] (Schmuecke)
-      Dust  = 1.0d0           ! dust factor (damping of photolysis)
+      rlat  = 50.65_dp       ! latitude  [grad] (Schmuecke)
+      rlon  = 10.77_dp       ! longitude [grad] (Schmuecke)
+      Dust  = 1.0_dp           ! dust factor (damping of photolysis)
 
 !--- Read TIMES namelist
       READ(15,TIMES)
@@ -139,7 +143,7 @@
       solveLA  = 'ex'                 ! method of solving linear algebra
       ODEsolver  = 'ROS34PW3'  ! ROW scheme
       ImpEuler = 0                    ! 1 for implicit euler integration
-      Vectorized = .FALSE.
+      Vectorized = .TRUE.
       
 !
 !--- Read NUMERICS namelist

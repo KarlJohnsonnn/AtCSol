@@ -39,9 +39,9 @@ MODULE Sparse_Mod
     INTEGER, ALLOCATABLE  :: DiagPtr_P(:)       ! permuted pos of diag entries
     INTEGER, ALLOCATABLE  :: DiagPtr_R(:)       ! permuted pos of rate entries
     INTEGER, ALLOCATABLE  :: DiagPtr_C(:)       ! permuted pos of conenctations
-    INTEGER, ALLOCATABLE  :: RowVectorPtr(:)    ! for TempEq matrix ( -U^T*D_c )
-    INTEGER, ALLOCATABLE  :: ColVectorPtr(:)    ! for TempEq matrix ( ~K )
-    INTEGER               :: XPtr=-42           ! for TempEq matrix ( X )
+    INTEGER, ALLOCATABLE  :: RowVectorPtr(:)    ! for Teq matrix ( -U^T*D_c )
+    INTEGER, ALLOCATABLE  :: ColVectorPtr(:)    ! for Teq matrix ( ~K )
+    INTEGER               :: XPtr=-42           ! for Teq matrix ( X )
     INTEGER, ALLOCATABLE  :: Permu(:)           ! permutation vector (markowitz)
     INTEGER, ALLOCATABLE  :: InvPer(:)          ! invers permutation (inv markowitz)
     INTEGER, ALLOCATABLE  :: LUperm(:)          ! 
@@ -240,7 +240,7 @@ MODULE Sparse_Mod
     
    
     IF ( EXTENDED ) THEN
-      IF ( TempEq ) THEN
+      IF ( Teq ) THEN
         ALLOCATE(CSR%DiagPtr(n+m+1))
         ALLOCATE(CSR%DiagPtr_P(n+m+1))
       ELSE
@@ -252,7 +252,7 @@ MODULE Sparse_Mod
       CSR%DiagPtr_R = -11
       CSR%DiagPtr_C = -11
     ELSE
-      IF ( TempEq ) THEN
+      IF ( Teq ) THEN
         ALLOCATE(CSR%DiagPtr(m+1))
         ALLOCATE(CSR%DiagPtr_P(m+1))
       ELSE
@@ -1301,7 +1301,7 @@ MODULE Sparse_Mod
         IF      ( j==i ) THEN
           ! diagonal d(dCdt)/dC
           Miter%Val(jj) = ONE - hg*J1%Val(jj-cnt)
-        ELSE IF ( j==Miter%m.AND.TempEq) THEN
+        ELSE IF ( j==Miter%m.AND.Teq) THEN
           cnt = cnt + 1
         ELSE
           ! none diagonal  d(dCdt)/dC
@@ -1310,7 +1310,7 @@ MODULE Sparse_Mod
       END DO
     END DO
 
-    IF (TempEq) THEN
+    IF (Teq) THEN
       ! bottom row d(dTdt)/dC
       Miter%Val(Miter%RowVectorPtr) = - hg*J2
       ! right hand column d(dCdt)/dT
@@ -1338,7 +1338,7 @@ MODULE Sparse_Mod
     !------------------------------------------------------------------------------
     !
     !
-    IF ( TempEq ) THEN
+    IF ( Teq ) THEN
       ndim = Jac%n + 1                  ! number of rows/coloumns
       nnz  = Jac%RowPtr(Jac%m+1)-1   &  ! nonzeros of Jacobian
       &       + Jac%m + Jac%n + 1       ! Dc,U^T and Dr,~K and X (down right)
@@ -1352,7 +1352,7 @@ MODULE Sparse_Mod
     ALLOCATE(CL0%DiagPtr(ndim))
     CL0%DiagPtr  = -12
 
-    IF ( TempEq ) THEN
+    IF ( Teq ) THEN
       !
       DO i = 1 , ndim - 1
         CL0%RowPtr(i+1) = CL0%RowPtr(i) + (Jac%RowPtr(i+1)-Jac%RowPtr(i)) + 1
@@ -1379,13 +1379,13 @@ MODULE Sparse_Mod
     CL%DiagPtr  = -12
     ! get diagonal pointer
     DO i = 1 , ndim
-      IF ( TempEq .AND. i < ndim ) CL%ColVectorPtr(i)  = CL%RowPtr(i+1) - 1
+      IF ( Teq .AND. i < ndim ) CL%ColVectorPtr(i)  = CL%RowPtr(i+1) - 1
       DO jj = CL%RowPtr(i) , CL%RowPtr(i+1)-1 
         j = CL%ColInd(jj)
         IF ( i == j ) CL%DiagPtr(i) = jj
       END DO
     END DO
-    IF ( TempEq ) THEN
+    IF ( Teq ) THEN
       CL%RowVectorPtr = [( i , i = CL%RowPtr(nDim),CL%RowPtr(nDim+1)-2 )]
       CL%XPtr = CL%DiagPtr(ndim)
     END IF
@@ -1405,7 +1405,7 @@ MODULE Sparse_Mod
     ! --- Set big Matrix dimensions and nonzeros 
     !------------------------------------------------------------------------------
     !
-    IF ( TempEq ) THEN
+    IF ( Teq ) THEN
       ndim   = A%m   + BAT%m+1          ! nummber of rows
       nnzBig = A%nnz + BAT%nnz     &    ! nonzeros of alpha and (beta-alpha)^T
       &        + 2*A%n + 2*BAT%n + 1    ! Dc,U^T and Dr,~K and X (down right)
@@ -1425,7 +1425,7 @@ MODULE Sparse_Mod
     EX%DiagPtr_C      = -13
 
     ! Allocate a full row vector and a full column vector
-    IF ( TempEq ) THEN
+    IF ( Teq ) THEN
       ALLOCATE(EX%ColVectorPtr(A%m))    ! | Vector
       ALLOCATE(EX%RowVectorPtr(BAT%m))  ! _ Vector
       EX%ColVectorPtr = -13
@@ -1444,7 +1444,7 @@ MODULE Sparse_Mod
     !         !--------------+--------------+------|
     !         |_             |              |     _|
     !
-    IF ( TempEq ) THEN
+    IF ( Teq ) THEN
 
       DO i = 1 , A%m 
 
@@ -1494,7 +1494,7 @@ MODULE Sparse_Mod
     ! miter = |   BAT_Mat    |  Diag_1_nS   |      |
     !         !--------------+--------------+------|
     !         |_             |              |     _|
-    ! same for TempEq and atmopheric stuff
+    ! same for Teq and atmopheric stuff
     DO i=1,BAT%m
 
       EX%RowPtr(A%m+i+1)  = EX%RowPtr(A%m+i) + BAT%RowPtr(i+1) - BAT%RowPtr(i) + 1
@@ -1518,7 +1518,7 @@ MODULE Sparse_Mod
     !         !--------------+--------------+------|
     !         |_             |     U^TD_c   |   1 _|
     !
-    IF ( TempEq ) THEN
+    IF ( Teq ) THEN
 
       EX%RowPtr(ndim+1) = EX%RowPtr(ndim) + A%n+1
       
@@ -1551,7 +1551,7 @@ MODULE Sparse_Mod
     LU%Val( LU%DiagPtr_R )  = invD_r
     LU%Val( LU%DiagPtr_C )  = D_c
       
-    IF ( TempEq ) THEN
+    IF ( Teq ) THEN
       LU%Val( LU%ColVectorPtr ) = KVec
       LU%Val( LU%RowVectorPtr ) = UVec
       LU%Val( LU%XPtr )         = X
@@ -1610,7 +1610,7 @@ MODULE Sparse_Mod
     A%LUperm  = Permutation
     LU%LUperm = Permutation
 
-    IF ( TempEq ) THEN
+    IF ( Teq ) THEN
       LU%ColVectorPtr = Permutation( A%ColVectorPtr )
       LU%RowVectorPtr = Permutation( A%RowVectorPtr )
       LU%XPtr         = Permutation( A%XPtr )
@@ -1778,11 +1778,11 @@ MODULE Sparse_Mod
       WRITE(99,*)
     END IF
 
-    IF (TempEq) THEN
+    IF (Teq) THEN
       IF (ALLOCATED(A%RowVectorPtr)) THEN
         WRITE(99,*) '###########################################################'
         WRITE(99,*) '# Array for indices pointing to the row vector             '
-        WRITE(99,*) '#                        (only with TempEq) '
+        WRITE(99,*) '#                        (only with Teq) '
         WRITE(99,*) '###########################################################'
         WRITE(99,*) 'ROW_PTR'
         DO i=1,SIZE(A%RowVectorPtr)
@@ -1794,7 +1794,7 @@ MODULE Sparse_Mod
       IF (ALLOCATED(A%ColVectorPtr)) THEN
         WRITE(99,*) '###########################################################'
         WRITE(99,*) '# Array for indices pointing to the column vector          '
-        WRITE(99,*) '#                        (only with TempEq) '
+        WRITE(99,*) '#                        (only with Teq) '
         WRITE(99,*) '###########################################################'
         WRITE(99,*) 'COL_PTR'
         DO i=1,SIZE(A%ColVectorPtr)
@@ -1806,7 +1806,7 @@ MODULE Sparse_Mod
       IF (A%XPtr/=-42) THEN
         WRITE(99,*) '###########################################################'
         WRITE(99,*) '# Index pointing to the X value           '
-        WRITE(99,*) '#                        (only with TempEq) '
+        WRITE(99,*) '#                        (only with Teq) '
         WRITE(99,*) '###########################################################'
         WRITE(99,*) 'X_PTR'
         WRITE(99,'(1X,I12,10X,I12)') i,A%XPtr

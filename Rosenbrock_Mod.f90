@@ -108,35 +108,35 @@ MODULE Rosenbrock_Mod
 
     SELECT CASE (tmethod)
       CASE ('bwEuler')
-        INCLUDE 'METHODS/bwEuler.fort'
+        INCLUDE 'METHODS/bwEuler.ros'
       CASE ('Ros2AMF')
-        INCLUDE 'METHODS/Ros2AMF.fort'
+        INCLUDE 'METHODS/Ros2AMF.ros'
       CASE ('Ros3w')
-        INCLUDE 'METHODS/Ros3w.fort'
+        INCLUDE 'METHODS/Ros3w.ros'
       CASE ('Ros3Pw')
-        INCLUDE 'METHODS/Ros3Pw.fort'
+        INCLUDE 'METHODS/Ros3Pw.ros'
       CASE ('Ros34PW1a')
-        INCLUDE 'METHODS/Ros34PW1a.fort'
+        INCLUDE 'METHODS/Ros34PW1a.ros'
       CASE ('Ros34PW2')
-        INCLUDE 'METHODS/Ros34PW2.fort'
+        INCLUDE 'METHODS/Ros34PW2.ros'
       CASE ('Ros34PW3')
-        INCLUDE 'METHODS/Ros34PW3.fort'
+        INCLUDE 'METHODS/Ros34PW3.ros'
       CASE ('TSRosW2P')
-        INCLUDE 'METHODS/TSRosW2P.fort'
+        INCLUDE 'METHODS/TSRosW2P.ros'
       CASE ('TSRosW2M')
-        INCLUDE 'METHODS/TSRosW2M.fort'
+        INCLUDE 'METHODS/TSRosW2M.ros'
       CASE ('TSRosWRA3PW')
-        INCLUDE 'METHODS/TSRosWRA3PW.fort'
+        INCLUDE 'METHODS/TSRosWRA3PW.ros'
       CASE ('TSRosWRA34PW2')
-        INCLUDE 'METHODS/TSRosWRA34PW2.fort'
+        INCLUDE 'METHODS/TSRosWRA34PW2.ros'
       CASE ('TSRosWRodas3')
-        INCLUDE 'METHODS/TSRosWRodas3.fort'
+        INCLUDE 'METHODS/TSRosWRodas3.ros'
       CASE ('TSRosWSandu3')
-        INCLUDE 'METHODS/TSRosWSandu3.fort'
+        INCLUDE 'METHODS/TSRosWSandu3.ros'
       CASE DEFAULT
         IF (MPI_ID==0) WRITE(*,*) '    Unknown Method:  ',method
         IF (MPI_ID==0) WRITE(*,*) '    Use TSRosWRodas3 instead.'
-        INCLUDE 'METHODS/TSRosWRodas3.fort'
+        INCLUDE 'METHODS/TSRosWRodas3.ros'
     END SELECT
     !INCLUDE RosenbrockMethod
     !
@@ -211,7 +211,7 @@ MODULE Rosenbrock_Mod
     ALLOCATE(ATolAll(nDIM))
     ATolAll(:ntGas)=ATolGas
     ATolAll(ntGas+1:)=ATolAqua
-    IF ( TempEq ) THEN
+    IF ( Teq ) THEN
       ThresholdStepSizeControl(nDIM)=ATolTemp/RTolROW
       ATolAll(nDIM)=ATolTemp
     END IF
@@ -310,7 +310,11 @@ MODULE Rosenbrock_Mod
     !tdel  = ( t + MIN( sqrteps * MAX( ABS(t) , ABS(t+h) ) , absh ) ) - t
     tdel  = t + MIN( sqrteps * MAX( ABS(t) , ABS(t+h) ) , absh )
 
-    CALL ReactionRatesAndDerivative( t+tdel , Y , Rate , DRatedT )
+    IF (Teq) THEN
+      CALL ReactionRatesAndDerivative_ChemKin( t+tdel , Y , Rate , DRatedT )
+    ELSE
+      CALL ReactionRates_Tropos( t+tdel , Y , Rate )
+    END IF
     Output%nRateEvals = Output%nRateEvals + 1
 
     CALL DAXPY_sparse( f1 , BAT , Rate , Y_e )
@@ -331,14 +335,14 @@ MODULE Rosenbrock_Mod
   !=========================================================================
   !    Subroutine Rosenbrock-Method universal for classic and extended case
   !=========================================================================
-  SUBROUTINE Rosenbrock(Y0,t,h,RCo,err,errind,YNew,Euler)
+  SUBROUTINE Rosenbrock(YNew,err,ierr,avgRate,Y0,t,h,RCo,Euler)
     !--------------------------------------------------------
     ! Input:
     !   - Y0............. concentrations at Time = t
     !   - t.............. time
     !   - h.............. step size
     !   - RCo............ Rosenbrock method
-    !   - Temp........... Temperatur at Time = t (optional for TempEq)
+    !   - Temp........... Temperatur at Time = t (optional for Teq)
     !   - Euler.......... if .true. --> use backward Euler method
     !
     REAL(dp),          INTENT(IN) :: Y0(nDIM)
@@ -349,18 +353,19 @@ MODULE Rosenbrock_Mod
     ! Output:
     !   - Ynew........... new concentratinos 
     !   - err............ error calc with embedded formula.
-    !   - TempNew........ new temperature (optional for TempEq)
+    !   - TempNew........ new temperature (optional for Teq)
     !
     REAL(dp), INTENT(OUT) :: YNew(nDIM)
-    REAL(dp), INTENT(OUT)   :: err
-    INTEGER , INTENT(OUT)   :: errind(1,1)
+    REAL(dp), INTENT(OUT) :: err
+    INTEGER , INTENT(OUT) :: ierr(1,1)
+    REAL(dp), INTENT(OUT) :: avgRate(neq)
     !-------------------------------------------------------
     ! TemporarY variables:
     !
-    REAL(dp), DIMENSION(nDIM)            :: Y,  Yhat, fRhs
-    REAL(dp), DIMENSION(nspc)            :: Yrh, U, UMat, dUdT, dCdt, d2UdT2 
-    REAL(dp), DIMENSION(nspc)            :: Jac_CT, Jac_TC
-    REAL(dp), DIMENSION(nDIMex)          :: bb
+    REAL(dp), DIMENSION(nDIM)   :: Y,  Yhat, fRhs
+    REAL(dp), DIMENSION(nspc)   :: Yrh, U, UMat, dUdT, dCdt, d2UdT2 
+    REAL(dp), DIMENSION(nspc)   :: Jac_CT, Jac_TC
+    REAL(dp), DIMENSION(nDIMex) :: bb
     !
     REAL(dp) :: k( nDIM , RCo%nStage )
     !
@@ -390,18 +395,19 @@ MODULE Rosenbrock_Mod
     !iprnt = MinVAL((/ 5 , neq , nspc /))
 
     ! Initial settings
-    k(:,:)  = ZERO
-    fRhs(:) = ZERO
-    Rate(:) = ZERO
-    rRate(:)= ZERO
-    bb(:)   = ZERO
-    Y(:)    = Y0
+    k       = ZERO
+    fRhs    = ZERO
+    Rate    = ZERO
+    rRate   = ZERO
+    avgRate = ZERO
+    bb      = ZERO
+    Y       = Y0
     !
 
-    !IF (dprint) THEN
-    !  print*, ' '
-    !  print*, '******************************************************************************'
-    !END IF
+    IF (dprint) THEN
+      print*, ' '
+      print*, '******************************************************************************'
+    END IF
 
     !********************************************************************************
     !    _   _             _         _          __  __         _          _       
@@ -414,23 +420,28 @@ MODULE Rosenbrock_Mod
     !********************************************************************************
    
     ! HIER UNBEDINGT RATE MIT Y0 ALS INPUT
-    IF ( .NOT.TempEq ) THEN
+    IF ( .NOT.Teq ) THEN
       Y   = MAX( ABS(Y0)  , eps ) * SIGN( ONE , Y0 )  ! concentrations =/= 0
       Yrh = Y(1:nspc) / h
-      CALL ReactionRatesAndDerivative( t, Y, Rate, DRatedT )     ! Y or Y0 ?
+      CALL ReactionRates_Tropos( t, Y, Rate )     ! Y or Y0 ?
       Rate  = MAX( ABS(Rate) , eps ) * SIGN( ONE , Rate )    ! reaction rates =/= 0
       rRate = ONE / Rate
     ELSE
       Yrh = Y0(1:nspc) / h
-      CALL ReactionRatesAndDerivative( t, Y0, Rate, DRatedT )     
+      CALL ReactionRatesAndDerivative_ChemKin( t, Y0, Rate, DRatedT )     
     END IF
+
+    ! calculating the time averaged rate of reaction
+    avgRate = Rate/h
+
     
     ! HIER  NICHT VON Y(:nspc) AUF Y0(:nspc) ÄNDERN
     !Yrh  = Y(1:nspc) / h
 
-    IF ( TempEq ) THEN
+    IF ( Teq ) THEN
+      Tarr = UpdateTempArray   ( Y0(nDIM) )       
+
       !                          OUT:      IN:
-      CALL UpdateTempArray     ( Tarr    , Y0(nDIM) )       
       CALL InternalEnergy      ( U       , Tarr)             
       CALL DiffInternalEnergy  ( dUdT    , Tarr)              
       CALL Diff2InternalEnergy ( d2UdT2  , Tarr)
@@ -444,26 +455,26 @@ MODULE Rosenbrock_Mod
       X       = cv/(h*rRho) + RCo%ga/cv*dcvdT*dTdt + RCo%ga*SUM(dUdT*dCdt) 
       !
       !
-      !IF (dprint) THEN
-      !  WRITE(*,*) '------------------------------------------------------------------------------'
-      !  WRITE(*,*) '|    Combustion                                                              |'
-      !  WRITE(*,*) '------------------------------------------------------------------------------'
-      !  WRITE(*,'(A,E23.16,A)') 'debug     Temperature =  ',Tarr(1)   ,'   [K]'
-      !  WRITE(*,'(A,E23.16,A)') 'debug     c_v         =  ',cv        ,'   [J/kg/K]'
-      !  WRITE(*,'(A,E23.16,A,E23.16,A)') 'debug     Density     =  ',rho       ,'   [kg/m3]',rRho       ,'   [kg/m3]'
-      !  WRITE(*,'(A,E23.16,A)') 'debug     SUM(U)      =  ',SUM(U)    ,'   [J/mol/K]'
-      !  WRITE(*,'(A,E23.16,A)') 'debug     X in Matrix =  ',X         ,'   [???]'
-      !  WRITE(*,'(A,E23.16,A)') 'debug     SUM(dCdt)   =  ',SUM(dCdt) ,'   [mol/cm3/sec]'
-      !  WRITE(*,'(A,E23.16,A)') 'debug     dTdt        =  ',dTdt      ,'   [K/sec]'
-      !  WRITE(*,*) '------------------------------------------------------------------------------'
-      !  WRITE(*,*) ''
-      !  do i=1,nspc
-      !    WRITE(*,'(A,I5,A,E22.14,A3,A)') 'debug     dCdt(',i,') = ',dCdt(SCperm(i)),'   ',y_name(SCperm(i))
-      !  end do
-      !  WRITE(*,'(A,E22.14,A3,A)') 'debug      dTdt(last) = ',dTdt,'   ','Temperature'
-      !  WRITE(*,*) ''
-      !  !stop 'debug ros'
-      !END IF
+      IF (dprint) THEN
+        WRITE(*,*) '------------------------------------------------------------------------------'
+        WRITE(*,*) '|    Combustion                                                              |'
+        WRITE(*,*) '------------------------------------------------------------------------------'
+        WRITE(*,'(A,E23.16,A)') 'debug     Temperature =  ',Tarr(1)   ,'   [K]'
+        WRITE(*,'(A,E23.16,A)') 'debug     c_v         =  ',cv        ,'   [J/kg/K]'
+        WRITE(*,'(A,E23.16,A,E23.16,A)') 'debug     Density     =  ',rho       ,'   [kg/m3]',rRho       ,'   [kg/m3]'
+        WRITE(*,'(A,E23.16,A)') 'debug     SUM(U)      =  ',SUM(U)    ,'   [J/mol/K]'
+        WRITE(*,'(A,E23.16,A)') 'debug     X in Matrix =  ',X         ,'   [???]'
+        WRITE(*,'(A,E23.16,A)') 'debug     SUM(dCdt)   =  ',SUM(dCdt) ,'   [mol/cm3/sec]'
+        WRITE(*,'(A,E23.16,A)') 'debug     dTdt        =  ',dTdt      ,'   [K/sec]'
+        WRITE(*,*) '------------------------------------------------------------------------------'
+        WRITE(*,*) ''
+        do i=1,nspc
+          WRITE(*,'(A,I5,A,E22.14,A3,A)') 'debug     dCdt(',i,') = ',dCdt(SCperm(i)),'   ',y_name(SCperm(i))
+        end do
+        WRITE(*,'(A,E22.14,A3,A)') 'debug      dTdt(last) = ',dTdt,'   ','Temperature'
+        WRITE(*,*) ''
+        !stop 'debug ros'
+      END IF
       !stop
       !
     END IF
@@ -477,7 +488,7 @@ MODULE Rosenbrock_Mod
       ! d(dcdt)/dc
       CALL Jacobian_CC(  Jac_CC , BAT  , A , Rate , Y )
 
-      IF ( TempEq ) THEN
+      IF ( Teq ) THEN
         CALL Jacobian_CT( Jac_CT , BAT , Rate , DRatedT )
         CALL Jacobian_TC( Jac_TC , Jac_CC , cv , dUdT , dTdt , U , rRho)
         CALL Jacobian_TT( Jac_TT , Jac_CT , cv , dcvdT , dTdt , dUdT , dCdt , U , rRho)
@@ -538,25 +549,26 @@ MODULE Rosenbrock_Mod
     END IF
     TimeFac     = TimeFac + (MPI_WTIME()-timerStart)
 
-    !IF (dprint) THEN
-    !  print*, '------------------------------------------------------------------------------'
-    !  print*, '|    Rosenbrock Input                                                        |'
-    !  print*, '------------------------------------------------------------------------------'
-    !  print*, 'debug     Stepsize       =  ',h
-    !  print*, 'debug     Time           =  ',t
-    !  print*, 'debug     SUM(Y0)        =  ',SUM(Y0)
-    !  print*, 'debug     SUM(Miter%val) =  ',SUM(Miter%val)
-    !  IF( useSparseLU ) THEN
-    !    print*, 'debug    SUM(LU%val) vor = ', SUM(LU_Miter%val)
-    !  END IF
-    !  print*, '------------------------------------------------------------------------------'
-    !  print*, ''
-    !  print*, ''
-    !  print*, '------------------------------------------------------------------------------'
-    !  print*, '| Before solving Ax=b:  iStage                   b                           |'
-    !  print*, '------------------------------------------------------------------------------'
-    !  print*, ''
-    !END IF
+    IF (dprint) THEN
+      print*, '------------------------------------------------------------------------------'
+      print*, '|    Rosenbrock Input                                                        |'
+      print*, '------------------------------------------------------------------------------'
+      print*, 'debug     Stepsize       =  ',h
+      print*, 'debug     Time           =  ',t
+      print*, 'debug     SUM(Y0)        =  ',SUM(Y0)
+      print*, 'debug     SUM(Rate)      =  ',SUM(Rate)
+      print*, 'debug     SUM(Miter%val) =  ',SUM(Miter%val)
+      IF( useSparseLU ) THEN
+        print*, 'debug    SUM(LU%val) vor = ', SUM(LU_Miter%val)
+      END IF
+      print*, '------------------------------------------------------------------------------'
+      print*, ''
+      print*, ''
+      print*, '------------------------------------------------------------------------------'
+      print*, '| Before solving Ax=b:  iStage                   b                           |'
+      print*, '------------------------------------------------------------------------------'
+      print*, ''
+    END IF
 
     !****************************************************************************************
     !   ____    ___ __        __          _____  _                    ____   _               
@@ -574,8 +586,8 @@ MODULE Rosenbrock_Mod
         IF ( EXTENDED ) THEN
           bb( 1     : neq ) = mONE 
           bb( neq+1 : nsr ) = Y_e 
-          IF ( TempEq ) bb(nDIMex)  = ZERO
-          !IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:iprnt)
+          IF ( Teq ) bb(nDIMex)  = ZERO
+          IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:iprnt)
         END IF
 
       ELSE ! iStage > 1 ==> Update time and concentration
@@ -588,13 +600,17 @@ MODULE Rosenbrock_Mod
         END DO
         
         ! Update Rates at  (t + SumA*h) , and  (Y + A*)k
-        CALL ReactionRatesAndDerivative( tt , Y , Rate , DRatedT )
+        IF (Teq) THEN
+          CALL ReactionRatesAndDerivative_ChemKin( tt , Y , Rate , DRatedT )
+        ELSE
+          CALL ReactionRates_Tropos( tt , Y , Rate )
+        END IF
 
-        !IF (dprint) THEN
-        !  print*, ''
-        !  print*, 'debug::         SUM(concentration) at (Y + a*k)  = ',SUM(Y)
-        !  print*, 'debug::  SUM(Rates) at (t + SumA*h),  (Y + a*k)  = ',SUM(Rate)
-        !END IF
+        IF (dprint) THEN
+          print*, ''
+          print*, 'debug::         SUM(concentration) at (Y + a*k)  = ',SUM(Y)
+          print*, 'debug::  SUM(Rates) at (t + SumA*h),  (Y + a*k)  = ',SUM(Rate)
+        END IF
       END IF
       
       TimeRhsCalc0 = MPI_WTIME()
@@ -604,14 +620,14 @@ MODULE Rosenbrock_Mod
         CALL DAXPY_sparse( dCdt , BAT , Rate , Y_e )           
         fRhs(1:nspc) =  h * dCdt
 
-        IF (TempEq) &
+        IF (Teq) &
         fRhs( nDIM ) = - h * SUM(U*dCdt) * rRho / cv
 
         DO jStg = 1 , iStg-1
           fRhs  = fRhs + RCo%C(iStg,jStg) * k(:,jStg)
         END DO
 
-        !IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',fRhs( 1:iprnt)
+        IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',fRhs( 1:iprnt)
 
       ELSE !IF ( EXTENDED ) THEN
 
@@ -621,7 +637,7 @@ MODULE Rosenbrock_Mod
 
           DO jStg = 1 , iStg-1
             fRhs(1:nspc) = fRhs(1:nspc) + RCo%C(iStg,jStg)*k(1:nspc,jStg)
-            IF (TempEq)                                                &
+            IF (Teq)                                                &
             fRhs(nDIM)   = fRhs(nDIM) + RCo%C(iStg,jStg)*                  &
             &               ( cv/rRho*k(nDIM,jStg) + SUM(U*k(1:nspc,jStg)) )
           END DO
@@ -630,9 +646,9 @@ MODULE Rosenbrock_Mod
 
           bb( 1      : neq )     = -rRate * Rate
           bb( neq+1  : nsr )     = Y_e + fRhs(1:nspc)/h
-          IF (TempEq) bb(nDIMex) = fRhs(nDIM)/h
+          IF (Teq) bb(nDIMex) = fRhs(nDIM)/h
 
-          !IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:iprnt)
+          IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:iprnt)
         END IF
 
       END IF
@@ -650,7 +666,7 @@ MODULE Rosenbrock_Mod
 
           CALL SolveSparse( LU_Miter , bb)
           k( 1:nspc , iStg ) = Y0(1:nspc) * bb(neq+1:nsr)
-          IF ( TempEq ) &
+          IF ( Teq ) &
           k(  nDIM  , iStg ) = bb(nDIMex)
           
         END IF
@@ -666,7 +682,7 @@ MODULE Rosenbrock_Mod
 
           CALL MumpsSolve( bb )
           k( 1:nspc , iStg ) = Y0(1:nspc) * Mumps_Par%RHS(neq+1:nsr)
-          IF ( TempEq ) &
+          IF ( Teq ) &
           k(  nDIM  , iStg ) = Mumps_Par%RHS(nDIMex)
 
         END IF
@@ -675,18 +691,18 @@ MODULE Rosenbrock_Mod
       TimeSolve   = TimeSolve + (MPI_WTIME()-timerStart)
 
     END DO  LOOP_n_STAGES
-    !IF (dprint) THEN
-    !  print*, ''
-    !  print*, '------------------------------------------------------------------------------'
-    !  print*, '| After solving Ax=b:  Species         k( iSpc , : )                         |'
-    !  print*, '------------------------------------------------------------------------------'
-    !  print*, ''
-    !  do istg=1,nspc
-    !    WRITE(*,'(A9,I5,A25,A3,*(E15.8,2X))') 'debug::  ',istg, TRIM(y_name(istg)),'   ',k( istg , : )
-    !  end do
-    !  IF (TempEq) WRITE(*,'(A9,I5,A25,A3,*(E15.8,2X))') 'debug::  ',nDIM,'Temperature','   ',k( nDIM , : )
-    !  print*, '------------------------------------------------------------------------------'
-    !END IF
+    IF (dprint) THEN
+      print*, ''
+      print*, '------------------------------------------------------------------------------'
+      print*, '| After solving Ax=b:  Species         k( iSpc , : )                         |'
+      print*, '------------------------------------------------------------------------------'
+      print*, ''
+      do istg=1,nspc
+        WRITE(*,'(A9,I5,A25,A3,*(E15.8,2X))') 'debug::  ',istg, TRIM(y_name(istg)),'   ',k( istg , : )
+      end do
+      IF (Teq) WRITE(*,'(A9,I5,A25,A3,*(E15.8,2X))') 'debug::  ',nDIM,'Temperature','   ',k( nDIM , : )
+      print*, '------------------------------------------------------------------------------'
+    END IF
 
     
     !--- Update Concentrations (+Temperatur)
@@ -699,19 +715,19 @@ MODULE Rosenbrock_Mod
       YNew = YNew +  RCo%m(jStg) * k(:,jStg)! new Y vector
       IF (.NOT.EULER) YHat = YHat + RCo%me(jStg) * k(:,jStg)! embedded formula for err calc ord-1
     END DO
-    !
-    !IF (dprint) THEN
-    !  print*, ''
-    !  print*, '------------------------------------------------------------------------------'
-    !  print*, '| After Ros step:   Y_Old                     Y_New              Species name|'
-    !  print*, '------------------------------------------------------------------------------'
-    !  do istg=1,nspc
-    !    print*,'debug::  ', Y0(istg),Ynew(iStg),'   ', TRIM(y_name(istg))
-    !  end do
-    !  IF (TempEq) print*,'debug::  ', Y0(nDIM),Ynew(nDIM), '   Temperature'
-    !  print*, '------------------------------------------------------------------------------'
-    !  print*, ''
-    !END IF
+    
+    IF (dprint) THEN
+      print*, ''
+      print*, '------------------------------------------------------------------------------'
+      print*, '| After Ros step:   Y_Old                     Y_New              Species name|'
+      print*, '------------------------------------------------------------------------------'
+      do istg=1,nspc
+        print*,'debug::  ', Y0(istg),Ynew(iStg),'   ', TRIM(y_name(istg))
+      end do
+      IF (Teq) print*,'debug::  ', Y0(nDIM),Ynew(nDIM), '   Temperature'
+      print*, '------------------------------------------------------------------------------'
+      print*, ''
+    END IF
 
     !***********************************************************************************************
     !   _____                           _____       _    _                    __               
@@ -721,48 +737,48 @@ MODULE Rosenbrock_Mod
     !  |_____||_|   |_|   \___/ |_|    |_____||___/ \__||_||_| |_| |_| \__,_| \__| |_| \___/ |_| |_|
     !                                                                                              
     !***********************************************************************************************
-    IF (.NOT.EULER) CALL ERROR( err , errind , YNew , YHat , ATolAll , RTolROW , t )
+    IF (.NOT.EULER) CALL ERROR( err , ierr , YNew , YHat , ATolAll , RTolROW , t )
     TimeErrCalc = TimeErrCalc + MPI_WTIME() - TimeErrCalc0
    
     !print*, 't,h, kvecs = ', t,h,SUM(k(:,1))
     !stop
     
     IF (dprint) THEN
-    !  print*,'debug::     Error     =  ', err, '  Error index  =  ', errind
-    !  print*, '------------------------------------------------------------------------------'
-    !  print*, ''
-    !  print*, ' Press ENTER to calculate next step '
-    !  read(*,*) 
-      IF (err <= ONE) THEN
-        CALL ConnectivityMethode(  CM_1 , BAT  , A , Rate , Y , dCdt )
-        CALL TransposeSparse( CM_1T , CM_1 )
-        DO i=1,nDIM
-          CM(i) = SUM( CM_1T%Val( CM_1T%RowPtr(i):CM_1T%RowPtr(i+1)-1 ) ) 
-        END DO
-        print*, 'CM= ',CM
-      END IF
+      print*,'debug::     Error     =  ', err, '  Error index  =  ', ierr
+      print*, '------------------------------------------------------------------------------'
+      print*, ''
+      print*, ' Press ENTER to calculate next step '
+      read(*,*) 
+    !  IF (err <= ONE) THEN
+    !    CALL ConnectivityMethode(  CM_1 , BAT  , A , Rate , Y , dCdt )
+    !    CALL TransposeSparse( CM_1T , CM_1 )
+    !    DO i=1,nDIM
+    !      CM(i) = SUM( CM_1T%Val( CM_1T%RowPtr(i):CM_1T%RowPtr(i+1)-1 ) ) 
+    !    END DO
+    !    print*, 'CM= ',CM
+    !  END IF
     END IF
    
   END SUBROUTINE Rosenbrock
 
 
-  SUBROUTINE ERROR(err,En_Index,ynew,yhat,ATol,RTol,t)
+  SUBROUTINE ERROR(err,ierr,ynew,yhat,ATol,RTol,t)
     !
     REAL(dp) :: err
     REAL(dp), DIMENSION(:) :: ynew, yhat, ATol
     REAL(dp) :: RTol, t
     !
-    REAL(dp) :: scalTol(nDIM), En_Values(nDIM)
-    INTEGER :: En_Index(1,1)
+    REAL(dp) :: scalTol(nDIM), e_n(nDIM)
+    INTEGER :: ierr(1,1)
     !
-    scalTol       = ONE / (ATol + MAX( ABS(yhat) , ABS(ynew) ) * RTol )  ! scaling strategie
-    En_Values     = ABS( ynew - yhat ) * scalTol      ! local error est.
-    En_Index(1,1) = MAXLOC( En_Values , 1 )           ! max error component
+    scalTol   = ONE / (ATol + MAX( ABS(yhat) , ABS(ynew) ) * RTol )  ! scaling strategie
+    e_n       = ABS( ynew - yhat ) * scalTol      ! local error est.
+    ierr(1,1) = MAXLOC( e_n , 1 )           ! max error component
     !
     IF ( Error_Est == 2 ) THEN
-      err = SUM( En_Values*En_Values ) * rNspc   ! euclikd norm
+      err = SUM( e_n*e_n ) * rNspc   ! euclikd norm
     ELSE
-      err = MAXVAL( En_Values )     ! maximum norm
+      err = MAXVAL( e_n )     ! maximum norm
     END IF
     !
   END SUBROUTINE ERROR

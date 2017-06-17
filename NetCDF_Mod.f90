@@ -19,11 +19,13 @@ MODULE NetCDF_Mod
   INTEGER :: iStpNetCDF 
   INTEGER :: itime_NetCDF
   REAL(dp), ALLOCATABLE :: yNcdf(:)     ! current output vector
+
+  INTEGER :: pH_ind
   !
   INTEGER :: x_varid,y_varid,z_varid,rec_varid, LWC_varid, traj_varid
   INTEGER :: StepSize_varid, Gassum_varid, Aquasum_varid, wetRadius_varid
   INTEGER :: zenith_varid, schwefel_varid, error_varid, Temperature_varid
-  INTEGER :: MaxErrorSpc_varid
+  INTEGER :: MaxErrorSpc_varid, pH_varid
 
   CONTAINS
 
@@ -112,7 +114,7 @@ MODULE NetCDF_Mod
       Diag_Name_Netcdf(jt) = tmpName
       Diag_LongName(jt)    = tmpName
       DIAG_UNITS(jt)       = "mol/m3"
-      IF (TempEq) DIAG_UNITS(jt) = 'mass fraction'
+      IF (Teq) DIAG_UNITS(jt) = 'mass fraction'
     ELSEIF (OutNetcdfPhase(iDiagSpc)=='a') THEN
       Diag_Name_Netcdf(jt) = TRIM(tmpName)//'_l'
       Diag_LongName(jt)    = TRIM(tmpName)//'_aqua'
@@ -121,6 +123,7 @@ MODULE NetCDF_Mod
       Diag_Name_Netcdf(jt) = TRIM(tmpName)//'_m3'
       Diag_LongName(jt)    = TRIM(tmpName)//'_air'
       DIAG_UNITS(jt)       = "mol/m3"
+      IF (tmpName == 'Hp' ) pH_ind = jt
     END IF
     DO
       IF (INDEX(Diag_Name_Netcdf(jt),'/')>0) THEN
@@ -224,16 +227,21 @@ MODULE NetCDF_Mod
     END IF
     !
     ! lwc
-    CALL check ( NF90_DEF_VAR( ncid, 'LWC_Level' , NF90_DOUBLE, dimIDS, LWC_varid ) )
     CALL check ( NF90_DEF_VAR( ncid, 'Step_Size' , NF90_DOUBLE, dimIDS, StepSize_varid ) )
-    CALL check ( NF90_DEF_VAR( ncid, 'GasSum'    , NF90_DOUBLE, dimIDS, gassum_varid ) )
-    CALL check ( NF90_DEF_VAR( ncid, 'AquaSum'   , NF90_DOUBLE, dimIDS, aquasum_varid ) )
-    CALL check ( NF90_DEF_VAR( ncid, 'wetRadius' , NF90_DOUBLE, dimIDS, wetRadius_varid ) )
     CALL check ( NF90_DEF_VAR( ncid, 'Zenith' , NF90_DOUBLE, dimIDS, zenith_varid ) )
     CALL check ( NF90_DEF_VAR( ncid, 'SchwefelSumme' , NF90_DOUBLE, dimIDS, schwefel_varid ) )
     CALL check ( NF90_DEF_VAR( ncid, 'loc_error' , NF90_DOUBLE, dimIDS, error_varid ) )
     CALL check ( NF90_DEF_VAR( ncid, 'loc_error_spc' , NF90_DOUBLE, dimIDS, MaxErrorSpc_varid ) )
-    IF ( TempEq ) THEN
+    IF ( ntGas >0 ) THEN
+      CALL check ( NF90_DEF_VAR( ncid, 'GasSum'    , NF90_DOUBLE, dimIDS, gassum_varid ) )
+    END IF
+    IF ( ntAqua>0 ) THEN
+      CALL check ( NF90_DEF_VAR( ncid, 'LWC_Level' , NF90_DOUBLE, dimIDS, LWC_varid ) )
+      CALL check ( NF90_DEF_VAR( ncid, 'wetRadius' , NF90_DOUBLE, dimIDS, wetRadius_varid ) )
+      CALL check ( NF90_DEF_VAR( ncid, 'pH_Value' , NF90_DOUBLE, dimIDS, pH_varid ) )
+      CALL check ( NF90_DEF_VAR( ncid, 'AquaSum'   , NF90_DOUBLE, dimIDS, aquasum_varid ) )
+    END IF
+    IF ( Teq ) THEN
       CALL check ( NF90_DEF_VAR( ncid, 'Temperature' , NF90_DOUBLE, dimIDS, Temperature_varid ) )
     END IF
     !
@@ -280,26 +288,16 @@ MODULE NetCDF_Mod
       END IF
     END DO
     !
-    ! lwc
-    CALL check( NF90_PUT_ATT(ncid, LWC_varid, NC_UNITS, '[l/m3]' ) )  
-    CALL check( NF90_PUT_ATT(ncid, LWC_varid, "long_name", '[liter/m3]') ) 
-    CALL check( NF90_PUT_ATT(ncid, LWC_varid, "_CoordinateAxes", "time") )
     ! stepsize
     CALL check( NF90_PUT_ATT(ncid, StepSize_varid, NC_UNITS, '[sec]' ) )  
     CALL check( NF90_PUT_ATT(ncid, StepSize_varid, "long_name", 'step size in [sec]') ) 
     CALL check( NF90_PUT_ATT(ncid, StepSize_varid, "_CoordinateAxes", "time") )
-    ! Gas summe
-    CALL check( NF90_PUT_ATT(ncid, Gassum_varid, NC_UNITS, '[molec/m3]' ) )  
-    CALL check( NF90_PUT_ATT(ncid, Gassum_varid, "Long_name", 'sum gaseus conc [molec/cm3]') ) 
-    CALL check( NF90_PUT_ATT(ncid, Gassum_varid, "_CoordinateAxes", "time") )
-    ! aqua summe
-    CALL check( NF90_PUT_ATT(ncid, Aquasum_varid, NC_UNITS, '[molec/m3]' ) )  
-    CALL check( NF90_PUT_ATT(ncid, Aquasum_varid, "Long_name", 'sum aqueus conc [molec/cm3]') ) 
-    CALL check( NF90_PUT_ATT(ncid, Aquasum_varid, "_CoordinateAxes", "time") )
-    ! wet dropplet radius
-    CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, NC_UNITS, '[m]' ) )  
-    CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, "long_name", 'wet droplett radius [m]') ) 
-    CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, "_CoordinateAxes", "time") )
+    IF ( ntGas>0 ) THEN
+      ! Gas summe
+      CALL check( NF90_PUT_ATT(ncid, Gassum_varid, NC_UNITS, '[molec/m3]' ) )  
+      CALL check( NF90_PUT_ATT(ncid, Gassum_varid, "Long_name", 'sum gaseus conc [molec/cm3]') ) 
+      CALL check( NF90_PUT_ATT(ncid, Gassum_varid, "_CoordinateAxes", "time") )
+    END IF
     ! Zenith angle
     CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, NC_UNITS, '[-]' ) )  
     CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, "long_name", 'Zenith angle [-]') ) 
@@ -316,8 +314,26 @@ MODULE NetCDF_Mod
     CALL check( NF90_PUT_ATT(ncid, MaxErrorSpc_varid, NC_UNITS, '[-]' ) )  
     CALL check( NF90_PUT_ATT(ncid, MaxErrorSpc_varid, "long_name", 'species of max error val') ) 
     CALL check( NF90_PUT_ATT(ncid, MaxErrorSpc_varid, "_CoordinateAxes", "time") )
-    ! save temperature for TempEq simulation
-    IF ( TempEq ) THEN
+    ! pH value
+    IF ( ntAqua>0 ) THEN
+      ! lwc
+      CALL check( NF90_PUT_ATT(ncid, LWC_varid, NC_UNITS, '[l/m3]' ) )  
+      CALL check( NF90_PUT_ATT(ncid, LWC_varid, "long_name", '[liter/m3]') ) 
+      CALL check( NF90_PUT_ATT(ncid, LWC_varid, "_CoordinateAxes", "time") )
+      ! aqua summe
+      CALL check( NF90_PUT_ATT(ncid, Aquasum_varid, NC_UNITS, '[molec/m3]' ) )  
+      CALL check( NF90_PUT_ATT(ncid, Aquasum_varid, "Long_name", 'sum aqueus conc [molec/cm3]') ) 
+      CALL check( NF90_PUT_ATT(ncid, Aquasum_varid, "_CoordinateAxes", "time") )
+      ! wet dropplet radius
+      CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, NC_UNITS, '[m]' ) )  
+      CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, "long_name", 'wet droplett radius [m]') ) 
+      CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, "_CoordinateAxes", "time") )
+      CALL check( NF90_PUT_ATT(ncid, pH_varid, NC_UNITS, '[-]' ) )  
+      CALL check( NF90_PUT_ATT(ncid, pH_varid, "long_name", 'pH-Value ( = -log10[Hp] )') ) 
+      CALL check( NF90_PUT_ATT(ncid, pH_varid, "_CoordinateAxes", "time") )
+    END IF
+    ! save temperature for Teq simulation
+    IF ( Teq ) THEN
       CALL check( NF90_PUT_ATT(ncid, Temperature_varid, NC_UNITS, '[K]' ) )  
       CALL check( NF90_PUT_ATT(ncid, Temperature_varid, "long_name", 'Temperature in Kelvin') ) 
       CALL check( NF90_PUT_ATT(ncid, Temperature_varid, "_CoordinateAxes", "temp") )
@@ -412,24 +428,24 @@ END SUBROUTINE InitNetCDF
 !===  Saving Output
 !==================================================================
 !
-     yout(:) = 0.d0
-     IF ( TempEq ) yOut(OutNetcdfDIM)=y(nDIM)
+     yout(:) = ZERO
+     IF ( Teq ) yOut(OutNetcdfDIM)=y(nDIM)
      jt=0
 
 ! internal calculations all in molec/cm3
 !
 ! mol2part converts from molec/cm3 to mol/m3 and vice versa
      DO iDiagSpc=1,SIZE(OutNetcdfspc)
-       jt=jt+1
-       idx=OutNetcdfSpc(iDiagSpc)
-       NaN=ISNAN(y(idx))
+       jt  = jt + 1
+       idx = OutNetcdfSpc(iDiagSpc)
+       NaN = ISNAN(y(idx))
        IF      (OutNetcdfPhase(iDiagSpc)=='a'.AND..NOT.NaN) THEN
-         yout(jt) = y(idx) / (actLWC * mol2part)  ! convert to mol/l water
+         yout(jt)   = y(idx) / (actLWC * mol2part)  ! convert to mol/l water
          yout(jt+1) = y(idx) / (mol2part) ! convert to mol/m3 air
-         jt=jt+1
+         jt = jt + 1
          !
        ELSE IF (OutNetcdfPhase(iDiagSpc)=='g'.AND..NOT.NaN) THEN
-         IF (TempEq) THEN
+         IF (Teq) THEN
            !yout(jt) = y(idx) * 1.0d6       ! [mol/cm3] to [mol/m3]
            yout(jt) = y(idx)          ! in mass fractions
          ELSE
@@ -464,6 +480,7 @@ END SUBROUTINE InitNetCDF
   REAL(dp) :: otherStuff(6)! (/actLWC, StepSize, Gassum, Aquasum, wetRadius, Zenith/)
   REAL(dp) :: Schwefel
   REAL(dp) :: Error
+  REAL(dp) :: pH
   INTEGER :: ErrInd(1,1)
   INTEGER :: ncid
   !
@@ -487,28 +504,14 @@ END SUBROUTINE InitNetCDF
   ! ====================================================================================
   ! == Open Netcdf-File in write mode to modify data ===================================
   ! ====================================================================================
-  !
+  
   CALL check( NF90_OPEN( NetcdfFile, NF90_WRITE, ncid ) ) 
-  ! ====================================================================================
-  ! == Inquire variable-IDs of existing netcdf-file to asign data to appropiate variable
-  ! ====================================================================================
-  !
-  !CALL check( NF90_INQ_VARID( ncid, TRIM("time"),     rec_varid ) )
-  !CALL check( NF90_INQ_VARID( ncid, TRIM("lon"),      x_varid   ) )
-  !CALL check( NF90_INQ_VARID( ncid, TRIM("lat"),      y_varid   ) )
-  !CALL check( NF90_INQ_VARID( ncid, TRIM("altitude"), z_varid   ) )
-  !
-  ! lwc
-  !CALL check( NF90_INQ_VARID( ncid, 'LWC_Level', LWC_varid ) )
-  !CALL check( NF90_INQ_VARID( ncid, 'Step_Size', StepSize_varid ) )
-  !CALL check( NF90_INQ_VARID( ncid, 'GasSum', Gassum_varid ) )
-  !CALL check( NF90_INQ_VARID( ncid, 'AquaSum', Aquasum_varid ) )
-  !CALL check( NF90_INQ_VARID( ncid, 'wetRadius', wetRadius_varid ) )
+
   ! ====================================================================================
   ! == Write new data to netcdf-file ===================================================
   ! ====================================================================================
-  timeLoc = t/3600.0d0   ! time output in hours
-  IF ( TempEq ) timeLoc=t ! time in seconds for TempEq mechanism
+  timeLoc = t/HOUR   ! time output in hours
+  IF ( Teq ) timeLoc=t ! time in seconds for Teq mechanism
   CALL check( NF90_PUT_VAR( ncid, rec_varid, timeLoc, start=(/time_ind/) ) )
   CALL check( NF90_PUT_VAR( ncid, x_varid,   rlon,    start=(/time_ind/) ) )
   CALL check( NF90_PUT_VAR( ncid, y_varid,   rlat,    start=(/time_ind/) ) )
@@ -519,16 +522,22 @@ END SUBROUTINE InitNetCDF
     !OutNetcdf(jt) = MAX(yout(jt),1.d-40)        ! for logarithmic plot
     CALL check( NF90_PUT_VAR( ncid, Diag_varID(jt), yOut(jt), start = (/time_ind/) ) )
   END DO
-  CALL check( NF90_PUT_VAR( ncid, LWC_varid,       otherStuff(1), start = (/time_ind/) ) )
   CALL check( NF90_PUT_VAR( ncid, StepSize_varid,  otherStuff(2), start = (/time_ind/) ) )
-  CALL check( NF90_PUT_VAR( ncid, Gassum_varid,    otherStuff(3), start = (/time_ind/) ) )
-  CALL check( NF90_PUT_VAR( ncid, Aquasum_varid,   otherStuff(4), start = (/time_ind/) ) )
-  CALL check( NF90_PUT_VAR( ncid, wetRadius_varid, otherStuff(5), start = (/time_ind/) ) )
+  IF ( ntGas>0 ) THEN
+    CALL check( NF90_PUT_VAR( ncid, Gassum_varid,    otherStuff(3), start = (/time_ind/) ) )
+  END IF
   CALL check( NF90_PUT_VAR( ncid, zenith_varid,    otherStuff(6), start = (/time_ind/) ) )
   CALL check( NF90_PUT_VAR( ncid, schwefel_varid,  Schwefel, start = (/time_ind/) ) )
   CALL check( NF90_PUT_VAR( ncid, error_varid,     error,    start = (/time_ind/) ) )
   CALL check( NF90_PUT_VAR( ncid, MaxErrorSpc_varid, ErrInd, start = (/time_ind/) ) )
-  IF ( TempEq ) THEN
+  IF ( ntAqua>0 ) THEN
+    CALL check( NF90_PUT_VAR( ncid, Aquasum_varid,   otherStuff(4), start = (/time_ind/) ) )
+    CALL check( NF90_PUT_VAR( ncid, wetRadius_varid, otherStuff(5), start = (/time_ind/) ) )
+    CALL check( NF90_PUT_VAR( ncid, LWC_varid,       otherStuff(1), start = (/time_ind/) ) )
+    pH = -LOG10( yOut(pH_ind) )
+    CALL check( NF90_PUT_VAR( ncid, pH_varid, pH, start = (/time_ind/) ) )
+  END IF
+  IF ( Teq ) THEN
     CALL check( NF90_PUT_VAR( ncid, Temperature_varid, yOut(OutNetcdfDIM), start = (/time_ind/) ) )
   END IF
   ! ====================================================================================

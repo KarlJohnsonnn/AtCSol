@@ -11,16 +11,16 @@ CHEMIELIB = -L$(LIB_O)
 OBJo =  $(POLYLIBo) $(CHEMIELIB)
 OBJg =  $(POLYLIBg) $(CHEMIELIB)
 
-all: CHEMIE CHEMIE_g
+all: chemie chemie_g
        
-CHEMIE:  PolyDo  
-	$(LINK) $(OPT_O) $(KINCL_O) -o CHEMIE \
-        MAIN_CHEMIE.f90 SOLVER/opkdmain.o SOLVER/opkda1.o SOLVER/opkda2.o  \
+chemie:  PolyDo  
+	$(LINK) $(OPT_O) $(KINCL_O) -o chemie.exe \
+        chemie.f90 SOLVER/opkdmain.o SOLVER/opkda1.o SOLVER/opkda2.o  \
 				$(OP) $(OBJo) $(METIS) $(MUMPS) $(UMF) $(LAPACK) $(SCOTCH) $(SCALAP) $(PARMETIS) $(NETCDF) $(LMPI) $(CL) $(COARRAY) -lblas -llapack  ;
 
-CHEMIE_g:  PolyDg  
-	$(LINK) $(OPT_D) $(KINCL_D) -o CHEMIE_g \
-        MAIN_CHEMIE.f90 SOLVER/opkdmain.o SOLVER/opkda1.o SOLVER/opkda2.o  \
+chemie_g:  PolyDg  
+	$(LINK) $(OPT_D) $(KINCL_D) -o chemie_dbg.exe \
+        chemie.f90 SOLVER/opkdmain.o SOLVER/opkda1.o SOLVER/opkda2.o  \
 				$(OP) $(OBJg) $(METIS) $(MUMPS) $(UMF) $(LAPACK) $(SCOTCH)  $(SCALAP) $(PARMETIS) $(NETCDF) $(LMPI) $(CL) $(COARRAY) -lblas -llapack  ;
 
 PolyDo: 

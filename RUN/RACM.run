@@ -1,0 +1,48 @@
+ &SCENARIO
+  BSP = 'RACM'
+  pHSet = 1
+  LWCLevelmax = 2.0d-8
+  LwcLevelmin = 3.0d-4
+  constLWC = .false.
+  Ladebalken = 1
+  ErrorLog = 0
+  MatrixPrint = .false.
+  DebugPrint  = .false.
+  NetCdfPrint = .true. 
+  ChemKin     = .false.        ! input mechanism in ChemKin notation
+ /END
+ &FILES
+  SysFile = 'CHEM/RACM.sys'  
+  DataFile = 'DAT/RACM.dat'
+  InitFile = 'INI/Urban.ini'
+  MetFile  = 'MET/Urban.met'
+ /END
+ &TIMES
+  tAnf    = 0.0d0
+  !tEnd    = 84600.0d0
+  tEnd    = 259200.0d0
+  Dust    = 0.5d0
+  idate   = 010621     
+  rlat    = 45.d0     
+  rlon    =  0.d0
+  minStp  = 1.0d-30
+  maxStp  = 200.d0
+  StpNetCDF = -1.0d0
+/END
+ &METEO
+ /END
+ &NUMERICS
+  RtolROW  = 1.0d-3
+  AtolGas  = 1.0d-7
+  AtolAqua = 1.0d-7
+  Error_Est = 2
+  PI_StepSize = .FALSE.
+  solveLA = 'ex'
+  ODEsolver = 'METHODS/TSRosWRodas3.fort'
+  !ODEsolver = 'LSODE'
+  Vectorized = .true.
+ /END
+ &ORDERING
+  OrderingStrategie  = 8
+  ParOrdering        = -1
+ /END

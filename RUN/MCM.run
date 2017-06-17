@@ -1,44 +1,41 @@
  &SCENARIO
-  BSP = 'MCM_gas'
-  pHSet = 1
-  LWCLevelmin = 2.0d-14
-  LWCLevelmin = 3.0d-10
-  constLWC = 1
+  BSP = 'MCM32'
+  constLWC = .false.
   Ladebalken = 1 
   ErrorLog = 0
+  NetCdfPrint = .true.
  /END
  &FILES
-  ChemFile = 'CHEM/MCM_31'
+  SysFile  = 'CHEM/MCM3-2new4Willi'
   DataFile = 'DAT/MCM.dat'
-  InitFile = 'INI/urbMCM+C30m_neu1_HH5.ini'
+  !InitFile = 'INI/urbMCM+C30m_neu1_HH5.ini'
+  InitFile = 'INI/Urban.ini'
   MetFile  = 'MET/1day_wocloud.met'
  /END
  &TIMES
-  tAnf=0.0d0
-  tEnd=86400.0d0
+  tAnf    = 0.0d0
+  tEnd    = 86400.0d0
   Dust    = 0.5d0
   idate   = 010619     
   rlat    = 45.d0     
   rlon    =  0.d0
   minStp  = 1.0d-25
-  maxStp  = 300.d0
+  maxStp  = 200.d0
 /END
  &METEO
  /END
  &NUMERICS
-  LinSolv = 3
-  RtolROW  = 1.0d-3
-  AtolGas  = 1.0d-3
-  AtolAqua = 1.0d-5
-  Error_Est = 2
-  solveLA = 'ex'  
-  ImpEuler = 0
-  ODEsolver = 'METHODS/Ros34PW2.fort'
+  RtolROW  = 1.0d-3                            ! rel. Toleranz für Rosenbrock-Wanner Fehlersteuerung
+  AtolGas  = 1.0d-4                             ! abs. Toleranzen für gasförmige Stoffe 
+  AtolAqua = 1.0d-4                             ! abs. Toleranzen für aquatische Stoffe
+  Error_Est= 2                                  ! Error estimation = 2 -> 2-norm, else maxnorm
+  PI_StepSize = .false.                         ! Gustafsson, Söderlind
+  solveLA = 'cl'                                ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
+  ImpEuler = 0                                  ! 0=kein impliziter Euler, 1=impliziter Euler (kein ROW!!)
+  ODEsolver = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
+  Vectorized = .true.
  /END
  &ORDERING
-  OrderingStrategie      = 8
-  FactorisationStrategie = 1
-  SolLinSystemStrategie  = 1
- /END
- &ENTRAIN
+  OrderingStrategie  = 8                  ! 8=Markowitz(SparseLU) , 1,..,7=Mumps Orderings  
+  ParOrdering = -1
  /END

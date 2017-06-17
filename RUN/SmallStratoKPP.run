@@ -5,11 +5,10 @@
   MatrixPrint = .false.
   DebugPrint  = .false.
   NetCdfPrint = .true. 
-  TempEq      = .false. 
   ChemKin     = .false.        ! input mechanism in ChemKin notation
  /END
  &FILES
-  ChemFile = 'CHEM/SmallStratoKPP'
+  SysFile  = 'CHEM/SmallStratoKPP'
   DataFile = 'DAT/RACM.dat'
   InitFile = 'INI/SmallStratoKPP.ini'
   MetFile  = 'MET/1day_wocloud.met'

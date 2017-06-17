@@ -123,11 +123,12 @@
 !--------------------------------------------------------------
 !--   dimensions
     INTEGER :: nt=0, ntsolid=0, ntpart=0
-    INTEGER :: ntGas=0                 ! number of gaseous species
-    INTEGER :: ntAqua=0               ! number of aqueeous species
-    INTEGER :: ntKat=0                ! number of katalysator species
-    INTEGER :: ntKatGas=0,ntKatAqua=0   ! number of katalysator species gaseous ,aqueous
-    INTEGER :: neq=0,nspc=0,nreak=0
+    INTEGER :: ntGas=0                   ! number of gaseous species
+    INTEGER :: ntAqua=0                  ! number of aqueeous species
+    INTEGER :: ntKat=0                   ! number of katalysator species
+    INTEGER :: ntKatGas=0, ntKatAqua=0   ! number of katalysator species gaseous ,aqueous
+    INTEGER :: ntFrac=0                  ! number of aquatic droplett classes
+    INTEGER :: neq=0, nspc=0, nreak=0, nAreak=0
     INTEGER :: nDIM=0
     INTEGER :: nDIMcl=0
     INTEGER :: nDIMex=0
@@ -390,4 +391,7 @@
                            & vPr(:),            &
                            & vcTroe(:), vn1Troe(:)
     !
+    ! stuff for the mechanism reduction
+    CHARACTER(80), ALLOCATABLE :: Red_Names(:)
+    INTEGER,       ALLOCATABLE :: Red_Index(:)
 END MODULE mo_reac

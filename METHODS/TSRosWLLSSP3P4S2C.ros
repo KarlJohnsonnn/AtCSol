@@ -1,0 +1,45 @@
+! RCo
+! L-stable Rosenbrock-W method with SSP explicit part, third order,
+! four stages By default, the Jacobian is only recomputed once per step.
+!
+! L-stable (L-stable embedded) SPP explicit order 3, 4 stages, CFL 2 (eff = 1/2)
+!
+! References: Emil Constantinescu 
+!
+ 
+RCo%Order= 3
+RCo%nStage=	4
+RCo%pinterp=	3
+!RCo%ga	=    -------
+ALLOCATE(RCo%Alpha(4,4))
+RCo%Alpha(1,:)=(/0.0d0 , 0.0d0 , 0.0d0 , 0.0d0/)
+RCo%Alpha(2,:)=(/0.5d0 , 0.0d0 , 0.0d0 , 0.0d0/)
+RCo%Alpha(3,:)=(/0.5d0,0.5d0,0.0d0,0.0d0/)
+RCo%Alpha(4,:)=(/1.0d0/6.0d0,1.0d0/6.0d0,1.0d0/6.0d0,0.0d0/)
+ALLOCATE(RCo%Gamma(4,4))
+RCo%Gamma(1,:)=(/0.5d0 , 0.0d0 , 0.0d0 , 0.0d0/)
+RCo%Gamma(2,:)=(/0.0d0 , 0.75d0 , 0.0d0 , 0.0d0/)
+RCo%Gamma(3,:)=(/-2.0d0/3.0d0,-23.0d0/9.0d0,2.0d0/9.0d0,0.0d0/)
+RCo%Gamma(4,:)=(/1.0d0/18.0d0,65.0d0/108.00,-2.0d0/27.0d0,0.0d0/)
+ALLOCATE(RCo%Asum(4))
+RCo%Asum(1)=SUM(RCo%Alpha(1,:))
+RCo%Asum(2)=SUM(RCo%Alpha(2,:))
+RCo%Asum(3)=SUM(RCo%Alpha(3,:))
+RCo%Asum(4)=SUM(RCo%Alpha(4,:))
+ALLOCATE(RCo%B(4))
+RCo%B=(/1.0d0/6.0d0,1.0d0/6.0d0,1.0d0/6.0d0,1.0d0/2.0d0/)
+ALLOCATE(RCo%Be(4))
+RCo%Be=(/3.0d0/16.0d0,10.0d0/16.0d0,3.0d0/16.0d0,0.0d0/)
+ALLOCATE(RCo%binterpt(4,3))
+RCo%binterpt(1,1)=1.6911764705882352941176470588235d0
+RCo%binterpt(2,1)=3.6813725490196078431372549019608d0
+RCo%binterpt(3,1)=0.23039215686274509803921568627451d0
+RCo%binterpt(4,1)=-4.6029411764705882352941176470588d0
+RCo%binterpt(1,2)=-0.95588235294117647058823529411765d0
+RCo%binterpt(2,2)=-6.2401960784313725490196078431373d0
+RCo%binterpt(3,2)=-0.318627450980392156862745098039220
+RCo%binterpt(3,2)=7.5147058823529411764705882352941d0
+RCo%binterpt(1,3)=-0.56862745098039215686274509803922d0
+RCo%binterpt(2,3)=2.7254901960784313725490196078431d0
+RCo%binterpt(3,3)=0.25490196078431372549019607843137d0
+RCo%binterpt(4,3)=-2.4117647058823529411764705882353d0

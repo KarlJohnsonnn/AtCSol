@@ -5,13 +5,12 @@
   matrixPrint = .false.  
   debugPrint  = .false.
   NetCdfPrint = .true.
-  TempEq      = .true.
   ChemKin     = .true.
   Temperature0= 750.0d0       ! in [K]
   Pressure0   = 2.0d+5        ! in [Pa]
  /END
  &FILES
-  ChemFile = 'ckCHEM/ERC_nheptane/ERC_nheptane'
+  SysFile  = 'ckCHEM/ERC_nheptane/ERC_nheptane'
   DataFile = 'ckCHEM/ERC_nheptane/ERC_nheptane.dat'
   MWeights = 'ckCHEM/ERC_nheptane/MolecWeights.mw'
   InitFile = 'ckCHEM/ERC_nheptane/ERC_nheptane.ini'
