@@ -1,23 +1,23 @@
- &SCENARIO
-  BSP = 'MCM+CAPRAM'
+&SCENARIO
+  BSP   = 'MCM+CAPRAM'
   pHSet = 1
   LWCLevelmax = 2.0d-8
   LwcLevelmin = 3.0d-4
-  constLWC = .false.
-  Ladebalken = 1
-  ErrorLog = 0
+  constLWC    = .false.
+  Ladebalken  = 1
+  ErrorLog    = 0
   MatrixPrint = .false.
   DebugPrint  = .false.
   NetCdfPrint = .true. 
   ChemKin     = .false.        ! input mechanism in ChemKin notation
- /END
- &FILES
+/END
+&FILES
   SysFile  = 'CHEM/MCM32_CAPRAM40_full.sys'  
   DataFile = 'DAT/MCM32_CAPRAM40_full.dat'
   InitFile = 'INI/Urban.ini'
   MetFile  = 'MET/Urban.met'
- /END
- &TIMES
+/END
+&TIMES
   tAnf    = 0.0d0
   !tEnd    = 84600.0d0
   tEnd    = 259200.0d0
@@ -29,9 +29,7 @@
   maxStp  = 200.d0
   StpNetCDF = -1.0d0
 /END
- &METEO
- /END
- &NUMERICS
+&NUMERICS
   RtolROW  = 1.0d-3
   AtolGas  = 1.0d-7
   AtolAqua = 1.0d-7
@@ -40,9 +38,8 @@
   solveLA = 'ex'
   ODEsolver = 'METHODS/TSRosWRodas3.fort'
   !ODEsolver = 'LSODE'
-  Vectorized = .true.
- /END
- &ORDERING
+/END
+&ORDERING
   OrderingStrategie  = 8
   ParOrdering        = -1
- /END
+/END

@@ -40,9 +40,9 @@ SUBROUTINE InitMumps(A,givenPermutaion)
   ! set parameters for analysis phase
   Mumps_Par%N=A%m
   Mumps_Par%NZ=SIZE(A%RowInd)
-  Mumps_Par%IRN=>A%RowInd
-  Mumps_Par%JCN=>A%ColInd
-  Mumps_Par%A=>A%Val
+  Mumps_Par%IRN=A%RowInd
+  Mumps_Par%JCN=A%ColInd
+  Mumps_Par%A=A%Val
   ALLOCATE(Mumps_Par%Rhs(Mumps_Par%N))
   Mumps_Par%Rhs=0.0d0
   !

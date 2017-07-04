@@ -2,7 +2,7 @@
   BSP         = 'ERC_nheptane'
   Ladebalken  = 1
   ErrorLog    = 0
-  matrixPrint = .false.  
+  matrixPrint = .true.
   debugPrint  = .false.
   NetCdfPrint = .true.
   ChemKin     = .true.

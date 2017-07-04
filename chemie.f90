@@ -19,6 +19,8 @@ PROGRAM chemie
   USE mo_IO
   USE mo_ckinput
   USE NetCDF_Mod
+  USE Cycles_Mod
+  USE mo_reduction
   IMPLICIT NONE
   !
   CHARACTER(80)   :: Filename0 = ''        ! *.run file
@@ -61,7 +63,12 @@ PROGRAM chemie
   CHARACTER(14) :: fmt0=''
 
   ! new testing stuff 
-  TYPE(CSR_Matrix_T) :: E_HG, P_HG, S_HG, R_HG
+  TYPE(CSR_Matrix_T) :: E_HG, P_HG, S_HG, R_HG, S_HG_transp
+  TYPE(SpRowIndColInd_T) :: A_testsp
+  
+  REAL(dp) :: A_test(10,10)
+  INTEGER, ALLOCATABLE :: Ai(:),Aj(:)
+
   !
   !================================================================
   !===                     MAIN Programm
@@ -238,19 +245,18 @@ PROGRAM chemie
 
   !-----------------------------------------------------------------------
   ! --- Split the rate array in mpi_np parts 
-  CALL BuildPartitions( MyParties , neq , MPI_np )
+  !CALL BuildPartitions( MyParties , neq , MPI_np )
   !-----------------------------------------------------------------------
   
   !-----------------------------------------------------------------------
   ! --- this is for the new mass action product routine 
   CALL GatherSpeciesOrder(A)
   !-----------------------------------------------------------------------
-
   
   !-----------------------------------------------------------------------
   ! --- Dimension initialisation for the unknowns and matrices
   !-----------------------------------------------------------------------
-
+  !
   nsr = nspc + neq
 
   IF ( Teq ) THEN
@@ -279,8 +285,8 @@ PROGRAM chemie
 
   ! if you want to change the calc of the linear systems without opening the run-file
   CALL getarg ( 2 , solveLA )
-  IF ( solveLA == 'cl' )  CLASSIC  = .TRUE.
-  IF ( solveLA == 'ex' )  EXTENDED = .TRUE.
+  IF ( solveLA == 'cl' )  CLASSIC = .TRUE.;  EXTENDED = .FALSE.
+  IF ( solveLA == 'ex' )  CLASSIC = .FALSE.; EXTENDED = .TRUE.
 
   !CALL getarg ( 2 , neuTolR ); IF ( neuTolR /= '' )  READ( neuTolR , * ) RtolROW
   !CALL getarg ( 3 , neuTolA ); IF ( neuTolA /= '' )  READ( neuTolA , * ) AtolGas
@@ -350,7 +356,7 @@ PROGRAM chemie
     iStpNetCDF   = 1
   
     ! aqua phase in [mol/m3] and [mol/l]
-    OutNetcdfANZ = COUNT(OutNetcdfPhase=='g') + 2*COUNT(OutNetcdfPhase=='a')
+    OutNetcdfANZ = COUNT(OutNetcdfPhase=='g') + 2*ntFrac*COUNT(OutNetcdfPhase=='a')
     OutNetcdfDIM = OutNetcdfANZ
     IF ( Teq ) OutNetcdfDIM = OutNetcdfANZ + 1
     ALLOCATE(yNcdf(OutNetcdfDIM))          ! output array , +1 for Temperature
@@ -394,21 +400,41 @@ PROGRAM chemie
   CALL SparseAdd  ( BA , B , A, '-' )  ! numeric subtraction:  BA = B - A
   CALL TransposeSparse( BAT , BA )    ! transpose BA:        BAT = Transpose(BA) 
 
-  ! write educt and product matrix to file
-  P_HG = Copy_CSR(B)
-  CALL TransposeSparse( E_HG , Copy_CSR(A) )
-  P_HG%Val = ONE
-  E_HG%Val = ONE
+  IF ( MatrixPrint ) THEN
+    ! write educt and product matrix to file
+    P_HG = Copy_CSR(B)
+    CALL TransposeSparse( E_HG , Copy_CSR(A) )
+    P_HG%Val = ONE
+    E_HG%Val = ONE
 
-  CALL SymbolicMult( E_HG , P_HG , S_HG )
-  CALL SymbolicMult( P_HG , E_HG , R_HG )
-  S_HG%Val = ONE;   R_HG%Val = ONE
+    CALL SymbolicMult( E_HG , P_HG , S_HG )
+    CALL SymbolicMult( P_HG , E_HG , R_HG )
+    S_HG%Val = ONE;   R_HG%Val = ONE
 
-  CALL WriteSparseMatrix(P_HG,'MATRICES/P_HG_'//BSP,neq,nspc)
-  CALL WriteSparseMatrix(E_HG,'MATRICES/E_HG_'//BSP,neq,nspc)
-  CALL WriteSparseMatrix(S_HG,'MATRICES/S_HG_'//BSP,neq,nspc)
-  CALL WriteSparseMatrix(R_HG,'MATRICES/R_HG_'//BSP,neq,nspc)
- 
+    CALL TransposeSparse( S_HG_transp , S_HG )
+
+    !CALL Tarjan(S_HG_transp)
+    A_test = 0
+    Ai = [2, 3, 4, 5, 5, 6, 6, 7, 8, 4, 9, 5, 10, 6, 9]
+    Aj = [1, 2, 2, 3, 4, 3, 5, 6, 4, 8, 8, 9, 9, 10, 6]
+    DO i=1,15
+      A_test(Ai(i),Aj(i)) = ONE
+    END DO
+
+    !CALL PrintSparseMatrix(S_HG)
+
+    CALL Read_Target_Spc(Target_Index,Target_Names,Targets)
+
+    CALL Find_Elem_Circuits(S_HG,Target_Index)
+    
+    STOP ' kreise gefunden '
+
+    !CALL WriteSparseMatrix(P_HG,'MATRICES/P_HG_'//BSP,neq,nspc)
+    !CALL WriteSparseMatrix(E_HG,'MATRICES/E_HG_'//BSP,neq,nspc)
+    !CALL WriteSparseMatrix(S_HG,'MATRICES/S_HG_'//BSP,neq,nspc)
+    !CALL WriteSparseMatrix(R_HG,'MATRICES/R_HG_'//BSP,neq,nspc)
+  END IF
+
   ! if either Rosenbrock method or backward Euler was choosen
   IF ( MAXVAL(INDEX(TRIM(ODEsolver(1:7)),['METHODS','bwEuler']))>0) THEN
     !---- Get Rosenbrock Parameters
@@ -419,7 +445,7 @@ PROGRAM chemie
     ! symbolic mult for Jacobian Jac = [ BAT * Ones_nR * A * Ones_nS ], 
     ! add diagonal entries and set them to zero
     CALL SymbolicMult( BAT , A , tmpJacCC )  
-    CALL SparseID( Id , nspc )                    
+    Id = SparseID( nspc )                    
     CALL SymbolicAdd( Jac_CC , Id , tmpJacCC )
     CALL Free_Matrix_CSR( Id )
 
@@ -440,7 +466,7 @@ PROGRAM chemie
     IF ( useMUMPS ) THEN 
       ! Use MUMPS to factorise and solve     
       ! Convert compressed row format to row index format for MUMPS
-      CALL CompRowToIndRow( Miter , MiterFact )
+      MiterFact = CSR_to_SpRowIndColInd( Miter )
       CALL InitMumps( MiterFact ) 
 
       IF ( MatrixPrint ) THEN
@@ -483,15 +509,19 @@ PROGRAM chemie
     END IF
 
     IF (MPI_ID==0) THEN
-      IF (MatrixPrint) THEN
-        CALL WriteSparseMatrix(tmpJacCC,'MATRICES/JAC_'//TRIM(BSP)//'_'//solveLA     , neq, nspc)
-        CALL WriteSparseMatrix(BA,      'MATRICES/BA_'//TRIM(BSP)//'_'//solveLA      , neq, nspc)
-        CALL WriteSparseMatrix(Miter,   'MATRICES/Miter_'//TRIM(BSP)//'_'//solveLA   , neq, nspc)
-        CALL WriteSparseMatrix(LU_Miter,'MATRICES/LU_Miter_'//TRIM(BSP)//'_'//solveLA, neq, nspc)
-        STOP 'after writesparsematrix'
-      END IF
+      !IF (MatrixPrint) THEN
+      !  CALL WriteSparseMatrix(tmpJacCC,'MATRICES/JAC_'//TRIM(BSP), neq, nspc)
+      !  CALL WriteSparseMatrix(BA,      'MATRICES/BA_'//TRIM(BSP), neq, nspc)
+      !  CALL WriteSparseMatrix(Miter,   'MATRICES/Miter_'//TRIM(BSP), neq, nspc)
+      !  CALL WriteSparseMatrix(LU_Miter,'MATRICES/LU_Miter_'//TRIM(BSP), neq, nspc)
+      !  !STOP 'after writesparsematrix'
+      !END IF
       WRITE(*,*) '  Symbolic-phase................ done'
       WRITE(*,*) ' '
+      WRITE(*,*) '  Matrix Statistics: '
+      WRITE(*,*) ' '
+      CALL Matrix_Statistics(A,B,BA,BAT,S_HG,tmpJacCC,Miter,LU_Miter)
+      STOP 'after writesparsematrix'
     END IF
 
     CALL Free_Matrix_CSR( tmpJacCC )

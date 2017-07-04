@@ -250,7 +250,7 @@ MODULE Rosenbrock_Mod
       CALL FinishMPI()
       STOP 'STOP'
     END IF
-    CALL SparseID( ID_1  , nDim )
+    ID_1 = SparseID( nDim )
   END SUBROUTINE CheckInputParameters
   !
   !

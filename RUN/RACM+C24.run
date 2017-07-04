@@ -37,7 +37,7 @@
   AtolAqua    = 1.0d-4       ! abs. Toleranzen für aquatische Stoffe
   Error_Est   = 2            ! Error estimation = 2 -> 2-norm, else maxnorm
   PI_StepSize = .false.      ! Gustafsson, Söderlind
-  solveLA     = 'cl'         ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
+  solveLA     = 'ex'         ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
   ImpEuler    = 0            ! 0=kein impliziter Euler, 1=impliziter Euler (kein ROW!!)
   ODEsolver   = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
   !ODEsolver  = 'LSODE'     

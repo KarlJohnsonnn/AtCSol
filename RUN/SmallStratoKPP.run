@@ -1,17 +1,18 @@
  &SCENARIO
   BSP         = 'SmallStratoKPP'
-  Ladebalken  = 0
+  Ladebalken  = 1
   ErrorLog    = 0
-  MatrixPrint = .false.
+  MatrixPrint = .true.
   DebugPrint  = .false.
   NetCdfPrint = .true. 
   ChemKin     = .false.        ! input mechanism in ChemKin notation
  /END
  &FILES
-  SysFile  = 'CHEM/SmallStratoKPP'
+  SysFile  = 'CHEM/SmallStratoKPP.sys'
   DataFile = 'DAT/RACM.dat'
   InitFile = 'INI/SmallStratoKPP.ini'
   MetFile  = 'MET/1day_wocloud.met'
+  Targets  = 'RED/SmallStrato.ctrl'
  /END
  &TIMES
   tAnf    = 0.0d0

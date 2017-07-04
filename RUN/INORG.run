@@ -6,13 +6,13 @@
   constLWC = .false.               ! true = konstanter LWC wert, false /= pseudo LWC funktion wird benutzt
   Ladebalken = 1                   ! 0 = kein ladebalken, 0 /= ladebalken aktiv
   ErrorLog = 0                      ! 0 = no error output, 0 /= error output direkt auf bildschirm
-  MatrixPrint = .false.            ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
+  MatrixPrint = .true.            ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
   DebugPrint  = .false.            ! DEBUGGING Rosenbrock 
   NetCdfPrint = .false.            ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
   ChemKin     = .false.        ! input mechanism in ChemKin notation
  /END
  &FILES
-  SysFile  = 'CHEM/INORG'             ! .sys Datei (ohne .sys angeben!)
+  SysFile  = 'CHEM/INORG.sys'             ! .sys Datei (ohne .sys angeben!)
   DataFile = 'DAT/Urban.dat'           ! .dat Datei (für RO2, RO2aqua Summen)
   InitFile = 'INI/Urban.ini'          ! .ini Datei (Anfangswerte gas/flüssig), Diagnose spc
   MetFile  = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)
@@ -42,7 +42,7 @@
   Vectorized = .true.
  /END
  &ORDERING
-  OrderingStrategie  = 7                  ! 8=Markowitz(SparseLU) , 1,..,7=Mumps Orderings  
+  OrderingStrategie  = 8                  ! 8=Markowitz(SparseLU) , 1,..,7=Mumps Orderings
   ParOrdering = -1
  /END
  &ENTRAIN

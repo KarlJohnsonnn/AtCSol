@@ -122,12 +122,14 @@
 
 !--------------------------------------------------------------
 !--   dimensions
-    INTEGER :: nt=0, ntsolid=0, ntpart=0
+    INTEGER :: nt=0
     INTEGER :: ntGas=0                   ! number of gaseous species
     INTEGER :: ntAqua=0                  ! number of aqueeous species
     INTEGER :: ntKat=0                   ! number of katalysator species
     INTEGER :: ntKatGas=0, ntKatAqua=0   ! number of katalysator species gaseous ,aqueous
     INTEGER :: ntFrac=0                  ! number of aquatic droplett classes
+    INTEGER :: ntsolid=0                 ! number of solid species
+    INTEGER :: ntpart=0                  ! number of particle species
     INTEGER :: neq=0, nspc=0, nreak=0, nAreak=0
     INTEGER :: nDIM=0
     INTEGER :: nDIMcl=0
@@ -277,7 +279,7 @@
     !
     ! more speedchem stuff
     REAL(dp) :: rho, rRho   ! rho = density, rRho=kilo/rho
-    REAL(dp), ALLOCATABLE :: SCperm(:)
+    INTEGER, ALLOCATABLE :: SCperm(:)
 
     !
     ! indix arrays for different reaction types 
@@ -392,6 +394,16 @@
                            & vcTroe(:), vn1Troe(:)
     !
     ! stuff for the mechanism reduction
-    CHARACTER(80), ALLOCATABLE :: Red_Names(:)
-    INTEGER,       ALLOCATABLE :: Red_Index(:)
+    CHARACTER(80), ALLOCATABLE :: Target_Names(:)
+    INTEGER,       ALLOCATABLE :: Target_Index(:)
+
+
+    ! index set of species kind
+    TYPE SPC_Index_T
+      CHARACTER(100), ALLOCATABLE :: Name(:,:)         ! name of species (iSpc,iFrac)
+      INTEGER,  ALLOCATABLE :: Ind(:,:)   ! species index   (iSpc,iFrac)
+      REAL(dp), ALLOCATABLE :: Conc(:,:)  ! in molec/cm3    (iSpc,iFrac)
+    END TYPE SPC_Index_T
+
+    TYPE (SPC_Index_T) :: iGas, iAqua, iKat
 END MODULE mo_reac

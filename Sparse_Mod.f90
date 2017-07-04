@@ -49,10 +49,10 @@ MODULE Sparse_Mod
   END TYPE CSR_Matrix_T
   !
   TYPE SpRowIndColInd_T     !standart Rowindex, standart columnindex
-    INTEGER :: m=0,n=0
-    INTEGER, POINTER :: RowInd(:)
-    INTEGER, POINTER :: ColInd(:)
-    REAL(dp), POINTER :: Val(:)
+    INTEGER :: m=0,n=0,nnz=0
+    INTEGER, ALLOCATABLE :: RowInd(:)
+    INTEGER, ALLOCATABLE :: ColInd(:)
+    REAL(dp), ALLOCATABLE :: Val(:)
   END TYPE SpRowIndColInd_T
   !
   TYPE SpRowColD_T
@@ -94,79 +94,94 @@ MODULE Sparse_Mod
   !
   !
   !
-  SUBROUTINE New_CSR(newA,m,n,nnz)
-    INTEGER, INTENT(IN) :: m, n
-    INTEGER, INTENT(IN), OPTIONAL :: nnz
-    !
+  FUNCTION New_CSR(m,n,nnz,ri,ci,val) RESULT(newA)
+    INTEGER :: m, n
+    INTEGER, OPTIONAL :: nnz
+    INTEGER, OPTIONAL :: ri(:), ci(:)
+    REAL(dp), OPTIONAL :: val(:)
     TYPE(CSR_Matrix_T) :: newA
     !
-    newA%m=m
-    newA%n=n
+    INTEGER :: i, j, sameRow, cCnt
+
+    newA%m = m
+    newA%n = n
     !
     ALLOCATE(newA%RowPtr(m+1))
-    newA%RowPtr=0
-    newA%RowPtr(1)=1
+    newA%RowPtr = 0
+    newA%RowPtr(1) = 1
     !
     IF (PRESENT(nnz)) THEN
       ALLOCATE(newA%ColInd(nnz))
-      newA%ColInd=-1
+      newA%ColInd = -1
       ALLOCATE(newA%Val(nnz))
-      newA%Val=ZERO
-      newA%nnz=nnz
+      newA%Val = ZERO
+      newA%nnz = nnz
     END IF
-  END SUBROUTINE New_CSR
+    
+    ! if row and column indices are given
+    IF (PRESENT(ri).AND.PRESENT(ci)) THEN
+      IF (SIZE(ri) /= SIZE(ci)) STOP ' SIZE(ri) /= SIZE(ci) '
+      cCnt = 0
+      DO i = 1,m
+        sameRow = COUNT(ri==i)
+        newA%RowPtr(i+1) = newA%RowPtr(i) + sameRow
+      END DO
+      newA%ColInd = ci
+      IF (PRESENT(val)) newA%val = val
+    END IF
+  END FUNCTION New_CSR
   !
   !
   SUBROUTINE Free_Matrix_CSR(A)
     TYPE(CSR_Matrix_T) :: A
     !
-    IF (ALLOCATED(A%RowPtr))      DEALLOCATE(A%RowPtr)
-    IF (ALLOCATED(A%ColInd))      DEALLOCATE(A%ColInd)
-    IF (ALLOCATED(A%DiagPtr))    DEALLOCATE(A%DiagPtr)
-    IF (ALLOCATED(A%DiagPtr_R))  DEALLOCATE(A%DiagPtr_R)
-    IF (ALLOCATED(A%DiagPtr_C))  DEALLOCATE(A%DiagPtr_C)
-    IF (ALLOCATED(A%Permu))      DEALLOCATE(A%Permu)
-    IF (ALLOCATED(A%InvPer))     DEALLOCATE(A%InvPer)  
-    IF (ALLOCATED(A%Val))         DEALLOCATE(A%Val)
+    IF (ALLOCATED(A%RowPtr))    DEALLOCATE(A%RowPtr)
+    IF (ALLOCATED(A%ColInd))    DEALLOCATE(A%ColInd)
+    IF (ALLOCATED(A%DiagPtr))   DEALLOCATE(A%DiagPtr)
+    IF (ALLOCATED(A%DiagPtr_R)) DEALLOCATE(A%DiagPtr_R)
+    IF (ALLOCATED(A%DiagPtr_C)) DEALLOCATE(A%DiagPtr_C)
+    IF (ALLOCATED(A%Permu))     DEALLOCATE(A%Permu)
+    IF (ALLOCATED(A%InvPer))    DEALLOCATE(A%InvPer)  
+    IF (ALLOCATED(A%Val))       DEALLOCATE(A%Val)
   END SUBROUTINE Free_Matrix_CSR
   !
   !
   SUBROUTINE Free_SpRowColD(A)
     TYPE(SpRowColD_T) :: A
     !
-    IF (ASSOCIATED(A%RowPtr))   NULLIFY(A%RowPtr)
-    IF (ASSOCIATED(A%ColInd))   NULLIFY(A%ColInd)
-    IF (ASSOCIATED(A%Permu ))   NULLIFY(A%Permu)
-    IF (ASSOCIATED(A%InvPer))   NULLIFY(A%InvPer)
+    IF (ASSOCIATED(A%RowPtr)) NULLIFY(A%RowPtr)
+    IF (ASSOCIATED(A%ColInd)) NULLIFY(A%ColInd)
+    IF (ASSOCIATED(A%Permu )) NULLIFY(A%Permu)
+    IF (ASSOCIATED(A%InvPer)) NULLIFY(A%InvPer)
   END SUBROUTINE Free_SpRowColD
   !
   !
-  SUBROUTINE  Kill_Matrix_SpRowIndColInd(A)
+  SUBROUTINE Free_SpRowIndColInd(A)
     TYPE(SpRowIndColInd_T) :: A
     !
-    IF (ASSOCIATED(A%RowInd))   NULLIFY(A%RowInd)
-    IF (ASSOCIATED(A%ColInd))   NULLIFY(A%ColInd)
-    IF (ASSOCIATED(A%Val))      NULLIFY(A%Val)
-  END SUBROUTINE Kill_Matrix_SpRowIndColInd   
+    IF (ALLOCATED(A%RowInd)) DEALLOCATE(A%RowInd)
+    IF (ALLOCATED(A%ColInd)) DEALLOCATE(A%ColInd)
+    IF (ALLOCATED(A%Val))    DEALLOCATE(A%Val)
+  END SUBROUTINE Free_SpRowIndColInd   
   !
   !
-  SUBROUTINE SparseID(Mat,dim)
-    TYPE(CSR_Matrix_T), INTENT(OUT) :: Mat
-    INTEGER, INTENT(IN) :: dim
+  FUNCTION SparseID(dim) RESULT(Mat)
+    TYPE(CSR_Matrix_T) :: Mat
+    INTEGER :: dim
     INTEGER :: i
     !
-    CALL New_CSR(Mat,dim,dim,dim)
+    Mat = New_CSR(dim,dim,dim)
     DO i=1,dim
       Mat%RowPtr(i+1)=Mat%RowPtr(i)+1
       Mat%ColInd(i)=i
     END DO
     Mat%Val = ONE
-  END SUBROUTINE SparseID
+  END FUNCTION SparseID
   !
 
-  SUBROUTINE CSR_to_FULL(CSR,Full)
-    TYPE(CSR_Matrix_T),  INTENT(IN)  :: CSR
-    REAL(dp),      INTENT(OUT) :: Full(CSR%m,CSR%n)
+  FUNCTION CSR_to_FULL(CSR) RESULT(Full)
+    TYPE(CSR_Matrix_T) :: CSR
+    REAL(dp) :: Full(CSR%m,CSR%n)
 
     INTEGER :: i,j,jj 
     
@@ -177,14 +192,99 @@ MODULE Sparse_Mod
         Full(i,j) = CSR%Val(jj)
       END DO
     END DO
+  END FUNCTION CSR_to_FULL
 
-  END SUBROUTINE CSR_to_FULL
+
+
+  SUBROUTINE CompressIntegerArray(Array)
+    INTEGER, ALLOCATABLE, INTENT(INOUT) :: Array(:)
+    INTEGER, ALLOCATABLE :: tmpArray(:)
+    
+    INTEGER :: i, N, cnt, M
+    
+    N = COUNT(Array/=0)
+    ALLOCATE(tmpArray(N))
+
+    cnt = 0
+    DO i=1,SIZE(Array)
+      IF (Array(i)/=0) THEN
+        cnt = cnt + 1
+        tmpArray(cnt) = Array(i)
+      END IF
+    END DO
+    Array = [tmpArray]
+  END SUBROUTINE CompressIntegerArray
+
+
+
+
+  SUBROUTINE CompressDoubleArray(Array)
+    REAL(dp), ALLOCATABLE, INTENT(INOUT) :: Array(:)
+    REAL(dp), ALLOCATABLE :: tmpArray(:)
+    
+    INTEGER :: i, N, cnt
+    REAL(dp), PARAMETER :: big = -99999999999999.d0
+    
+    N = COUNT( Array /= big )
+    ALLOCATE(tmpArray(N))
+
+    cnt = 0
+    DO i=1,SIZE(Array)
+      IF ( Array(i) /= big ) THEN
+        cnt = cnt + 1
+        tmpArray(cnt) = Array(i)
+      END IF
+    END DO
+    Array = [tmpArray]
+  END SUBROUTINE CompressDoubleArray
+
+
+  FUNCTION FULL_to_CSR(Full) RESULT(CSR)
+    REAL(dp) :: Full(:,:)
+    TYPE(CSR_Matrix_T) :: CSR
+
+    INTEGER :: i,j,jj 
+    INTEGER :: m,n,nnz 
+
+    m = SIZE(Full,1)
+    n = SIZE(Full,2)
+    nnz = COUNT(Full /= ZERO)
+
+    CSR = New_CSR(m,n,nnz)
+    
+    jj = 0
+    DO i = 1 , m
+      CSR%RowPtr(i+1) = CSR%RowPtr(i) + COUNT(Full(i,:)/=ZERO)
+      DO j = 1 , n
+        IF ( Full(i,j) /= ZERO) THEN
+          jj = jj + 1
+          CSR%ColInd(jj) = j
+          CSR%Val(jj)    = Full(i,j)
+        END IF
+      END DO
+    END DO
+    CSR%nnz = jj
+  END FUNCTION FULL_to_CSR
+
+
+  FUNCTION Copy_SpRowIndColInd(orig) RESULT(copy)
+    TYPE(SpRowIndColInd_T) :: orig
+    TYPE(SpRowIndColInd_T) :: copy
+
+    copy%m = orig%m
+    copy%n = orig%n
+    copy%nnz = orig%nnz
+    copy%RowInd = orig%RowInd
+    copy%ColInd = orig%ColInd
+    copy%Val    = orig%Val
+  END FUNCTION Copy_SpRowIndColInd
+
 
   FUNCTION Copy_CSR(orig) RESULT(copy)
-    TYPE(CSR_Matrix_T),  INTENT(IN)  :: orig
-    TYPE(CSR_Matrix_T)               :: copy
+    TYPE(CSR_Matrix_T) :: orig
+    TYPE(CSR_Matrix_T) :: copy
 
-    CALL New_CSR(copy,orig%m,orig%n,orig%nnz)
+    copy = New_CSR(orig%m,orig%n,orig%nnz)
     copy%RowPtr = orig%RowPtr
     copy%ColInd = orig%ColInd
     copy%Val    = orig%Val
@@ -236,7 +336,7 @@ MODULE Sparse_Mod
     INTEGER :: i,j,jj,nzrA
     ! 
 
-    CALL New_CSR(CSR,SpRow%n,SpRow%m,SpRow%nnz)
+    CSR = New_CSR(SpRow%n,SpRow%m,SpRow%nnz)
     
    
     IF ( EXTENDED ) THEN
@@ -525,6 +625,48 @@ MODULE Sparse_Mod
   END SUBROUTINE SortVec
   !
   !
+  SUBROUTINE SortVecDesc(vec)
+    INTEGER :: vec(:)
+    !
+    INTEGER :: i,itemp,j,n
+   
+    n = SIZE(Vec)
+   
+    
+    DO i = 1 , n
+      DO j = 1 , n-i
+        IF ( vec(j) < vec(j+1) ) THEN
+          itemp    = vec(j)
+          vec(j)   = vec(j+1)
+          vec(j+1) = itemp
+        END IF
+      END DO
+    END DO
+  END SUBROUTINE SortVecDesc
+  !
+
+  SUBROUTINE SortVecDesc2(vec,q)
+    INTEGER, INTENT(INOUT) :: vec(:)
+    INTEGER, ALLOCATABLE, OPTIONAL :: q(:)
+    !
+    INTEGER :: i,n,iMax(1)
+    INTEGER, ALLOCATABLE :: tmpVec(:)
+   
+    n = SIZE(Vec)
+    ALLOCATE(tmpVec(n));  tmpVec = 0
+   
+    IF (PRESENT(q).AND..NOT.ALLOCATED(q)) ALLOCATE(q(n))
+    
+    DO i = 1 , n
+      iMax = MAXLOC(vec)
+      tmpVec(i) = vec(iMax(1))
+      vec(iMax(1)) = -1
+      IF (PRESENT(q)) q(i) = iMax(1)
+    END DO
+    vec = tmpVec
+  END SUBROUTINE SortVecDesc2
+  !
+  !
   SUBROUTINE Insert_SpRowColD(A,iA,jA,ins)
     TYPE(SpRowColD_T) :: A
     INTEGER :: iA,jA
@@ -755,7 +897,7 @@ MODULE Sparse_Mod
     INTEGER :: indx
     !
     !
-    CALL New_CSR(MatAT,MatA%n,MatA%m)
+    MatAT = New_CSR(MatA%n,MatA%m)
     !
     !
     DO i=1,MatA%m
@@ -802,7 +944,7 @@ MODULE Sparse_Mod
     INTEGER :: istart, length, iTemp
     !
       !symbolic matrix multiply c=a*b
-    CALL New_CSR(C,A%m,B%n)
+    C = New_CSR(A%m,B%n)
     !
     !main loop
     indx=0
@@ -913,7 +1055,7 @@ MODULE Sparse_Mod
       STOP 'STOP'
     END IF
     !
-    CALL New_CSR(MatC,MatA%m,MatA%n)
+    MatC = New_CSR(MatA%m,MatA%n)
     !
     DO i=1,MatC%m
       currentlength=(MatA%RowPtr(i+1)-MatA%RowPtr(i))+(MatB%RowPtr(i+1)-MatB%RowPtr(i))
@@ -1347,8 +1489,8 @@ MODULE Sparse_Mod
       nnz  = Jac%RowPtr(Jac%m+1)-1      ! nonzeros of Jacobian
     END IF
 
-    CALL New_CSR ( CL0 , ndim , ndim , nnz )
-    CALL SparseID( Id  , ndim )
+    CL0 = New_CSR ( ndim , ndim , nnz )
+    ID = SparseID( ndim )
     ALLOCATE(CL0%DiagPtr(ndim))
     CL0%DiagPtr  = -12
 
@@ -1415,7 +1557,7 @@ MODULE Sparse_Mod
       &        + A%n   + BAT%n          ! Dr, Dc
     END IF
     
-    CALL New_CSR( EX , ndim , ndim , nnzBig )
+    EX = New_CSR( ndim , ndim , nnzBig )
     
     ALLOCATE(EX%DiagPtr(ndim))          ! entire diagonal
     ALLOCATE(EX%DiagPtr_R(A%m))         ! reaction rates
@@ -1635,14 +1777,12 @@ MODULE Sparse_Mod
   !
   !
   ! PRINT SPARSE MATRIX (compressed Row format)
-  SUBROUTINE PrintSparseMatrix(A,FileName)
+  SUBROUTINE PrintSparseMatrix(A)
     TYPE(CSR_Matrix_T), INTENT(IN) :: A
-    CHARACTER(*), OPTIONAL :: FileName
     !
     INTEGER :: i,j,jj
     !
     !
-    WRITE(*,*) 'Sparse Matrix: ', FileName
     WRITE(*,*) 'dimension:     ', A%m,A%n
     WRITE(*,*) 'nonzeros:      ', SIZE(A%ColInd)
     ! 
@@ -1865,20 +2005,22 @@ MODULE Sparse_Mod
   !
   !
   ! convert compressed row format to rowindex column index format
-  SUBROUTINE CompRowToIndRow(MatIn,MatOut)
+  FUNCTION CSR_to_SpRowIndColInd(MatIn) RESULT(MatOut)
     ! only n by n matrices
-    TYPE(CSR_Matrix_T), INTENT(IN) :: MatIn
-    TYPE(SpRowIndColInd_T), INTENT(OUT) :: MatOut
+    TYPE(CSR_Matrix_T) :: MatIn
+    TYPE(SpRowIndColInd_T) :: MatOut
     !
-    INTEGER :: i,j,jj
+    INTEGER :: i,j,jj,n
     MatOut%m=MatIn%m
-    MatOut%n=MatIn%RowPtr(MatIn%m+1)-1
-    !
-    ALLOCATE(MatOut%RowInd(MatOut%n))
+    MatOut%n=MatIn%n
+    !MatOut%n=MatIn%RowPtr(MatIn%m+1)-1
+
+    n = MatIn%RowPtr(MatIn%m+1)-1
+    ALLOCATE(MatOut%RowInd(n))
     MatOut%RowInd=0
-    ALLOCATE(MatOut%ColInd(MatOut%n))
+    ALLOCATE(MatOut%ColInd(n))
     MatOut%ColInd=0
-    ALLOCATE(MatOut%Val(MatOut%n))
+    ALLOCATE(MatOut%Val(n))
     MatOut%Val=ZERO
     j=1
     DO i=1,MatIn%m
@@ -1889,7 +2031,9 @@ MODULE Sparse_Mod
         j=j+1
       END DO
     END DO
-  END SUBROUTINE CompRowToIndRow
+
+    MatOut%nnz = SIZE(MatOut%RowInd)
+  END FUNCTION CSR_to_SpRowIndColInd
   !
   !
   ! Matrix*Vector1+Vector2 (rhs)

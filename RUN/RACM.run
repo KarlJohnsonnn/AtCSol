@@ -6,7 +6,7 @@
   constLWC = .false.
   Ladebalken = 1
   ErrorLog = 0
-  MatrixPrint = .false.
+  MatrixPrint = .true.
   DebugPrint  = .false.
   NetCdfPrint = .true. 
   ChemKin     = .false.        ! input mechanism in ChemKin notation

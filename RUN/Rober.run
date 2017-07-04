@@ -7,11 +7,11 @@
   Ladebalken = 1                   ! 0 = kein ladebalken, 0 /= ladebalken aktiv
   ErrorLog = 0                      ! 0 = no error output, 0 /= error output direkt auf bildschirm
   DebugPrint  = .true.            ! DEBUGGING Rosenbrock 
-  MatrixPrint = .false.            ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
+  MatrixPrint = .true.            ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
   NetCdfPrint = .true.            ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
  /END
  &FILES
-  SysFile  = 'CHEM/Rober'
+  SysFile  = 'CHEM/Rober.sys'
   DataFile = 'DAT/RACM.dat'
   InitFile = 'INI/Rober.ini'
   MetFile  = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)

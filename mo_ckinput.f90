@@ -8,7 +8,6 @@ MODULE mo_ckinput
   &                    , UnitGas, UnitAqua, ListGas2, Species_T             &
   &                    , ListToHashTable, HashTableToList, SortList         &
   &                    , PositionSpeciesGas,PositionSpeciesAll              &
-  &                    , CompressIntegerArray, CompressDoubleArray          &
   &                    , ListAtoms, PositionAtom
   !
   USE mo_reac
@@ -1356,7 +1355,7 @@ CONTAINS
     INTEGER, ALLOCATABLE        :: tmpCol(:), pVec(:) 
     REAL(dp), ALLOCATABLE :: tmpVal(:)
 
-    CALL New_CSR(A,RTind%nTBodyExtra,nspc,nnz)
+    A = New_CSR(RTind%nTBodyExtra,nspc,nnz)
 
     DO i=1,RTind%nTBodyExtra
       nTB_i = SIZE(ReactionSystem(RTind%iTBodyExtra(i))%TBidx)

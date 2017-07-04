@@ -10,6 +10,7 @@ MODULE mo_IO
   CONTAINS
   SUBROUTINE Logo()
     IF (MPI_ID==0) THEN
+      WRITE(*,*) ''
       WRITE(*,*) '===================================================================================='
       WRITE(*,*) '|      ___           ___           ___           ___                       ___     |'
       WRITE(*,*) '|     /\  \         /\__\         /\  \         /\__\          ___        /\  \    |'
@@ -23,6 +24,7 @@ MODULE mo_IO
       WRITE(*,*) '|    \:\__\         /:/  /       \:\__\         /:/  /      \/__/        \:\__\    |'
       WRITE(*,*) '|     \/__/         \/__/         \/__/         \/__/                     \/__/    |'
       WRITE(*,*) '===================================================================================='
+      WRITE(*,*) ''
     END IF
   END SUBROUTINE Logo
   !
@@ -284,7 +286,36 @@ MODULE mo_IO
     END DO
     CLOSE(99)
   END SUBROUTINE CSR_to_GephiGraph
+
+  SUBROUTINE  Matrix_Statistics(A,B,BA,BAT,S_HG,tmpJacCC,Miter,LU_Miter)
+    
+    TYPE(CSR_Matrix_T) :: A,B,BA,BAT,S_HG,tmpJacCC,Miter,LU_Miter
+
+    298 format(A18,3I11)
+
+    WRITE(*,*)   '                |      rows   |   colums   |     nnz    |'
+    WRITE(*,*)   '  --------------+-------------+------------+------------+-'
+    WRITE(*,298) '          alpha |',A%m,A%n,A%nnz
+    WRITE(*,298) '           beta |',B%m,B%n,B%nnz
+    WRITE(*,298) ' (beta-alpha)^T |',BA%m,BA%n,BA%nnz
+    WRITE(*,298) '      spc_graph |',S_HG%m,S_HG%n,S_HG%nnz
+    WRITE(*,298) '       JACOBIAN |',tmpJacCC%m,tmpJacCC%n,tmpJacCC%nnz
+    WRITE(*,298) '          Miter |',Miter%m,Miter%n,Miter%nnz
+    WRITE(*,298) '       LU_Miter |',LU_Miter%m,LU_Miter%n,LU_Miter%nnz
+    WRITE(*,*)
+
+  END SUBROUTINE Matrix_Statistics
   !
   !
+  SUBROUTINE SYStoKPP(RS,FileName)
+
+    TYPE(ReactionStruct_T), INTENT(IN) :: RS(:)
+    CHARACTER(*),           INTENT(IN) :: FileName
+    
+    OPEN(UNIT=99,FILE='CHEM'//TRIM(ADJUSTL(FileName))//'.kpp',STATUS='UNKNOWN')
+    CLOSE(99)
+
+
+  END SUBROUTINE SYStoKPP
 END MODULE mo_IO
 

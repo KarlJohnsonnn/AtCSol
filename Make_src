@@ -11,6 +11,7 @@ OBJ = mo_unirnk.f90\
       InitRun.f90\
       NetCDF_Mod.f90\
       Sparse_Mod.f90\
+      Cycles_Mod.f90\
       Sparse2_Mod.f90\
       String_Mod.f90\
       HashStr_Mod.f90\
@@ -28,14 +29,15 @@ OBJ = mo_unirnk.f90\
 
 
       
-$(LIB2)/lib$(POLY).a: $(OBJ)
+$(LIB2)/lib$(CHEM).a: $(OBJ)
 	@if [ -f *.o ] ;\
           then  rm *.o ;\
-         fi
+   fi
+   
 	$(F90) $(OPT2)  -I. $(KINCL) -c $?
-	@ar $(X64) rv $(LIB2)/lib$(POLY).a ${?:.f90=.o}
-	@ar $(X64) ts $(LIB2)/lib$(POLY).a
-	-@for i in `ls *.$(ModSuf) 2>/dev/null`; do \
+	@ar $(X64) rv $(LIB2)/lib$(CHEM).a ${?:.f90=.o}
+	@ar $(X64) ts $(LIB2)/lib$(CHEM).a
+	-@for i in `ls *.mod 2>/dev/null`; do \
            mv $$i $(LIB2); \
         done
 	@rm *.o

@@ -1,23 +1,24 @@
  &SCENARIO
-  BSP = 'CAPRAM'                   ! Name der NetCDF Output-Datei
-  pHSet = 1                        ! Berechne pH Wert zu Beginn
-  LWCLevelmax = 2.0d-8             ! minimaler LWC Wert [l/cm3]
-  LWCLevelmin = 3.0d-4             ! maximaler LWC Wert [l/cm3]
-  constLWC = .false.               ! true = konstanter LWC wert, false /= pseudo LWC funktion wird benutzt
-  Ladebalken = 1                   ! 0 = kein ladebalken, 0 /= ladebalken aktiv
-  ErrorLog = 0                     ! 0 = no error output, 0 /= error output direkt auf bildschirm
-  MatrixPrint = .false.            ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
-  DebugPrint  = .false.            ! DEBUGGING Rosenbrock 
-  NetCdfPrint = .true.             ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
-  ChemKin     = .false.            ! input mechanism in ChemKin notation
+  BSP = 'CAPRAM'         ! Name der NetCDF Output-Datei
+  pHSet = 1              ! Berechne pH Wert zu Beginn
+  LWCLevelmax = 2.0d-8   ! minimaler LWC Wert [l/cm3]
+  LWCLevelmin = 3.0d-4   ! maximaler LWC Wert [l/cm3]
+  constLWC = .false.     ! true = konstanter LWC wert, false /= pseudo LWC funktion wird benutzt
+  Ladebalken = 1         ! 0 = kein ladebalken, 0 /= ladebalken aktiv
+  ErrorLog = 0           ! 0 = no error output, 0 /= error output direkt auf bildschirm
+  MatrixPrint = .true.   ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
+  DebugPrint  = .false.  ! DEBUGGING Rosenbrock 
+  NetCdfPrint = .true.   ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
+  ChemKin     = .false.  ! input mechanism in ChemKin notation
  /END
  &FILES
-  SysFile = 'CHEM/CAPRAM24_new'
+  SysFile = 'CHEM/CAPRAM24_new.sys'
   DataFile = 'DAT/Urban.dat'          ! .dat Datei (für RO2, RO2aqua Summen)
   InitFile = 'INI/Urban.ini'          ! .ini Datei (Anfangswerte gas/flüssig), Diagnose spc
   !InitFile = 'INI/Remote.ini'
   !InitFile = 'INI/ocean.ini'
   MetFile  = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)
+  Targets  = 'RED/CAPRAM.ctrl'   ! .met Datei (Meteorologie Datei)
  /END
  &TIMES
   tAnf      = 0.0d0          ! Startzeit Integration

@@ -1183,11 +1183,11 @@ MODULE Chemsys_Mod
       !
       iPos=PositionSpeciesAll(SpeciesName)
       IF (iPos>0) THEN
-        IF (alpha==0.0d0 .AND. dg==0.0d0) CYCLE GAS 
+        IF (alpha==ZERO .AND. dg==ZERO) CYCLE GAS 
         !
-        y_acc(iPos)=1.0d-12/(3.0d0*dg)
-        nue=SQRT(8.0d+03*8.313d0/Pi/mm)
-        y_diff(iPos)=4.0d-06/(3.0d0*alpha*nue)
+        y_acc(iPos)=1.0e-12_dp/(3.0_dp*dg)
+        nue=SQRT(8.0e+03_dp*8.313_dp/Pi/mm)
+        y_diff(iPos)=4.0e-06_dp/(3.0_dp*alpha*nue)
         !
       END IF
     END DO GAS
@@ -2393,7 +2393,6 @@ MODULE Chemsys_Mod
     nspc= ntGAS+ntAQUA    
     !
     !
-    !
     IF (PRESENT(LGas))    nList=nList+1
     IF (PRESENT(LHenry))  nList=nList+1
     IF (PRESENT(LAqua))   nList=nList+1
@@ -2884,50 +2883,6 @@ MODULE Chemsys_Mod
     END DO
   END SUBROUTINE CheckConstants
 
-  SUBROUTINE CompressIntegerArray(Array)
-    INTEGER, ALLOCATABLE, INTENT(INOUT) :: Array(:)
-    INTEGER, ALLOCATABLE :: tmpArray(:)
-    
-    INTEGER :: i, N, cnt, M
-    
-    N = COUNT(Array/=0)
-    ALLOCATE(tmpArray(N))
-
-    cnt = 0
-    DO i=1,SIZE(Array)
-      IF (Array(i)/=0) THEN
-        cnt = cnt + 1
-        !tmpArray(cnt) = i
-        tmpArray(cnt) = Array(i)
-      END IF
-    END DO
-    DEALLOCATE(Array)
-    ALLOCATE(Array(N))
-    Array = tmpArray
-  END SUBROUTINE CompressIntegerArray
-
-
-  SUBROUTINE CompressDoubleArray(Array)
-    REAL(dp), ALLOCATABLE, INTENT(INOUT) :: Array(:)
-    REAL(dp), ALLOCATABLE :: tmpArray(:)
-    
-    INTEGER :: i, N, cnt
-    REAL(dp), PARAMETER :: big = -99999999999999.d0
-    
-    N = COUNT( Array /= big )
-    ALLOCATE(tmpArray(N))
-
-    cnt = 0
-    DO i=1,SIZE(Array)
-      IF ( Array(i) /= big ) THEN
-        cnt = cnt + 1
-        tmpArray(cnt) = Array(i)
-      END IF
-    END DO
-    DEALLOCATE(Array)
-    ALLOCATE(Array(N))
-    Array = tmpArray
-  END SUBROUTINE CompressDoubleArray
 
   SUBROUTINE AllocateRTarrays()
 

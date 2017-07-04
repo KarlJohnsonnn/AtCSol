@@ -21,10 +21,10 @@
     IMPLICIT NONE
     !
     ! 
-    REAL(dp) :: LAT=45.0_dp
-    REAL(dp) :: LONG=0.0_dp
-    REAL(dp) :: fac_exp=1.0_dp, fac_A=1.0_dp
-    INTEGER  :: IDAT=010619
+    REAL(dp) :: LAT  = 45.0_dp
+    REAL(dp) :: LONG =  0.0_dp
+    REAL(dp) :: fac_exp = 1.0_dp, fac_A = 1.0_dp
+    INTEGER  :: IDAT = 010619
     !
     ! some factors for calculating Troe press dep. reactions
     REAL(dp) :: rFacEq      ! factor nessesary for equilibrium constant

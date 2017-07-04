@@ -17,7 +17,7 @@
 &                     ,SysFile           & ! Chemical mechanism
 &                     ,InitFile          & ! Initial concentrations
 &                     ,DataFile          & ! Gas and Aqueous DATA
-&                     ,RedFile           & ! File for mechanism reduction
+&                     ,Targets           & ! File for mechanism reduction
 &                     ,MWeights          & ! molecular weights of species 
 &                     ,NetcdfFileName    & ! NetCDF output file
 &                     ,ODEsolver    ! Method for Rosenbrock Integration
