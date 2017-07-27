@@ -7,6 +7,7 @@ MODULE Cycles_Mod
                       & New_CSR, Copy_CSR, CompressIntegerArray,&
                       & PrintSparseMatrix
   !USE mo_unirnk
+  USE mo_reac,    ONLY: y_name
 
   IMPLICIT NONE
 
@@ -39,6 +40,9 @@ MODULE Cycles_Mod
 
   TYPE(List), ALLOCATABLE :: Cyclic_Set(:)
 
+  INTEGER :: lvl
+  INTEGER :: maxlen
+
   CONTAINS
  
   ! This subroutine computes the elementary circuits (cycles) of a direced graph
@@ -55,7 +59,7 @@ MODULE Cycles_Mod
     TYPE(SpRowIndColInd_T) :: sub_A
     TYPE(List), ALLOCATABLE :: scc(:) !, sub_Ak(:)
     INTEGER :: n, s, least_node, nspc
-    INTEGER :: i, j, iln(2) , cnt, nnz
+    INTEGER :: i, j, ispc , cnt, nnz
     INTEGER, ALLOCATABLE :: comp_nodes(:)
     LOGICAL :: dummy
     TYPE(Node_T), POINTER :: printCYC
@@ -66,9 +70,11 @@ MODULE Cycles_Mod
     END IF
 
 
-    WRITE(*,*) ' '
-    WRITE(*,*) '  Calculating simple cycles:'
-    WRITE(*,*) ' '
+    WRITE(*,*); WRITE(*,*); WRITE(*,*) '  Calculating simple cycles:'
+    WRITE(*,*)
+    WRITE(*,'(A31)',ADVANCE='NO') '   Enter maximum cycle length: '
+    READ(*,*) maxlen
+
 
     n    = A%n
     nnz  = A%nnz
@@ -94,12 +100,10 @@ MODULE Cycles_Mod
     ! diese schleife später nur über ausgewählte knoten s
     s = 1
 
-    CALL Progress(s,nspc)
-
     DO j = 1 , nspc
 
       ! Generate Subgraph 
-      IF ( s > 1 ) THEN
+      IF ( j > 1 ) THEN
         CALL Purge_Vertex( sub_A , SpcList(j-1) )
         !CALL Purge_Vertex( sub_A , s-1 )
         !print*, ''
@@ -110,15 +114,12 @@ MODULE Cycles_Mod
       END IF
 
       ! find strong connected components (Tarjan algorithm)
-      ! components in list scc, iln(1) = index of component
-      ! with least vertex number, iln(2) = number of least
-      ! vertex
-      CALL Tarjan( scc , iln , SpcList(j) , sub_A )
+      CALL Tarjan( scc , ispc , SpcList(j) , sub_A )
 
-      IF ( ANY(scc(:)%len > 1) ) THEN
+      IF ( scc(ispc)%len > 1 ) THEN
         
-        comp_nodes = scc(iln(1))%List
-        least_node = iln(2)
+        comp_nodes = scc(ispc)%List
+        least_node = SpcList(j)
 
         !WRITE(*,*) ' size scc list = ',SIZE(scc)
         !WRITE(*,'(A,*(I0,1X))') ' scc%list : ',comp_nodes
@@ -128,21 +129,26 @@ MODULE Cycles_Mod
         !print*, ' least_node = ', least_node
 
         blocked_Vertex = .FALSE.
+        DO i = 1,scc(ispc)%len
+          IF (ALLOCATED(blocked_List(i)%List)) THEN
+            DEALLOCATE(blocked_List(i)%List)
+            ALLOCATE(blocked_List(i)%List(0))
+          END IF
+          blocked_List(i)%len = 0
+        END DO
 
         s = least_node
 
         dummy = Circuit( s, s, sub_Ak )
 
-        !STOP ' YEA '
         DEALLOCATE(scc)
         s = s + 1
         CALL Progress(j,nspc)
-      
       ELSE
+        CALL Progress(nspc,nspc)
         EXIT
       END IF
     END DO
-    CALL Progress(nspc,nspc)
     
     cntSCC = 0
     printCYC => cycFirst
@@ -154,15 +160,20 @@ MODULE Cycles_Mod
     ALLOCATE(Cyclic_Set(cntSCC))
     WRITE(*,*) ' '
     WRITE(*,*) ' '
-    WRITE(*,'(A,*(I0))') '   Anzahl Zyklen:   ',cntSCC
+    WRITE(*,'(A,*(I0))') '       Anzahl Zyklen:   ',cntSCC
+    WRITE(*,*) ' '
 
     ! write paths to file and save it in a allcatable array
     OPEN(UNIT=99,FILE='reaction_paths.txt',STATUS='UNKNOWN')
-    WRITE(99,*) ' '
+    WRITE(99,*)
     WRITE(99,'(A,*(I0))') '   Anzahl Zyklen:   ',cntSCC
+    WRITE(99,'(A)') '   Cycle Length:       species: '
     printCYC => cycFirst
     DO i = 1,cntSCC
-      WRITE(99,'(A,I3,A,*(I0,1X))') '   Kreis der Länge: ',printCYC%cnt,' mit den Knoten => ', printCYC%v
+      WRITE(99,'(10X,I2,8X,*(A))') printCYC%cnt-1,               &
+      & (TRIM(y_name(printCYC%v(j)))//' -> ' ,j=1,printCYC%cnt), &
+      &  TRIM(y_name(printCYC%v(printCYC%cnt+1)))
+      !WRITE(99,'(3X,I2,15X,*(I0,1X))') printCYC%cnt, printCYC%v
       Cyclic_Set(i)%len  = printCYC%cnt
       Cyclic_Set(i)%List = [printCYC%v]
       printCYC => printCYC%next
@@ -196,65 +207,70 @@ MODULE Cycles_Mod
     ! TEMP:
     INTEGER :: w, ww
     INTEGER, ALLOCATABLE :: Bnode(:)
+    LOGICAL :: found_v
 
     LOGICAL :: dbg=.false.
 
     f = .FALSE.
-
+    lvl = lvl + 1
+    !WRITE(*,*) ' level = ', lvl
 
     Stapel%len  = Stapel%len + 1
     Stapel%List = [Stapel%List , v]
     blocked_Vertex(v) = .TRUE.
     
-    IF (dbg) THEN
-      333 FORMAT(A,*(I0,1X))
-      334 FORMAT(A,*(L0,1X))
-      WRITE(*,333) ' Stapel len   = ',Stapel%len 
-      WRITE(*,333) ' Stapel List  = ',Stapel%List
-      !WRITE(*,334) ' blocked vert = ',blocked_Vertex 
-      WRITE(*,*) ''
-    END IF
+    !IF (dbg) THEN
+    !  333 FORMAT(A,*(I0,1X))
+    !  334 FORMAT(A,*(L0,1X))
+    !  WRITE(*,333) ' Stapel len   = ',Stapel%len 
+    !  WRITE(*,333) ' Stapel List  = ',Stapel%List
+    !  !WRITE(*,334) ' blocked vert = ',blocked_Vertex 
+    !  WRITE(*,*) ''
+    !END IF
 
     
     DO ww = Ak%RowPtr(v),Ak%RowPtr(v+1)-1
       w = Ak%ColInd(ww)
+      
+      ! found new cycle if w == s
       IF ( w == s ) THEN
-        ! neuen kreis anhängen
         f = .TRUE.
         Cyc%v = [Stapel%List , s]
         Cyc%cnt = SIZE(Cyc%v) - 1
 
-        ! allocate next cycle component
+        !WRITE(*,'(A,I3,A,*(I0,1X))') '   Kreis der Länge: ',SIZE([Stapel%List , s]),' mit den Knoten => ',[Stapel%List , s]
         ALLOCATE(Cyc%next); Cyc => Cyc%next
 
-      ELSE IF ( .NOT.blocked_Vertex(w) ) THEN
-        IF ( Circuit(w,s,Ak) ) THEN
-          f = .TRUE.
-        END IF
+      ! if no new cycle is found check if vertex w is
+      ! blocked jet, if it is not blocked continue 
+      ! ciruit with node w
+      ELSE IF ( .NOT.blocked_Vertex(w) .AND. Stapel%len <= maxlen ) THEN
+        f = Circuit(w,s,Ak)
       END IF
     END DO
 
-    IF ( f ) THEN
+    ! if a new cycle was found unblock node v
+    IF ( f .OR. Stapel%len > maxlen ) THEN
       CALL Unblock(v)
+    ! otherwise check neighbours of node v and block them
+    ! if there not in the blocked_List jet
     ELSE
       DO ww = Ak%RowPtr(v),Ak%RowPtr(v+1)-1
         w = Ak%ColInd(ww)
-        IF ( findF(blocked_List(w)%List , v) == 0 ) THEN
-        !IF ( COUNT(blocked_List(w)%List == v) < 1 ) THEN
-          Bnode = [blocked_List(w)%List]
-          blocked_List(w)%List = [Bnode , v]
-          IF (dbg) THEN
-            WRITE(*,333) ' blocked node  = ',Bnode
-            WRITE(*,333) ' blocked List  = ',blocked_list(w)%List
-          END IF
+        found_v = (findF(blocked_List(w)%List , v) /= 0)
+
+        IF ( .NOT.found_v ) THEN
+          blocked_List(w)%List = [blocked_List(w)%List , v]
+          !IF (dbg) WRITE(*,333) ' blocked List  = ',blocked_list(w)%List
         END IF
+
       END DO
     END IF
 
     Stapel%len  = Stapel%len - 1
     Stapel%List = Stapel%List(1:Stapel%len)
 
-    IF (dbg) THEN
+    !IF (dbg) THEN
       !WRITE(*,*) '  OUT'
       !WRITE(*,333) ' Stapel len   = ',SIZE(Stapel%LIst) 
       !WRITE(*,333) ' Stapel List  = ',Stapel%List
@@ -263,7 +279,7 @@ MODULE Cycles_Mod
       !WRITE(*,*) '      NEXT    '
       !READ(*,*)
       !WRITE(*,*) ''
-    END IF
+    !END IF
   END FUNCTION Circuit
 
   FUNCTION CSR_to_AdjList(CSR) RESULT(Adj)
@@ -283,28 +299,11 @@ MODULE Cycles_Mod
   
   END FUNCTION CSR_to_AdjList
 
-  !FUNCTION CSR_to_AdjList(CSR) RESULT(Adj)
-  !  ! INPUT:
-  !  TYPE(CSR_Matrix_T) :: CSR
-  !  ! OUTPUT:
-  !  TYPE(List), ALLOCATABLE :: Adj(:)
-  !  ! TEMP:
-  !  INTEGER :: i 
-  !
-  !  ALLOCATE(Adj(CSR%m))
-  ! 
-  !  DO i = 1 , CSR%m
-  !    Adj(i)%len = CSR%RowPtr(i+1) - CSR%RowPtr(i)
-  !    ALLOCATE( Adj(i)%List(Adj(i)%len) )
-  !    Adj(i)%List = CSR%ColInd(CSR%RowPtr(i):CSR%RowPtr(i+1)-1)
-  !  END DO
-  !
-  !END FUNCTION CSR_to_AdjList
 
-  SUBROUTINE Tarjan(scc,iln,Target_Spc,A)
+  SUBROUTINE Tarjan(scc,ispc,Target_Spc,A)
     ! OUT:
     TYPE(List), ALLOCATABLE :: scc(:)
-    INTEGER :: iln(2)
+    INTEGER :: ispc
     ! IN:
     INTEGER :: Target_Spc
     TYPE(SpRowIndColInd_T)  :: A
@@ -350,15 +349,9 @@ MODULE Cycles_Mod
       scc_List   => scc_List%next
       !WRITE(*,'(I2,A,I2,A,*(I2,1X))'), i , ' len = ', scc(i)%len , ' List = ', scc(i)%List
       DO j = 1,nVertexSCC(i)
-        IF (scc(i)%List(j) == Target_Spc) THEN
-          iln(1) = i
-          iln(2) = Target_Spc
-        END IF
+        IF (scc(i)%List(j) == Target_Spc) ispc = i
       END DO
-      !IF (MINVAL(scc(i)%List)==least_node) THEN
-      !  iln(1) = i
-      !  iln(2) = least_node
-      !END IF
+      
     END DO
 
 
