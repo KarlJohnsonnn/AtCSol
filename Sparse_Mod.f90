@@ -1386,7 +1386,7 @@ MODULE Sparse_Mod
     !
     REAL(dp) :: tmpJacVal(JacCC%m)
 
-    CALL DAX_sparse(tmpJacVal,JacCC,U)
+    tmpJacVal = DAX_sparse(JacCC,U)
 
     JacTC = - (dUdT*dTdt + tmpJacVal) / cv * rRho * milli
 
@@ -1403,7 +1403,7 @@ MODULE Sparse_Mod
 
     ! deriv. of reaction rate with resp. to temperature
     dRatedT = Dr * Kvec 
-    CALL DAX_sparse(JacCT,gMat,dRatedT)
+    JacCT   = DAX_sparse(gMat,dRatedT)
 
   END SUBROUTINE Jacobian_CT
  
@@ -2038,29 +2038,29 @@ MODULE Sparse_Mod
   !
   ! Matrix*Vector1+Vector2 (rhs)
   ! sparse matrix * vector + vector
-  SUBROUTINE DAXPY_sparse(Rhs,A,X,Y)
+  FUNCTION DAXPY_sparse(A,X,Y) RESULT(Rhs)
     !IN
-    TYPE(CSR_Matrix_T), INTENT(IN)  :: A
-    REAL(dp),     INTENT(IN)  :: X(:), Y(:)
+    TYPE(CSR_Matrix_T) :: A
+    REAL(dp) :: X(:), Y(:)
     !OUT
-    REAL(dp),     INTENT(OUT) :: Rhs(A%m)
+    REAL(dp) :: Rhs(A%m)
     !TEMP
-    INTEGER :: i, rp_i, rp_i1  ! RowPtr(i), RowPtr(i+1)-1
+    INTEGER :: i, rp_i, rp_i1
    
-    Rhs = ZERO      ! notwendig? 
+    Rhs = ZERO
     DO i=1,A%m
       rp_i   = A%RowPtr(i)  ;  rp_i1  = A%RowPtr(i+1)-1
       Rhs(i) = SUM(A%Val(rp_i:rp_i1)*X(A%ColInd(rp_i:rp_i1)))+Y(i)
     END DO
-  END SUBROUTINE DAXPY_sparse
+  END FUNCTION DAXPY_sparse
 
 
-  SUBROUTINE DAX_sparse(Rhs,A,X)
+  FUNCTION DAX_sparse(A,X) RESULT(Rhs)
     !IN
-    TYPE(CSR_Matrix_T), INTENT(IN)  :: A
-    REAL(dp),     INTENT(IN)  :: X(:)
+    TYPE(CSR_Matrix_T) :: A
+    REAL(dp) :: X(:)
     !OUT
-    REAL(dp),     INTENT(OUT) :: Rhs(A%m)
+    REAL(dp) :: Rhs(A%m)
     !TEMP
     INTEGER :: i, rp_i, rp_i1  ! RowPtr(i), RowPtr(i+1)-1
    
@@ -2068,7 +2068,7 @@ MODULE Sparse_Mod
       rp_i   = A%RowPtr(i)  ;  rp_i1  = A%RowPtr(i+1)-1
       Rhs(i) = SUM(A%Val(rp_i:rp_i1)*X(A%ColInd(rp_i:rp_i1)))
     END DO
-  END SUBROUTINE DAX_sparse
+  END FUNCTION DAX_sparse
  
 
 

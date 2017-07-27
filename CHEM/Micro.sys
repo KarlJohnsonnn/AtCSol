@@ -1,0 +1,17 @@
+COMMENT  Test for MSUCAT
+COMMENT  22-05-2008 (RS)
+COMMENT   ===================   Unit options   ======================
+
+UNIT GAS    0   COMMENT     Gas phase units     (0 = molec/cm3, 1 = mol/m3)
+UNIT AQUA   0   COMMENT     Aqueous phase units (0 = mol/l)
+UNIT AQUA   0   COMMENT     Aqueous phase units (0 = mol/l)
+
+COMMENT   ===========================================================
+
+CLASS: MICROPHYS 
+RHO + RHOV + RHOL           =     RHO
+SPECIAL: 2.2E-13 * exp(620/TEMP) + 1.9E-33 * RHOV * abs(sqrt(RHO*RHO+RHOV*RHOV)); 3
+
+CLASS: MICROPHYS 
+RHO + RHOV + RHOL           =     RHO
+SPECIAL: 2.2E-13 * exp(620/TEMP) + 1.9E-33 * RHOV * abs(sqrt(RHOV*RHOV)); 2

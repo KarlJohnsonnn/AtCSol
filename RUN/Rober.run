@@ -1,14 +1,14 @@
  &SCENARIO
-  BSP = 'Robertson'                    ! Name der NetCDF Output-Datei
-  pHSet = 1                        ! berechne pH Wert zu Beginn
-  LWCLevelmax = 2.0d-8            ! minimaler LWC Wert [l/cm3]
-  LWCLevelmin = 3.0d-4            ! maximaler LWC Wert [l/cm3]
-  constLWC = .false.                     ! 0 = konstanter LWC wert, 0 /= pseudo LWC funktion wird benutzt
-  Ladebalken = 1                   ! 0 = kein ladebalken, 0 /= ladebalken aktiv
-  ErrorLog = 0                      ! 0 = no error output, 0 /= error output direkt auf bildschirm
-  DebugPrint  = .true.            ! DEBUGGING Rosenbrock 
-  MatrixPrint = .true.            ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
-  NetCdfPrint = .true.            ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
+  BSP = 'Robertson'           ! Name der NetCDF Output-Datei
+  pHSet = 1                   ! berechne pH Wert zu Beginn
+  LWCLevelmax = 2.0d-8        ! minimaler LWC Wert [l/cm3]
+  LWCLevelmin = 3.0d-4        ! maximaler LWC Wert [l/cm3]
+  constLWC = .false.          ! 0 = konstanter LWC wert, 0 /= pseudo LWC funktion wird benutzt
+  Ladebalken = 1              ! 0 = kein ladebalken, 0 /= ladebalken aktiv
+  ErrorLog = 0                ! 0 = no error output, 0 /= error output direkt auf bildschirm
+  DebugPrint  = .false.       ! DEBUGGING Rosenbrock 
+  MatrixPrint = .false.       ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
+  NetCdfPrint = .true.        ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
  /END
  &FILES
   SysFile  = 'CHEM/Rober.sys'
@@ -35,16 +35,9 @@
   Error_Est= 2
   PI_StepSize = .false.
   solveLA = 'cl'                                ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
-  !ODEsolver = 'bwEuler'
   ODEsolver = 'METHODS/TSRosWRodas3.fort'
-  !ODEsolver ='LSODE'    ! Rosenbrock-Wanner Verfahrenskoeffizienten
-  ImpEuler = 0                                  ! 0=kein impliziter Euler, 1=impliziter Euler (kein ROW!!)
-  Vectorized = .false.
-  !Vectorized = .true.
  /END
  &ORDERING
   OrderingStrategie  = 8                   ! 8=Markowitz(SparseLU) , 1,..,7=Mumps Orderings  
   ParOrdering = -1
- /END
- &ENTRAIN
  /END

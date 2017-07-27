@@ -111,21 +111,20 @@ END FUNCTION
 !***
 !**************************************************************************!
 !
-  FUNCTION pHValue(ya) RESULT(pH)
-    USE mo_reac
-    USE mo_control
-    USE Kind_Mod
+  FUNCTION pHValue(ConcAqua) RESULT(pH)
+    USE mo_reac,    ONLY: ns_AQUA, Hp_ind, Charge
+    USE mo_control, ONLY: ZERO
+    USE Kind_Mod,   ONLY: dp
 
     IMPLICIT NONE
 
     REAL(dp) :: pH
-    REAL(dp) :: ya(ntAqua)   ! molar density
-    INTEGER :: jt
+    REAL(dp) :: ConcAqua(ns_AQUA)   ! molar density
+    INTEGER :: j
 
     pH = ZERO
-    DO jt=1,ntAqua!-1 
-      IF (jt==Hp_ind) CYCLE
-      pH = pH + ya(jt) * Charge(jt)
+    DO j=1,ns_AQUA!-1 
+      IF (j/=Hp_ind) pH = pH + ConcAqua(j) * Charge(j)
     END DO
     pH = -pH
   END FUNCTION pHValue

@@ -1,6 +1,5 @@
 ! RCo
-! One stage first order L-stable Rosenbrock-W scheme (aka theta method).
-! Only an approximate Jacobian is needed. 
+! backward euler
 RCo%Order=2
 RCo%nStage=1
 RCo%ga=1.0d0

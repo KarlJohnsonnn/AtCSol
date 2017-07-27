@@ -13,34 +13,34 @@
 
 !--- Files
       CHARACTER(80) :: MetFile           & ! Meteorology file
-&                     ,ChemFile          & ! Chem file (SPACCIM)
-&                     ,SysFile           & ! Chemical mechanism
-&                     ,InitFile          & ! Initial concentrations
-&                     ,DataFile          & ! Gas and Aqueous DATA
-&                     ,Targets           & ! File for mechanism reduction
-&                     ,MWeights          & ! molecular weights of species 
-&                     ,NetcdfFileName    & ! NetCDF output file
-&                     ,ODEsolver    ! Method for Rosenbrock Integration
+&                    , SysFile           & ! Chemical mechanism
+&                    , InitFile          & ! Initial concentrations
+&                    , DataFile          & ! Gas and Aqueous DATA
+&                    , MWeights          & ! molecular weights of species 
+&                    , NetcdfFileName    & ! NetCDF output file
+&                    , ODEsolver         & ! Method for Rosenbrock Integration
+&                    , Targets             ! file for reductions analysis (target species)
 !
 !--- Unit Numbers
       INTEGER :: MetUnit           & ! Meteorology file
-&               ,ChemUnit          & ! Chemical mechanism
-&               ,MWUnit            & ! molecular weights unit
-&               ,InitUnit          & ! Initial concentrations
-&               ,DataUnit            ! Gas and Aqueous DATA
+&              , ChemUnit          & ! Chemical mechanism
+&              , MWUnit            & ! molecular weights unit
+&              , InitUnit          & ! Initial concentrations
+&              , DataUnit            ! Gas and Aqueous DATA
 !
 !-- Set Levels and Parameters for Processes
-      REAL(dp) :: &
-&                LwcLevelmin       & ! Lower level for LWC
-&               ,LwcLevelmax         ! Upper level for LWC
+      REAL(dp) :: LwcLevelmin      & ! Lower level for LWC
+&               , LwcLevelmax        ! Upper level for LWC
 
 
 !-- print matrices of the system (alpha, beta, miter, lu_miter, permutvector,..)
-      LOGICAL :: MatrixPrint   
-      LOGICAL :: DebugPrint   
-      LOGICAL :: NetCdfPrint   
-      LOGICAL :: constLWC   
-
+      LOGICAL :: MatrixPrint      &  ! print certain matrices to file
+&              , DebugPrint       &  ! debugging rosenbrock steps
+&              , NetCdfPrint      &  ! print out concs and other stuff to netcdf file
+&              , constLWC         &  ! true if lwc value is fixed
+&              , Lehmann          &  ! prints out pathway analysis file 
+&              , Teq                 ! prints out pathway analysis file 
+ 
 !--- Control Parameter
       INTEGER :: pHSet             & ! Initial pH by charge balance (1=on, 0=off)
 &               ,Ladebalken        & ! ladebalken im terminal bei simulation (=1, default=0)
@@ -52,10 +52,10 @@
 !-----------------------------------------------------------------
 !-----------------------------------------------------------------
 !--- Times:  < 0 in seconds, > 0 in hours, = 0  meteorology
-REAL(dp) :: tAnf              & ! Model start time
+      REAL(dp) :: tAnf              & ! Model start time
 &               , tEnd              & ! Model end time
 &               , StpNetcdf           ! Time step for Netcdf output
-INTEGER        :: nOutP
+      INTEGER  :: nOutP
 !
 !--- Initial temperature and pressure for combustion mechanisms
       REAL(dp) :: Temperature0
@@ -85,7 +85,6 @@ INTEGER        :: nOutP
       REAL(dp) :: TimeSymbolic=0.0d0
       REAL(dp) :: TimeNetCDF=0.0d0
       REAL(dp) :: TimeErrCalc=0.0d0
-      REAL(dp) :: TimeRhsCalc=0.0d0
   
       REAL(dp) :: TimeIntegrationA=0.0d0
       REAL(dp) :: TimeIntegrationE=0.0d0
@@ -96,6 +95,7 @@ INTEGER        :: nOutP
       REAL(dp) :: TimeJacobianA=0.0d0
       REAL(dp) :: TimeJacobianE=0.0d0
       REAL(dp) :: TimeNetCDFA=0.0d0
+      REAL(dp) :: TimeRhsCalc=0.0d0
 !
 !-----------------------------------------------------------------
 !---  Numerics
@@ -135,38 +135,39 @@ INTEGER        :: nOutP
 !-----------------------------------------------------------------
 !
 !---  constants
-    REAL(dp), PARAMETER :: HOUR       = 3600.0_dp           &
-&                        , secday     = 4.32d+04            &
-&                        , hourday    = 24.0_dp             &
-&                        , Pi         = 4.0_dp*ATAN(1.0_dp) &
-&                        , DR         = Pi / 180.0_dp       &  
-&                        , PiHalf     = 2.0_dp*ATAN(1.0_dp) & 
-&                        , Pi34       = 3.0_dp/4.0_dp/Pi    & 
-&                        , eps        = EPSILON(1.0_dp)     &  ! such that 1+eps>1 with working precision
-&                        , small      = TINY(1.0_dp)        &  ! smallest pos. real value
-&                        , epsY       = 1.0d-7              &
-&                        , SI_am      = 1.66053892173d-27   &  ! Atomic mass unit  [kg]  
-&                        , SI_na      = 6.02214129270d+23   &  ! Avogadro's number [1/mol]
-&                        , SI_kB      = 1.38064881300d-23   &  ! Bolzmann constant [J/K]
-&                        , SI_Gas     = SI_na * SI_kB          ! Gas constant      [J/mol/K]
+    REAL(dp), PARAMETER :: HOUR       = 3600.0             &
+&                        , hourday    = 86400.0            &
+&                        , secday     = 4.32d04            &
+&                        , mONE       = -1.d0              &
+&                        , Pi         = 4.0d0*ATAN(1.0d0)  &
+&                        , DR         = Pi / 180.d0        &  
+&                        , PiHalf     = 2.0d0*ATAN(1.0d0)  & 
+&                        , Pi34       = 3.0d0/4.0d0/Pi     & 
+&                        , eps        = EPSILON(1.0d0)     &  ! such that 1+eps>1 with working precision
+&                        , small      = TINY(1.0d0)        &  ! smallest pos. real value
+&                        , epsY       = 1.0d-7             &
+&                        , SI_am      = 1.66053892173d-27  &  ! Atomic mass unit  [kg]  
+&                        , SI_na      = 6.0221412927d+23   &  ! Avogadro's number [1/mol]
+&                        , SI_kB      = 1.380648813d-23    &  ! Bolzmann constant [J/K]
+&                        , SI_Gas     = SI_na * SI_kB         ! Gas constant      [J/mol/K]
 !
 !--- Real number constants
-  REAL(dp), PARAMETER ::   ZERO    =     0.0_dp   & 
-&                       ,  ONE     =     1.0_dp  ,   mONE     =   -1.0_dp     & 
-&                       ,  TWO     =     2.0_dp  ,   rTWO     =   ONE/tWO     &
-&                       ,  THREE   =     3.0_dp  ,   rTHREE   =   ONE/THREE   &
-&                       ,  FOUR    =     4.0_dp  ,   rFOUR    =   ONE/FOUR    &
-&                       ,  FIVE    =     5.0_dp  ,   rFIVE    =   ONE/FIVE    &
-&                       ,  SIX     =     6.0_dp  ,   rSIX     =   ONE/SIX     &
-&                       ,  SEVEN   =     7.0_dp  ,   rSEVEN   =   ONE/SEVEN   &
-&                       ,  EIGHT   =     8.0_dp  ,   rEIGHT   =   ONE/EIGHT   &
-&                       ,  NINE    =     9.0_dp  ,   rNINE    =   ONE/NINE    &
-&                       ,  TEN     =    10.0_dp  ,   rTEN     =   ONE/TEN     &
-&                       ,  ELEVN   =    11.0_dp  ,   rELEVN   =   ONE/ELEVN   &
-&                       ,  TWELV   =    12.0_dp  ,   rTWELV   =   ONE/TWELV   &
-&                       , TWENTY   =    20.0_dp  ,   rTWENTY  =   ONE/TWENTY  &
-&                       , mTHIRTY  =   -30.0_dp  &
-&                       , rm300    = mONE/300.0_dp,   r300     =   ONE/300.0_dp
+  REAL(dp), PARAMETER ::   ZERO    =     0.0d0   & 
+&                      ,  ONE     =     1.0d0   & 
+&                      ,  TWO     =     2.0d0  ,   rTWO     =   ONE/tWO     &
+&                      ,  THREE   =     3.0d0  ,   rTHREE   =   ONE/THREE   &
+&                      ,  FOUR    =     4.0d0  ,   rFOUR    =   ONE/FOUR    &
+&                      ,  FIVE    =     5.0d0  ,   rFIVE    =   ONE/FIVE    &
+&                      ,  SIX     =     6.0d0  ,   rSIX     =   ONE/SIX     &
+&                      ,  SEVEN   =     7.0d0  ,   rSEVEN   =   ONE/SEVEN   &
+&                      ,  EIGHT   =     8.0d0  ,   rEIGHT   =   ONE/EIGHT   &
+&                      ,  NINE    =     9.0d0  ,   rNINE    =   ONE/NINE    &
+&                      ,  TEN     =    10.0d0  ,   rTEN     =   ONE/TEN     &
+&                      ,  ELEVN   =    11.0d0  ,   rELEVN   =   ONE/ELEVN   &
+&                      ,  TWELV   =    12.0d0  ,   rTWELV   =   ONE/TWELV   &
+&                      , TWENTY   =    20.0d0  ,   rTWENTY  =   ONE/TWENTY  &
+&                      , mTHIRTY  =   -30.0d0  &
+&                      , rm300    = mONE/300.d0,   r300     =   ONE/300.d0
 !
 !--- Orders of magnitude
   REAL(dp), PARAMETER ::   nano    =     1.0d-09    &
@@ -175,27 +176,26 @@ INTEGER        :: nOutP
 &                      , kilo     =     1.0d+03    &
 &                      , mega     =     1.0d+06    &
 &                      , tera     =     1.0d+09
-
 !
 !--- Natural logarithms
-  REAL(dp), PARAMETER ::   ln10   =     LOG(TEN)    &
+  REAL(dp), PARAMETER ::    ln10   =     LOG(TEN)    &
 &                      ,  rln10   = ONE/LOG(TEN)
 !
 !--- minimum values if there is no sun
-  REAL(dp), PARAMETER :: EyChiZmin  =  9.357d-14
+  REAL(dp), PARAMETER ::    EyChiZmin  =  9.357d-14
 !
 !
 !--- Unit Conversion constants
 !
 !     Pressure
-  REAL(dp)      , PARAMETER :: bar_to_dyncm2 = 1.0d+06
+  REAL(dp)      , PARAMETER :: bar_to_dyncm2 = 1.0d06
   REAL(dp)      , PARAMETER :: dyncm2_to_Pa  = 1.0d-01
   REAL(dp)      , PARAMETER :: Pa_to_dyncm2  = 1.0d+01
-  REAL(dp)      , PARAMETER :: bar_to_Pa     = 1.0d+05
-  REAL(dp)      , PARAMETER :: atm_to_Pa     = 101325.0
+  REAL(dp)      , PARAMETER :: bar_to_Pa     = 1.0d05
+  REAL(dp)      , PARAMETER :: atm_to_Pa     = 101325.0d0
 !
 !     Energy
-  REAL(dp)      , PARAMETER :: cal_to_joule  = 4.184
+  REAL(dp)      , PARAMETER :: cal_to_joule  = 4.184d0
   REAL(dp)      , PARAMETER :: joule_to_cal  = ONE / cal_to_joule
   REAL(dp)      , PARAMETER :: joule_to_kcal = milli * joule_to_cal
   REAL(dp)      , PARAMETER :: kcal_to_joule = kilo * cal_to_joule
@@ -205,7 +205,7 @@ INTEGER        :: nOutP
 !--- Physical constants ********************************************
 
 !     Universal gas constant [J / mol / K]
-  REAL(dp), PARAMETER :: R         = 8.31446210000000
+  REAL(dp), PARAMETER :: R         = 8.31446210000000D0     
   REAL(dp), PARAMETER :: rR        = ONE/R
 
 !
@@ -233,7 +233,6 @@ INTEGER        :: nOutP
 !---  Output control 
 !-----------------------------------------------------------------
 
-    LOGICAL :: Bar = .FALSE.            ! flag for the loading bar
 
 !-- number of Qt-Output variable
     INTEGER :: nQtGas  = 0      & ! number of gas phase species
@@ -257,10 +256,12 @@ INTEGER        :: nOutP
     LOGICAL :: useMUMPS = .FALSE.
     LOGICAL :: useSparseLU = .FALSE.
 
-    LOGICAL :: Teq  = .FALSE.
     LOGICAL :: ChemKin = .FALSE.
 
-    LOGICAL :: Vectorized = .FALSE.
+    LOGICAL :: Bar = .FALSE.
+
+    REAL(dp), ALLOCATABLE :: integrated_rates(:)
+    REAL(dp), ALLOCATABLE :: mixing_ratios_spc(:,:)
     
  END MODULE mo_control
 

@@ -17,7 +17,7 @@
       NAMELIST /SCENARIO/  Bsp,                                            &
 &               LwcLevelmin, LwcLevelmax, Ladebalken,  pHSet,              &
 &               constLWC, ErrorLog, MatrixPrint, NetCdfPrint, Temperature0,&
-&               Pressure0, DebugPrint, ChemKin
+&               Pressure0, DebugPrint, ChemKin, Lehmann
 !
       NAMELIST /FILES/  MetFile, SysFile,MWeights, InitFile, DataFile,    &
 &               NetcdfFileName, MetUnit, ChemUnit, MWUnit, InitUnit,       &
@@ -27,7 +27,7 @@
 &               minStp, maxStp, nOutP
 !
       NAMELIST /NUMERICS/  RtolROW, AtolGas, AtolAqua, AtolTemp, PI_StepSize,      &
-&               solveLA,  ODEsolver, ImpEuler, Error_Est, Vectorized
+&               solveLA,  ODEsolver, ImpEuler, Error_Est
 !
       NAMELIST /ORDERING/  OrderingStrategie, ParOrdering
 !      
@@ -62,6 +62,7 @@
       ChemKin     = .FALSE.
       Temperature0= 750.0d0
       Pressure0   = 2.0d5
+      Lehmann     = .FALSE.
 
 !--- Read SCENARIO namelist
       READ(15,SCENARIO)
@@ -77,7 +78,7 @@
       SysFile  = 'CHEM/'//TRIM(RunFile)//'.sys'    ! Chemical mechanism
       DataFile = 'CHEM/'//TRIM(RunFile)//'.dat'    ! Gas and aqueous phase data
       InitFile = 'INI/'//TRIM(RunFile)//'.ini'     ! Initial concentrations
-      Targets  = 'RED/'//TRIM(RunFile)//'.ctrl'    ! Controlfile for mechanism reduction
+      Targets  = ''    ! Controlfile for mechanism reduction
 
       NetcdfFileName = TRIM(Bsp)//'.nc'            ! Netcdf output file
 
@@ -143,7 +144,6 @@
       solveLA  = 'ex'                 ! method of solving linear algebra
       ODEsolver  = 'ROS34PW3'  ! ROW scheme
       ImpEuler = 0                    ! 1 for implicit euler integration
-      Vectorized = .TRUE.
       
 !
 !--- Read NUMERICS namelist

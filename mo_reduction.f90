@@ -23,7 +23,7 @@ MODULE mo_reduction
       i=0
       DO
         CALL LineFile( Back,                       &
-        &              Start1 = 'TARGET_SPC',&
+        &              Start1 = 'TARGET_SPC',      &
         &              End    = 'END_TARGET_SPC',  &
         &              Name1  = SpeciesName        )
         IF (Back) EXIT
@@ -39,7 +39,7 @@ MODULE mo_reduction
       i=0
       DO
         CALL LineFile( Back,                       &
-        &              Start1 = 'TARGET_SPC',&
+        &              Start1 = 'TARGET_SPC',      &
         &              End    = 'END_TARGET_SPC',  &
         &              Name1  = SpeciesName        )
         IF (Back)   EXIT

@@ -4,7 +4,7 @@
   ErrorLog    = 0
   matrixPrint = .true.
   debugPrint  = .false.
-  NetCdfPrint = .true.
+  NetCdfPrint = .false.
   ChemKin     = .true.
   Temperature0= 750.0d0       ! in [K]
   Pressure0   = 2.0d+5        ! in [Pa]
@@ -14,6 +14,7 @@
   DataFile = 'ckCHEM/ERC_nheptane/ERC_nheptane.dat'
   MWeights = 'ckCHEM/ERC_nheptane/MolecWeights.mw'
   InitFile = 'ckCHEM/ERC_nheptane/ERC_nheptane.ini'
+  Targets  = 'TAR/ERC_nheptane.ctrl'
  /END
  &TIMES
   tAnf    = 0.0d0
@@ -31,7 +32,6 @@
   ODEsolver = 'METHODS/TSRosWRodas3.fort'
   !ODEsolver = 'bwEuler'          ! maximalschrittweite = delta t
   !ODEsolver = 'LSODE'
-  Vectorized = .TRUE.
  /END
  &ORDERING
   OrderingStrategie  = 8

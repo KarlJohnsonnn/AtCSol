@@ -10,13 +10,16 @@ COMMENT   ===========================================================
 
 CLASS: GAS  
 A = B
-CONST:  A: 4e-2
+#CONST:  A: 4e-2
+SPECIAL: 4e-2 ; 0 
 
 CLASS: GAS
 2.0 B = B + C 
-CONST:  A: 3e+7
+#CONST:  A: 3e+7
+SPECIAL: 3e+7 ; 0
 
 CLASS: GAS
 B + C = A + C
-CONST:  A: 1e+4
+#CONST:  A: 1e+4
+SPECIAL: 1e+4 ; 0
  

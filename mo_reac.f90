@@ -28,16 +28,16 @@
       INTEGER :: type
     END TYPE def_para
   
-    INTEGER, PARAMETER ::        &
-&              nr_reac  = 37     &  ! number of reaction types
-&             ,nr_cons  =  4     &  ! constant rate
-&             ,nr_sgasA = 16     &  ! first special gas reaction 
-&             ,nr_sgasE = 35     &  ! last  special gas reaction 
-&             ,nr_equi  = 36     &  ! equilibrium (for solubility)
-&             ,nr_dtemp3  = 13        ! equilibrium (for solubility)
+!    INTEGER, PARAMETER ::        &
+!!&              nr_reac  = 37     &  ! number of reaction types
+!&             ,nr_cons  =  4     &  ! constant rate
+!&             ,nr_sgasA = 16     &  ! first special gas reaction 
+!&             ,nr_sgasE = 35     &  ! last  special gas reaction 
+!&             ,nr_equi  = 36     &  ! equilibrium (for solubility)
+!&             ,nr_dtemp_3  = 13        ! equilibrium (for solubility)
+!
 
-
-    TYPE(def_para), DIMENSION(nr_reac) :: var_par = &
+    TYPE(def_para), DIMENSION(37) :: var_par = &
                    (/def_para("PHOTABC", 3,  1), &
                      def_para("PHOTMCM", 3,  2), &
                      def_para("PHOTAB",  2,  3), &
@@ -123,24 +123,48 @@
 !--------------------------------------------------------------
 !--   dimensions
     INTEGER :: nt=0
-    INTEGER :: ntGas=0                   ! number of gaseous species
-    INTEGER :: ntAqua=0                  ! number of aqueeous species
-    INTEGER :: ntKat=0                   ! number of katalysator species
-    INTEGER :: ntKatGas=0, ntKatAqua=0   ! number of katalysator species gaseous ,aqueous
     INTEGER :: ntFrac=0                  ! number of aquatic droplett classes
-    INTEGER :: ntsolid=0                 ! number of solid species
-    INTEGER :: ntpart=0                  ! number of particle species
-    INTEGER :: neq=0, nspc=0, nreak=0, nAreak=0
+
+    INTEGER :: neq=0, nspc=0
+    INTEGER :: nr=0                      ! number of all reactions
     INTEGER :: nDIM=0
     INTEGER :: nDIMcl=0
     INTEGER :: nDIMex=0
     REAL(dp) :: rNspc
 
-    INTEGER :: nreakgas=0,nreakhenry=0,nreakdissoc=0,nreakaqua=0, nreaksolid=0
-    INTEGER :: nreakgphoto=0,nreakgconst=0,nreakgtemp=0,nreakgtroe=0,nreakgspec=0
-    INTEGER :: nreakaphoto=0,nreakaconst=0,nreakatemp=0,nreakaspec=0,nreakglind=0
-    INTEGER :: nreaksolidtemp=0,nreaksolidequi=0,nreaksolidspec=0,nreakSimpTB=0
-    INTEGER :: nreakpress=0
+    ! number of species in each phase/state
+    INTEGER :: ns = 0, ns_KAT = 0, ns_G_KAT = 0, ns_A_KAT = 0
+    INTEGER :: ns_GAS = 0, ns_AQUA = 0, ns_SOLID = 0, ns_PARTIC = 0
+
+    ! number of each reaction class
+    INTEGER :: nr_gas = 0, nr_aqua = 0, nr_henry = 0, nr_diss = 0, nr_solid = 0, nr_partic = 0, nr_micphys = 0
+    INTEGER :: nr_special = 0 
+
+    ! number of each reaction type
+    INTEGER :: nr_G_photo = 0, nr_G_const = 0, nr_G_temp = 0, nr_G_troe =0, nr_G_spec = 0, nr_G_lind = 0
+    INTEGER :: nr_A_photo = 0, nr_A_const = 0, nr_A_temp = 0, nr_A_spec =0
+    INTEGER :: nr_S_temp  = 0, nr_S_equi  = 0, nr_S_spec = 0
+    INTEGER :: nr_SimpTB  = 0, nr_press   = 0
+    INTEGER :: nr_G_special = 0, nr_A_special = 0,nr_S_special = 0,nr_P_special = 0,nr_M_special = 0
+    INTEGER :: nr_H_special = 0, nr_D_special = 0, nr_D_Temp
+
+    INTEGER :: nr_PHOTabc = 0, nr_PHOTab = 0, nr_PHOTmcm = 0, nr_CONST = 0
+    INTEGER :: nr_TEMP1 = 0, nr_TEMP2 = 0, nr_TEMP3 = 0, nr_TEMP4 = 0
+    INTEGER :: nr_TROE  = 0, nr_TROEf = 0, nr_TROEq = 0, nr_TROEqf = 0, nr_TROExp = 0, nr_TROEmcm = 0
+    INTEGER :: nr_SPEC1 = 0, nr_SPEC2 = 0, nr_SPEC3 = 0, nr_SPEC4 = 0
+    INTEGER :: nr_SPEC1mcm = 0, nr_SPEC2mcm = 0, nr_SPEC3mcm = 0, nr_SPEC4mcm = 0
+    INTEGER :: nr_SPEC5mcm = 0, nr_SPEC6mcm = 0, nr_SPEC7mcm = 0, nr_SPEC8mcm = 0
+    INTEGER :: nr_S4H2O  = 0, nr_T1H2O   = 0, nr_Meskhidze = 0
+    INTEGER :: nr_ASPEC1 = 0, nr_ASPEC2  = 0, nr_ASPEC3   = 0, nr_ASPEC4 = 0
+    INTEGER :: nr_DTEMP  = 0, nr_DTEMP2  = 0, nr_DTEMP3   = 0, nr_DTEMP4 = 0, nr_DTEMP5 = 0, nr_DCONST = 0
+    INTEGER :: nr_HENRYga = 0, nr_HENRYag  = 0
+    INTEGER :: nr_FACTOR = 0, nr_FAC_H2  = 0, nr_FAC_O2N2 = 0, nr_FAC_M  = 0, nr_FAC_O2 = 0, nr_FAC_N2 = 0
+    INTEGER :: nr_FAC_H2O = 0, nr_FAC_RO2 = 0, nr_FAC_O2O2 = 0, nr_FAC_aH2O = 0, nr_FAC_RO2aq = 0
+    INTEGER :: nr_HOaqua = 0      ! higher order aqueous reactions
+    INTEGER :: nr_PHOTOkpp = 0, nr_PHOTO2kpp = 0, nr_PHOTO3kpp = 0
+
+    LOGICAL :: PHOTO=.FALSE.
+
 !    INTEGER :: nreakstemp,nreaksequi,nreaksspec
 !--    define indices of special species
     INTEGER ::   Hp_ind,         &   ! Index Hp
@@ -162,6 +186,7 @@
     CHARACTER(60), ALLOCATABLE :: GasName(:)    & ! gas phase species
 &                                ,AquaName(:)   & ! aqueous phase species
 &                                ,SolidName(:)  & ! solid species
+&                                ,ParticName(:)  & ! solid species
 &                                ,PassName(:)     ! passive species
 !
 !
@@ -299,36 +324,54 @@
     ! indix arrays for different reaction types 
     ! Types for vectorised version
     TYPE ReacTypeIndex_TR
-      INTEGER, ALLOCATABLE :: iPHOTabc(:),  iPHOTab(:),   iPHOTmcm(:), iCONST(:)
-      INTEGER, ALLOCATABLE :: iTEMP1(:),    iTEMP2(:),    iTEMP3(:),   iTEMP4(:)
-      INTEGER, ALLOCATABLE :: iTROE(:),     iTROEf(:),    iTROEq(:),   iTROEqf(:), iTROExp(:)
-      INTEGER, ALLOCATABLE :: iTROEmcm(:),  iSPEC1(:),    iSPEC2(:),   iSPEC3(:),  iSPEC4(:)
-      INTEGER, ALLOCATABLE :: iSPEC1mcm(:), iSPEC2mcm(:), iSPEC3mcm(:), iSPEC4mcm(:)
-      INTEGER, ALLOCATABLE :: iSPEC5mcm(:), iSPEC6mcm(:), iSPEC7mcm(:), iSPEC8mcm(:)
-      INTEGER, ALLOCATABLE :: iS4H2O(:),    iT1H2O(:),    iASPEC1(:),   iASPEC2(:)
-      INTEGER, ALLOCATABLE :: iASPEC3(:),   iASPEC4(:),   iDCONST(:,:),   iDTEMP(:,:)
-      INTEGER, ALLOCATABLE :: iDTEMP2(:,:), iDTEMP3(:,:), iDTEMP4(:,:), iDTEMP5(:,:), iMeskhidze(:,:)
-      INTEGER, ALLOCATABLE :: iHENRY(:,:)
+      INTEGER, ALLOCATABLE :: iPHOTabc(:),  iPHOTab(:),   iPHOTmcm(:), iCONST(:)  &
+      &                     , iTEMP1(:),    iTEMP2(:),    iTEMP3(:),   iTEMP4(:)  &
+      &                     , iTROE(:),     iTROEf(:),    iTROEq(:),   iTROEqf(:), iTROExp(:) &
+      &                     , iTROEmcm(:),  iSPEC1(:),    iSPEC2(:),   iSPEC3(:),  iSPEC4(:)  &
+      &                     , iSPEC1mcm(:), iSPEC2mcm(:), iSPEC3mcm(:), iSPEC4mcm(:)  &
+      &                     , iSPEC5mcm(:), iSPEC6mcm(:), iSPEC7mcm(:), iSPEC8mcm(:)  &
+      &                     , iS4H2O(:),    iT1H2O(:),    iASPEC1(:),   iASPEC2(:)    &
+      &                     , iASPEC3(:),   iASPEC4(:),   iDCONST(:,:),   iDTEMP(:,:) &
+      &                     , iDTEMP2(:,:), iDTEMP3(:,:), iDTEMP4(:,:), iDTEMP5(:,:), iMeskhidze(:,:)&
+      &                     , iHENRY(:,:) &
       ! nFACTOR x 2, with [H2,O2N2,M,O2,N2,H2O,RO2,O2O2,aH2O,RO2aq,+M/(+M)]
-      INTEGER, ALLOCATABLE :: iFAC_H2(:),  iFAC_O2N2(:), iFAC_M(:),    iFAC_O2(:),   iFAC_N2(:)
-      INTEGER, ALLOCATABLE :: iFAC_H2O(:), iFAC_RO2(:),  iFAC_O2O2(:), iFAC_aH2O(:), iFAC_RO2aq(:)
-      INTEGER, ALLOCATABLE :: iHOaqua(:)
-      INTEGER, ALLOCATABLE :: iPHOTOkpp(:), iPHOTO2kpp(:), iPHOTO3kpp(:)
+      &                     , iFAC_H2(:),  iFAC_O2N2(:), iFAC_M(:),    iFAC_O2(:),   iFAC_N2(:) &
+      &                     , iFAC_H2O(:), iFAC_RO2(:),  iFAC_O2O2(:), iFAC_aH2O(:), iFAC_RO2aq(:) &
+      &                     , iHOaqua(:) &
+      &                     , iPHOTOkpp(:), iPHOTO2kpp(:), iPHOTO3kpp(:) &
+      &                     , iSPECIAL(:)
+      REAL(dp), ALLOCATABLE :: PHOTabc(:,:)   &  ! nPHOTabc x 3
+      &                     ,  PHOTab(:,:)    &  ! nPHOTab x 2
+      &                     ,  PHOTmcm(:,:)   &  ! nPHOTmcm x 3
+      &                     ,  CONST(:)       &  ! nCONST x 1
+      &                     ,  TEMP1(:,:), TEMP2(:,:), TEMP3(:,:), TEMP4(:,:) & ! nTEMPi x 2
+      &                     ,  TROE(:,:)      &  ! nTROE x 4
+      &                     ,  TROEf(:,:)     &  ! nTROEf x 5
+      &                     ,  TROEq(:,:)     &  ! nTROEq x 6
+      &                     ,  TROEqf(:,:)    &  ! nTROEqf x 7
+      &                     ,  TROExp(:,:)    &  ! nTROExp x 5
+      &                     ,  TROEmcm(:,:)   &  ! nTROExp x 10
+      &                     ,  SPEC1(:,:), SPEC2(:,:)  &! nSPEC1,2 x 2
+      &                     ,  SPEC3(:,:)     &  ! nSPEC3 x 6
+      &                     ,  SPEC4(:,:)     &  ! nSPEC4 x 4
+      &                     ,  SPEC1mcm(:,:), SPEC2mcm(:,:)  &! nSPEC1mcm,2 x 3
+      &                     ,  SPEC3mcm(:,:)   & ! nSPEC3mcm x 2
+      &                     ,  SPEC4mcm(:,:), SPEC5mcm(:,:), SPEC6mcm(:,:), SPEC8mcm(:,:) & ! nSPEC4,5,6mcm x 4
+      &                     ,  SPEC7mcm(:,:)  &  ! nSPEC7mcm x 6
+      &                     ,  S4H2O(:,:)     &  ! nS4H2o x 4
+      &                     ,  T1H2O(:,:)     &  ! nT1H2o x 2
+      &                     ,  Meskhidze(:,:) &  ! nMeskhidze x 7
+      &                     ,  ASPEC1(:,:), ASPEC3(:,:) &! nASPEC1,3 x 2
+      &                     ,  ASPEC2(:,:), ASPEC4(:,:) &! nAPSEC2,4 x 3
+      &                     ,  DTEMP(:,:), DTEMP5(:,:)  &! nDTEMP,5 x 3
+      &                     ,  DTEMP2(:,:), DTEMP3(:,:), DTEMP4(:,:) & ! nDTEMP2,3,4 x 4
+      &                     ,  DCONST(:,:)    &    ! nDCONST x 2
+      &                     ,  HENRY(:,:)     &    ! nHENRY x 2
+      &                     ,  HOaqua(:)      &
+      &                     ,  PHOTOkpp(:), PHOTO2kpp(:), PHOTO3kpp(:) ! nPHOTOi x 1
     END TYPE ReacTypeIndex_TR
 
-    INTEGER :: nPHOTabc=0, nPHOTab=0, nPHOTmcm=0, nCONST=0, nTEMP1=0, nTEMP2=0, nTEMP3=0, nTEMP4=0
-    INTEGER :: nTROE=0, nTROEf=0, nTROEq=0, nTROEqf=0, nTROExp=0, nTROEmcm=0, nSPEC1=0, nSPEC2=0
-    INTEGER :: nSPEC3=0, nSPEC4=0, nSPEC1mcm=0, nSPEC2mcm=0, nSPEC3mcm=0, nSPEC4mcm=0, nSPEC5mcm=0
-    INTEGER :: nSPEC6mcm=0, nSPEC7mcm=0, nSPEC8mcm=0, nS4H2O=0, nT1H2O=0, nASPEC1=0, nASPEC2=0
-    INTEGER :: nASPEC3=0, nASPEC4=0
-    INTEGER :: nDTEMP=0, nDTEMP2=0, nDTEMP3=0, nDTEMP4=0, nDTEMP5=0, nDCONST=0
-    INTEGER :: nMeskhidze=0, nHENRY=0, nHENRYga=0, nHENRYag=0
-    INTEGER :: nFACTOR=0, nFAC_H2=0, nFAC_O2N2=0, nFAC_M=0, nFAC_O2=0, nFAC_N2=0
-    INTEGER :: nFAC_H2O=0, nFAC_RO2=0, nFAC_O2O2=0, nFAC_aH2O=0, nFAC_RO2aq=0
-    INTEGER :: nHOaqua=0
-    INTEGER :: nPHOTOkpp=0, nPHOTO2kpp=0, nPHOTO3kpp=0
-
-    TYPE(ReacTypeIndex_TR) :: RTind2
+    TYPE(ReacTypeIndex_TR) :: iR
 
 
     TYPE ReacTypeParameter_CK
@@ -374,9 +417,10 @@
       REAL(dp), ALLOCATABLE :: HENRY(:,:)         ! nHENRY x 2
       REAL(dp), ALLOCATABLE :: HOaqua(:)
       REAL(dp), ALLOCATABLE :: PHOTOkpp(:), PHOTO2kpp(:), PHOTO3kpp(:) ! nPHOTOi x 1
+      !CHARACTER(400), ALLOCATABLE :: SPECIAL(:)
     END TYPE ReacTypeParameter_TR
 
-    TYPE(ReacTypeParameter_TR) :: RTpar2
+    TYPE(ReacTypeParameter_TR) :: Rparam
 
     INTEGER, ALLOCATABLE  :: AtomicMatrix(:,:)  ! dim = (nspc, natoms), where natoms = number of different elements in the system
 

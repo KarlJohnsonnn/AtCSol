@@ -39,20 +39,6 @@ MODULE Rosenbrock_Mod
     REAL(dp), ALLOCATABLE :: binterpt(:,:)    ! Dense output formula
   END TYPE RosenbrockMethod_T
 
-  
-  TYPE IntArgs
-    INTEGER :: nep                                  ! length y vector
-    REAL(dp) :: Tend                          ! end of integration intervall
-    INTEGER :: Tdir                                 ! direction (1 if t is ascending, -1 if t is descending)
-    REAL(dp), ALLOCATABLE :: f0(:)            ! first rhs eval
-    REAL(dp), ALLOCATABLE :: threshold(:)     ! ATol/RTol
-    REAL(dp) :: hmax                          ! max step size
-    REAL(dp) :: hTspan
-    REAL(dp), ALLOCATABLE :: ATol(:)          ! absolute tolerances AtolGas
-    REAL(dp) :: RTol                          ! relative tolerance RtolROW
-    REAL(dp) :: RTolpow
-  END TYPE IntArgs
-
   TYPE Out
     REAL(dp), ALLOCATABLE :: y(:)    ! y-vector at Tend
     INTEGER :: nsteps     = 0              ! # succ. steps
@@ -65,10 +51,8 @@ MODULE Rosenbrock_Mod
   END TYPE Out
 
   TYPE(Out) :: Output
-  TYPE(RosenbrockMethod_T) :: RCo  
+  TYPE(RosenbrockMethod_T) :: ROS
 
-  TYPE(IntArgs), PUBLIC :: Args                     ! Initial arguments  
-  
   REAL(dp), PRIVATE :: timerStart
   REAL(dp), ALLOCATABLE :: LUvalsFix(:)
 
@@ -142,50 +126,50 @@ MODULE Rosenbrock_Mod
     !
     ! converting the butcher tableau 
     ! automatic transformation to avoid mat*vec in ROW methode
-    RCo%pow=ONE/(RCo%Order+ONE)
-    !RCo%pow=1.0d0/RCo%nStage
-    ALLOCATE(RCo%iGamma(RCo%nStage,RCo%nStage))
-    RCo%iGamma=ZERO
-    ALLOCATE(ID(RCo%nStage,RCo%nStage))
+    ROS%pow=ONE/(ROS%Order+ONE)
+    !ROS%pow=1.0d0/ROS%nStage
+    ALLOCATE(ROS%iGamma(ROS%nStage,ROS%nStage))
+    ROS%iGamma=ZERO
+    ALLOCATE(ID(ROS%nStage,ROS%nStage))
     ID=ZERO
-    DO i=1,RCo%nStage
-      RCo%iGamma(i,i)=ONE
+    DO i=1,ROS%nStage
+      ROS%iGamma(i,i)=ONE
       ID(i,i)=ONE
     END DO
     !  
     ! calculate the inverse matrix of gamma
     !
-    ! CAUTION RCo%Gamma (IN) =/= RCo%Gamma (OUT) !!!
+    ! CAUTION ROS%Gamma (IN) =/= ROS%Gamma (OUT) !!!
     !
-    ALLOCATE(IPIV(RCo%nStage))
-    CALL dgesv(  RCo%nStage,     &        ! # linear eqations
-    &            RCo%nStage,     &        ! # RHS (coloums)
-    &            RCo%Gamma,      &        ! Matrix A of A*A^(-1)=ID
-    &            RCo%nStage,     &        ! leading dimension of A (nStage)
+    ALLOCATE(IPIV(ROS%nStage))
+    CALL dgesv(  ROS%nStage,     &        ! # linear eqations
+    &            ROS%nStage,     &        ! # RHS (coloums)
+    &            ROS%Gamma,      &        ! Matrix A of A*A^(-1)=ID
+    &            ROS%nStage,     &        ! leading dimension of A (nStage)
     &            IPIV,           &        ! pivot indices of dimension nStage
-    &            RCo%iGamma,     &        ! Matrix ID of A*A^(-1)=ID
-    &            RCo%nStage,     &        ! leading dimension of RHS
+    &            ROS%iGamma,     &        ! Matrix ID of A*A^(-1)=ID
+    &            ROS%nStage,     &        ! leading dimension of RHS
     &            INFO)                    ! INFO (integer) if INFO=0 succsessfull	
     !
     IF (INFO/=0.AND.MPI_ID==0) WRITE(*,*) 'Error while calc row-method parameter'
     !       
-    ALLOCATE(RCo%a(RCo%nStage,RCo%nStage))
-    RCo%a=ZERO
-    RCo%a=RCo%ga*MATMUL(RCo%Alpha, RCo%iGamma)
+    ALLOCATE(ROS%a(ROS%nStage,ROS%nStage))
+    ROS%a=ZERO
+    ROS%a=ROS%ga*MATMUL(ROS%Alpha, ROS%iGamma)
     !  
-    ALLOCATE(RCo%C(RCo%nStage,RCo%nStage))
-    RCo%C=ZERO
-    RCo%C=ID-RCo%ga*RCo%iGamma
-    FORALL (i=1:RCo%nStage) RCo%C(i,i)=ZERO
+    ALLOCATE(ROS%C(ROS%nStage,ROS%nStage))
+    ROS%C=ZERO
+    ROS%C=ID-ROS%ga*ROS%iGamma
+    FORALL (i=1:ROS%nStage) ROS%C(i,i)=ZERO
     !  
-    ALLOCATE(RCo%m(RCo%nStage))
-    RCo%B=MATMUL(RCo%B, RCo%iGamma)
-    RCo%m=RCo%ga*RCo%B(:)
+    ALLOCATE(ROS%m(ROS%nStage))
+    ROS%B=MATMUL(ROS%B, ROS%iGamma)
+    ROS%m=ROS%ga*ROS%B(:)
     !
-    IF (.NOT.RCo%nStage==1) THEN
-      ALLOCATE(RCo%me(RCo%nStage))
-      RCo%Be=MATMUL(RCo%Be,RCo%iGamma)
-      RCo%me=RCo%ga*RCo%Be(:)
+    IF (.NOT.ROS%nStage==1) THEN
+      ALLOCATE(ROS%me(ROS%nStage))
+      ROS%Be=MATMUL(ROS%Be,ROS%iGamma)
+      ROS%me=ROS%ga*ROS%Be(:)
     END IF
     !
     DEALLOCATE(ID)
@@ -206,11 +190,11 @@ MODULE Rosenbrock_Mod
     REAL(dp) :: rTolROW
     !
     ALLOCATE(ThresholdStepSizeControl(nDIM))
-    ThresholdStepSizeControl(:ntGas)=AtolGas/RTolROW
-    ThresholdStepSizeControl(ntGas+1:)=AtolAqua/RTolROW
+    ThresholdStepSizeControl(:ns_GAS)=AtolGas/RTolROW
+    ThresholdStepSizeControl(ns_GAS+1:)=AtolAqua/RTolROW
     ALLOCATE(ATolAll(nDIM))
-    ATolAll(:ntGas)=ATolGas
-    ATolAll(ntGas+1:)=ATolAqua
+    ATolAll(:ns_GAS)=ATolGas
+    ATolAll(ns_GAS+1:)=ATolAqua
     IF ( Teq ) THEN
       ThresholdStepSizeControl(nDIM)=ATolTemp/RTolROW
       ATolAll(nDIM)=ATolTemp
@@ -291,7 +275,7 @@ MODULE Rosenbrock_Mod
     hmin  = minStp
 
     !---- Compute an initial step size h using Yp=Y'(t) 
-    CALL DAXPY_sparse( f0 , BAT , Rate , Y_e )
+    f0 = DAXPY_sparse( BAT , Rate , Y_e )
     !print*, 'debug:: sum(bat),rate =', SUM(BAT%val),SUM(rate)
     !print*, 'debug:: sum(f0)=', SUM(f0)
     !stop
@@ -317,10 +301,10 @@ MODULE Rosenbrock_Mod
     END IF
     Output%nRateEvals = Output%nRateEvals + 1
 
-    CALL DAXPY_sparse( f1 , BAT , Rate , Y_e )
+    f1 = DAXPY_sparse( BAT , Rate , Y_e )
     DfDt  = ( f1 - f0 ) / tdel
     
-    CALL DAXPY_sparse( Tmp , Jac , f0 , zeros )
+    tmp = DAXPY_sparse( Jac , f0 , zeros )
     DfDt  = DfDt  + Tmp
   
     rh    = 1.25_dp * SQRT( rTWO * MAXVAL( ABS(DfDt/wt) ) ) / RTolRow**pow
@@ -335,7 +319,8 @@ MODULE Rosenbrock_Mod
   !=========================================================================
   !    Subroutine Rosenbrock-Method universal for classic and extended case
   !=========================================================================
-  SUBROUTINE Rosenbrock(YNew,err,ierr,avgRate,Y0,t,h,RCo,Euler)
+  SUBROUTINE Rosenbrock(YNew,err,ierr,avgRate,Y0,t,h,Euler)
+  !SUBROUTINE Rosenbrock(YNew,err,ierr,avgRate,Y0,t,h,RCo,Euler)
     !--------------------------------------------------------
     ! Input:
     !   - Y0............. concentrations at Time = t
@@ -347,7 +332,7 @@ MODULE Rosenbrock_Mod
     !
     REAL(dp),          INTENT(IN) :: Y0(nDIM)
     REAL(dp),          INTENT(IN) :: t, h
-    TYPE(RosenbrockMethod_T)      :: RCo
+    !TYPE(RosenbrockMethod_T)      :: RCo
     LOGICAL, OPTIONAL, INTENT(IN) :: Euler
     !--------------------------------------------------------
     ! Output:
@@ -367,7 +352,7 @@ MODULE Rosenbrock_Mod
     REAL(dp), DIMENSION(nspc)   :: Jac_CT, Jac_TC
     REAL(dp), DIMENSION(nDIMex) :: bb
     !
-    REAL(dp) :: k( nDIM , RCo%nStage )
+    REAL(dp) :: k( nDIM , ROS%nStage )
     !
     REAL(dp) :: Tarr(10)
     REAL(dp) :: Rate(neq), rRate(neq)
@@ -447,12 +432,13 @@ MODULE Rosenbrock_Mod
       CALL Diff2InternalEnergy ( d2UdT2  , Tarr)
       CALL MassAveMixSpecHeat  ( cv      , dUdT    , MoleConc=Y0(1:nspc) , rho=rho)
       CALL MassAveMixSpecHeat  ( dcvdT   , d2UdT2  , MoleConc=Y0(1:nspc) , rho=rho)
-      CALL DAXPY_sparse        ( dCdt    , BAT   , Rate , Y_e )
+
+      dCdt = DAXPY_sparse( BAT   , Rate , Y_e )
 
       dTdt    = - SUM( U * dCdt) * rRho/cv
-      UMat    = RCo%ga*dcvdT*dTdt*Y0(1:nspc) + U*Yrh
-      dRatedT = RCo%ga*dRatedT
-      X       = cv/(h*rRho) + RCo%ga/cv*dcvdT*dTdt + RCo%ga*SUM(dUdT*dCdt) 
+      UMat    = ROS%ga*dcvdT*dTdt*Y0(1:nspc) + U*Yrh
+      dRatedT = ROS%ga*dRatedT
+      X       = cv/(h*rRho) + ROS%ga/cv*dcvdT*dTdt + ROS%ga*SUM(dUdT*dCdt) 
       !
       !
       IF (dprint) THEN
@@ -493,9 +479,9 @@ MODULE Rosenbrock_Mod
         CALL Jacobian_TC( Jac_TC , Jac_CC , cv , dUdT , dTdt , U , rRho)
         CALL Jacobian_TT( Jac_TT , Jac_CT , cv , dcvdT , dTdt , dUdT , dCdt , U , rRho)
         !
-        CALL Miter_Classic( Miter , h , RCo%ga , Jac_CC , Jac_TC , Jac_CT , Jac_TT )
+        CALL Miter_Classic( Miter , h , ROS%ga , Jac_CC , Jac_TC , Jac_CT , Jac_TT )
       ELSE
-        CALL Miter_Classic( Miter , h , RCo%ga , Jac_CC )
+        CALL Miter_Classic( Miter , h , ROS%ga , Jac_CC )
       END IF
       Output%npds = Output%npds + 1
 
@@ -579,7 +565,7 @@ MODULE Rosenbrock_Mod
     !                                                                                 |_|    
     !****************************************************************************************
     
-    LOOP_n_STAGES:  DO iStg = 1 , RCo%nStage
+    LOOP_n_STAGES:  DO iStg = 1 , ROS%nStage
 
       IF ( iStg==1 ) THEN
 
@@ -592,11 +578,11 @@ MODULE Rosenbrock_Mod
 
       ELSE ! iStage > 1 ==> Update time and concentration
 
-        tt  = t + RCo%Asum(iStg) * h
+        tt  = t + ROS%Asum(iStg) * h
         Y   = Y0
 
         DO jStg = 1 , iStg
-          Y = Y + RCo%a(iStg,jStg) * k(:,jStg)
+          Y = Y + ROS%a(iStg,jStg) * k(:,jStg)
         END DO
         
         ! Update Rates at  (t + SumA*h) , and  (Y + A*)k
@@ -617,14 +603,14 @@ MODULE Rosenbrock_Mod
       !--- Calculate the right hand side of the linear System
       IF ( CLASSIC ) THEN
 
-        CALL DAXPY_sparse( dCdt , BAT , Rate , Y_e )           
+        dCdt = DAXPY_sparse( BAT , Rate , Y_e )           
         fRhs(1:nspc) =  h * dCdt
 
         IF (Teq) &
         fRhs( nDIM ) = - h * SUM(U*dCdt) * rRho / cv
 
         DO jStg = 1 , iStg-1
-          fRhs  = fRhs + RCo%C(iStg,jStg) * k(:,jStg)
+          fRhs  = fRhs + ROS%C(iStg,jStg) * k(:,jStg)
         END DO
 
         IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',fRhs( 1:iprnt)
@@ -636,16 +622,16 @@ MODULE Rosenbrock_Mod
           fRhs = ZERO
 
           DO jStg = 1 , iStg-1
-            fRhs(1:nspc) = fRhs(1:nspc) + RCo%C(iStg,jStg)*k(1:nspc,jStg)
-            IF (Teq)                                                &
-            fRhs(nDIM)   = fRhs(nDIM) + RCo%C(iStg,jStg)*                  &
+            fRhs(1:nspc) = fRhs(1:nspc) + ROS%C(iStg,jStg)*k(1:nspc,jStg)
+            IF (Teq)                                                       &
+            fRhs(nDIM)   = fRhs(nDIM) + ROS%C(iStg,jStg)*                  &
             &               ( cv/rRho*k(nDIM,jStg) + SUM(U*k(1:nspc,jStg)) )
           END DO
 
           ! right hand side of the extended linear system
 
-          bb( 1      : neq )     = -rRate * Rate
-          bb( neq+1  : nsr )     = Y_e + fRhs(1:nspc)/h
+          bb( 1      : neq )  = -rRate * Rate
+          bb( neq+1  : nsr )  = Y_e + fRhs(1:nspc)/h
           IF (Teq) bb(nDIMex) = fRhs(nDIM)/h
 
           IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:iprnt)
@@ -658,33 +644,25 @@ MODULE Rosenbrock_Mod
       SOLVE_LINEAR_SYSTEM: IF ( useSparseLU ) THEN  
 
         IF ( CLASSIC ) THEN
-
           CALL SolveSparse( LU_Miter , fRhs )
           k( 1:nDIM , iStg ) = fRhs
-
         ELSE !IF ( EXTENDED ) THEN
-
           CALL SolveSparse( LU_Miter , bb)
           k( 1:nspc , iStg ) = Y0(1:nspc) * bb(neq+1:nsr)
           IF ( Teq ) &
           k(  nDIM  , iStg ) = bb(nDIMex)
-          
         END IF
 
       ELSE
 
         IF ( CLASSIC ) THEN
-
           CALL MumpsSolve( fRhs )
           k( 1:nDIM , iStg ) = Mumps_Par%RHS(1:nDIM)    
-
         ELSE !IF ( EXTENDED ) THEN
-
           CALL MumpsSolve( bb )
           k( 1:nspc , iStg ) = Y0(1:nspc) * Mumps_Par%RHS(neq+1:nsr)
           IF ( Teq ) &
           k(  nDIM  , iStg ) = Mumps_Par%RHS(nDIMex)
-
         END IF
 
       END IF SOLVE_LINEAR_SYSTEM
@@ -708,12 +686,8 @@ MODULE Rosenbrock_Mod
     !--- Update Concentrations (+Temperatur)
 
     YNew = Y0
-    YHat = Y0
-
-    TimeErrCalc0 = MPI_WTIME()
-    DO jStg = 1 , RCo%nStage
-      YNew = YNew +  RCo%m(jStg) * k(:,jStg)! new Y vector
-      IF (.NOT.EULER) YHat = YHat + RCo%me(jStg) * k(:,jStg)! embedded formula for err calc ord-1
+    DO jStg = 1 , ROS%nStage
+      YNew = YNew +  ROS%m(jStg) * k(:,jStg)! new Y vector
     END DO
     
     IF (dprint) THEN
@@ -737,27 +711,28 @@ MODULE Rosenbrock_Mod
     !  |_____||_|   |_|   \___/ |_|    |_____||___/ \__||_||_| |_| |_| \__,_| \__| |_| \___/ |_| |_|
     !                                                                                              
     !***********************************************************************************************
-    IF (.NOT.EULER) CALL ERROR( err , ierr , YNew , YHat , ATolAll , RTolROW , t )
+    TimeErrCalc0 = MPI_WTIME()
+
+    IF (.NOT.EULER) THEN
+      YHat = Y0
+      DO jStg = 1 , ROS%nStage
+        YHat = YHat + ROS%me(jStg) * k(:,jStg)! embedded formula for err calc ord-1
+      END DO
+      CALL ERROR( err , ierr , YNew , YHat , ATolAll , RTolROW , t )
+    END IF
+
+    IF (Lehmann .AND. err<ONE) integrated_rates = integrated_rates + Rate*h
+
     TimeErrCalc = TimeErrCalc + MPI_WTIME() - TimeErrCalc0
    
-    !print*, 't,h, kvecs = ', t,h,SUM(k(:,1))
-    !stop
-    
     IF (dprint) THEN
       print*,'debug::     Error     =  ', err, '  Error index  =  ', ierr
       print*, '------------------------------------------------------------------------------'
       print*, ''
       print*, ' Press ENTER to calculate next step '
       read(*,*) 
-    !  IF (err <= ONE) THEN
-    !    CALL ConnectivityMethode(  CM_1 , BAT  , A , Rate , Y , dCdt )
-    !    CALL TransposeSparse( CM_1T , CM_1 )
-    !    DO i=1,nDIM
-    !      CM(i) = SUM( CM_1T%Val( CM_1T%RowPtr(i):CM_1T%RowPtr(i+1)-1 ) ) 
-    !    END DO
-    !    print*, 'CM= ',CM
-    !  END IF
     END IF
+
    
   END SUBROUTINE Rosenbrock
 

@@ -12,13 +12,12 @@
   DataFile = 'DAT/RACM.dat'
   InitFile = 'INI/SmallStratoKPP.ini'
   MetFile  = 'MET/1day_wocloud.met'
-  Targets  = 'RED/SmallStrato.ctrl'
+  Targets  = 'TAR/SmallStrato.ctrl'
  /END
  &TIMES
   tAnf    = 0.0d0
-  tEnd    = 2592000.0d0
-  !tAnf    = 0.0d0
-  !tEnd    = 86400.0d0
+  !tEnd    = 2592000.0d0
+  tEnd    = 86400.0d0
   Dust    = 0.5d0
   idate   = 010619     
   rlat    = 45.d0     
@@ -35,7 +34,6 @@
   ImpEuler  = 0
   ODEsolver = 'METHODS/TSRosWRodas3.fort'
   !ODEsolver = 'LSODE'
-  Vectorized = .true.
  /END
  &ORDERING
   OrderingStrategie  = 8

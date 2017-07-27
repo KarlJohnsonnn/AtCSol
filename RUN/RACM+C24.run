@@ -6,9 +6,9 @@
   constLWC = .false.               ! true = konstanter LWC wert, false /= pseudo LWC funktion wird benutzt
   Ladebalken = 1                   ! 0 = kein ladebalken, 0 /= ladebalken aktiv
   ErrorLog = 0                     ! 0 = no error output, 0 /= error output direkt auf bildschirm
-  MatrixPrint = .false.            ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
+  MatrixPrint = .true.            ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
   DebugPrint  = .false.            ! DEBUGGING Rosenbrock 
-  NetCdfPrint = .true.             ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
+  NetCdfPrint = .false.             ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
   ChemKin     = .false.            ! input mechanism in ChemKin notation
  /END
  &FILES
@@ -27,7 +27,7 @@
   rlat      = 45.0d0         ! ---------''---------    (Breitengrad)
   rlon      =  0.0d0         ! ---------''---------    (Längengrad)
   minStp    = 1.0d-30        ! minimale Schrittweite für Integration
-  maxStp    = 25.0d0         ! maximale Schrittweite für Integration
+  maxStp    = 50.0d0         ! maximale Schrittweite für Integration
   StpNetCDF = -1.0d0         ! save after StpNetCDF seconds, if < 0.0d0 save every timestep 
   nOutP     = 1000
 /END
@@ -37,7 +37,7 @@
   AtolAqua    = 1.0d-4       ! abs. Toleranzen für aquatische Stoffe
   Error_Est   = 2            ! Error estimation = 2 -> 2-norm, else maxnorm
   PI_StepSize = .false.      ! Gustafsson, Söderlind
-  solveLA     = 'ex'         ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
+  solveLA     = 'cl'         ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
   ImpEuler    = 0            ! 0=kein impliziter Euler, 1=impliziter Euler (kein ROW!!)
   ODEsolver   = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
   !ODEsolver  = 'LSODE'     

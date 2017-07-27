@@ -38,7 +38,6 @@
   ODEsolver = 'METHODS/TSRosWRA34PW2.fort'
   !ODEsolver = 'LSODES'
   !ODEsolver = 'bwEuler'
-  Vectorized = .true.
  /END
  &ORDERING
   OrderingStrategie  = 8

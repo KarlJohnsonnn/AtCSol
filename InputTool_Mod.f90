@@ -36,7 +36,7 @@ SUBROUTINE ClearIniFile
 END SUBROUTINE ClearIniFile
 
 SUBROUTINE LineFile(Back,Start1,Start2,End,Name1,Name2 &
-                   ,R1,R2,R3,R4,R5,R6,R7,R8,R)
+                   ,R1,R2,R3,R4,R5,R6,R7,R8,R,rLen)
 
   LOGICAL :: Back
   CHARACTER(*), OPTIONAL :: Start1,Start2
@@ -44,14 +44,23 @@ SUBROUTINE LineFile(Back,Start1,Start2,End,Name1,Name2 &
   CHARACTER(*), OPTIONAL :: Name1,Name2
   REAL(dp), OPTIONAL :: R1,R2,R3,R4,R5,R6,R7,R8
   REAL(dp), OPTIONAL :: R(:)
+  INTEGER,  OPTIONAL :: rLen
 
   CHARACTER(300) :: Line, tLine
   INTEGER :: i,is
-  INTEGER, PARAMETER :: LenWork=20
-  REAL(dp) :: Work(LenWork)
+  INTEGER :: LenWork
+  REAL(dp), ALLOCATABLE :: Work(:)
   INTEGER :: slash
 
   Back=.FALSE.
+
+  IF (PRESENT(rLen)) THEN
+    LenWork = rLen
+  ELSE
+    LenWork = 20
+  END IF
+
+  ALLOCATE(Work(LenWork))
 
   IF (PRESENT(Start1)) THEN
     IF (iS1==0) THEN
@@ -68,7 +77,7 @@ SUBROUTINE LineFile(Back,Start1,Start2,End,Name1,Name2 &
       END DO S1
     END IF
   ELSE
-    is1=1
+    iS1=1
   END IF
 1 CONTINUE
   IF (PRESENT(Start2).AND.iS1>0) THEN
@@ -86,42 +95,45 @@ SUBROUTINE LineFile(Back,Start1,Start2,End,Name1,Name2 &
       END DO S2
     END IF
   ELSE
-    is2=1
+    iS2=1
   END IF
 2 CONTINUE
   IF (iS1*iS2>0) THEN
     E:DO
       READ(InputUnit_Initials,'(a300)') Line
-      slash=INDEX(Line,'/')
-      IF ( slash>0 ) THEN
-        Line(slash:slash)='_'
-      END IF
-      Line=ADJUSTL(Line)
-      IF (Line(1:1)=='#') CYCLE E
-      IF (LEN(TRIM(Line))==0  ) CYCLE E
-      IF (INDEX(Line,TRIM(End))>0) THEN
-        Back=.TRUE.
+
+      slash = INDEX(Line,'/')
+      IF ( slash>0 ) Line(slash:slash)='_'
+      
+      Line = ADJUSTL(Line)
+      IF ( Line(1:1) == '#' ) CYCLE E
+      IF ( Line      == ''  ) CYCLE E
+      IF ( INDEX(Line,TRIM(End)) > 0 ) THEN
+        Back = .TRUE.
       ELSE
+        
         IF (PRESENT(Name1)) THEN
           READ(Line,*) Name1
           Line(INDEX(Line,TRIM(Name1)): &
-               INDEX(Line,TRIM(Name1))+LEN(TRIM(Name1))-1)=' '
+               INDEX(Line,TRIM(Name1))+LEN_TRIM(Name1)-1)=' '
         END IF
-        IF (PRESENT(Name2)) THEN
-          tLine=ADJUSTR(Line)
-          IF (INDEX(tLine,'#')>0) THEN
-            tLine=tLine(LEN(tLine)-3:INDEX(tLine,'#')-1)
-          ELSE
-            tLine=tLine(LEN(tLine)-3:LEN(tLine))
-          END IF
-          Line=tLine
-          READ(tLine,*) Name2
-          Line(INDEX(Line,TRIM(Name2)): &
-               INDEX(Line,TRIM(Name2))+LEN(TRIM(Name2))-1)=' '
-        END IF
+        
+        !IF (PRESENT(Name2)) THEN
+        !  tLine = ADJUSTR(Line)
+        !  IF (INDEX(tLine,'#')>0) THEN
+        !    tLine = tLine(LEN(tLine)-3:INDEX(tLine,'#')-1)
+        !  ELSE
+        !    tLine = tLine(LEN(tLine)-3:LEN(tLine))
+        !  END IF
+        !  Line = tLine
+        !  READ(tLine,*) Name2
+        !  Line(INDEX(Line,TRIM(Name2)): &
+        !       INDEX(Line,TRIM(Name2))+LEN_TRIM(Name2)-1)=' '
+        !END IF
+
         DO i=1,LenWork
-          Line=ADJUSTL(Line)
-          IF (LEN(TRIM(Line))>0) THEN
+          Line = ADJUSTL(Line)
+          IF ( LEN_TRIM(Line) > 0 ) THEN
             IF (Line(1:1)=='#') THEN
               EXIT
             ELSE
@@ -132,6 +144,20 @@ SUBROUTINE LineFile(Back,Start1,Start2,End,Name1,Name2 &
             EXIT
           END IF
         END DO
+
+        IF (PRESENT(Name2)) THEN
+          tLine = ADJUSTR(Line)
+          IF (INDEX(tLine,'#')>0) THEN
+            tLine = tLine(LEN(tLine)-3:INDEX(tLine,'#')-1)
+          ELSE
+            tLine = tLine(LEN(tLine)-3:LEN(tLine))
+          END IF
+          Line = tLine
+          READ(tLine,*) Name2
+          Line(INDEX(Line,TRIM(Name2)): &
+               INDEX(Line,TRIM(Name2))+LEN_TRIM(Name2)-1)=' '
+        END IF
+
       END IF
       EXIT
     END DO E

@@ -13,7 +13,6 @@ PROGRAM chemie
   USE Integration_Mod
   USE Rosenbrock_Mod
   USE mo_control
-  !USE mo_unirnk
   USE mo_reac
   USE mo_MPI
   USE mo_IO
@@ -21,12 +20,14 @@ PROGRAM chemie
   USE NetCDF_Mod
   USE Cycles_Mod
   USE mo_reduction
+  USE fparser
   IMPLICIT NONE
   !
   CHARACTER(80)   :: Filename0 = ''        ! *.run file
+  CHARACTER(80)   :: ChemFile  = ''        ! *.chem file (output)
   !
   REAL(dp) :: Atol(2)
-  INTEGER  :: i,j,nSchwefel
+  INTEGER  :: i,j,jj,nSchwefel
   INTEGER  :: io_err,  STAT
 
   ! NetCDF stuff
@@ -41,7 +42,7 @@ PROGRAM chemie
   CHARACTER(80) :: neuTolR  = ''
   CHARACTER(80) :: neuTolA  = ''
   CHARACTER(80) :: neuROW   = ''
-  CHARACTER(2)  :: neuSolveLA  = ''
+  CHARACTER(2)  :: newSolveLA  = ''
 
   ! temp variables for molecular weights
   CHARACTER(16) :: tmpchar0 = '-'
@@ -64,10 +65,10 @@ PROGRAM chemie
 
   ! new testing stuff 
   TYPE(CSR_Matrix_T) :: E_HG, P_HG, S_HG, R_HG, S_HG_transp
-  TYPE(SpRowIndColInd_T) :: A_testsp
+  CHARACTER(1) :: inpt=''
   
-  REAL(dp) :: A_test(10,10)
-  INTEGER, ALLOCATABLE :: Ai(:),Aj(:)
+  ! timer
+  REAL(dp) :: t_1,t_2
 
   !
   !================================================================
@@ -86,8 +87,7 @@ PROGRAM chemie
   ! --- Read run control parameters (which runfile)
   CALL getarg( 1 , FileName0 )             
   IF ( FileName0 == '' ) THEN
-    WRITE(*,*) 'Input RUNFilename:'
-    READ(*,*)   FileName0
+    WRITE(*,*) 'Input RUNFilename: '; READ(*,*)   FileName0
   END IF
   FileName0 = TRIM(ADJUSTL(FileName0))
 
@@ -101,9 +101,6 @@ PROGRAM chemie
   IF ( MPI_ID == 0 ) WRITE(*,*) '  Initialize run-file .......... done'
   !
   !----------------------------------------------------------------
-  ! --- Initialize all reaction types
-  !CALL InitNReacType()
-  !
   Tspan = (/ tAnf , tEnd /)
  
   !----------------------------------------------------------------
@@ -122,11 +119,11 @@ PROGRAM chemie
   ChemFile = ADJUSTL(TRIM(SysFile(:INDEX(SysFile,'.sys')-1)))
   OPEN ( UNIT=89 , FILE=ADJUSTL(TRIM(ChemFile))//'.chem' , STATUS='UNKNOWN' )
 
-  IF ( MPI_ID == 0 ) WRITE(*,'(A38)',ADVANCE='NO') '  Reading sys-file .............     '
+  IF ( MPI_ID == 0 ) WRITE(*,'(A33)',ADVANCE='NO') '   Reading sys-file .............'
 
   IF ( Teq.AND.ChemKin ) THEN
     
-    IF ( MPI_ID == 0 ) WRITE(*,*) ' ---->  Solve Gas Energy Equation '
+    IF ( MPI_ID == 0 ) WRITE(*,*) 'done   ---->  Solve Gas Energy Equation '
 
     CALL Read_Elements    ( SysFile    , 969 )
     CALL Read_Species     ( SysFile    , 969 )
@@ -142,17 +139,12 @@ PROGRAM chemie
     CALL Read_ThermoData( SwitchTemp , DataFile , 696 , nspc )
 
 
-    !CALL PM_int(AtomicMatrix)
-    !stop 'MAIN after PM'
-
     !--- richtigen index holen, da TB unsortiert eingelesen wurde
-    CALL GatherTBindex
-
-    IF (Vectorized) CALL GatherReactionTypeIndex
+    CALL Setup_ThirdBodyIndex
+    CALL Setup_ReactionIndex
    
     !--- Read initial values
-    ALLOCATE( InitValAct(ntGas) , y_e(ntGas) )
-    ALLOCATE( InitValKat(ntKat) )
+    ALLOCATE( InitValAct(ns_GAS) , y_e(ns_GAS) , InitValKat(ns_KAT) )
 
     IF ( MWeights /= '' ) THEN
       CALL Read_MolecularWeights(MW,MWeights,MWUnit,nspc)
@@ -160,26 +152,25 @@ PROGRAM chemie
       ALLOCATE( rMW(nspc) )  
       rMW = ONE / MW
       
-      ALLOCATE( MoleFrac(ntGas) , MassFrac(ntGas) )
-      MoleFrac    = ZERO         ! mole fraction 
-      MassFrac    = ZERO         ! mass fraction 
+      ALLOCATE( MoleFrac(ns_GAS) , MassFrac(ns_GAS) )
+      MoleFrac = ZERO         ! mole fraction 
+      MassFrac = ZERO         ! mass fraction 
 
       CALL Read_GASini( InitFile , MoleFrac , InitValKat )
 
       !Press = Pressure0               ! initial pressure in [Pa]
       Press_in_dyncm2 = Pressure0 * Pa_to_dyncm2
 
-      MassFrac = MoleFr_To_MassFr( MoleFrac ) 
-      
-      MoleConc = MoleFr_To_MoleConc( MoleFrac,               &
-                                   & Press = Press_in_dyncm2,&
-                                   & Temp  = Temperature0    )
+      MassFrac = MoleFr_To_MassFr  ( MoleFrac ) 
+      MoleConc = MoleFr_To_MoleConc( MoleFrac                &
+      &                            , Press = Press_in_dyncm2 &
+      &                            , Temp  = Temperature0    )
     ELSE
       IF (MPI_ID == 0 ) THEN
-        WRITE(*,*) ''
+        WRITE(*,*)
         WRITE(*,*) '  No molecular weights are given.  '
         WRITE(*,*) '       ---> Initial Values in [mole/cm3] '
-        WRITE(*,*) ''
+        WRITE(*,*)
       END IF
       CALL Read_GASini( InitFile , MoleConc , InitValKat )
     END IF
@@ -187,35 +178,35 @@ PROGRAM chemie
     
     ! Initialising reactor density
     rho  = Density( MoleConc )
-    !rRho = kilo/rho       ! in [cm3/g]
     rRho = mega/rho       ! in [cm3/g]
-    !InitValAct = MassFrac
     InitValAct = MoleConc
 
   ELSE
 
-    IF ( MPI_ID==0 ) WRITE(*,*) ' ---->  Fix Temperature'
+    IF ( MPI_ID==0 ) WRITE(*,*) 'done  ---->  Fix Temperature'
     CALL ReadSystem( SysFile )
   
     !----------------------------------------------------------------
     ! ---  build the coeficient matrices and write .chem
     CALL PrintHeadSpecies ( ChemFile , 89 )
 
-    IF ( ntGas   > 0 ) CALL PrintSpecies( ListGas2     , 89 )
-    IF ( ntAqua  > 0 ) CALL PrintSpecies( ListAqua2    , 89 )
-    IF ( ntSolid > 0 ) CALL PrintSpecies( ListSolid2   , 89 ) 
-    IF ( ntPart  > 0 ) CALL PrintSpecies( ListPartic2  , 89 )
-    IF ( ntKat   > 0 ) CALL PrintSpecies( ListNonReac2 , 89 )
+    IF ( ns_GAS    > 0 ) CALL PrintSpecies( ListGas2     , 89 )
+    IF ( ns_AQUA   > 0 ) CALL PrintSpecies( ListAqua2    , 89 )
+    IF ( ns_SOLID  > 0 ) CALL PrintSpecies( ListSolid2   , 89 ) 
+    IF ( ns_PARTIC > 0 ) CALL PrintSpecies( ListPartic2  , 89 )
+    IF ( ns_KAT    > 0 ) CALL PrintSpecies( ListNonReac2 , 89 )
 
     CALL PrintHeadReactions( 89 )
    
     !-----------------------------------------------------------------------
     ! --- Build the reaction system
     !-----------------------------------------------------------------------
-    CALL AllListsToArray( ReactionSystem  , ListRGas       &
-    &                    , ListRHenry     , ListRAqua      &
-    &                    , ListRDiss                       )
-    !
+    CALL AllListsToArray( ReactionSystem            &  
+    &                   , ListRGas    , ListRHenry  &
+    &                   , ListRAqua   , ListRDiss   &
+    &                   , ListRSolid  , ListRPartic &
+    &                   , ListRMicro  )
+    
     !-----------------------------------------------------------------------
     ! --- print reactions and build A, B and (B-A) structure
     !-----------------------------------------------------------------------
@@ -223,8 +214,24 @@ PROGRAM chemie
     CALL PrintFinalReactions( 89 )
 
     !-----------------------------------------------------------------------
+    ! --- initialize fpraser for reactions with special rate formula
+    !-----------------------------------------------------------------------
+    IF ( nr_special > 0 ) THEN
+     
+      ! Initialize function parser for n special functions
+      CALL initf( nr_special ) 
+      
+      ! Parse and bytecompile ith function string 
+      DO i = 1,nr_special
+        CALL parsef ( i, ReactionSystem(iR%iSPECIAL(i))%Special%Formula    &
+        &              , ReactionSystem(iR%iSPECIAL(i))%Special%cVariables )
+      END DO
+    END IF
+
+    !-----------------------------------------------------------------------
     ! --- Input of initial data and thermodynamic properties
     CALL InputChemicalData( InitFile , DataFile , MetFile )
+
     !-----------------------------------------------------------------------
   END IF
   CLOSE(89)
@@ -244,13 +251,8 @@ PROGRAM chemie
   !-----------------------------------------------------------------------
 
   !-----------------------------------------------------------------------
-  ! --- Split the rate array in mpi_np parts 
-  !CALL BuildPartitions( MyParties , neq , MPI_np )
-  !-----------------------------------------------------------------------
-  
-  !-----------------------------------------------------------------------
   ! --- this is for the new mass action product routine 
-  CALL GatherSpeciesOrder(A)
+  CALL Setup_SpeciesOrder(A)
   !-----------------------------------------------------------------------
   
   !-----------------------------------------------------------------------
@@ -263,7 +265,7 @@ PROGRAM chemie
     nDIM    = nspc + 1
     nDIMcl  = nspc + 1
     nDIMex  = nsr  + 1
-    Atol    = (/ AtolGas , AtolTemp /)
+    Atol    = [ AtolGas , AtolTemp ]
 
     !--- malloc gibbs energy, derivates
     ALLOCATE( GFE(nspc)   , DGFEdT(nspc)   )
@@ -274,19 +276,27 @@ PROGRAM chemie
     nDIM    = nspc
     nDIMcl  = nspc
     nDIMex  = nsr
-    Atol    = (/ AtolGas , AtolAqua /)
+    Atol    = [ AtolGas , AtolAqua ]
   END IF
 
   rNspc = ONE/REAL(nspc,KIND=dp)  ! rNspc for error calculation
+
+  ! true if mechanism contains photolytic reactions
+  PHOTO = (nr_G_photo+nr_A_photo) > 0
 
   !---------------------------------------------------------------------------
   ! --- If more than one argument is passed set new tolerance and ROS methode
   !---------------------------------------------------------------------------
 
   ! if you want to change the calc of the linear systems without opening the run-file
-  CALL getarg ( 2 , solveLA )
-  IF ( solveLA == 'cl' )  CLASSIC = .TRUE.;  EXTENDED = .FALSE.
-  IF ( solveLA == 'ex' )  CLASSIC = .FALSE.; EXTENDED = .TRUE.
+  CALL getarg ( 2 , newSolveLA )
+  IF (newSolveLA /= '') THEN
+    SELECT CASE (newSolveLA)
+      CASE ('cl'); CLASSIC = .TRUE.;  EXTENDED = .FALSE.; SolveLA = newSolveLA
+      CASE ('ex'); CLASSIC = .FALSE.; EXTENDED = .TRUE.;  SolveLA = newSolveLA
+      CASE DEFAULT;  WRITE(*,*) '  Linear Algebra either "cl" or "ex" !'
+    END SELECT
+  END IF
 
   !CALL getarg ( 2 , neuTolR ); IF ( neuTolR /= '' )  READ( neuTolR , * ) RtolROW
   !CALL getarg ( 3 , neuTolA ); IF ( neuTolA /= '' )  READ( neuTolA , * ) AtolGas
@@ -298,16 +308,11 @@ PROGRAM chemie
   ! --- Get all sulphuric species
   !-----------------------------------------------------------------------
   ! count species
-  nSchwefel = 0
-  DO i=1,nspc; IF (INDEX(y_name(i),'S')>0) nSchwefel = nSchwefel + 1; END DO
-
-  ! save species index to iDiag_Schwefel
-  ALLOCATE(iDiag_Schwefel(nSchwefel))
-  nSchwefel = 0
+  ALLOCATE(iDiag_Schwefel(0));  nSchwefel = 0
   DO i=1,nspc
     IF ( INDEX(y_name(i),'S') > 0 ) THEN
       nSchwefel = nSchwefel + 1
-      iDiag_Schwefel(nSchwefel) = PositionSpeciesAll( y_name(i) ) 
+      iDiag_Schwefel = [iDiag_Schwefel , PositionSpeciesAll(y_name(i))]
     END IF
   END DO
   
@@ -322,8 +327,8 @@ PROGRAM chemie
     WRITE(*,*)
     fmt0 = '  [molec/cm3] '
     IF ( Teq ) fmt0 = '  [mol/cm3]'
-    IF (ntGas>0)  WRITE(*,798) SUM(InitValAct(1:ntGas)) , fmt0
-    IF (ntAqua>0) WRITE(*,799) SUM(InitValAct(ntGas+1:nspc)) , fmt0
+    IF ( ns_GAS  > 0 ) WRITE(*,798) SUM(InitValAct(1:ns_GAS)) , fmt0
+    IF ( ns_AQUA > 0 ) WRITE(*,799) SUM(InitValAct(ns_GAS+1:nspc)) , fmt0
     WRITE(*,800) SUM(Y_e) , fmt0
 
     IF ( Teq ) THEN
@@ -364,7 +369,7 @@ PROGRAM chemie
         
     !--  Netcdf Output File
     IF ( ErrorLog == 1 ) ErrVals = ZERO
-    IF ( ntAqua > 0 ) THEN
+    IF ( ns_AQUA > 0 ) THEN
       LWC = pseudoLWC(Tspan(1))
       wetRad(:) = (Pi34*LWC/Frac%Number(:))**(rTHREE)*0.1_dp
     ELSE
@@ -380,8 +385,8 @@ PROGRAM chemie
     CALL SetOutputNCDF( InitValAct, yNcdf, Tspan(1), LWC )
     CALL StepNetCDF   ( Tspan(1) , yNcdf(:) , itime_NetCDF ,      &
                       & (/ LWC , ZERO ,                           &
-                      &    SUM(InitValAct(1:ntGas)),              &
-                      &    SUM(InitValAct(ntGas+1:ntGas+ntAqua)), &
+                      &    SUM(InitValAct(1:ns_GAS)),              &
+                      &    SUM(InitValAct(ns_GAS+1:ns_GAS+ns_AQUA)), &
                       &    wetRad , ZERO   /),                    &
                       &  errind , SUM(InitValAct(iDiag_Schwefel)),&
                       &  ZERO                                     )
@@ -394,6 +399,7 @@ PROGRAM chemie
   !    - generating sparse matrecies of Jacobian matrix (if nessesarry)
   !    - generating sparse matrecies of LU decomposition of the Jacobian
   !-----------------------------------------------------------------------
+  WRITE(*,'(A33)',ADVANCE='NO') '   Symbolic-phase................'
   StartTimer = MPI_WTIME()            ! start timer for symb phase
   
   CALL SymbolicAdd( BA , B , A )      ! symbolic addition:    BA = B + A
@@ -413,21 +419,15 @@ PROGRAM chemie
 
     CALL TransposeSparse( S_HG_transp , S_HG )
 
-    !CALL Tarjan(S_HG_transp)
-    A_test = 0
-    Ai = [2, 3, 4, 5, 5, 6, 6, 7, 8, 4, 9, 5, 10, 6, 9]
-    Aj = [1, 2, 2, 3, 4, 3, 5, 6, 4, 8, 8, 9, 9, 10, 6]
-    DO i=1,15
-      A_test(Ai(i),Aj(i)) = ONE
-    END DO
-
-    !CALL PrintSparseMatrix(S_HG)
-
-    CALL Read_Target_Spc(Target_Index,Target_Names,Targets)
-
-    CALL Find_Elem_Circuits(S_HG,Target_Index)
+    IF( Targets/='' ) THEN
+      CALL Read_Target_Spc(Target_Index,Target_Names,Targets)
+      CALL Find_Elem_Circuits(S_HG,Target_Index)
+      WRITE(*,*) '  Continue? [y/n]'
+      READ(*,*) inpt
+      IF (inpt/='y') STOP
+    END IF
     
-    STOP ' kreise gefunden '
+    !STOP ' kreise gefunden '
 
     !CALL WriteSparseMatrix(P_HG,'MATRICES/P_HG_'//BSP,neq,nspc)
     !CALL WriteSparseMatrix(E_HG,'MATRICES/E_HG_'//BSP,neq,nspc)
@@ -438,7 +438,7 @@ PROGRAM chemie
   ! if either Rosenbrock method or backward Euler was choosen
   IF ( MAXVAL(INDEX(TRIM(ODEsolver(1:7)),['METHODS','bwEuler']))>0) THEN
     !---- Get Rosenbrock Parameters
-    CALL SetRosenbrockMethod( RCo , ODEsolver )  
+    CALL SetRosenbrockMethod( ROS , ODEsolver )  
 
     ! we need to calculate the Jacobian for both versions 'cl' and 'ex' to
     ! calculate an initial stepsize based on 2nd derivative (copy of MATLABs ode23s)
@@ -456,10 +456,10 @@ PROGRAM chemie
     ! Set symbolic structure of iteration matrix for Row-Method
     ! also assign constant matrix parts like (beta-alpha)^T, alpha
     IF ( CLASSIC ) THEN
-      CALL BuildSymbolicClassicMatrix(  Miter , Jac_CC  , RCo%ga )
+      CALL BuildSymbolicClassicMatrix(  Miter , Jac_CC  , ROS%ga )
       IF (DebugPrint) CM_1 = Copy_CSR(Jac_CC)
     ELSE !IF ( EXTENDED ) THEN
-      CALL BuildSymbolicExtendedMatrix( Miter , A , BAT , RCo%ga ) 
+      CALL BuildSymbolicExtendedMatrix( Miter , A , BAT , ROS%ga ) 
     END IF
 
     ! Choose ordering/factorisation strategie and do symb LU fact
@@ -493,7 +493,7 @@ PROGRAM chemie
           PivOrder(     1 : neq      ) = [(i , i = 1     , neq  )]
           PivOrder( neq+1 : neq+nDIM ) = [(i , i = neq+1 , neq+nDIM )]
         END IF
-        CALL SymbLU_SpRowColD ( temp_LU_Dec , PivOrder)
+        CALL SymbLU_SpRowColD(temp_LU_Dec , PivOrder)
       END IF
 
       ! converting back to csr format
@@ -505,7 +505,7 @@ PROGRAM chemie
       
       ! For the extended case one can save the values of alpha and 
       ! (beta-alpha)^T and just copy them for each iteration in ROS
-      IF ( EXTENDED ) ALLOCATE(LUValsFix(LU_Miter%nnz)); LUvalsFix = LU_Miter%Val
+      IF ( EXTENDED ) LUvalsFix = LU_Miter%Val
     END IF
 
     IF (MPI_ID==0) THEN
@@ -516,12 +516,12 @@ PROGRAM chemie
       !  CALL WriteSparseMatrix(LU_Miter,'MATRICES/LU_Miter_'//TRIM(BSP), neq, nspc)
       !  !STOP 'after writesparsematrix'
       !END IF
-      WRITE(*,*) '  Symbolic-phase................ done'
+      WRITE(*,*) 'done'
       WRITE(*,*) ' '
       WRITE(*,*) '  Matrix Statistics: '
       WRITE(*,*) ' '
       CALL Matrix_Statistics(A,B,BA,BAT,S_HG,tmpJacCC,Miter,LU_Miter)
-      STOP 'after writesparsematrix'
+      !STOP 'after writesparsematrix'
     END IF
 
     CALL Free_Matrix_CSR( tmpJacCC )
@@ -547,15 +547,9 @@ PROGRAM chemie
   !-----------------------------------------------------------------------
   !--- Routines for pathway analysis
   !-----------------------------------------------------------------------
-  !IF (MPI_ID==0) THEN
-  !  WRITE(*,*)
-  !  DO i = 1 , SIZE(OutNetcdfSpc)
-  !    CALL SearchReactions(y_name(OutNetcdfSpc(i)))
-  !  END DO
-  !  WRITE(*,*)
-  !END IF
-  !stop 'MAIN'
-
+  ALLOCATE(mixing_ratios_spc(nspc,3),integrated_rates(neq))
+  mixing_ratios_spc = ZERO;  integrated_rates  = ZERO
+  mixing_ratios_spc(:,1) = InitValAct
   
   !-----------------------------------------------------------------------
   ! --- Start the integration routine 
@@ -575,8 +569,16 @@ PROGRAM chemie
   &                     , TimeSolve       , TimeRates     , TimeJac       &
   &                     , TimeIntegrationE, Timer_Finish  , TimeRateSend  &
   &                     , TimeNetCDF      , TimeErrCalc   , TimeRhsCalc   )
-  WRITE(*,*) ''
   !---------------------------------------------------------------
+
+
+  IF ( Lehmann ) THEN
+    ! writing data for pahtway analysis
+    mixing_ratios_spc(:,:) = (mixing_ratios_spc / (6.02e20_dp)) * 1.e09_dp ! in ppb
+    integrated_rates = (integrated_rates / (6.02e20_dp)) * 1.e09_dp ! in ppb
+    CALL WriteAnalysisFile(ReactionSystem,y_name,mixing_ratios_spc,integrated_rates)
+  END IF
+
   ! --- Close MPI 
   CALL FinishMPI()
 
@@ -584,10 +586,10 @@ PROGRAM chemie
   !==  FORMAT Statements
   !================================================================
   !
-  798  FORMAT('      Sum Initval (gaseous)      = ', Es16.9, A)
-  799  FORMAT('      Sum Initval (aqueous)      = ', Es16.9, A)
-  800  FORMAT('      Sum Emissions (gaseous)    = ', Es16.9, A)
-  801  FORMAT('      Initial Temperature        = ', Es16.9,'  [K]') 
-  802  FORMAT('      Initial Pressure           = ', Es16.9,'  [Pa]')
-  803  FORMAT('      Reactor denstiy            = ', Es16.9,'  [kg/cm3]')
+  798  FORMAT('      Sum Initval (gaseous)      =  ', Es8.2, A)
+  799  FORMAT('      Sum Initval (aqueous)      =  ', Es8.2, A)
+  800  FORMAT('      Sum Emissions (gaseous)    =  ', Es8.2, A)
+  801  FORMAT('      Initial Temperature        =  ', Es8.2,'  [K]') 
+  802  FORMAT('      Initial Pressure           =  ', Es8.2,'  [Pa]')
+  803  FORMAT('      Reactor denstiy            =  ', Es8.2,'  [kg/cm3]')
 END PROGRAM chemie

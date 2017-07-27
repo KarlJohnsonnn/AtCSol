@@ -232,10 +232,10 @@ MODULE NetCDF_Mod
     CALL check ( NF90_DEF_VAR( ncid, 'SchwefelSumme' , NF90_DOUBLE, dimIDS, schwefel_varid ) )
     CALL check ( NF90_DEF_VAR( ncid, 'loc_error' , NF90_DOUBLE, dimIDS, error_varid ) )
     CALL check ( NF90_DEF_VAR( ncid, 'loc_error_spc' , NF90_DOUBLE, dimIDS, MaxErrorSpc_varid ) )
-    IF ( ntGas >0 ) THEN
+    IF ( ns_GAS >0 ) THEN
       CALL check ( NF90_DEF_VAR( ncid, 'GasSum'    , NF90_DOUBLE, dimIDS, gassum_varid ) )
     END IF
-    IF ( ntAqua>0 ) THEN
+    IF ( ns_AQUA>0 ) THEN
       CALL check ( NF90_DEF_VAR( ncid, 'LWC_Level' , NF90_DOUBLE, dimIDS, LWC_varid ) )
       CALL check ( NF90_DEF_VAR( ncid, 'wetRadius' , NF90_DOUBLE, dimIDS, wetRadius_varid ) )
       CALL check ( NF90_DEF_VAR( ncid, 'pH_Value' , NF90_DOUBLE, dimIDS, pH_varid ) )
@@ -292,7 +292,7 @@ MODULE NetCDF_Mod
     CALL check( NF90_PUT_ATT(ncid, StepSize_varid, NC_UNITS, '[sec]' ) )  
     CALL check( NF90_PUT_ATT(ncid, StepSize_varid, "long_name", 'step size in [sec]') ) 
     CALL check( NF90_PUT_ATT(ncid, StepSize_varid, "_CoordinateAxes", "time") )
-    IF ( ntGas>0 ) THEN
+    IF ( ns_GAS>0 ) THEN
       ! Gas summe
       CALL check( NF90_PUT_ATT(ncid, Gassum_varid, NC_UNITS, '[molec/m3]' ) )  
       CALL check( NF90_PUT_ATT(ncid, Gassum_varid, "Long_name", 'sum gaseus conc [molec/cm3]') ) 
@@ -315,7 +315,7 @@ MODULE NetCDF_Mod
     CALL check( NF90_PUT_ATT(ncid, MaxErrorSpc_varid, "long_name", 'species of max error val') ) 
     CALL check( NF90_PUT_ATT(ncid, MaxErrorSpc_varid, "_CoordinateAxes", "time") )
     ! pH value
-    IF ( ntAqua>0 ) THEN
+    IF ( ns_AQUA>0 ) THEN
       ! lwc
       CALL check( NF90_PUT_ATT(ncid, LWC_varid, NC_UNITS, '[l/m3]' ) )  
       CALL check( NF90_PUT_ATT(ncid, LWC_varid, "long_name", '[liter/m3]') ) 
@@ -523,14 +523,14 @@ END SUBROUTINE InitNetCDF
     CALL check( NF90_PUT_VAR( ncid, Diag_varID(jt), yOut(jt), start = (/time_ind/) ) )
   END DO
   CALL check( NF90_PUT_VAR( ncid, StepSize_varid,  otherStuff(2), start = (/time_ind/) ) )
-  IF ( ntGas>0 ) THEN
+  IF ( ns_GAS>0 ) THEN
     CALL check( NF90_PUT_VAR( ncid, Gassum_varid,    otherStuff(3), start = (/time_ind/) ) )
   END IF
   CALL check( NF90_PUT_VAR( ncid, zenith_varid,    otherStuff(6), start = (/time_ind/) ) )
   CALL check( NF90_PUT_VAR( ncid, schwefel_varid,  Schwefel, start = (/time_ind/) ) )
   CALL check( NF90_PUT_VAR( ncid, error_varid,     error,    start = (/time_ind/) ) )
   CALL check( NF90_PUT_VAR( ncid, MaxErrorSpc_varid, ErrInd, start = (/time_ind/) ) )
-  IF ( ntAqua>0 ) THEN
+  IF ( ns_AQUA>0 ) THEN
     CALL check( NF90_PUT_VAR( ncid, Aquasum_varid,   otherStuff(4), start = (/time_ind/) ) )
     CALL check( NF90_PUT_VAR( ncid, wetRadius_varid, otherStuff(5), start = (/time_ind/) ) )
     CALL check( NF90_PUT_VAR( ncid, LWC_varid,       otherStuff(1), start = (/time_ind/) ) )

@@ -57,7 +57,7 @@
       ! Temporary variables:
       REAL(dp) :: Conc(nspc)
       REAL(dp) :: T(10)
-      REAL(dp) :: k,       vK(neq),   vKaqua(nAreak,ntFrac)
+      REAL(dp) :: k,       vK(neq)
       REAL(dp) :: Prod,    vProd(neq) 
       REAL(dp) :: DkdT,    dvK_dT(neq)   
       REAL(dp) :: Meff,    vMeff(neq)
@@ -106,7 +106,7 @@
         vMeff( RTind%iTBody ) = SUM( Conc )
 
         IF ( RTind%nTBodyExtra>0) THEN
-          CALL DAX_sparse( vMeffX, TB_sparse, Conc )
+          vMeffX = DAX_sparse( TB_sparse, Conc )
           vMeff(RTind%iTBodyExtra) = vMeff(RTind%iTBodyExtra) - vMeffX
         END IF
 
@@ -219,10 +219,10 @@
       REAL(dp) :: chi(3), LWC
       REAL(dp) :: T(10)
       REAL(dp) :: Meff(neq) , k(neq) , Prod(neq)
-      REAL(dp) :: AquaFac(nHOAqua)
+      REAL(dp) :: AquaFac(nr_HOAqua)
       
-      !REAL(dp) :: tHenry(nHENRY,2)
-      REAL(dp) :: tHenry(nHENRY,2,ntFrac)
+      !REAL(dp) :: tHenry(nr_HENRY,2)
+      REAL(dp) :: tHenry(nr_HENRY,2,ntFrac)
       !==================================================================!
       !===============calc rates for ReactionSystem======================!
       !==================================================================!
@@ -232,7 +232,7 @@
       Rate = ZERO
 
       ! --- Compute zenith for photo reactions
-      IF (nreakgphoto>0) THEN
+      IF ( PHOTO ) THEN
         ! tropos syntax calculation of zenith
         chi(1) = Zenith(Time)
         chi(2) = ONE/COS(Chi(1))
@@ -250,37 +250,30 @@
 
       ! ====== Computing effective molecularity 
       Meff = ONE
-      IF ( nFACTOR > 0 ) Meff = EffectiveMolecularity( Conc )
+      IF ( nr_FACTOR > 0 ) Meff = EffectiveMolecularity( Conc )
       
       ! ====== Compute the rate constant for specific reaction type
       CALL ComputeRateConstant( k, T, Time, chi, mAir, Conc, Meff )
 
       ! ===== correct unit of concentrations for higher order aqueous reactions
-      IF ( ntAqua > 0 ) THEN
+      IF ( ns_AQUA > 0 ) THEN
         LWC = pseudoLWC(Time)
         InitValKat(aH2O_ind) = aH2O*LWC
-        AquaFac = ONE / (LWC*mol2part)**RTpar2%HOaqua
-        k(RTind2%iHOaqua) = k(RTind2%iHOaqua) * AquaFac
+        k(iR%iHOaqua) = k(iR%iHOaqua) / (LWC*mol2part)**iR%HOaqua
       END IF
 
       !=== Compute mass transfer coefficient 
-      IF ( nHENRY > 0 ) THEN
-        thenry = MassTransfer( k(RTind2%iHENRY(:,1)), T, LWC )
-        k(RTind2%iHENRY(:,1)) = thenry(:,1,1)
-        k(RTind2%iHENRY(:,3)) = thenry(:,2,1)
+      IF ( nr_HENRY > 0 ) THEN
+        thenry = MassTransfer( k(iR%iHENRY(:,1)), T, LWC )
+        k(iR%iHENRY(:,1)) = thenry(:,1,1)
+        k(iR%iHENRY(:,3)) = thenry(:,2,1)
       END IF
 
       ! ==== Law of mass action productories
       Prod = MassActionProducts( Conc )
-      
-      Rate  = Meff * k * Prod
-      
-      !WRITE(*,*) ''
-      !DO j=1,neq
-      !  WRITE(*,*) 'j,Time,Meff,k,prd,Rate =', &
-      !  &           j,Time,vMeff(j),vK(j),vProd(j),Rate(j)
-      !END DO
 
+      Rate = Meff * k * Prod
+      
       TimeRates = TimeRates + MPI_WTIME() - TimeRateA
       
     END SUBROUTINE ReactionRates_Tropos
@@ -322,18 +315,19 @@
     END FUNCTION MassActionProducts
 
     FUNCTION MassTransfer(kin,Temp,LWC) RESULT(k)
-      REAL(dp) :: k(nHENRY,2,ntFrac), kin(nHENRY)
+      REAL(dp) :: k(nr_HENRY,2,ntFrac), kin(nr_HENRY)
       REAL(dp) :: Temp(:), LWC
       ! TEMO
-      REAL(dp) :: kmt(nHENRY,ntFrac)
-      REAL(dp) :: term_diff(nHENRY), term_accom(nHENRY)
+      REAL(dp) :: kmt(nr_HENRY,ntFrac)
+      REAL(dp) :: term_diff(nr_HENRY), term_accom(nr_HENRY)
       REAL(dp) :: wetRadius(ntFrac)
       INTEGER :: i
       !
+      REAL(dp) :: t1
       !
       !---------------------------------------------------------------------------
-      term_diff  = henry_diff(  RTind2%iHENRY(:,2) )               ! diffusion term
-      term_accom = henry_accom( RTind2%iHENRY(:,2) ) * Temp(10)  ! accom term
+      term_diff  = henry_diff(  iR%iHENRY(:,2) )             ! diffusion term
+      term_accom = henry_accom( iR%iHENRY(:,2) ) * Temp(10)  ! accom term
       !--------------------------------------------------------------------------!
       !
       ! Compute new wet radius for droplett class iFrac
@@ -341,16 +335,19 @@
       !
       !--  mass transfer coefficient
       kmt = dkmt  ! set minimal transfer coefficient
-      FORALL ( i = 1:nHENRY , term_diff(i) /= ZERO )
-        kmt(i,:) = ONE / ( term_diff(i)*wetRadius(:)*wetRadius(:) + term_accom(i)*wetRadius(:) )
-      END FORALL
+      DO  i = 1,nr_HENRY 
+        IF (term_diff(i) /= ZERO) THEN
+          kmt(i,:) = term_diff(i)*wetRadius(:)*wetRadius(:) + term_accom(i)*wetRadius(:)
+        END IF
+      END DO 
+      kmt = ONE / kmt
 
       ! direaction GasSpecies-->AquaSpecies
       k(:,1,:) = milli * kmt(:,:) * LWC
 
       ! direaction AquaSpecies-->GasSpecies  
       DO i=1,ntFrac
-        k(:,2,i) = kmt(:,i) / ( kin(:) * GasConst_R * Temp(1))  ! (...) = HenryConst*GasConstant*Temperatur
+        k(:,2,i) = kmt(:,i) / (kin(:) * GasConst_R * Temp(1))  ! (...) = HenryConst*GasConstant*Temperatur
       END DO
 
     END FUNCTION MassTransfer
@@ -363,116 +360,301 @@
       !
       M = ONE
 
-      IF(nFAC_H2>0)    M(RTind2%iFAC_H2)   = ((mH2*mair)**fac_exp)*fac_A
-      IF(nFAC_O2N2>0)  M(RTind2%iFAC_O2N2) = (((mO2*mair)*(mN2*mair))**fac_exp)*fac_A
-      IF(nFAC_M>0)     M(RTind2%iFAC_M)    = (mair**fac_exp)*fac_A
-      IF(nFAC_O2>0)    M(RTind2%iFAC_O2)   = ((mO2*mair)**fac_exp)*fac_A
-      IF(nFAC_N2>0)    M(RTind2%iFAC_N2)   = ((mN2*mair)**fac_exp)*fac_A
-      IF(nFAC_H2O>0)   M(RTind2%iFAC_H2O)  = (mH2O**fac_exp)*fac_A
-      IF(nFAC_RO2>0)   M(RTind2%iFAC_RO2)  = SUM(Conc(RO2))
-      IF(nFAC_O2O2>0)  M(RTind2%iFAC_O2O2) = (((mO2*mair)*(mO2*mair))**fac_exp)*fac_A
-      !IF(nFAC_aH2O>0) M(RTind2%iFAC_aH2O) = aH2OmolperL*LWC*mol2part
-      IF(nFAC_RO2aq>0) M(RTind2%iFAC_RO2aq) = SUM(Conc(RO2aq))
+      IF(nr_FAC_H2>0)    M(iR%iFAC_H2)   = ((mH2*mair)**fac_exp)*fac_A
+      IF(nr_FAC_O2N2>0)  M(iR%iFAC_O2N2) = (((mO2*mair)*(mN2*mair))**fac_exp)*fac_A
+      IF(nr_FAC_M>0)     M(iR%iFAC_M)    = (mair**fac_exp)*fac_A
+      IF(nr_FAC_O2>0)    M(iR%iFAC_O2)   = ((mO2*mair)**fac_exp)*fac_A
+      IF(nr_FAC_N2>0)    M(iR%iFAC_N2)   = ((mN2*mair)**fac_exp)*fac_A
+      IF(nr_FAC_H2O>0)   M(iR%iFAC_H2O)  = (mH2O**fac_exp)*fac_A
+      IF(nr_FAC_RO2>0)   M(iR%iFAC_RO2)  = SUM(Conc(RO2))
+      IF(nr_FAC_O2O2>0)  M(iR%iFAC_O2O2) = (((mO2*mair)*(mO2*mair))**fac_exp)*fac_A
+      !IF(nr_FAC_aH2O>0) M(iR%iFAC_aH2O) = aH2OmolperL*LWC*mol2part
+      IF(nr_FAC_RO2aq>0) M(iR%iFAC_RO2aq) = SUM(Conc(RO2aq))
 
     END FUNCTION EffectiveMolecularity
 
     SUBROUTINE ComputeRateConstant(k,T,Time,chi,mAir,Conc,Meff)
+      USE fparser
+
       REAL(dp), INTENT(OUT) :: k(neq)
       REAL(dp), INTENT(IN) :: Time, mAir, chi(:)
       REAL(dp), INTENT(IN) :: T(:)
       REAL(dp), INTENT(IN) :: Conc(:)
       REAL(dp), INTENT(INOUT) :: Meff(neq)
 
-      REAL(dp) :: k_DC(nDCONST,2), k_T1(nDTEMP,2), k_T2(nDTEMP2,2), k_T3(nDTEMP3,2)
-      REAL(dp) :: k_T4(nDTEMP4,2), k_T5(nDTEMP5,2), mesk(nMeskhidze,2)
+      REAL(dp) :: k_DC(nr_DCONST,2), k_T1(nr_DTEMP,2), k_T2(nr_DTEMP2,2), k_T3(nr_DTEMP3,2)
+      REAL(dp) :: k_T4(nr_DTEMP4,2), k_T5(nr_DTEMP5,2), mesk(nr_Meskhidze,2)
+
+      ! Photoabc tempo parameter
+      REAL(dp), DIMENSION(nr_PHOTabc) :: ChiZ, yChiZ, EyChiZ
+      INTEGER :: i, j
+      ! Aspec tempo parameter
+      REAL(dp), PARAMETER   :: x = 13.0d0
+      ! Troe tempo parameters
+      REAL(dp), DIMENSION(nr_TROE)    :: k1, k2, log10_k1k2
+      REAL(dp), DIMENSION(nr_TROEq)   :: k1q, k2q, k3q, log10_k1k2q
+      REAL(dp), DIMENSION(nr_TROEf)   :: k1f, k2f, log10_k1k2f
+      REAL(dp), DIMENSION(nr_TROEqf)  :: k1qf, k2qf, k3qf, log10_k1k2qf
+      REAL(dp), DIMENSION(nr_TROExp)  :: k1xp, k2xp, log10_k1k2xp
+      REAL(dp), DIMENSION(nr_TROEmcm) :: k1mcm, k2mcm, Fc, tmpTROE
+      REAL(dp), PARAMETER   :: n = 0.75_dp, d = 1.27_dp
+      REAL(dp) :: F, Tr300
+      ! Spec tempo parameters
+      REAL(dp), DIMENSION(nr_SPEC3)    :: k1s, k2s ,k3s
+      REAL(dp), DIMENSION(nr_SPEC5mcm) :: k1smcm5, k2smcm5
+      REAL(dp), DIMENSION(nr_SPEC6mcm) :: k1smcm6, k2smcm6
+      REAL(dp), DIMENSION(nr_SPEC7mcm) :: k1smcm7, k2smcm7
+      REAL(dp), DIMENSION(nr_SPEC8mcm) :: k1smcm8, k2smcm8
 
       k = ZERO
-
-      ! *** Photolytic reactions
-      IF (nPHOTAB>0)  k(RTind2%iPHOTab)  = vPhoABCompute ( Time, chi )
-      IF (nPHOTabc>0) k(RTind2%iPHOTabc) = vPhoABCCompute( Time, chi )
-      IF (nPHOTMCM>0) k(RTind2%iPHOTmcm) = vPhoMCMCompute( Time, chi )
-
-      ! *** Constant reactions
-      IF (nCONST>0) k(RTind2%iCONST) = vConstCompute( )
-
-      ! *** Temperature dependend reaction
-      IF (nTEMP1>0) k(RTind2%iTEMP1) = vTemp1Compute( T )
-      IF (nTEMP2>0) k(RTind2%iTEMP2) = vTemp2Compute( T )
-      IF (nTEMP3>0) k(RTind2%iTEMP3) = vTemp3Compute( T )
-      IF (nTEMP4>0) k(RTind2%iTEMP4) = vTemp4Compute( T )
-
-      ! *** specieal aqua reactions
-      IF (nASPEC1>0) k(RTind2%iASPEC1) = vAspec1Compute( T, Conc(Hp_ind) )
-      IF (nASPEC2>0) k(RTind2%iASPEC2) = vAspec2Compute( T, Conc(Hp_ind) )
-      IF (nASPEC3>0) k(RTind2%iASPEC3) = vAspec3Compute( T, Conc(Hp_ind) )
       
+      ! *************************************************************************
+      ! *** Photolytic reactions
+      !
+      IF (nr_PHOTAB>0) THEN
+        IF ( chi(1) < PiHalf ) THEN
+          k(iR%iPHOTab) = Dust * iR%PHOTab(:,1)*EXP(-iR%PHOTab(:,2)*chi(2))
+        END IF
+      END IF
+
+      IF (nr_PHOTabc>0) THEN
+        IF ( chi(1) < PiHalf ) THEN
+          ChiZ = chi(1) * iR%PHOTabc(:,3) 
+          DO i = 1,nr_PHOTabc
+            IF (ChiZ(i) < PiHalf) THEN
+              yChiZ(i) = iR%PHOTabc(i,2) * (One - One/COS(ChiZ(i)))
+              IF ( yChiZ(i) > mTHIRTY ) THEN
+                EyChiZ(i) = EXP(yChiZ(i))
+              ELSE
+                EyChiZ(i) = EyChiZmin   ! = 9.357d-14  
+              END IF
+            ELSE
+              EyChiZ(i) = EyChiZmin   ! = 9.357d-14 
+            END IF
+          END DO
+          k(iR%iPHOTabc) = Dust * iR%PHOTabc(:,1) * EyChiz
+        END IF
+      END IF
+
+      IF (nr_PHOTMCM>0) THEN
+        IF ( chi(1) < PiHalf ) THEN
+          ChiZ  = EXP( -iR%PHOTmcm(:,3) * chi(2) )
+          yChiZ = chi(2) ** iR%PHOTmcm(:,2)
+          k(iR%iPHOTmcm) = Dust * iR%PHOTmcm(:,1) * yChiZ * ChiZ
+        END IF
+      END IF
+      ! ************************************************************************
+
+      ! ************************************************************************
+      ! *** Constant reactions
+      !
+      IF (nr_CONST>0) k(iR%iCONST) = iR%CONST
+      ! ************************************************************************
+
+      ! ************************************************************************
+      ! *** Temperature dependend reaction
+      !
+      IF (nr_TEMP1>0) THEN
+        k(iR%iTEMP1) = iR%TEMP1(:,1)*EXP(-iR%TEMP1(:,2)*T(6))
+      END IF
+      IF (nr_TEMP2>0) THEN
+        k(iR%iTEMP2) = iR%TEMP2(:,1)*T(2)*EXP(-iR%TEMP2(:,2)*T(6))
+      END IF
+      IF (nr_TEMP3>0) THEN
+        k(iR%iTEMP3) = iR%TEMP3(:,1)*EXP(iR%TEMP3(:,2)*(T(6)-InvRefTemp))
+      END IF
+      IF (nr_TEMP4>0) THEN
+        k(iR%iTEMP4) = iR%TEMP4(:,1)*T(1)*EXP(-iR%TEMP4(:,2)*T(6))
+      END IF
+      ! ************************************************************************
+
+      ! ************************************************************************
+      ! *** specieal aqua reactions
+      !
+      IF (nr_ASPEC1>0) THEN
+        k(iR%iASPEC1) = Conc(Hp_ind)*(iR%ASPEC1(:,1)*EXP(iR%ASPEC1(:,2)       & 
+        &             * (T(6)-InvRefTemp)))/(ONE + x*Conc(Hp_ind))
+      END IF
+      IF (nr_ASPEC2>0) THEN 
+        k(iR%iASPEC2) = Conc(Hp_ind)**iR%ASPEC2(:,2)                          &
+        &             * (iR%ASPEC2(:,1)*EXP(iR%ASPEC2(:,3)*(T(6)-InvRefTemp)))
+      END IF
+      IF (nr_ASPEC3>0) THEN 
+        k(iR%iASPEC3) = iR%ASPEC3(:,1)*EXP(iR%ASPEC3(:,2)*(-LOG10(Conc(Hp_ind))))
+      END IF
+      ! ************************************************************************
+      
+      ! ************************************************************************
       ! *** dissociation reactions
-      IF (nDCONST>0) THEN
+      !
+      IF (nr_DCONST>0) THEN
         k_DC = vDConstCompute( )
-        k(RTind2%iDCONST(:,1)) = k_DC(:,1) ! forward reactions
-        k(RTind2%iDCONST(:,2)) = k_DC(:,2) ! backward reactions
+        k(iR%iDCONST(:,1)) = k_DC(:,1) ! forward reactions
+        k(iR%iDCONST(:,2)) = k_DC(:,2) ! backward reactions
       END IF
-      IF (nDTEMP>0)  THEN 
+      IF (nr_DTEMP>0)  THEN 
         k_T1 = vDTempCompute( T )
-        k(RTind2%iDTEMP(:,1)) = k_T1(:,1) ! forward reactions
-        k(RTind2%iDTEMP(:,2)) = k_T1(:,2) ! backward reactions
+        k(iR%iDTEMP(:,1)) = k_T1(:,1) ! forward reactions
+        k(iR%iDTEMP(:,2)) = k_T1(:,2) ! backward reactions
       END IF
-      IF (nDTEMP2>0) THEN 
+      IF (nr_DTEMP2>0) THEN 
         k_T2 = vDTemp2Compute( T )
-        k(RTind2%iDTEMP2(:,1)) = k_T2(:,1) ! forward reactions
-        k(RTind2%iDTEMP2(:,2)) = k_T2(:,2) ! backward reactions
+        k(iR%iDTEMP2(:,1)) = k_T2(:,1) ! forward reactions
+        k(iR%iDTEMP2(:,2)) = k_T2(:,2) ! backward reactions
       END IF
-      IF (nDTEMP3>0) THEN 
+      IF (nr_DTEMP3>0) THEN 
         k_T3 = vDTemp3Compute( T )
-        k(RTind2%iDTEMP3(:,1)) = k_T3(:,1) ! forward reactions
-        k(RTind2%iDTEMP3(:,2)) = k_T3(:,2) ! backward reactions
+        k(iR%iDTEMP3(:,1)) = k_T3(:,1) ! forward reactions
+        k(iR%iDTEMP3(:,2)) = k_T3(:,2) ! backward reactions
       END IF
-      IF (nDTEMP4>0) THEN 
+      IF (nr_DTEMP4>0) THEN 
         k_T4 = vDTemp4Compute( T )
-        k(RTind2%iDTEMP4(:,1)) = k_T4(:,1) ! forward reactions
-        k(RTind2%iDTEMP4(:,2)) = k_T4(:,2) ! backward reactions
+        k(iR%iDTEMP4(:,1)) = k_T4(:,1) ! forward reactions
+        k(iR%iDTEMP4(:,2)) = k_T4(:,2) ! backward reactions
       END IF
-      IF (nDTEMP5>0) THEN 
+      IF (nr_DTEMP5>0) THEN 
         k_T5 = vDTemp5Compute( T )
-        k(RTind2%iDTEMP5(:,1)) = k_T5(:,1) ! forward reactions
-        k(RTind2%iDTEMP5(:,2)) = k_T5(:,2) ! backward reactions
+        k(iR%iDTEMP5(:,1)) = k_T5(:,1) ! forward reactions
+        k(iR%iDTEMP5(:,2)) = k_T5(:,2) ! backward reactions
       END IF
-      IF (nMeskhidze>0) THEN
+      IF (nr_Meskhidze>0) THEN
         mesk = vMeskhidzeCompute( T )
-        k(RTind2%iMeskhidze(:,1)) = mesk(:,1) ! forward reactions
-        k(RTind2%iMeskhidze(:,2)) = mesk(:,2) ! backward reactions
+        k(iR%iMeskhidze(:,1)) = mesk(:,1) ! forward reactions
+        k(iR%iMeskhidze(:,2)) = mesk(:,2) ! backward reactions
       END IF
+      ! ************************************************************************
      
+      ! ************************************************************************
       ! *** Troe reactions
-      IF (nTROE>0)    k(RTind2%iTROE)    = vTroeCompute   ( T, mAir )
-      IF (nTROEQ>0)   k(RTind2%iTROEq)   = vTroeEqCompute ( T, mAir )
-      IF (nTROEF>0)   k(RTind2%iTROEf)   = vTroeFCompute  ( T, mAir )
-      IF (nTROEQF>0)  k(RTind2%iTROEqf)  = vTroeEqfCompute( T, mAir )
-      IF (nTROEXP>0)  k(RTind2%iTROExp)  = vTroeXPCompute ( T, mAir )
-      IF (nTROEMCM>0) k(RTind2%iTROEmcm) = vTroeMCMCompute( T, mAir )
+      !
+      Tr300 = T(1)*r300
+      IF (nr_TROE>0) THEN   
+        F = 0.6_dp
+        k1 = iR%TROE(:,1) * (Tr300)**(-iR%TROE(:,2))*mAir
+        k2 = iR%TROE(:,3) * (Tr300)**(-iR%TROE(:,4))
+        log10_k1k2  = LOG10(k1/k2)
+        k(iR%iTROE) = k1/(One+k1/k2)*F**(One/(One+log10_k1k2*log10_k1k2))
+      END IF
 
-      IF (nSPEC1>0) k(RTind2%iSPEC1) = vSpec1Compute(    mAir )
-      IF (nSPEC2>0) k(RTind2%iSPEC2) = vSpec2Compute( T, mAir )
-      IF (nSPEC3>0) k(RTind2%iSPEC3) = vSpec3Compute( T, mAir )
-      IF (nSPEC4>0) k(RTind2%iSPEC4) = vSpec4Compute( T, mAir )
+      IF (nr_TROEQ>0) THEN  
+        F = 0.6_dp
+        k1q = iR%TROEq(:,1)*(Tr300)**(-iR%TROEq(:,2))*mAir
+        k2q = iR%TROEq(:,3)*(Tr300)**(-iR%TROEq(:,4))
+        log10_k1k2q = LOG10(k1q/k2q)
+        k3q = k1q/(One+k1q/k2q)*F**(One/(One+log10_k1k2q*log10_k1k2q))
+        k(iR%iTROEq) = k3q/(iR%TROEq(:,5)*EXP(iR%TROEq(:,6)*T(6)))
+      END IF
+      
+      IF (nr_TROEF>0) THEN  
+        k1f = iR%TROEf(:,1)*(Tr300)**(-iR%TROEf(:,2))*mAir
+        k2f = iR%TROEf(:,3)*(Tr300)**(-iR%TROEf(:,4))
+        log10_k1k2f = LOG10(k1f/k2f)
+        k(iR%iTROEf) = k1f/(One+k1f/k2f)*iR%TROEf(:,5)**(One/(One+log10_k1k2f*log10_k1k2f))
+      END IF
+      
+      IF (nr_TROEQF>0) THEN 
+        k1qf = iR%TROEqf(:,1) * (Tr300)**(-iR%TROEqf(:,2))*mAir
+        k2qf = iR%TROEqf(:,3) * (Tr300)**(-iR%TROEqf(:,4))
+        log10_k1k2qf = LOG10(k1qf/k2qf)
+        k3qf = k1qf/(One+k1qf/k2qf)*iR%TROEqf(:,7)**(One/(One+log10_k1k2qf*log10_k1k2qf))
+        k(iR%iTROEqf) = k3qf/(iR%TROEqf(:,5)*EXP(iR%TROEqf(:,6)*T(6)))          
+      END IF
+      
+      IF (nr_TROEXP>0) THEN 
+        k1xp = iR%TROExp(:,1)*EXP(-iR%TROExp(:,2)*T(6))*mAir
+        k2xp = iR%TROExp(:,3)*EXP(-iR%TROExp(:,4)*T(6))
+        log10_k1k2xp  = LOG10(k1xp/k2xp)
+        k(iR%iTROExp) = k1xp/(One+k1xp/k2xp)*iR%TROExp(:,5)**(One/(One+log10_k1k2xp*log10_k1k2xp)) 
+      END IF
+      
+      IF (nr_TROEMCM>0) THEN 
+        k1mcm = iR%TROEmcm(:,1)*(T(1)*InvRefTemp)**iR%TROEmcm(:,2)*EXP(iR%TROEmcm(:,3)*T(6))*mAir
+        k2mcm = iR%TROEmcm(:,4)*(T(1)*InvRefTemp)**iR%TROEmcm(:,5)*EXP(iR%TROEmcm(:,6)*T(6))
+        Fc    = iR%TROEmcm(:,7)*EXP(iR%TROEmcm(:,8)*T(6))+iR%TROEmcm(:,9)*EXP(T(1)/iR%TROEmcm(:,10))
+        tmpTROE = LOG10(k1mcm/k2mcm)/(n-d*LOG10(Fc))
+        k(iR%iTROEmcm) = k1mcm/(One+k1mcm/k2mcm)*Fc**(One/(One+tmpTROE*tmpTROE))
+      END IF
+      ! ************************************************************************
 
-      IF (nSPEC1MCM>0) k(RTind2%iSPEC1mcm) = vSPEC1MCMCompute( T, mAir )
-      IF (nSPEC2MCM>0) k(RTind2%iSPEC2mcm) = vSPEC2MCMCompute( T       )
-      IF (nSPEC3MCM>0) k(RTind2%iSPEC3mcm) = vSPEC3MCMCompute(    mAir )
-      IF (nSPEC4MCM>0) k(RTind2%iSPEC4mcm) = vSpec4MCMCompute( T       )
-      IF (nSPEC5MCM>0) k(RTind2%iSPEC5mcm) = vSpec5MCMCompute( T, mAir )
-      IF (nSPEC6MCM>0) k(RTind2%iSPEC6mcm) = vSpec6MCMCompute( T       )
-      IF (nSPEC7MCM>0) k(RTind2%iSPEC7mcm) = vSpec7MCMCompute( T       )
-      IF (nSPEC8MCM>0) k(RTind2%iSPEC8mcm) = vSpec8MCMCompute( T, mAir )
+      ! ************************************************************************
+      ! *** Spec reactions
+      !
+      IF (nr_SPEC1>0) k(iR%iSPEC1) = iR%SPEC1(:,1)*(ONE+mAir*iR%SPEC1(:,2))
+      IF (nr_SPEC2>0) k(iR%iSPEC2) = iR%SPEC2(:,1)*(Tr300)**iR%SPEC2(:,2)*mAir
+      IF (nr_SPEC3>0) THEN 
+        k1s = iR%SPEC3(:,1)*EXP(iR%SPEC3(:,2)*T(6))
+        k2s = iR%SPEC3(:,3)*EXP(iR%SPEC3(:,4)*T(6))
+        k3s = iR%SPEC3(:,5)*EXP(iR%SPEC3(:,6)*T(6))*mAir
+        k(iR%iSPEC3) = k1s+k3s/(One+k3s/k2s)
+      END IF
+      IF (nr_SPEC4>0) THEN 
+        k(iR%iSPEC4) = iR%SPEC4(:,1)*EXP(iR%SPEC4(:,2)*T(6))+iR%SPEC4(:,3)*EXP(iR%SPEC4(:,4)*T(6))*mAir 
+      END IF
+      IF (nr_SPEC1MCM>0) THEN 
+        k(iR%iSPEC1mcm) = iR%SPEC1mcm(:,1)*(ONE+mAir*iR%SPEC1mcm(:,2)*Tr300/iR%SPEC1mcm(:,3))
+      END IF
+      IF (nr_SPEC2MCM>0) THEN 
+        k(iR%iSPEC2mcm) = iR%SPEC2mcm(:,1)*(Tr300)**iR%SPEC2mcm(:,2)*EXP(iR%SPEC2mcm(:,3)*T(6))
+      END IF
+      IF (nr_SPEC3MCM>0) THEN 
+        k(iR%iSPEC3mcm) = iR%SPEC3mcm(:,1)*(ONE+mAir/iR%SPEC3mcm(:,2))
+      END IF
+      IF (nr_SPEC4MCM>0) THEN 
+        k(iR%iSPEC4mcm) = iR%SPEC4mcm(:,1)*(ONE+iR%SPEC4mcm(:,2) &
+        &               * EXP(iR%SPEC4mcm(:,3)*T(6))*H2O)*EXP(iR%SPEC4mcm(:,4)*T(6))
+      END IF
+      IF (nr_SPEC5MCM>0) THEN 
+        F = 0.21_dp
+        k1smcm5 = iR%SPEC5mcm(:,1)*mAir*F*EXP(iR%SPEC5mcm(:,2)*T(6))
+        k2smcm5 = iR%SPEC5mcm(:,3)*mAir*F*EXP(iR%SPEC5mcm(:,4)*T(6))
+        k(iR%iSPEC5mcm) = k1smcm5*(One-k2smcm5)
+      END IF
+      IF (nr_SPEC6MCM>0) THEN 
+        k1smcm6 = iR%SPEC6mcm(:,1)*EXP(iR%SPEC6mcm(:,2)*T(6))
+        k2smcm6 = iR%SPEC6mcm(:,3)*EXP(iR%SPEC6mcm(:,4)*T(6))
+        k(iR%iSPEC6mcm) = k1smcm6*(ONE-k2smcm6)
+      END IF
+      IF (nr_SPEC7MCM>0) THEN 
+        k1smcm7 = iR%SPEC7mcm(:,1)*EXP(iR%SPEC7mcm(:,2)*T(6))
+        k2smcm7 = iR%SPEC7mcm(:,3)*EXP(iR%SPEC7mcm(:,4)*T(6))
+        k(iR%iSPEC7mcm) = k1smcm7*(iR%SPEC7mcm(:,5)-iR%SPEC7mcm(:,6)/(One+k2smcm7))
+      END IF
+      IF (nr_SPEC8MCM>0) THEN 
+        F = 0.21_dp
+        k1smcm8 = iR%SPEC8mcm(:,1)*mAir*F*EXP(iR%SPEC8mcm(:,2)*T(6))
+        k2smcm8 = iR%SPEC8mcm(:,3)*mAir*F*EXP(iR%SPEC8mcm(:,4)*T(6))
+        k(iR%iSPEC8mcm) = k1smcm8/(One+k2smcm8)*T(6)
+      END IF
+      ! ************************************************************************
 
-      IF (nT1H2O>0) k(RTind2%iT1H2O) = vT1H2OCompute( T )
-      IF (nS4H2O>0) k(RTind2%iS4H2O) = vS4H2OCompute( T, mAir)
+      IF (nr_T1H2O>0) k(iR%iT1H2O) = iR%T1H2O(:,1)*EXP(-iR%T1H2O(:,2)*T(6))
+      IF (nr_S4H2O>0) THEN 
+        k(iR%iS4H2O) = iR%S4H2O(:,1)*EXP(iR%S4H2O(:,2)*T(6))      & 
+        &            + iR%S4H2O(:,3)*EXP(iR%S4H2O(:,4)*T(6))*mAir
+      END IF
       
       ! *** KKP photolytic reactions
-      IF (nPHOTOkpp>0)  k(RTind2%iPHOTOkpp)  = vPhotokppCompute ( Time, Chi(3) )
-      IF (nPHOTO2kpp>0) k(RTind2%iPHOTO2kpp) = vPhoto2kppCompute( Time, Chi(3) )
-      IF (nPHOTO3kpp>0) k(RTind2%iPHOTO3kpp) = vPhoto3kppCompute( Time, Chi(3) )
+      IF (nr_PHOTOkpp>0)  THEN 
+        k(iR%iPHOTOkpp)  = vPhotokppCompute ( Time, Chi(3) )
+      END IF
+      IF (nr_PHOTO2kpp>0) THEN 
+        k(iR%iPHOTO2kpp) = vPhoto2kppCompute( Time, Chi(3) )
+      END IF
+      IF (nr_PHOTO3kpp>0) THEN 
+        k(iR%iPHOTO3kpp) = vPhoto3kppCompute( Time, Chi(3) )
+      END IF
+      
+      ! special reactions
+      IF (nr_special>0) THEN 
+        DO i = 1,nr_SPECIAL
+          j = iR%iSPECIAL(i)
+          IF (ReactionSystem(j)%Special%Temp) THEN
+            k(j) = evalf(i,[ Conc(ReactionSystem(j)%Special%iVariables),T(1)])
+          ELSE
+            k(j) = evalf(i,Conc(ReactionSystem(j)%Special%iVariables))
+          END IF
+        END DO
+      END IF
 
     END SUBROUTINE ComputeRateConstant
     
@@ -498,16 +680,16 @@
       REAL(dp) :: GMT
       REAL(dp) :: RLT, RPHI
       !    
-      INTEGER        :: IIYEAR, IYEAR, IMTH, IDAY, IIY, NYEARS, LEAP, NOLEAP
+      INTEGER  :: IIYEAR, IYEAR, IMTH, IDAY, IIY, NYEARS, LEAP, NOLEAP
       REAL(dp) :: YREF,YR
       !   
-      INTEGER        :: I, IJ, JD, IJD, IN
+      INTEGER  :: I, IJ, JD, IJD, IN
       REAL(dp) :: D, RML, W, WR, EC, EPSI, PEPSI, YT, CW, SW, SSW  & 
-      &                  , EYT, FEQT1, FEQT2, FEQT3, FEQT4, FEQT5, FEQT6 &
-      &                  , FEQT7, FEQT, EQT
+      &         , EYT, FEQT1, FEQT2, FEQT3, FEQT4, FEQT5, FEQT6 &
+      &         , FEQT7, FEQT, EQT
       !         
       REAL(dp) :: REQT, RA, RRA, TAB, RDECL, DECL, ZPT, CSZ, ZR    &
-      &                     , CAZ, RAZ, AZIMUTH
+      &         , CAZ, RAZ, AZIMUTH
       !           
       INTEGER :: IMN(12)
       DATA IMN/31,28,31,30,31,30,31,31,30,31,30,31/
@@ -640,121 +822,6 @@
         Sun = ZERO
       END IF
     END FUNCTION UpdateSun
-   
-  !========================================================================!
-  !                          GASEOUS REACTIONS                             !
-  !                          -----------------                             !
-  !========================================================================!
-  ! ===  Photolysis reactions                                              !
-  !========================================================================!
-  ! Input:                                                                 !
-  !   - Contants                                                           !
-  !   - Time                                                               !
-  !------------------------------------------------------------------------!
-  ! Output:                                                                !
-  !   - Reaction Constant                                                  !
-  !------------------------------------------------------------------------!
-
-    FUNCTION vPhoABCCompute( Time, chi ) RESULT(kPHOTabc)
-      REAL(dp)  :: kPHOTabc(nPHOTabc)
-      REAL(dp), INTENT(IN)  :: Time, Chi(:)
-      REAL(dp), DIMENSION(nPHOTabc) :: ChiZ, yChiZ, EyChiZ
-      INTEGER :: i, j
-      
-      IF ( Chi(1) < PiHalf ) THEN
-        ChiZ = Chi(1) * RTpar2%PHOTabc(:,3) 
-        DO i = 1,nPHOTabc
-          IF (ChiZ(i) < PiHalf) THEN
-            yChiZ(i) = RTpar2%PHOTabc(i,2) * (One - One/COS(ChiZ(i)))
-            IF ( yChiZ(i) > mTHIRTY ) THEN
-              EyChiZ(i) = EXP(yChiZ(i))
-            ELSE
-              EyChiZ(i) = EyChiZmin   ! = 9.357d-14  
-            END IF
-          ELSE
-            EyChiZ(i) = EyChiZmin   ! = 9.357d-14 
-          END IF
-        END DO
-        kPHOTabc = Dust * RTpar2%PHOTabc(:,1) * EyChiz
-      ELSE
-        kPHOTabc = ZERO
-      END IF
-    END FUNCTION vPhoABCCompute
-
-    FUNCTION vPhoABCompute(Time,Chi) RESULT(kPHOTab)
-      REAL(dp)  :: kPHOTab(nPHOTab)
-      REAL(dp), INTENT(IN)  :: Time, Chi(:)
-     
-      IF ( Chi(1) < PiHalf ) THEN
-        kPHOTab = Dust * RTpar2%PHOTab(:,1)*EXP(-RTpar2%PHOTab(:,2)*Chi(2))
-      ELSE
-        kPHOTab = ZERO
-      END IF
-    END FUNCTION vPhoABCompute
-    
-    FUNCTION vPhoMCMCompute(Time,Chi) RESULT(kPHOTmcm)
-      REAL(dp)  :: kPHOTmcm(nPHOTmcm)
-      REAL(dp), INTENT(IN)  :: Time, Chi(:)
-      REAL(dp), DIMENSION(nPHOTmcm) :: ChiZ, yChiZ
-      
-      !---  MCM version
-      IF ( Chi(1) < PiHalf ) THEN
-        ChiZ  = EXP( -RTpar2%PHOTmcm(:,3) * Chi(2) )
-        yChiZ = Chi(2) ** RTpar2%PHOTmcm(:,2)
-        kPHOTmcm = Dust * RTpar2%PHOTmcm(:,1) * yChiZ * ChiZ
-      ELSE
-        kPHOTmcm = ZERO
-      END IF
-    END FUNCTION vPhoMCMCompute
-    
-    !
-    !==========================================================================!
-    ! ===  Constant reactions
-    !==========================================================================!
-    FUNCTION vConstCompute() RESULT(kCONST)
-      REAL(dp)  :: kCONST(nCONST)
-      kCONST = RTpar2%CONST
-    END FUNCTION vConstCompute
-    !
-    !
-    !==========================================================================!
-    ! ===  Temperature-Dependent  (Arrhenius)
-    !==========================================================================!
-    ! Input: 
-    !   - Contants
-    !   - Temperature
-    !--------------------------------------------------------------------------!
-    ! Output:
-    !   - Reaction constant
-    !--------------------------------------------------------------------------!
-    FUNCTION vTemp1Compute(Temp) RESULT(kTEMP1)
-      REAL(dp)  :: kTEMP1(nTEMP1)
-      REAL(dp), INTENT(IN)  :: Temp(:)
-      
-      kTEMP1 = RTpar2%TEMP1(:,1) * EXP(-RTpar2%TEMP1(:,2)*Temp(6))
-    END FUNCTION vTemp1Compute
-    
-    FUNCTION vTemp2Compute(Temp) RESULT(kTEMP2)
-      REAL(dp)  :: kTEMP2(nTEMP2)
-      REAL(dp), INTENT(IN)  :: Temp(:)
-      !
-      kTEMP2 = RTpar2%TEMP2(:,1) * Temp(2) * EXP( -RTpar2%TEMP2(:,2)*Temp(6) )
-    END FUNCTION vTemp2Compute
-    
-    FUNCTION vTemp3Compute(Temp) RESULT(kTEMP3)
-      REAL(dp)  :: kTEMP3(nTEMP3)
-      REAL(dp), INTENT(IN)  :: Temp(:)
-      !
-      kTEMP3 = RTpar2%TEMP3(:,1) * EXP( RTpar2%TEMP3(:,2)*(Temp(6) - InvRefTemp) )
-    END FUNCTION vTemp3Compute
-    
-    FUNCTION vTemp4Compute(Temp) RESULT(kTEMP4)
-      REAL(dp)  :: kTEMP4(nTEMP4)
-      REAL(dp), INTENT(IN)  :: Temp(:)
-      !
-      kTEMP4 = RTpar2%TEMP4(:,1) * Temp(1) * EXP( -RTpar2%TEMP4(:,2)*Temp(6) )
-    END FUNCTION vTemp4Compute
-    
    
     !   ***************************************************************
     !   ** Species nondimensional gibbs potentials                   **
@@ -1003,218 +1070,25 @@
     
     !--------------------------------------------------------------------------!
     
-    FUNCTION vTroeCompute(Temp,mAir) RESULT(kTROE)
-      REAL(dp)  :: kTROE(nTROE)
-      REAL(dp), INTENT(IN)  :: Temp(:) , mAir
-      REAL(dp), DIMENSION(nTROE) :: k1, k2, log10_k1k2
-      REAL(dp), PARAMETER   :: F = 0.6_dp
-      
-      k1 = RTpar2%TROE(:,1) * (Temp(1)*r300)**(-RTpar2%TROE(:,2)) * mAir
-      k2 = RTpar2%TROE(:,3) * (Temp(1)*r300)**(-RTpar2%TROE(:,4))
-      log10_k1k2 = LOG10(k1/k2)
-      kTROE = k1 / (One + k1/k2) * F**(One / (One + log10_k1k2*log10_k1k2) )
-    END FUNCTION vTroeCompute
-      
-    FUNCTION vTroeMCMCompute(Temp,mAir) RESULT(kTROEmcm)
-      REAL(dp)  :: kTROEmcm(nTROEmcm)
-      REAL(dp), INTENT(IN)  :: Temp(:) , mAir
-      REAL(dp), DIMENSION(nTROEmcm) :: k1, k2, Fc, tmpTROE
-      REAL(dp), PARAMETER   :: n=0.75_dp, d=1.27_dp
-      !
-      k1 = RTpar2%TROEmcm(:,1)*(Temp(1)*InvRefTemp)**RTpar2%TROEmcm(:,2)  &
-      &  * EXP(RTpar2%TROEmcm(:,3)*Temp(6))*mAir
-      k2 = RTpar2%TROEmcm(:,4)*(Temp(1)*InvRefTemp)**RTpar2%TROEmcm(:,5)  &
-      &  * EXP(RTpar2%TROEmcm(:,6)*Temp(6))
-      Fc = RTpar2%TROEmcm(:,7)*EXP(RTpar2%TROEmcm(:,8) &
-      &  * Temp(6))+RTpar2%TROEmcm(:,9)*EXP(Temp(1)/RTpar2%TROEmcm(:,10))
-      tmpTROE  = LOG10(k1/k2)/(n - d*LOG10(fc))
-      kTROEmcm = k1 / (One + k1/k2) * Fc**(One / (One + tmpTROE*tmpTROE))
-    END FUNCTION vTroeMCMCompute
-
-    !---  Troe with variable F factor
-    FUNCTION vTroeFCompute(Temp,mAir) RESULT(kTROEf)  ! Barthel
-      REAL(dp)  :: kTROEf(nTROEf)
-      REAL(dp), INTENT(IN)  :: Temp(:) , mAir
-      REAL(dp), DIMENSION(nTROEf) :: k1, k2, log10_k1k2
-      !
-      k1 = RTpar2%TROEf(:,1)*(Temp(1)*r300)**(-RTpar2%TROEf(:,2)) * mAir
-      k2 = RTpar2%TROEf(:,3)*(Temp(1)*r300)**(-RTpar2%TROEf(:,4))
-      log10_k1k2 = LOG10(k1/k2)
-      kTROEf = k1 / (One+k1/k2) * RTpar2%TROEf(:,5)**(One / (One + log10_k1k2*log10_k1k2))
-    END FUNCTION vTroeFCompute
-    
-    !---  Troe equilibrium
-    FUNCTION vTroeEqCompute(Temp,mAir) RESULT(kTROEq)
-      REAL(dp)  :: kTROEq(nTROEq)
-      REAL(dp), INTENT(IN)  :: Temp(:) , mAir
-      REAL(dp), DIMENSION(nTROEq) :: k1, k2, k3, log10_k1k2
-      REAL(dp), PARAMETER   :: F = 0.6_dp
-      !
-      k1 = RTpar2%TROEq(:,1)*(Temp(1)*r300)**(-RTpar2%TROEq(:,2)) * mAir
-      k2 = RTpar2%TROEq(:,3)*(Temp(1)*r300)**(-RTpar2%TROEq(:,4))
-      log10_k1k2 = LOG10(k1/k2)
-      k3 = k1 / (One + k1/k2) * F**(One / (One + log10_k1k2*log10_k1k2))
-      kTROEq = k3 / ( RTpar2%TROEq(:,5) * EXP(RTpar2%TROEq(:,6)*Temp(6)) )          
-    END FUNCTION vTroeEqCompute
-    
-    FUNCTION vTroeEqfCompute(Temp,mAir) RESULT(kTROEqf) ! Barthel
-      REAL(dp)  :: kTROEqf(nTROEqf)
-      REAL(dp), INTENT(IN)  :: Temp(:) , mAir
-      REAL(dp), DIMENSION(nTROEqf) :: k1, k2, k3, log10_k1k2
-      ! 
-      k1 = RTpar2%TROEqf(:,1) * (Temp(1)*r300)**(-RTpar2%TROEqf(:,2)) * mAir
-      k2 = RTpar2%TROEqf(:,3) * (Temp(1)*r300)**(-RTpar2%TROEqf(:,4))
-      log10_k1k2 = LOG10(k1/k2)
-      k3 = k1 / (One + k1/k2) * RTpar2%TROEqf(:,7)**(One / (One + log10_k1k2*log10_k1k2))
-      kTROEqf = k3 / (RTpar2%TROEqf(:,5) * EXP(RTpar2%TROEqf(:,6)*Temp(6)))          
-    END FUNCTION vTroeEqfCompute
-
-    !---  modified Troe with variable F factor
-    FUNCTION vTroeXPCompute(Temp,mAir) RESULT(kTROExp)  ! Barthel
-      REAL(dp)  :: kTROExp(nTROExp)
-      REAL(dp), INTENT(IN)  :: Temp(:) , mAir
-      REAL(dp), DIMENSION(nTROExp) :: k1, k2, log10_k1k2
-      !
-      k1 = RTpar2%TROExp(:,1)*EXP(-RTpar2%TROExp(:,2)*Temp(6)) * mAir
-      k2 = RTpar2%TROExp(:,3)*EXP(-RTpar2%TROExp(:,4)*Temp(6))
-      log10_k1k2 = LOG10(k1/k2)
-      kTROExp = k1 / (One + k1/k2) * RTpar2%TROExp(:,5)**(One / (One + log10_k1k2*log10_k1k2)) 
-    END FUNCTION vTroeXPCompute
-    
-    FUNCTION vSpec1Compute(mAir) RESULT(kSPEC1)
-      REAL(dp)  :: kSPEC1(nSPEC1)
-      REAL(dp), INTENT(IN)  :: mAir
-      !
-      kSPEC1 = RTpar2%SPEC1(:,1) * (ONE + mAir * RTpar2%SPEC1(:,2))
-    END FUNCTION vSpec1Compute
-    
-    FUNCTION vSpec2Compute(Temp,mAir) RESULT(kSPEC2)
-      REAL(dp)  :: kSPEC2(nSPEC2)
-      REAL(dp), INTENT(IN)  :: Temp(:), mAir
-      ! 
-      kSPEC2 = mAir * RTpar2%SPEC2(:,1) * (Temp(1)*r300)**RTpar2%SPEC2(:,2)
-    END FUNCTION vSpec2Compute
-    
-    FUNCTION vSpec3Compute(Temp,mAir) RESULT(kSPEC3)
-      REAL(dp)  :: kSPEC3(nSPEC3)
-      REAL(dp), INTENT(IN)  :: Temp(:), mAir
-      REAL(dp), DIMENSION(nSPEC3) :: k1, k2 ,k3
-      !
-      k1 = RTpar2%SPEC3(:,1)*EXP(RTpar2%SPEC3(:,2)*Temp(6))
-      k2 = RTpar2%SPEC3(:,3)*EXP(RTpar2%SPEC3(:,4)*Temp(6))
-      k3 = RTpar2%SPEC3(:,5)*EXP(RTpar2%SPEC3(:,6)*Temp(6)) * mAir
-      kSPEC3 = k1 + k3 / (One + k3/k2)
-    END FUNCTION vSpec3Compute
-    
-    FUNCTION vSpec4Compute(Temp,mAir) RESULT(kSPEC4)
-      REAL(dp)  :: kSPEC4(nSPEC4)
-      REAL(dp), INTENT(IN)  :: Temp(:), mAir
-      REAL(dp), DIMENSION(nSPEC4) :: k1, k2 ,k3
-      !
-      kSPEC4 = RTpar2%SPEC4(:,1) * EXP(RTpar2%SPEC4(:,2)*Temp(6)) +   &
-      &        RTpar2%SPEC4(:,3) * EXP(RTpar2%SPEC4(:,4)*Temp(6)) * mAir 
-    END FUNCTION vSpec4Compute
-    
-    FUNCTION vSpec1MCMCompute(Temp,mAir) RESULT(kSPEC1mcm)
-      REAL(dp)  :: kSPEC1mcm(nSPEC1mcm)
-      REAL(dp), INTENT(IN)  :: Temp(:), mAir
-      
-      kSPEC1mcm = RTpar2%SPEC1mcm(:,1)*(ONE + mAir*RTpar2%SPEC1mcm(:,2)*r300*Temp(1)/RTpar2%SPEC1mcm(:,3))
-    END FUNCTION vSpec1MCMCompute
-    
-    FUNCTION vSpec2MCMCompute(Temp) RESULT(kSPEC2mcm)
-      REAL(dp)  :: kSPEC2mcm(nSPEC2mcm)
-      REAL(dp), INTENT(IN)  :: Temp(:)
-      !
-      kSPEC2MCM = RTpar2%SPEC2mcm(:,1)*(Temp(1)*r300)**RTpar2%SPEC2mcm(:,2) &
-                * EXP(RTpar2%SPEC2mcm(:,3)*Temp(6))
-    END FUNCTION vSpec2MCMCompute
-    
-    FUNCTION vSpec3MCMCompute(mAir) RESULT(kSPEC3mcm)
-      REAL(dp)  :: kSPEC3mcm(nSPEC3mcm)
-      REAL(dp), INTENT(IN)  :: mAir
-      !
-      kSPEC3mcm = RTpar2%SPEC3mcm(:,1)*(ONE + mAir/RTpar2%SPEC3mcm(:,2))
-    END FUNCTION vSpec3MCMCompute
-    
-    FUNCTION vSpec4MCMCompute(Temp) RESULT(kSPEC4mcm)
-      REAL(dp)  :: kSPEC4mcm(nSPEC4mcm)
-      REAL(dp), INTENT(IN)  :: Temp(:)
-      !
-      kSPEC4mcm = RTpar2%SPEC4mcm(:,1)*(ONE + RTpar2%SPEC4mcm(:,2) &
-      &         * EXP(RTpar2%SPEC4mcm(:,3)*Temp(6))*H2O)           &
-      &         * EXP(RTpar2%SPEC4mcm(:,4)*Temp(6))
-    END FUNCTION vSpec4MCMCompute
-    
-    FUNCTION vSpec5MCMCompute(Temp,mAir) RESULT(kSPEC5mcm)
-      REAL(dp)  :: kSPEC5mcm(nSPEC5mcm)
-      REAL(dp), INTENT(IN)  :: Temp(:), mAir
-      REAL(dp), DIMENSION(nSPEC5mcm) :: k1, k2
-      REAL(dp), PARAMETER   :: F = 0.21_dp
-      !
-      k1 = RTpar2%SPEC5mcm(:,1) * mAir * F * EXP(RTpar2%SPEC5mcm(:,2)*Temp(6))
-      k2 = RTpar2%SPEC5mcm(:,3) * mAir * F * EXP(RTpar2%SPEC5mcm(:,4)*Temp(6))
-      kSPEC5mcm = k1 * (One - k2)
-    END FUNCTION vSpec5MCMCompute
-    
-    FUNCTION vSpec6MCMCompute(Temp) RESULT(kSPEC6mcm)
-      REAL(dp)  :: kSPEC6mcm(nSPEC6mcm)
-      REAL(dp), INTENT(IN)  :: Temp(:)
-      REAL(dp), DIMENSION(nSPEC6mcm) :: k1, k2
-      !
-      k1 = RTpar2%SPEC6mcm(:,1)*EXP(RTpar2%SPEC6mcm(:,2)*Temp(6))
-      k2 = RTpar2%SPEC6mcm(:,3)*EXP(RTpar2%SPEC6mcm(:,4)*Temp(6))
-      kSPEC6mcm = k1 * (ONE - k2)
-    END FUNCTION vSpec6MCMCompute
-    
-    FUNCTION vSpec7MCMCompute(Temp) RESULT(kSPEC7mcm)
-      REAL(dp)  :: kSPEC7mcm(nSPEC7mcm)
-      REAL(dp), INTENT(IN)  :: Temp(:)
-      REAL(dp), DIMENSION(nSPEC7mcm) :: k1, k2
-      !
-      k1 = RTpar2%SPEC7mcm(:,1)*EXP(RTpar2%SPEC7mcm(:,2)*Temp(6))
-      k2 = RTpar2%SPEC7mcm(:,3)*EXP(RTpar2%SPEC7mcm(:,4)*Temp(6))
-      kSPEC7mcm = k1 * (RTpar2%SPEC7mcm(:,5) - RTpar2%SPEC7mcm(:,6) / (One + k2))
-    END FUNCTION vSpec7MCMCompute
-    
-    FUNCTION vSpec8MCMCompute(Temp,mAir) RESULT(kSPEC8mcm)
-      REAL(dp)  :: kSPEC8mcm(nSPEC8mcm)
-      REAL(dp), INTENT(IN)  :: Temp(:), mAir
-      REAL(dp), DIMENSION(nSPEC8mcm) :: k1, k2
-      REAL(dp), PARAMETER   :: F = 0.21_dp
-      !
-      k1 = RTpar2%SPEC8mcm(:,1) * mAir * F * EXP(RTpar2%SPEC8mcm(:,2)*Temp(6))
-      k2 = RTpar2%SPEC8mcm(:,3) * mAir * F * EXP(RTpar2%SPEC8mcm(:,4)*Temp(6))
-      kSPEC8mcm = k1 / (One + k2) * Temp(6)
-    END FUNCTION vSpec8MCMCompute
-    
-    FUNCTION vS4H2OCompute(Temp,mAir) RESULT(kS4H2O)
-      REAL(dp)  :: kS4H2O(nS4H2O)
-      REAL(dp), INTENT(IN)  :: Temp(:), mAir
-      
-      kS4H2O = RTpar2%S4H2O(:,1) * EXP(RTpar2%S4H2O(:,2)*Temp(6))      & 
-      &      + RTpar2%S4H2O(:,3) * EXP(RTpar2%S4H2O(:,4)*Temp(6)) * mAir
-    END FUNCTION vS4H2OCompute
-    
     FUNCTION vPhotokppCompute(Time,Sun) RESULT(kPHOTO)
-      REAL(dp) :: kPHOTO(nPHOTOkpp)
+      REAL(dp) :: kPHOTO(nr_PHOTOkpp)
       REAL(dp) :: Time, Sun
       !
-      kPHOTO = RTpar2%PHOTOkpp(:) * Sun
+      kPHOTO = iR%PHOTOkpp(:) * Sun
     END FUNCTION vPhotokppCompute
     
     FUNCTION vPhoto2kppCompute(Time,Sun) RESULT(kPHOTO2)
-      REAL(dp) :: kPHOTO2(nPHOTO2kpp)
+      REAL(dp) :: kPHOTO2(nr_PHOTO2kpp)
       REAL(dp) :: Time, Sun
       !
-      kPHOTO2 = RTpar2%PHOTO2kpp(:) * Sun*Sun
+      kPHOTO2 = iR%PHOTO2kpp(:) * Sun*Sun
     END FUNCTION vPhoto2kppCompute
     
     FUNCTION vPhoto3kppCompute(Time,Sun) RESULT(kPHOTO3)
-      REAL(dp) :: kPHOTO3(nPHOTO3kpp)
+      REAL(dp) :: kPHOTO3(nr_PHOTO3kpp)
       REAL(dp) :: Time, Sun
       !
-      kPHOTO3 = RTpar2%PHOTO3kpp(:) * Sun*Sun*Sun
+      kPHOTO3 = iR%PHOTO3kpp(:) * Sun*Sun*Sun
     END FUNCTION vPhoto3kppCompute
     !======================================================================!
     !                          AQUEOUS REACTIONS                           !
@@ -1231,96 +1105,64 @@
     !----------------------------------------------------------------------!
     
     FUNCTION vDConstCompute() RESULT(k)
-      REAL(dp)  :: k(nDCONST,2)
+      REAL(dp)  :: k(nr_DCONST,2)
       !
-      k(:,2) = RTpar2%DCONST(:,2)
-      k(:,1) = RTpar2%DCONST(:,1) * k(:,2)
+      k(:,2) = iR%DCONST(:,2)
+      k(:,1) = iR%DCONST(:,1) * k(:,2)
     END FUNCTION vDConstCompute
     
     FUNCTION vDTempCompute(Temp) RESULT(k)
-      REAL(dp)  :: k(nDTEMP,2)
+      REAL(dp)  :: k(nr_DTEMP,2)
       REAL(dp), INTENT(IN) :: Temp(:)
       !
-      k(:,2) = RTpar2%DTEMP(:,3)
-      k(:,1) = RTpar2%DTEMP(:,1)*EXP(RTpar2%DTEMP(:,2)*(Temp(6)-InvRefTemp)) * k(:,2)
+      k(:,2) = iR%DTEMP(:,3)
+      k(:,1) = iR%DTEMP(:,1)*EXP(iR%DTEMP(:,2)*(Temp(6)-InvRefTemp)) * k(:,2)
     END FUNCTION vDTempCompute
     
     FUNCTION vDTemp2Compute(Temp)   RESULT(k)
-      REAL(dp)  :: k(nDTEMP2,2)
+      REAL(dp)  :: k(nr_DTEMP2,2)
       REAL(dp), INTENT(IN) :: Temp(:)
       !
-      k(:,2) = RTpar2%DTEMP2(:,3)*EXP(RTpar2%DTEMP2(:,4)*(Temp(6)-InvRefTemp))
-      k(:,1) = RTpar2%DTEMP2(:,1)*EXP(RTpar2%DTEMP2(:,2)*(Temp(6)-InvRefTemp)) * k(:,2)
+      k(:,2) = iR%DTEMP2(:,3)*EXP(iR%DTEMP2(:,4)*(Temp(6)-InvRefTemp))
+      k(:,1) = iR%DTEMP2(:,1)*EXP(iR%DTEMP2(:,2)*(Temp(6)-InvRefTemp)) * k(:,2)
     END FUNCTION vDTemp2Compute
     
     FUNCTION vDTemp3Compute(Temp) RESULT(k)
-      REAL(dp)  :: k(nDTEMP3,2)
+      REAL(dp)  :: k(nr_DTEMP3,2)
       REAL(dp), INTENT(IN)  :: Temp(:)
       ! 
-      k(:,2) = RTpar2%DTEMP3(:,4)
-      k(:,1) = RTpar2%DTEMP3(:,1) * EXP(RTpar2%DTEMP3(:,2)*(RefTemp*Temp(6)-ONE)         &
-      &      + RTpar2%DTEMP3(:,3)*(One-RefTemp*Temp(6) + LOG10(RefTemp*Temp(6)))) * k(:,2)
+      k(:,2) = iR%DTEMP3(:,4)
+      k(:,1) = iR%DTEMP3(:,1) * EXP(iR%DTEMP3(:,2)*(RefTemp*Temp(6)-ONE)         &
+      &      + iR%DTEMP3(:,3)*(One-RefTemp*Temp(6) + LOG10(RefTemp*Temp(6)))) * k(:,2)
     END FUNCTION vDTemp3Compute
     
     FUNCTION vDTemp4Compute(Temp) RESULT(k)
-      REAL(dp)  :: k(nDTEMP4,2)
+      REAL(dp)  :: k(nr_DTEMP4,2)
       REAL(dp), INTENT(IN)  :: Temp(:)
       !
       k(:,2) = ONE  ! OSSI
-      k(:,1) = RTpar2%DTEMP4(:,1)*EXP(RTpar2%DTEMP4(:,2)                &
-      &      * (Temp(1)*InvRefTemp-One) + RTpar2%DTEMP4(:,3)            &
+      k(:,1) = iR%DTEMP4(:,1)*EXP(iR%DTEMP4(:,2)                &
+      &      * (Temp(1)*InvRefTemp-One) + iR%DTEMP4(:,3)            &
       &      * (ONE+LOG(Temp(1)*InvRefTemp)-Temp(1)*InvRefTemp)) * k(:,2)
     END FUNCTION vDTemp4Compute
     
     FUNCTION vDTemp5Compute(Temp) RESULT(k)
-      REAL(dp)  :: k(nDTEMP5,2)
+      REAL(dp)  :: k(nr_DTEMP5,2)
       REAL(dp), INTENT(IN)  :: Temp(:)
       !
       k(:,2) = ONE  ! OSSI
-      k(:,1) = RTpar2%DTEMP5(:,1)*(Temp*InvRefTemp)**RTpar2%DTEMP4(:,2)  &
-      &      * EXP(RTpar2%DTEMP5(:,3)*(Temp(6)-InvRefTemp)) * k(:,2)
+      k(:,1) = iR%DTEMP5(:,1)*(Temp*InvRefTemp)**iR%DTEMP4(:,2)  &
+      &      * EXP(iR%DTEMP5(:,3)*(Temp(6)-InvRefTemp)) * k(:,2)
     END FUNCTION vDTemp5Compute      
     
     FUNCTION vMeskhidzeCompute(Temp) RESULT(k)
-      REAL(dp)  :: k(nMeskhidze,2)
+      REAL(dp)  :: k(nr_Meskhidze,2)
       REAL(dp), INTENT(IN)  :: Temp(:)
       !
-      k(:,2) = RTpar2%Meskhidze(:,4) * EXP(RTpar2%Meskhidze(:,5)  &
-      &      * (Temp(6)-InvRefTemp)) * RTpar2%Meskhidze(:,7)!*(ActivityHp)**m
-      k(:,1) = RTpar2%Meskhidze(:,1) * (Temp*InvRefTemp)**RTpar2%Meskhidze(:,2)  &
-      &      * EXP(RTpar2%Meskhidze(:,3)*(Temp(6)-InvRefTemp)) * k(:,2)
+      k(:,2) = iR%Meskhidze(:,4) * EXP(iR%Meskhidze(:,5)  &
+      &      * (Temp(6)-InvRefTemp)) * iR%Meskhidze(:,7)!*(ActivityHp)**m
+      k(:,1) = iR%Meskhidze(:,1) * (Temp*InvRefTemp)**iR%Meskhidze(:,2)  &
+      &      * EXP(iR%Meskhidze(:,3)*(Temp(6)-InvRefTemp)) * k(:,2)
     END FUNCTION vMeskhidzeCompute
     
-    FUNCTION vAspec1Compute(Temp,Hp) RESULT(kASPEC1)
-      REAL(dp)  :: kASPEC1(nASPEC1)
-      REAL(dp), INTENT(IN)  :: Temp(:), Hp
-      REAL(dp), PARAMETER   :: x = 13.0d0
-      !
-      kASPEC1 = Hp*(RTpar2%ASPEC1(:,1)*EXP(RTpar2%ASPEC1(:,2) & 
-      &       * (Temp(6)-InvRefTemp)))/(ONE + x*Hp)
-    END FUNCTION vAspec1Compute
-    
-    FUNCTION vAspec2Compute(Temp,Hp) RESULT(kASPEC2)
-      REAL(dp)  :: kASPEC2(nASPEC2)
-      REAL(dp), INTENT(IN)  :: Temp(:), Hp
-      !
-      kASPEC2 = Hp**RTpar2%ASPEC2(:,2) *                       &
-      &         (RTpar2%ASPEC2(:,1)*EXP(RTpar2%ASPEC2(:,3)*(Temp(6)-InvRefTemp)))
-    END FUNCTION vAspec2Compute
-    
-    FUNCTION vAspec3Compute(Temp,Hp) RESULT(kASPEC3)
-      REAL(dp)  :: kASPEC3(nASPEC3)
-      REAL(dp), INTENT(IN)  :: Temp(:), Hp
-
-      kASPEC3 = RTpar2%ASPEC3(:,1)*EXP(RTpar2%ASPEC3(:,2)*(-LOG10(Hp)))
-    END FUNCTION vAspec3Compute
-    
-    FUNCTION vT1H2OCompute(Temp) RESULT(kT1H2O)
-      REAL(dp)  :: kT1H2O(nT1H2O)
-      REAL(dp), INTENT(IN)  :: Temp(:)
-      
-      kT1H2O = RTpar2%T1H2O(:,1)*EXP(-RTpar2%T1H2O(:,2)*Temp(6))
-    END FUNCTION vT1H2OCompute
-
-
   END MODULE Rates_Mod

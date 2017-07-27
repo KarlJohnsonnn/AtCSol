@@ -124,18 +124,22 @@ FACTOR: $H2O
 CLASS: GAS  
 O3  +  NO   =  NO2   + [O2]   
 TEMP1:   KO:  2.00E-12  E/R:  1400.0  
+#SPECIAL: 2.00E-12*exp(-1400.0/TEMP); 1
 
 CLASS: GAS  
 O3 +  HO   =  HO2  +  [O2]   
 TEMP1:   KO:  1.60E-12  E/R:   940.0  
+#SPECIAL: 1.60E-12*exp(-940.0/TEMP); 1
 
 CLASS: GAS  
 O3  +  HO2  =  HO  +  2.  [O2]   
 TEMP1:   KO:  1.10E-14  E/R:   500.0  
+#SPECIAL: 1.10E-14*exp(-500.0/TEMP); 1
  
 CLASS: GAS  
 HO2 +  NO   =  NO2  +  HO   
-TEMP1:   KO:  3.70E-12  E/R:  -240.0  
+TEMP1:   KO:  3.70E-12  E/R:  -240.00  
+#SPECIAL: 3.70E-12*exp(240.0/TEMP); 1
 
 CLASS: GAS  
 HO2  + NO2  =  HNO4  

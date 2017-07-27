@@ -3,8 +3,7 @@ MODULE mo_ckinput
   USE hashtbl
   USE Kind_Mod
   USE Meteo_Mod
-  USE ChemSys_Mod, ONLY: ReactionStruct_t, Duct_T, ListAqua, ListGas        &
-  &                    , ListSolid, ListPartic, ListNonReac, ReactionSystem &
+  USE ChemSys_Mod, ONLY: ReactionStruct_t, Duct_T, ListGas,  ReactionSystem &
   &                    , UnitGas, UnitAqua, ListGas2, Species_T             &
   &                    , ListToHashTable, HashTableToList, SortList         &
   &                    , PositionSpeciesGas,PositionSpeciesAll              &
@@ -320,11 +319,7 @@ CONTAINS
     !
     !
     ! Init Hash Tables
-    ntGas=0
-    ntAqua=0
-    ntSolid=0
-    ntPart=0
-    ntkat=0
+    ns_GAS=0
     CALL Init_HashTbls(ListGas)
     !
     CALL OpenFile(UnitReac,TRIM(DataReac),'sys')
@@ -347,7 +342,7 @@ CONTAINS
     END DO
     CALL CloseFile(UnitReac,TRIM(DataReac),'sys')
     !
-    nspc=ntGas+ntAqua+ntSolid+ntPart+ntkat
+    nspc=ns_GAS
 
     !
     !print*, 'Total number of species = ', nSpc
@@ -431,12 +426,12 @@ CONTAINS
       !
     END DO
     REWIND UnitReac
-    nReak=iReac
+    nr = iReac
     !print*, ' ges reak = ', ireac
     !
 
     ! ALLOCATE reaction system structur
-    ALLOCATE(ReactionSystem(nReak))
+    ALLOCATE(ReactionSystem(nr))
     CALL FindSection(UnitReac,'reactions',headline)
     nxtReac   = .FALSE.
     ende      = .FALSE.
@@ -461,7 +456,7 @@ CONTAINS
         !print*, 'DEBUG:: vor  reaktion lesen iLine = ',ireac,TRIM(iLine)
 
         iReac = iReac + 1
-        nreakgtemp = nreakgtemp + 1
+        nr_G_temp = nr_G_temp + 1
         
         ReactionSystem(iReac)%Type='GAS'    ! all gaseous
         
@@ -472,7 +467,7 @@ CONTAINS
           ReactionSystem(iReac+1)%Type = 'GAS'    ! all gaseous
           ReactionSystem(iReac+1)%bR   = .TRUE.    ! all gaseous
           ReactionSystem(iReac+1)%Line2='reverse reaction'
-          nreakgtemp = nreakgtemp + 1
+          nr_G_temp = nr_G_temp + 1
         ELSE 
           fPosFw = INDEX(iLine,'=>')
           IF (fPosFw>0) bR = .FALSE.
@@ -664,11 +659,11 @@ CONTAINS
           READ(LocString,*,IOSTAT=io_err) tmpReal, tmpReal2, tmpReal3
 
           IF ( io_err == 0 ) THEN
-            nreakpress = nreakpress + 1
+            nr_press = nr_press + 1
             ReactionSystem(iReac)%LowConst  = REAL([tmpReal,tmpReal2,tmpReal3], KIND=dp)
             ReactionSystem(iReac)%HighConst = ReactionSystem(iReac)%Constants
             IF (bR) THEN
-              nreakpress = nreakpress + 1
+              nr_press = nr_press + 1
               ReactionSystem(iReac+1)%LowConst  = ReactionSystem(iReac)%LowConst
               ReactionSystem(iReac+1)%HighConst = ReactionSystem(iReac+1)%Constants
             END IF
@@ -683,11 +678,11 @@ CONTAINS
           READ(LocString,*,IOSTAT=io_err) tmpReal, tmpReal2, tmpReal3
 
           IF ( io_err == 0 ) THEN
-            nreakpress = nreakpress + 1
+            nr_press = nr_press + 1
             ReactionSystem(iReac)%HighConst = REAL([tmpReal,tmpReal2,tmpReal3], KIND=dp)
             ReactionSystem(iReac)%LowConst  = ReactionSystem(iReac)%Constants
             IF (bR) THEN
-              nreakpress = nreakpress + 1
+              nr_press = nr_press + 1
               ReactionSystem(iReac+1)%HighConst  = ReactionSystem(iReac)%HighConst
               ReactionSystem(iReac+1)%LowConst   = ReactionSystem(iReac+1)%Constants
             END IF
@@ -711,11 +706,11 @@ CONTAINS
           READ(LocString(iKl:iKr),*,IOSTAT=io_err) tmpReal, tmpReal2, tmpReal3, tmpReal4
 
           IF ( io_err == 0 ) THEN
-            nreakgtroe = nreakgtroe + 1
+            nr_G_troe = nr_G_troe + 1
             ReactionSystem(iReac)%TroeConst = REAL([tmpReal,tmpReal2,tmpReal3,tmpReal4], KIND=dp)
             IF (bR) THEN
               ReactionSystem(iReac+1)%TroeConst  = ReactionSystem(iReac)%TroeConst
-              nreakgtroe = nreakgtroe + 1
+              nr_G_troe = nr_G_troe + 1
             END IF
           ELSE
             CALL  PrintError(io_err,iReac,LocString)
@@ -724,8 +719,8 @@ CONTAINS
           IF (.NOT.nxtReac) CALL NextLine(UnitReac,iLine,ende,nxtReac)
           IF ( ende ) EXIT READ_REACTION_MECHANISM  ! exit reading mechnism
         ELSE
-          nreakglind = nreakglind + 1
-          IF (bR) nreakglind = nreakglind + 1
+          nr_G_lind = nr_G_lind + 1
+          IF (bR) nr_G_lind = nr_G_lind + 1
         END IF
 
         IF ( nxtReac ) EXIT THIRD_BODY_M  ! => no extra parameter, next reaction
@@ -739,8 +734,8 @@ CONTAINS
         &                 ReactionSystem(iReac)%Factor == '$(+M)'    ) THEN
 
         nRowThirdBodys = 0
-        nreakSimpTB = nreakSimpTB + 1
-        IF (bR) nreakSimpTB = nreakSimpTB + 1
+        nr_SimpTB = nr_SimpTB + 1
+        IF (bR) nr_SimpTB = nr_SimpTB + 1
 
 
         IF ( nxtReac ) THEN
@@ -800,11 +795,12 @@ CONTAINS
     END DO READ_REACTION_MECHANISM                      ! next reaction
     CALL CloseFile(UnitReac,DataReac,'sys')
     !
-    neq       = nReak
-    nreakgas  = nReak
-    nreakSimpTB = nreakSimpTB - nreakglind - nreakgtroe
-    nreakgtemp = nreakgtemp - nreakSimpTB - nreakglind - nreakgtroe
-    ALLOCATE(ListGas2(ntGAS))
+    neq    = nr
+    nr_gas = nr
+    nr_SimpTB = nr_SimpTB - nr_G_lind - nr_G_troe
+    nr_G_temp = nr_G_temp - nr_SimpTB - nr_G_lind - nr_G_troe
+
+    ALLOCATE(ListGas2(ns_GAS))
     CALL HashTableToList(ListGas,ListGas2)
     CALL SortList(ListGas2)
     CALL ListToHashTable(ListGas2,ListGas)
@@ -1222,7 +1218,7 @@ CONTAINS
   END SUBROUTINE CutCArray
 
   
-  SUBROUTINE GatherReactionTypeIndex()
+  SUBROUTINE Setup_ReactionIndex()
     
     INTEGER :: iR, cnt , cnt2
     REAL(dp), PARAMETER :: big = -99999999999999.d0
@@ -1326,9 +1322,9 @@ CONTAINS
 
     IF (RTind%nLow>0) ALLOCATE(vPr(neq))
 
-  END SUBROUTINE GatherReactionTypeIndex
+  END SUBROUTINE Setup_ReactionIndex
 
-  SUBROUTINE GatherTBindex()
+  SUBROUTINE Setup_ThirdBodyIndex()
     INTEGER :: i, j
     INTEGER :: tmpPos
 
@@ -1344,7 +1340,7 @@ CONTAINS
         END DO
       END IF
     END DO
-  END SUBROUTINE GatherTBindex
+  END SUBROUTINE Setup_ThirdBodyIndex
 
   SUBROUTINE Build_TB_sparse(A,nnz)
 
@@ -1397,7 +1393,7 @@ CONTAINS
     !  CALL InsertHash(ListPartic,TRIM(ADJUSTL(Species)),ntPart)
     !  Type='Partic'
     !ELSE IF (Species(1:1)=='a'.OR.SCAN(Species,'pm')>0) THEN
-    !  CALL InsertHash(ListAqua,TRIM(ADJUSTL(Species)),ntAqua)
+    !  CALL InsertHash(ListAqua,TRIM(ADJUSTL(Species)),ns_AQUA)
     !  Type='Aqua'
     !ELSE IF (Species(1:1)=='s') THEN
     !  CALL InsertHash(ListSolid,TRIM(ADJUSTL(Species)),ntSolid)
@@ -1408,7 +1404,7 @@ CONTAINS
     !  Type='Inert'
     !ELSE IF (Species(1:1)=='(') THEN
     !ELSE
-      CALL InsertHash(ListGas,TRIM(ADJUSTL(Species)),ntGas)
+      CALL InsertHash(ListGas,TRIM(ADJUSTL(Species)),ns_GAS)
       Type='Gas'
     !END IF
   END SUBROUTINE InsertSpecies
@@ -1429,7 +1425,7 @@ CONTAINS
     !--- allocate space for a list of all species (incl. kat spc)
     ALLOCATE(Species(nspc))
     !
-    DO i=1,ntGas
+    DO i=1,ns_GAS
       READ(89,*)  Species(i)
     END DO
     CLOSE(89)
@@ -1514,13 +1510,11 @@ CONTAINS
     WRITE(Unit,*) ''
     WRITE(Unit,*) ' ================   Description of Reactions   =============='
     WRITE(Unit,*) ''
-    WRITE(Unit,*) nreak,            '        NREAK   : Number of Reactions'
-    WRITE(Unit,*) nreakgas,         '        NGAS   : Gas phase reactions'
-    WRITE(Unit,*) nreakgphoto,    '           Gaseous PHOTO - type reactions'
-    WRITE(Unit,*) nreakgconst,    '           Gaseous CONST - type reactions'
-    WRITE(Unit,*) nreakgtemp,     '           Gaseous TEMP - type reactions'
-    WRITE(Unit,*) nreakgtroe,     '           Gaseous TROE - type reactions'
-    WRITE(Unit,*) nreakgspec,  '           Gaseous SPECIAL - type reactions'
+    WRITE(Unit,*) nr,            '        NREAK   : Number of Reactions'
+    WRITE(Unit,*) nr_gas,         '        NGAS   : Gas phase reactions'
+    WRITE(Unit,*) nr_G_const,    '           Gaseous CONST - type reactions'
+    WRITE(Unit,*) nr_G_temp,     '           Gaseous TEMP - type reactions'
+    WRITE(Unit,*) nr_G_troe,     '           Gaseous TROE - type reactions'
     WRITE(Unit,*)
     WRITE(Unit,*) ' ======================  Reactions   ========================'
     WRITE(Unit,*) ''

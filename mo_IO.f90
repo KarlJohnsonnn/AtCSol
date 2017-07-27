@@ -34,29 +34,29 @@ MODULE mo_IO
       WRITE(*,*)   ''
       WRITE(*,*)   '  Run - Paramter:'
       WRITE(*,*)   ''
-      WRITE(*,*)   '      Mechanism:             ', TRIM(ChemFile)//'.sys'
+      WRITE(*,*)   '     Mechanism:             ', TRIM(SysFile)
       IF (NetCdfPrint) THEN
-        WRITE(*,*)   '      NetCDF-File:           ', 'NetCDF/'//TRIM(BSP)//'.nc'
+        WRITE(*,*)   '     NetCDF-File:           ', 'NetCDF/'//TRIM(BSP)//'.nc'
       ELSE
-        WRITE(*,*)   '      NetCDF-File:           ', '*** no NetCDF output ***'
+        WRITE(*,*)   '     NetCDF-File:           ', '*** no NetCDF output ***'
       END IF
-      WRITE(*,*)   '      Initials:              ', InitFile
-      WRITE(*,*)   '      ODE solver:            ', ODEsolver
+      WRITE(*,*)   '     Initials:              ', InitFile
+      WRITE(*,*)   '     ODE solver:            ', ODEsolver
       IF (ODEsolver/='LSODE') THEN
         IF (solveLA=='cl') THEN 
-          WRITE(*,*)   '      Linear Algebra:        classic'
+          WRITE(*,*)   '     Linear Algebra:        classic'
         ELSE
-          WRITE(*,*)   '      Linear Algebra:        extended'
+          WRITE(*,*)   '     Linear Algebra:        extended'
         END IF
         IF (Error_Est==2) THEN
-          WRITE(*,*)   '      Error Estimation:      euklid norm'
+          WRITE(*,*)   '     Error Estimation:      euklid norm'
         ELSE
-          WRITE(*,*)   '      Error Estimation:      maximum norm'
+          WRITE(*,*)   '     Error Estimation:      maximum norm'
         END IF
         IF (OrderingStrategie==8) THEN
-          WRITE(*,*)   '      Solve linear Systems:  sparse LU, Markowitz ordering scheme'
+          WRITE(*,*)   '     Solve linear Systems:  sparse LU, Markowitz ordering scheme'
         ELSE 
-          WRITE(*,*)   '      Solve linear Systems:  MUMPS, ordering stragegie:  ',OrderingStrategie 
+          WRITE(*,*)   '     Solve linear Systems:  MUMPS, ordering stragegie:  ',OrderingStrategie 
         END IF
       END IF
       WRITE(*,*)   ''
@@ -65,7 +65,7 @@ MODULE mo_IO
         WRITE(*,*)   ''
         WRITE(*,'(A34,2X,Es8.2)')   '      Relative Rosenbrock        = ',RtolROW
         WRITE(*,'(A34,2X,Es8.2)')   '      Absolute (gaseous species) = ',AtolGas
-        IF (ntAqua>0) WRITE(*,'(A34,2X,Es8.2)')   '      Absolute (aqueous species) = ',AtolAqua
+        IF (ns_AQUA>0) WRITE(*,'(A34,2X,Es8.2)')   '      Absolute (aqueous species) = ',AtolAqua
         IF ( Teq ) THEN
           WRITE(*,'(A34,2X,Es8.2)')   '      Absolute Temperature       = ',AtolTemp
         END IF
@@ -266,7 +266,7 @@ MODULE mo_IO
     ALLOCATE(idx(Matrix%nnz,2))
 
     OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName))//'.csv',STATUS='UNKNOWN')
-    WRITE(99,*) 'Source,Target'
+    WRITE(99,'(A13)') 'Source,Target'
     cnt = 0
     DO i = 1 , Matrix%m
       DO jj = Matrix%RowPtr(i) , Matrix%RowPtr(i+1)-1
@@ -287,35 +287,93 @@ MODULE mo_IO
     CLOSE(99)
   END SUBROUTINE CSR_to_GephiGraph
 
-  SUBROUTINE  Matrix_Statistics(A,B,BA,BAT,S_HG,tmpJacCC,Miter,LU_Miter)
+  SUBROUTINE  Matrix_Statistics(A,B,BA,BAT,S_HG,Jac,M,LUM)
     
-    TYPE(CSR_Matrix_T) :: A,B,BA,BAT,S_HG,tmpJacCC,Miter,LU_Miter
+    TYPE(CSR_Matrix_T) :: A,B,BA,BAT,S_HG,Jac,M,LUM
 
-    298 format(A18,3I11)
+    298 format(A18,3(I12,A2))
 
-    WRITE(*,*)   '                |      rows   |   colums   |     nnz    |'
-    WRITE(*,*)   '  --------------+-------------+------------+------------+-'
-    WRITE(*,298) '          alpha |',A%m,A%n,A%nnz
-    WRITE(*,298) '           beta |',B%m,B%n,B%nnz
-    WRITE(*,298) ' (beta-alpha)^T |',BA%m,BA%n,BA%nnz
-    WRITE(*,298) '      spc_graph |',S_HG%m,S_HG%n,S_HG%nnz
-    WRITE(*,298) '       JACOBIAN |',tmpJacCC%m,tmpJacCC%n,tmpJacCC%nnz
-    WRITE(*,298) '          Miter |',Miter%m,Miter%n,Miter%nnz
-    WRITE(*,298) '       LU_Miter |',LU_Miter%m,LU_Miter%n,LU_Miter%nnz
+    WRITE(*,*)   '                |     rows    |    colums   |      nnz    |'
+    WRITE(*,*)   '  --------------+-------------+-------------+-------------+-'
+    WRITE(*,298) '           alpha |', A%m,   ' |',A%n,     ' |',A%nnz,   ' |'
+    WRITE(*,298) '            beta |', B%m,   ' |',B%n,     ' |',B%nnz,   ' |'
+    WRITE(*,298) '  (beta-alpha)^T |', BAT%m, ' |',BAT%n,   ' |',BAT%nnz, ' |'
+    WRITE(*,298) '   Species Graph |', S_HG%m,' |',S_HG%n,  ' |',S_HG%nnz,' |'
+    WRITE(*,298) '  Jacobian (= J) |', Jac%m, ' |',Jac%n,   ' |',Jac%nnz, ' |'
+    WRITE(*,298) '       I - h*g*J |', M%m,   ' |',M%n,     ' |',M%nnz,   ' |'
+    WRITE(*,298) '   LU(I - h*g*J) |', LUM%m, ' |',LUM%n,   ' |',LUM%nnz, ' |'
     WRITE(*,*)
 
   END SUBROUTINE Matrix_Statistics
   !
   !
-  SUBROUTINE SYStoKPP(RS,FileName)
+  SUBROUTINE WriteAnalysisFile(RS,species_names,mixing_ratios,IntRate)
+    USE mo_reac, ONLY: neq, nspc
 
     TYPE(ReactionStruct_T), INTENT(IN) :: RS(:)
-    CHARACTER(*),           INTENT(IN) :: FileName
+    CHARACTER(*),           INTENT(IN) :: species_names(:)
+    REAL(dp),               INTENT(IN) :: mixing_ratios(:,:)
+    REAL(dp),               INTENT(IN) :: IntRate(:)
+
+    INTEGER  :: i, ieq
+    INTEGER  :: lat, alt, day, month
+    REAL(dp) :: TimeStp
     
-    OPEN(UNIT=99,FILE='CHEM'//TRIM(ADJUSTL(FileName))//'.kpp',STATUS='UNKNOWN')
+    lat   = 45
+    alt   = 20
+    day   = 21
+    month = 6
+    TimeStp = Tspan(2)-Tspan(1)
+
+    OPEN(UNIT=99,FILE='pathway_analysis.txt',STATUS='UNKNOWN')
+
+    ! Headline (Denotation or conditions of model run)
+    WRITE( 99 , '(2(I3,A5),2(I0.2,A1))' ) lat , ' N;  ' , alt , ' km;  ' , day , '.' , month , '.'
+
+    ! Timestep = Length of the time interval of interest
+    IF (TimeStp<3600.d0) THEN
+      WRITE( 99 , '(A11,F5.3,A2)' ) 'Timestep:  ', TimeStp,' s'
+    ELSE
+      WRITE( 99 , '(A11,F0.3,A2)' ) 'Timestep:  ', TimeStp/3600.0d0,' h'
+    END IF
+    
+    ! Number of chemical species
+    WRITE( 99 , '(1X,I0,A)' ) nspc, ' species:  Mixing rations: c_0, c_mean, dc [ppb]:'
+
+    ! The three data columns corresponding to chemical species contain:
+    !   - mixing ratio at the beginning of the time interval [ppb]
+    !   - mean mixing ratio during the time interval [ppb]
+    !   - change of the mixing ratio during the time interval [ppb]
+    DO i = 1 , nspc
+      WRITE( 99 , '(3(Es14.7e2,3X),4X,A)' ) mixing_ratios(i,:) , TRIM(species_names(i))
+    END DO
+
+    ! Number of chemical reactions
+    WRITE( 99 , '(I0,A)' ) neq, ' reactions:  Integrated reaction rates [ppb]:'
+    
+    ! The data column corresponding to reactions contains:
+    !   - reaction rate integrated over the time interval of interest [ppb]
+    DO i = 1 , neq
+      IF ( ChemKin) THEN
+        ieq = INDEX(TRIM(RS(i)%Line1), ' => ')
+        WRITE( 99 , '(Es11.4e2,4X,A,I0,A,A)' ) IntRate(i), TRIM(RS(i)%TypeConstant)//'_',i,':  ', &
+        &       TRIM(TRIM(RS(i)%Line1(:ieq))//' -> '//TRIM(ADJUSTL(RS(i)%Line1(ieq+4:))))
+      ELSE
+        ieq = INDEX(TRIM(RS(i)%Line1), ' = ')
+        IF ( INDEX(TRIM(RS(i)%TypeConstant), 'PHOT') > 0 ) THEN
+          WRITE( 99 , '(Es11.4e2,4X,A,I0,A,A)' ) IntRate(i), TRIM(RS(i)%TypeConstant)//'_',i,':  ', &
+          &       TRIM(TRIM(RS(i)%Line1(:ieq))//'  +  hv  -> '//TRIM(ADJUSTL(RS(i)%Line1(ieq+3:))))
+        ELSE
+          WRITE( 99 , '(Es11.4e2,4X,A,I0,A,A)' ) IntRate(i), TRIM(RS(i)%TypeConstant)//'_',i,':  ', &
+          &       TRIM(TRIM(RS(i)%Line1(:ieq))//' -> '//TRIM(ADJUSTL(RS(i)%Line1(ieq+3:))))
+        END IF
+      END IF
+    END DO
     CLOSE(99)
 
-
-  END SUBROUTINE SYStoKPP
+    WRITE(*,*)
+    WRITE(*,*) '  Analysis File written: pathway_analysis.txt' 
+    WRITE(*,*)
+  END SUBROUTINE WriteAnalysisFile
 END MODULE mo_IO
 

@@ -112,7 +112,7 @@ MODULE Integration_Mod
     
         !---- Calculate a first stepsize based on 2nd deriv.
         CALL InitialStepSize( h , hmin , absh , Jac_CC , R0   &
-        &                   , Tspan(1) , Y(1:nspc) , RCo%pow  )
+        &                   , Tspan(1) , Y(1:nspc) , ROS%pow  )
      
         !
         !===============================================================================
@@ -148,7 +148,7 @@ MODULE Integration_Mod
             &               , Y0            &       ! current concentration 
             &               , t             &       ! current time
             &               , h             &       ! stepsize
-            &               , RCo           &       ! Rosenbrock parameter
+            !&               , RCo           &       ! Rosenbrock parameter
             &               , Euler=.FALSE. )       ! new concentration 
             !
             tnew  = t + h
@@ -158,8 +158,8 @@ MODULE Integration_Mod
               h     = tnew-t                        ! Purify h.
             END IF
             Output%ndecomps   = Output%ndecomps   + 1
-            Output%nRateEvals = Output%nRateEvals + RCo%nStage
-            Output%nSolves    = Output%nSolves    + RCo%nStage
+            Output%nRateEvals = Output%nRateEvals + ROS%nStage
+            Output%nSolves    = Output%nSolves    + ROS%nStage
             !
             !
             failed = (error > ONE)
@@ -177,7 +177,7 @@ MODULE Integration_Mod
                 STOP '....Integration_Mod '
               END IF
               !
-              absh  = MAX( hmin , absh * MAX( rTEN , 0.8_dp * error**(-RCo%pow) ) )
+              absh  = MAX( hmin , absh * MAX( rTEN , 0.8_dp * error**(-ROS%pow) ) )
               h     = absh
               done  = .FALSE.
             ELSE                            !succ. step
@@ -192,7 +192,7 @@ MODULE Integration_Mod
             IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
               iStpNetCDF  = iStpNetCDF + 1
               zen = Zenith(t)
-              IF ( ntAqua > 0 ) THEN
+              IF ( ns_AQUA > 0 ) THEN
                 actLWC  = pseudoLWC(t)
                 wetRad  = (Pi34*actLWC/Frac%Number(1))**(rTHREE)*0.1_dp
               END IF
@@ -204,8 +204,8 @@ MODULE Integration_Mod
               &                 , itime_NetCDF                     &
               &                 , (/ actLWC                        &
               &                    , h                             &
-              &                    , SUM(Y(1:ntGas))               &
-              &                    , SUM(Y(ntGas+1:ntGas+ntAqua))  &
+              &                    , SUM(Y(1:ns_GAS))               &
+              &                    , SUM(Y(ns_GAS+1:ns_GAS+ns_AQUA))  &
               &                    , wetRad                        &
               &                    , zen                        /) &
               &                 , ierr                           &
@@ -226,7 +226,7 @@ MODULE Integration_Mod
           IF ( done ) EXIT
           !
           !-- If there were no failures compute a new h.
-          tmp = 1.25_dp * error**RCo%pow
+          tmp = 1.25_dp * error**ROS%pow
           IF ( TWO * tmp > ONE ) THEN
             absh  = absh / tmp
           ELSE
@@ -236,6 +236,7 @@ MODULE Integration_Mod
           !-- Advance the integration one step.
           t   = tnew
           Y0  = Y
+          mixing_ratios_spc(:,2) = mixing_ratios_spc(:,2) + Y
           !
           !-- for PI stepsize control
           errorOld  = error
@@ -294,7 +295,7 @@ MODULE Integration_Mod
             TimeNetCDFA = MPI_WTIME()
             iStpNetCDF  = iStpNetCDF + 1
             zen = Zenith(t)
-            IF ( ntAqua > 0 ) THEN
+            IF ( ns_AQUA > 0 ) THEN
               actLWC  = pseudoLWC(t)
               wetRad  = (Pi34*actLWC/Frac%Number(1))**(rTHREE)*0.1_dp
             END IF
@@ -307,8 +308,8 @@ MODULE Integration_Mod
                             & , itime_NetCDF           &
                             & , (/  actLWC                        &  ! LWC
                             &     , RWORK(11)                     &  ! Stepsize
-                            &     , SUM(Y(1:ntGas))               &    ! Sum gas conc
-                            &     , SUM(Y(ntGas+1:ntGas+ntAqua))  &    ! Sum aqua conc
+                            &     , SUM(Y(1:ns_GAS))               &    ! Sum gas conc
+                            &     , SUM(Y(ns_GAS+1:ns_GAS+ns_AQUA))  &    ! Sum aqua conc
                             &     , wetRad                        &    ! wet radius
                             &     , zen               /)          &  ! zenith
                             & , ierr                 &  ! max error index = 0
@@ -384,7 +385,7 @@ MODULE Integration_Mod
             TimeNetCDFA = MPI_WTIME()
             iStpNetCDF  = iStpNetCDF + 1
             zen = Zenith(t)
-            IF ( ntAqua > 0 ) THEN
+            IF ( ns_AQUA > 0 ) THEN
               actLWC  = pseudoLWC(t)
               wetRad  = (Pi34*actLWC/Frac%Number(1))**(rTHREE)*0.1_dp
             END IF
@@ -397,8 +398,8 @@ MODULE Integration_Mod
                             & , itime_NetCDF           &
                             & , (/  actLWC                        &  ! LWC
                             &     , RWORK(11)                     &  ! Stepsize
-                            &     , SUM(Y(1:ntGas))               &    ! Sum gas conc
-                            &     , SUM(Y(ntGas+1:ntGas+ntAqua))  &    ! Sum aqua conc
+                            &     , SUM(Y(1:ns_GAS))               &    ! Sum gas conc
+                            &     , SUM(Y(ns_GAS+1:ns_GAS+ns_AQUA))  &    ! Sum aqua conc
                             &     , wetRad                        &    ! wet radius
                             &     , zen               /)          &  ! zenith
                             & , ierr                 &  ! max error index = 0
@@ -442,7 +443,7 @@ MODULE Integration_Mod
           &               , Y0            &       ! current concentration 
           &               , t             &       ! current time
           &               , h             &       ! stepsize
-          &               , RCo           &       ! Rosenbrock parameter
+          !&               , RCo           &       ! Rosenbrock parameter
           &               , Euler=.FALSE. )       ! new concentration 
 
           tnew = t + h
@@ -459,7 +460,7 @@ MODULE Integration_Mod
             IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
               iStpNetCDF  = iStpNetCDF + 1
               zen = Zenith(t)
-              IF ( ntAqua > 0 ) THEN
+              IF ( ns_AQUA > 0 ) THEN
                 actLWC  = pseudoLWC(t)
                 wetRad  = (Pi34*actLWC/Frac%Number(1))**(rTHREE)*0.1_dp
               END IF
@@ -472,8 +473,8 @@ MODULE Integration_Mod
               &                 , itime_NetCDF                     &
               &                 , (/ actLWC                        &
               &                    , h                             &
-              &                    , SUM(Y(1:ntGas))               &
-              &                    , SUM(Y(ntGas+1:ntGas+ntAqua))  &
+              &                    , SUM(Y(1:ns_GAS))               &
+              &                    , SUM(Y(ns_GAS+1:ns_GAS+ns_AQUA))  &
               &                    , wetRad                        &
               &                    , zen                        /) &
               &                 , ierr                           &
@@ -506,6 +507,10 @@ MODULE Integration_Mod
     END SELECT
     TimeIntegrationE  = MPI_WTIME() - TimeIntegrationA
 
+
+    ! this is for pathway analysis
+    mixing_ratios_spc(:,2) = mixing_ratios_spc(:,2)/REAL(Output%nsteps)
+    mixing_ratios_spc(:,3) = Y -  mixing_ratios_spc(:,1) 
     !
     ! DEALLOCATE Mumps instance
     IF ( useMUMPS ) THEN
@@ -548,7 +553,7 @@ MODULE Integration_Mod
     REAL(dp) :: htmp
     !
     !
-    htmp = ( Tol/er )**(0.7d0*RCo%pow)* ( erOld/Tol )**(0.4d0*RCo%pow) * h
+    htmp = ( Tol/er )**(0.7d0*ROS%pow)* ( erOld/Tol )**(0.4d0*ROS%pow) * h
     !htmp = ( Tol/er )**PI_Par%KI * ( erOld/Tol )**PI_Par%Kp * h
     !
     ! limitation term
@@ -575,7 +580,7 @@ MODULE Integration_Mod
     IF (Teq) THEN         ! OUT:   IN:
       ! MASS CONSERVATION
       CALL ReactionRatesAndDerivative_ChemKin( T , Y , Rate , DRate)
-      CALL DAXPY_sparse( dCdt , BAT , Rate , Y_e )  ! [mol/cm3/s]
+      dCdt = DAXPY_sparse( BAT , Rate , Y_e )  ! [mol/cm3/s]
     
       YDOT(1:nspc) =  dCdt
 
@@ -591,7 +596,7 @@ MODULE Integration_Mod
     ELSE
       ! MASS CONSERVATION
       CALL ReactionRates_Tropos( T , Y , Rate )
-      CALL DAXPY_sparse( dCdt , BAT , Rate , Y_e )  ! [mol/cm3/s]
+      dCdt = DAXPY_sparse( BAT , Rate , Y_e )  ! [mol/cm3/s]
       
       YDOT(1:nspc) =  dCdt
     END IF
