@@ -262,6 +262,20 @@
 
     REAL(dp), ALLOCATABLE :: integrated_rates(:)
     REAL(dp), ALLOCATABLE :: mixing_ratios_spc(:,:)
-    
+
+!-- Type declaration 
+    TYPE List
+      INTEGER, ALLOCATABLE :: List(:)
+      INTEGER              :: len
+    END TYPE List
+
+    TYPE Chain
+      CHARACTER(100), ALLOCATABLE :: sName(:,:)
+      INTEGER,        ALLOCATABLE :: sIdx(:,:)
+      Type(List),     ALLOCATABLE :: rIdx(:)
+    END TYPE Chain
+
+
+
  END MODULE mo_control
 

@@ -8,14 +8,10 @@ MODULE Cycles_Mod
                       & PrintSparseMatrix
   !USE mo_unirnk
   USE mo_reac,    ONLY: y_name
+  USE mo_control, ONLY: List
 
   IMPLICIT NONE
 
-
-  TYPE List
-    INTEGER, ALLOCATABLE :: List(:)
-    INTEGER              :: len
-  END TYPE List
 
   TYPE Node_T
     INTEGER :: Id, cnt
@@ -72,8 +68,10 @@ MODULE Cycles_Mod
 
     WRITE(*,*); WRITE(*,*); WRITE(*,*) '  Calculating simple cycles:'
     WRITE(*,*)
-    WRITE(*,'(A31)',ADVANCE='NO') '   Enter maximum cycle length: '
-    READ(*,*) maxlen
+    !WRITE(*,'(A31)',ADVANCE='NO') '   Enter maximum cycle length: '
+    !READ(*,*) maxlen
+    WRITE(*,*) '   Maximum cycle length: 5';
+    maxlen = 5
 
 
     n    = A%n
@@ -170,11 +168,11 @@ MODULE Cycles_Mod
     WRITE(99,'(A)') '   Cycle Length:       species: '
     printCYC => cycFirst
     DO i = 1,cntSCC
-      WRITE(99,'(10X,I2,8X,*(A))') printCYC%cnt-1,               &
-      & (TRIM(y_name(printCYC%v(j)))//' -> ' ,j=1,printCYC%cnt), &
-      &  TRIM(y_name(printCYC%v(printCYC%cnt+1)))
-      !WRITE(99,'(3X,I2,15X,*(I0,1X))') printCYC%cnt, printCYC%v
-      Cyclic_Set(i)%len  = printCYC%cnt
+      !WRITE(99,'(10X,I2,8X,*(A))') printCYC%cnt-1,               &
+      !& (TRIM(y_name(printCYC%v(j)))//' -> ' ,j=1,printCYC%cnt), &
+      !&  TRIM(y_name(printCYC%v(printCYC%cnt+1)))
+      WRITE(99,'(3X,I2,15X,*(I0,1X))') printCYC%cnt, printCYC%v
+      Cyclic_Set(i)%len  = printCYC%cnt + 1
       Cyclic_Set(i)%List = [printCYC%v]
       printCYC => printCYC%next
     END DO

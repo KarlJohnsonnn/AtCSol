@@ -1,6 +1,7 @@
 !=======================================
 !=======================================
 ! vorlaeufiges Hauptprogramm fuer Tests
+! box model chemical kinetics simulation
 !=======================================
 !=======================================
 !
@@ -21,6 +22,7 @@ PROGRAM chemie
   USE Cycles_Mod
   USE mo_reduction
   USE fparser
+  USE issa
   IMPLICIT NONE
   !
   CHARACTER(80)   :: Filename0 = ''        ! *.run file
@@ -106,11 +108,11 @@ PROGRAM chemie
   !----------------------------------------------------------------
   ! --- set cloud intervall
   LWCBounds(1) = tAnf * HOUR
-  LWCBounds(2) = LWCBounds(1) + 1.00d0  * HOUR
-  LWCBounds(3) = LWCBounds(2) + 0.25d0  * HOUR
-  LWCBounds(4) = LWCBounds(3) + 9.50d0  * HOUR
-  LWCBounds(5) = LWCBounds(4) + 0.25d0  * HOUR
-  LWCBounds(6) = LWCBounds(5) + 1.00d0  * HOUR
+  LWCBounds(2) = LWCBounds(1) + 1.00_dp  * HOUR
+  LWCBounds(3) = LWCBounds(2) + 0.25_dp  * HOUR
+  LWCBounds(4) = LWCBounds(3) + 9.50_dp  * HOUR
+  LWCBounds(5) = LWCBounds(4) + 0.25_dp  * HOUR
+  LWCBounds(6) = LWCBounds(5) + 1.00_dp  * HOUR
 
   !----------------------------------------------------------------
   !  --- read the .sys data, save coefs in sparse matrix
@@ -169,7 +171,7 @@ PROGRAM chemie
       IF (MPI_ID == 0 ) THEN
         WRITE(*,*)
         WRITE(*,*) '  No molecular weights are given.  '
-        WRITE(*,*) '       ---> Initial Values in [mole/cm3] '
+        WRITE(*,*) '  Make sure the initial values are given in [mole/cm3] !'
         WRITE(*,*)
       END IF
       CALL Read_GASini( InitFile , MoleConc , InitValKat )
@@ -298,12 +300,6 @@ PROGRAM chemie
     END SELECT
   END IF
 
-  !CALL getarg ( 2 , neuTolR ); IF ( neuTolR /= '' )  READ( neuTolR , * ) RtolROW
-  !CALL getarg ( 3 , neuTolA ); IF ( neuTolA /= '' )  READ( neuTolA , * ) AtolGas
-  !CALL getarg ( 4 , neuTolA ); IF ( neuTolA /= '' )  READ( neuTolA , * ) AtolAqua
-  !CALL getarg ( 5 , neuROW );  IF ( neuROW  /= '' )  READ( neuRow  , * ) ODEsolver
-  
-
   !-----------------------------------------------------------------------
   ! --- Get all sulphuric species
   !-----------------------------------------------------------------------
@@ -422,9 +418,15 @@ PROGRAM chemie
     IF( Targets/='' ) THEN
       CALL Read_Target_Spc(Target_Index,Target_Names,Targets)
       CALL Find_Elem_Circuits(S_HG,Target_Index)
-      WRITE(*,*) '  Continue? [y/n]'
-      READ(*,*) inpt
-      IF (inpt/='y') STOP
+
+      ! issa routines
+      CALL ISSA_nue(BAT,Cyclic_Set,ReactionSystem)
+
+
+      !WRITE(*,*) '  Continue? [y/n]'
+      !READ(*,*) inpt
+      !IF (inpt/='y') STOP
+      STOP ' main '
     END IF
     
     !STOP ' kreise gefunden '

@@ -376,10 +376,10 @@
     SUBROUTINE ComputeRateConstant(k,T,Time,chi,mAir,Conc,Meff)
       USE fparser
 
-      REAL(dp), INTENT(OUT) :: k(neq)
-      REAL(dp), INTENT(IN) :: Time, mAir, chi(:)
-      REAL(dp), INTENT(IN) :: T(:)
-      REAL(dp), INTENT(IN) :: Conc(:)
+      REAL(dp), INTENT(OUT)   :: k(neq)
+      REAL(dp), INTENT(IN)    :: Time, mAir, chi(:)
+      REAL(dp), INTENT(IN)    :: T(:)
+      REAL(dp), INTENT(IN)    :: Conc(:)
       REAL(dp), INTENT(INOUT) :: Meff(neq)
 
       REAL(dp) :: k_DC(nr_DCONST,2), k_T1(nr_DTEMP,2), k_T2(nr_DTEMP2,2), k_T3(nr_DTEMP3,2)
@@ -1005,15 +1005,15 @@
       !
       INTEGER :: i
       !
-      TempArr(1) = Temperature                ! T
+      TempArr(1) = Temperature                 ! T
       DO i=2,5
-        TempArr(i) = TempArr(i-1)*Temperature   ! T^2 ... T^5
+        TempArr(i) = TempArr(i-1)*Temperature  ! T^2 ... T^5
       END DO
       TempArr(6)  = ONE / Temperature          ! 1/T
       TempArr(7)  = ONE / TempArr(2)           ! 1/T^2
       TempArr(8)  = LOG(Temperature)           ! ln(T)
-      TempArr(9)  = SQRT(Temperature)           ! ln(T)
-      TempArr(10) = ONE / TempArr(9)
+      TempArr(9)  = SQRT(Temperature)          ! sqrt(T)
+      TempArr(10) = ONE / TempArr(9)           ! 1/sqrt(T)
     END FUNCTION UpdateTempArray
     !
     !

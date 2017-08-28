@@ -44,19 +44,19 @@ MODULE mo_IO
       WRITE(*,*)   '     ODE solver:            ', ODEsolver
       IF (ODEsolver/='LSODE') THEN
         IF (solveLA=='cl') THEN 
-          WRITE(*,*)   '     Linear Algebra:        classic'
+          WRITE(*,*)   '     Linear Algebra:        Classic'
         ELSE
-          WRITE(*,*)   '     Linear Algebra:        extended'
+          WRITE(*,*)   '     Linear Algebra:        Extended'
         END IF
         IF (Error_Est==2) THEN
-          WRITE(*,*)   '     Error Estimation:      euklid norm'
+          WRITE(*,*)   '     Error Estimation:      Euklid Norm'
         ELSE
-          WRITE(*,*)   '     Error Estimation:      maximum norm'
+          WRITE(*,*)   '     Error Estimation:      Maximum Norm'
         END IF
         IF (OrderingStrategie==8) THEN
-          WRITE(*,*)   '     Solve linear Systems:  sparse LU, Markowitz ordering scheme'
+          WRITE(*,*)   '     Solve Linear Systems:  Sparse LU, Markowitz Ordering Algorithm'
         ELSE 
-          WRITE(*,*)   '     Solve linear Systems:  MUMPS, ordering stragegie:  ',OrderingStrategie 
+          WRITE(*,*)   '     Solve Linear Systems:  MUMPS, Ordering Stragegie:  ',OrderingStrategie 
         END IF
       END IF
       WRITE(*,*)   ''

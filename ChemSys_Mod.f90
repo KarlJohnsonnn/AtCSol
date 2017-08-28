@@ -22,14 +22,15 @@ MODULE Chemsys_Mod
   !
   INTEGER, PARAMETER :: LenLine=400
   INTEGER, PARAMETER :: LenName=100
+  INTEGER, PARAMETER :: LenType=20
   !
   INTEGER, PARAMETER ::  maxLENinActDuct=9
   ! 
   TYPE Duct_T
     CHARACTER(LenName) :: Species=''
-    CHARACTER(20)      :: Type
+    CHARACTER(LenType) :: Type
     REAL(dp)           :: Koeff
-    INTEGER            :: iVariables = 0
+    INTEGER            :: iSpecies=0
   END TYPE Duct_T
 
   TYPE Special_T
@@ -42,7 +43,7 @@ MODULE Chemsys_Mod
   !
   ! LIST FORM
   TYPE Reaction_T
-    CHARACTER(20)      :: Type, TypeConstant
+    CHARACTER(LenType) :: Type, TypeConstant
     CHARACTER(LenName) :: Comment
     CHARACTER(LenLine) :: Line1, Line2, Line3, Line4
     CHARACTER(LenName) :: Factor
@@ -56,7 +57,7 @@ MODULE Chemsys_Mod
   !
   ! ARRAY FORM
   TYPE ReactionStruct_T
-    CHARACTER(20)       :: Type,  TypeConstant
+    CHARACTER(LenType)  :: Type,  TypeConstant
     CHARACTER(LenLine)  :: Line1='' , Line2='' , Line3='', Line4=''
     LOGICAL             :: bR = .FALSE. , brX = .FALSE. 
     CHARACTER(LenName)  :: Factor = ''
@@ -71,9 +72,9 @@ MODULE Chemsys_Mod
     INTEGER                     :: nInActEd = 0, nInActPro = 0, nActEd = 0, nActPro = 0
     INTEGER                     :: nConst = 0
     INTEGER                     :: HenrySpc = 0
-    LOGICAL                     :: TB = .FALSE. , TBextra=.FALSE.
-    INTEGER, ALLOCATABLE        :: TBidx(:)
-    CHARACTER(100), ALLOCATABLE :: TBspc(:)
+    LOGICAL                         :: TB = .FALSE. , TBextra=.FALSE.
+    INTEGER, ALLOCATABLE            :: TBidx(:)
+    CHARACTER(LenName), ALLOCATABLE :: TBspc(:)
     REAL(dp), ALLOCATABLE       :: TBalpha(:)
     CHARACTER(LenName), ALLOCATABLE :: InActEductSpc(:), InActProductSpc(:)
   END TYPE ReactionStruct_T
@@ -213,8 +214,8 @@ MODULE Chemsys_Mod
   SUBROUTINE ReadSpecies(Out)
     LOGICAL :: Out
     !
-    CHARACTER(100) :: Species
-    CHARACTER(20) :: Type
+    CHARACTER(LenName) :: Species
+    CHARACTER(LenType) :: Type
     INTEGER :: Pos
 
     READ(InputUnit,'(a100)',END=1) Species
@@ -791,10 +792,8 @@ MODULE Chemsys_Mod
       IF (ReactionSystem(iR)%Factor /= '') WRITE(Unit,*) 'FACTOR:  ',ReactionSystem(iR)%Factor
 
       SELECT CASE (ReactionSystem(iR)%Factor)
-        CASE ('$RO2')
-          hasRO2  = .TRUE.
-        CASE ('$RO2aq')
-          hasRO2aq = .TRUE.
+        CASE ('$RO2');   hasRO2   = .TRUE.
+        CASE ('$RO2aq'); hasRO2aq = .TRUE.
       END SELECT
       
       IF (PRESENT(CK)) WRITE(Unit,*) 'EXTRA1:  ',ADJUSTL(TRIM(ReactionSystem(iR)%Line2))
@@ -975,9 +974,8 @@ MODULE Chemsys_Mod
     !
     ! this is for mass transfer (accom , diffus term)
     ALLOCATE( henry_diff(nspc+ns_KAT), henry_accom(nspc+ns_KAT) )
-    henry_diff = ZERO;    henry_accom = ZERO
-    henry_diff(1:ns_GAS)  = 5.0e-6_dp
-    henry_accom(1:ns_GAS) = 5.0e-5_dp
+    henry_diff  = ZERO;   henry_diff(1:ns_GAS)  = 5.0e-6_dp
+    henry_accom = ZERO;   henry_accom(1:ns_GAS) = 5.0e-5_dp
     !
     !
     !=========================================================================
@@ -1104,7 +1102,7 @@ MODULE Chemsys_Mod
           Charge(iSpc) = Charge(iSpc) + 1
           i = i + iPos
         END DO
-        i=1
+        i = 1
         DO ! loop for anions
           iPos = INDEX(string(i:),'m')
           IF ( iPos <= 0 )  EXIT 
@@ -1281,9 +1279,8 @@ MODULE Chemsys_Mod
       &              Name1=SpeciesName,               &
       &              R1=c1)
 
-      ALLOCATE(RO2(INT(c1)))
-      RO2 = 0 
-      i   = 0
+      ALLOCATE(RO2(INT(c1)));  RO2 = 0 
+      i = 0
       DO
         CALL LineFile( Back, Start1='BEGIN_DATARO2',  &
         &              End='END_DATARO2',             &
@@ -1322,7 +1319,7 @@ MODULE Chemsys_Mod
         &              Name1=SpeciesName)
         IF (Back) EXIT
         IF (PositionSpeciesALL(SpeciesName)>0) THEN
-          i=i+1
+          i = i + 1
           RO2aq(i)=PositionSpeciesAll(SpeciesName)
         END IF
       END DO
@@ -1427,8 +1424,8 @@ MODULE Chemsys_Mod
     DO
       CALL LineFile( Back,                &
       &              Start1='BEGIN_DIAG', &
-      &              End='END_DIAG',      &
-      &              Name1=SpeciesName    )
+      &              End   ='END_DIAG',   &
+      &              Name1 =SpeciesName   )
       IF (Back)   EXIT
       !
       IF ( ADJUSTL(SpeciesName(1:1)) /= '#' .AND. &
@@ -1580,8 +1577,8 @@ MODULE Chemsys_Mod
     &              R1=c1                 )
     !
     ntFrac = INT(c1)
-    ALLOCATE( Fractions%Radius(ntFrac)   , Fractions%Number(ntFrac)    &
-    &       , Fractions%Density(ntFrac)  , Fractions%wetRadius(ntFrac) ) 
+    ALLOCATE( Fractions%Radius(ntFrac)  , Fractions%Number(ntFrac)    &
+    &       , Fractions%Density(ntFrac) , Fractions%wetRadius(ntFrac) ) 
     !
     LWC = pseudoLWC(tAnf)
     cnt = 0
@@ -1619,16 +1616,17 @@ MODULE Chemsys_Mod
     LOGICAL :: Back
     !
     CALL OpenIniFile(FileName)
-    CALL LineFile( Back, Start1='BEGIN_DATARO2',    &
-    &              End='END_DATARO2',               &
-    &              Name1=ro2d,                      &
-    &              R1=c1)
+    CALL LineFile( Back,                   &
+    &              Start1='BEGIN_DATARO2', &
+    &              End   ='END_DATARO2',   &
+    &              Name1 =ro2d, R1=c1      )
     !
     i=0
     DO
-      CALL LineFile( Back, Start1='BEGIN_DATARO2',  &
-      &              End='END_DATARO2',             &
-      &              Name1=SpeciesName)
+      CALL LineFile( Back,                   &
+      &              Start1='BEGIN_DATARO2', &
+      &              End   ='END_DATARO2',   &
+      &              Name1 =SpeciesName      )
       IF (Back) EXIT
       !
       IF (PositionSpecies(SpeciesName)>0) i=i+1
@@ -2617,7 +2615,7 @@ MODULE Chemsys_Mod
           ReacStruct(i)%Educt(j)%Species  = Current%Educt(j)%Species
           ReacStruct(i)%Educt(j)%Type     = Current%Educt(j)%Type
           ReacStruct(i)%Educt(j)%Koeff    = Current%Educt(j)%Koeff
-          ReacStruct(i)%Educt(j)%iVariables = PositionSpeciesAll(Current%Educt(j)%Species)
+          ReacStruct(i)%Educt(j)%iSpecies = PositionSpeciesAll(Current%Educt(j)%Species)
         END DO
       
         DO j = 1 , ReacStruct(i)%nActPro
@@ -2625,7 +2623,7 @@ MODULE Chemsys_Mod
           ReacStruct(i)%Product(j)%Species  = Current%Product(j)%Species
           ReacStruct(i)%Product(j)%Type     = Current%Product(j)%Type
           ReacStruct(i)%Product(j)%Koeff    = Current%Product(j)%Koeff
-          ReacStruct(i)%Product(j)%iVariables = PositionSpeciesAll(Current%Product(j)%Species)
+          ReacStruct(i)%Product(j)%iSpecies = PositionSpeciesAll(Current%Product(j)%Species)
         END DO
         
         IF ( ReacStruct(i)%TypeConstant == 'SPECIAL' ) THEN
@@ -2714,13 +2712,13 @@ MODULE Chemsys_Mod
               ReacStruct(i)%Educt(j)%Species  = Current%Product(j)%Species
               ReacStruct(i)%Educt(j)%Type     = Current%Product(j)%Type
               ReacStruct(i)%Educt(j)%Koeff    = Current%Product(j)%Koeff
-              ReacStruct(i)%Educt(j)%iVariables = PositionSpeciesAll(Current%Product(j)%Species)
+              ReacStruct(i)%Educt(j)%iSpecies = PositionSpeciesAll(Current%Product(j)%Species)
             END DO
             DO j=1,ReacStruct(i)%nActPro
               ReacStruct(i)%Product(j)%Species  = Current%Educt(j)%Species
               ReacStruct(i)%Product(j)%Type     = Current%Educt(j)%Type
               ReacStruct(i)%Product(j)%Koeff    = Current%Educt(j)%Koeff
-              ReacStruct(i)%Product(j)%iVariables = PositionSpeciesAll(Current%Educt(j)%Species)
+              ReacStruct(i)%Product(j)%iSpecies = PositionSpeciesAll(Current%Educt(j)%Species)
             END DO
             
             IF ( ReacStruct(i)%TypeConstant == 'SPECIAL' ) THEN

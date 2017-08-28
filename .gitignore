@@ -1,6 +1,6 @@
 LIB/*
 LIB_D/*
-NetCDF/*.nc
+NetCDF/*
 MATRICES/*
 .DS_Store
 CHEMIE
@@ -14,5 +14,6 @@ list*
 *.mod
 REACTION_PATHS/*
 *.txt
-*.exe*
-
+chemie.exe
+chemie_dbg.exe
+M_DEF_*
