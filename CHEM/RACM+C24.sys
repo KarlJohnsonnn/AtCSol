@@ -2311,12 +2311,12 @@ TEMP3:  A: 1.05e6  B: 0.0
  
 CLASS: AQUA  
 SO5m + C2O4mm = HSO5m  + C2O4m - 1.0 Hp 
-TEMP3:  A. 1e4  B: 0.0 
+TEMP3:  A: 1e4  B: 0.0 
  
 CLASS: AQUA  
 C2O4m + aO2 = aCO2 + O2m + aCO2 
 TEMP3:   A: 2e9   B: 0.0 
- 
+
 CLASS: AQUA  
 aHO + aCHOH2CHOH2 = [aH2O] + aCOH2CHOH2 
 TEMP3:  A:  1.1e9 B: -1516.0 

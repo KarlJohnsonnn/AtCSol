@@ -19,7 +19,7 @@
 &                    , MWeights          & ! molecular weights of species 
 &                    , NetcdfFileName    & ! NetCDF output file
 &                    , ODEsolver         & ! Method for Rosenbrock Integration
-&                    , Targets             ! file for reductions analysis (target species)
+&                    , TargetFile          ! file for reductions analysis (target species)
 !
 !--- Unit Numbers
       INTEGER :: MetUnit           & ! Meteorology file
@@ -47,6 +47,17 @@
 &               ,Error_Est         & ! error estimation 1 = inf norm  , 2 = euklid norm
 &               ,ErrorLog            ! if = 0 do not print error log 
     
+!--- Output of reaction fluxes
+      INTEGER,          PARAMETER :: fluxmeta_nr   = 1978
+      INTEGER,          PARAMETER :: flux_nr       = 1979
+      CHARACTER(LEN=*), PARAMETER :: fluxmeta_name = 'fluxmeta.dat'
+      CHARACTER(LEN=*), PARAMETER :: flux_name     = 'fluxes.dat'
+      REAL(dp)                    :: StpFlux
+      INTEGER                     :: iStpFlux
+
+      INTEGER,          PARAMETER :: newReac_nr    = 1977
+      CHARACTER(LEN=*), PARAMETER :: newReac_name  = 'BigRates.dat'
+      INTEGER, ALLOCATABLE        :: newReac_List(:)
 !-----------------------------------------------------------------
 !---  Times
 !-----------------------------------------------------------------
@@ -85,6 +96,7 @@
       REAL(dp) :: TimeSymbolic=0.0d0
       REAL(dp) :: TimeNetCDF=0.0d0
       REAL(dp) :: TimeErrCalc=0.0d0
+      REAL(dp) :: TimeFluxWrite=0.0d0
   
       REAL(dp) :: TimeIntegrationA=0.0d0
       REAL(dp) :: TimeIntegrationE=0.0d0
@@ -97,6 +109,20 @@
       REAL(dp) :: TimeNetCDFA=0.0d0
       REAL(dp) :: TimeRhsCalc=0.0d0
 !
+
+!--- type for some statistics
+      TYPE Out
+        REAL(dp), ALLOCATABLE :: y(:)    ! y-vector at Tend
+        INTEGER :: nsteps     = 0              ! # succ. steps
+        INTEGER :: nfailed    = 0              ! # failed steps
+        INTEGER :: nRateEvals = 0              ! # Rate evaluation
+        INTEGER :: npds       = 0              ! # Jacobian evaluation
+        INTEGER :: ndecomps   = 0              ! # LU factorisation
+        INTEGER :: nsolves    = 0              ! # solved lin algebra
+        REAL(dp) :: Ttimestep = 0.0d0  ! mean Time for one ROW step
+      END TYPE Out
+    
+      TYPE(Out) :: Output
 !-----------------------------------------------------------------
 !---  Numerics
 !-----------------------------------------------------------------
@@ -145,6 +171,7 @@
 &                        , Pi34       = 3.0d0/4.0d0/Pi     & 
 &                        , eps        = EPSILON(1.0d0)     &  ! such that 1+eps>1 with working precision
 &                        , small      = TINY(1.0d0)        &  ! smallest pos. real value
+&                        , big        = HUGE(1.0d0)        &  ! largest pos. real value
 &                        , epsY       = 1.0d-7             &
 &                        , SI_am      = 1.66053892173d-27  &  ! Atomic mass unit  [kg]  
 &                        , SI_na      = 6.0221412927d+23   &  ! Avogadro's number [1/mol]
@@ -249,6 +276,11 @@
     INTEGER, ALLOCATABLE ::  IndOutImp(:,:)     ! start and end fraction indices
     REAL(dp), ALLOCATABLE ::  OutImp(:,:)        ! boundary radii of impactor stages
 !
+!-- input chemical reaction mechnism
+    INTEGER, PARAMETER :: LenLine=400
+    INTEGER, PARAMETER :: LenName=100
+    INTEGER, PARAMETER :: LenType=20
+
 !-- logicals for classic or extended matrix case
     LOGICAL :: CLASSIC  = .FALSE.
     LOGICAL :: EXTENDED = .FALSE.
@@ -265,8 +297,10 @@
 
 !-- Type declaration 
     TYPE List
-      INTEGER, ALLOCATABLE :: List(:)
-      INTEGER              :: len
+      INTEGER,   ALLOCATABLE  :: List(:)
+      Real(dp),  ALLOCATABLE  :: ListE(:)
+      Real(dp),  ALLOCATABLE  :: ListP(:)
+      INTEGER                :: len
     END TYPE List
 
     TYPE Chain
@@ -275,7 +309,22 @@
       Type(List),     ALLOCATABLE :: rIdx(:)
     END TYPE Chain
 
+    TYPE LUMP_SPC
+      CHARACTER(LenName)              :: SuperSpc
+      CHARACTER(LenName), ALLOCATABLE :: cSingleSpc(:)
+      INTEGER,            ALLOCATABLE :: iSingleSpc(:)
+    END TYPE LUMP_SPC
 
+    TYPE(LUMP_SPC), ALLOCATABLE :: LUMP(:)
+
+    TYPE FAMILY_SPC
+      CHARACTER(LenName), ALLOCATABLE :: SpcName(:)
+      INTEGER,            ALLOCATABLE :: SpcIndex(:)
+    END TYPE FAMILY_SPC
+   
+    TYPE(FAMILY_SPC), ALLOCATABLE :: FAM(:)
+    INTEGER,          ALLOCATABLE :: allFAM(:)
+    INTEGER                       :: nallFAM
 
  END MODULE mo_control
 

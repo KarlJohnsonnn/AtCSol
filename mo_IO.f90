@@ -1,14 +1,9 @@
 MODULE mo_IO
-  USE Kind_Mod
-  USE mo_MPI
-  USE mo_control
-  USE Rosenbrock_Mod
-  USE Factorisation_Mod
-  !
-  !
+  IMPLICIT NONE
   !
   CONTAINS
   SUBROUTINE Logo()
+    USE mo_MPI
     IF (MPI_ID==0) THEN
       WRITE(*,*) ''
       WRITE(*,*) '===================================================================================='
@@ -30,6 +25,10 @@ MODULE mo_IO
   !
   !
   SUBROUTINE Print_Run_Param()
+    USE mo_MPI
+    USE mo_control
+    USE mo_reac
+
     IF (MPI_ID==0) THEN
       WRITE(*,*)   ''
       WRITE(*,*)   '  Run - Paramter:'
@@ -76,6 +75,9 @@ MODULE mo_IO
   !
   !
   SUBROUTINE Output_Statistics(TRead,TSymb,TFac,TSolve,TRates,TJac,TInte,TAll,TSend,TNcdf, TErr, TRhs)
+    USE Kind_Mod
+    USE mo_MPI
+    USE mo_control
     !
     REAL(dp) :: TRead,TSymb,TFac,TSolve,TRates,TJac,TInte,TAll,TSend, TNcdf, TErr, TRhs
     REAL(dp) :: maxTRead,maxTSymb,maxTFac,maxTSolve,maxTRates,maxTJac &
@@ -141,6 +143,8 @@ MODULE mo_IO
   !
   !
   SUBROUTINE PrintHeadSimul(ChemFile) 
+    USE mo_MPI
+    USE mo_control
     CHARACTER(*) ::ChemFile
     INTEGER :: Unit=90
     !---- save data:
@@ -165,6 +169,8 @@ MODULE mo_IO
   !
   !
   SUBROUTINE SaveTimeStp(Unit,nsteps,tnew,h,y)
+    USE Kind_Mod
+    USE mo_MPI
     INTEGER :: Unit
     INTEGER :: nsteps
     REAL(dp) :: tnew, h
@@ -178,6 +184,10 @@ MODULE mo_IO
   !
   !
   SUBROUTINE SaveMatricies(aMat,bMat,cMat,dMat,eMat,fName)
+    USE mo_MPI
+    USE Factorisation_Mod
+    USE ChemSys_Mod, ONLY: CSR_Matrix_T
+
     TYPE(CSR_Matrix_T)   :: aMat,bMat,cMat,dMat,eMat
     CHARACTER(*)         :: fName
     !
@@ -234,14 +244,8 @@ MODULE mo_IO
   END SUBROUTINE SaveMatricies
   !
   !
-  SUBROUTINE CloseSimulFile(Unit)
-    INTEGER :: Unit
-    !
-    CLOSE(90)
-  END SUBROUTINE CloseSimulFile
-  !
-  !
   SUBROUTINE DebugPrint1(yvec,rvec,stepsize,time)
+    USE Kind_MOd
     REAL(dp) :: yvec(:),rvec(:)
     REAL(dp) :: stepsize, time
     !
@@ -255,6 +259,7 @@ MODULE mo_IO
   !
   SUBROUTINE CSR_to_GephiGraph(Matrix,Vnames,FileName)
     USE csv_file
+    USE Sparse_Mod, ONLY: CSR_Matrix_T
 
     TYPE(CSR_Matrix_T) :: Matrix
     CHARACTER(*)       :: FileName
@@ -289,6 +294,7 @@ MODULE mo_IO
 
   SUBROUTINE  Matrix_Statistics(A,B,BA,BAT,S_HG,Jac,M,LUM)
     
+    USE Sparse_Mod, ONLY: CSR_Matrix_T
     TYPE(CSR_Matrix_T) :: A,B,BA,BAT,S_HG,Jac,M,LUM
 
     298 format(A18,3(I12,A2))
@@ -308,7 +314,10 @@ MODULE mo_IO
   !
   !
   SUBROUTINE WriteAnalysisFile(RS,species_names,mixing_ratios,IntRate)
-    USE mo_reac, ONLY: neq, nspc
+    USE Kind_Mod
+    USE mo_control
+    USE mo_reac
+    USE ChemSys_Mod, ONLY: ReactionStruct_T
 
     TYPE(ReactionStruct_T), INTENT(IN) :: RS(:)
     CHARACTER(*),           INTENT(IN) :: species_names(:)
@@ -375,5 +384,108 @@ MODULE mo_IO
     WRITE(*,*) '  Analysis File written: pathway_analysis.txt' 
     WRITE(*,*)
   END SUBROUTINE WriteAnalysisFile
+
+  SUBROUTINE StreamWriteFluxes(Rate,t,h)
+    USE Kind_Mod
+    USE mo_control, ONLY: flux_nr, flux_name, fluxmeta_nr, fluxmeta_name, iStpFlux
+    REAL(dp) :: Rate(:)
+    REAL(dp) :: t , h
+
+    INTEGER :: io_stat, io_pos
+    CHARACTER(100) :: io_msg
+
+    OPEN(unit=flux_nr,      file=flux_name,  status='old',   action='write', &
+    &    position='append', access='stream', iostat=io_stat, iomsg=io_msg    )
+    CALL file_err(flux_name,io_stat,io_msg)
+    WRITE(flux_nr) Rate,t,h
+    INQUIRE(flux_nr, POS=io_pos)
+    CLOSE(flux_nr)
+
+    OPEN(unit=fluxmeta_nr, file=fluxmeta_name, status='old', action='write', position='append')
+    WRITE(fluxmeta_nr,*) iStpFlux, io_pos 
+    CLOSE(fluxmeta_nr)
+  END SUBROUTINE StreamWriteFluxes
+
+
+  SUBROUTINE SequentialWriteFluxes(Rate,t,h)
+    USE Kind_Mod
+    USE mo_control, ONLY: flux_nr, flux_name, fluxmeta_nr, fluxmeta_name, iStpFlux
+    REAL(dp) :: Rate(:)
+    REAL(dp) :: t , h
+
+    INTEGER :: io_stat, io_pos
+    CHARACTER(100) :: io_msg
+
+    OPEN(unit=flux_nr,      file=flux_name,  status='old',   action='write', &
+    &    position='append', access='sequential', iostat=io_stat, iomsg=io_msg )
+    CALL file_err(flux_name,io_stat,io_msg)
+    WRITE(flux_nr,'(*(1X,E16.10))') Rate, t, h
+    CLOSE(flux_nr)
+
+  END SUBROUTINE SequentialWriteFluxes
+
+
+  SUBROUTINE file_err(filename,io_stat,io_msg)
+    CHARACTER(Len=*), INTENT(in) :: filename
+    INTEGER         , INTENT(in) :: io_stat
+    CHARACTER(Len=*), INTENT(in), OPTIONAL :: io_msg
+    IF (io_stat /= 0) THEN
+      WRITE(*,"(79('!'))")
+      WRITE(*,'(A,I0)')    'ERROR operating on file:  '//TRIM(filename)//'  with io status:  ',io_stat 
+      IF (PRESENT(io_msg)) WRITE(*,'(A)')       'Message:  '//TRIM(io_msg)
+      WRITE(*,"(79('!'))")
+      WRITE(*,*)'Exit ...'
+      STOP
+    END IF
+  END SUBROUTINE file_err
+
+  SUBROUTINE SequentialReadNewReactionList(UnitNr)
+    USE mo_control
+    INTEGER,      INTENT(IN) :: UnitNr
+    INTEGER :: i, io_err, nLines
+    CHARACTER(LenLine) :: Line
+
+    nLines = 0
+    DO 
+      READ(UnitNr,'(A)',IOSTAT=io_err) Line
+      nLines = nLines + 1
+      IF (io_err>0.OR.io_err<0) EXIT
+    END DO
+    REWIND(UnitNr)
+    nLines = nLines - 1
+    
+    !write(*,*) ' Number of Reactions = ', nLines
+    ALLOCATE(newReac_List(nLines))
+    DO i=1,nLines
+      READ(UnitNr,*,IOSTAT=io_err) newReac_List(i)
+      IF (io_err>0.OR.io_err<0) WRITE(*,*)  ' ERROR: ',io_err
+    END DO
+    CLOSE(UnitNr)
+  END SUBROUTINE SequentialReadNewReactionList
+
+
+  SUBROUTINE OpenFile_wStream(UnitNr,FileName)
+    INTEGER,      INTENT(IN) :: UnitNr
+    CHARACTER(*), INTENT(IN) :: FileName
+    INTEGER :: io_stat
+    OPEN(unit=UnitNr, file=FileName, status='replace', action='write', access='stream', iostat=io_stat)
+    CALL file_err(FileName,io_stat)
+  END SUBROUTINE OpenFile_wStream
+
+  SUBROUTINE OpenFile_wSeq(UnitNr,FileName)
+    INTEGER,      INTENT(IN) :: UnitNr
+    CHARACTER(*), INTENT(IN) :: FileName
+    INTEGER :: io_stat
+    OPEN(unit=UnitNr, file=FileName, status='replace', action='write', access='sequential', iostat=io_stat)
+    CALL file_err(FileName,io_stat)
+  END SUBROUTINE OpenFile_wSeq
+
+  SUBROUTINE OpenFile_rSeq(UnitNr,FileName)
+    INTEGER,      INTENT(IN) :: UnitNr
+    CHARACTER(*), INTENT(IN) :: FileName
+    INTEGER :: io_stat
+    OPEN(unit=UnitNr, file=FileName, status='old', action='read', access='sequential', iostat=io_stat)
+    CALL file_err(FileName,io_stat)
+  END SUBROUTINE OpenFile_rSeq
 END MODULE mo_IO
 

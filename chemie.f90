@@ -20,7 +20,6 @@ PROGRAM chemie
   USE mo_ckinput
   USE NetCDF_Mod
   USE Cycles_Mod
-  USE mo_reduction
   USE fparser
   USE issa
   IMPLICIT NONE
@@ -235,6 +234,11 @@ PROGRAM chemie
     CALL InputChemicalData( InitFile , DataFile , MetFile )
 
     !-----------------------------------------------------------------------
+    ! --- Writing a new sys-File with less reactions
+    !CALL OpenFile_rSeq(newReac_nr,newReac_name)
+    !CALL SequentialReadNewReactionList(newReac_nr)
+    !CALL Print_SysFile(ReactionSystem,newReac_List)
+    !Stop ' New System written.'
   END IF
   CLOSE(89)
 
@@ -244,6 +248,16 @@ PROGRAM chemie
   !-----------------------------------------------------------------------
   ! --- Read species for diagnose (print species concs to NetCDF file)
   CALL Read_Diag( OutNetcdfSpc , OutNetcdfPhase , InitFile )
+  !-----------------------------------------------------------------------
+
+  !-----------------------------------------------------------------------
+  ! --- Read species groups in order to combine them (Species Lumping)
+  
+  IF( TargetFile/='' ) THEN
+    CALL Read_Target_Spc(S_imp,TargetFile)
+    CALL Read_Spc_Lumping(TargetFile)
+    CALL Read_Spc_Families(TargetFile)
+  END IF
   !-----------------------------------------------------------------------
 
   !-----------------------------------------------------------------------
@@ -415,18 +429,19 @@ PROGRAM chemie
 
     CALL TransposeSparse( S_HG_transp , S_HG )
 
-    IF( Targets/='' ) THEN
-      CALL Read_Target_Spc(Target_Index,Target_Names,Targets)
-      CALL Find_Elem_Circuits(S_HG,Target_Index)
+    IF( TargetFile/='' ) THEN
+
+      CALL Find_Elem_Circuits(S_HG,S_imp)
 
       ! issa routines
-      CALL ISSA_nue(BAT,Cyclic_Set,ReactionSystem)
-
+      CALL ISSA_nue(BA,Cyclic_Set,ReactionSystem)
 
       !WRITE(*,*) '  Continue? [y/n]'
       !READ(*,*) inpt
       !IF (inpt/='y') STOP
-      STOP ' main '
+      WRITE(*,'(A28,*(A,2X))') '   Important Species are :: ', (TRIM(y_name(S_imp(j))),j=1,SIZE(S_imp))
+      WRITE(*,*) 
+      !STOP ' main '
     END IF
     
     !STOP ' kreise gefunden '
@@ -472,15 +487,15 @@ PROGRAM chemie
       CALL InitMumps( MiterFact ) 
 
       IF ( MatrixPrint ) THEN
-        CALL CSRToSpRowColD   ( temp_LU_Dec , Miter ) 
-        CALL PermuToInvPer    ( InvPermu   , Mumps_Par%SYM_PERM )
-        CALL SymbLU_SpRowColD ( temp_LU_Dec , InvPermu )        
-        CALL RowColDToCSR     ( LU_Miter   , temp_LU_Dec , nspc , neq ) 
+        temp_LU_Dec = CSR_to_SpRowColD(Miter)
+        CALL PermuToInvPer   ( InvPermu   , Mumps_Par%SYM_PERM )
+        CALL SymbLU_SpRowColD( temp_LU_Dec , InvPermu )        
+        LU_Miter = RowColD_to_CSR( temp_LU_Dec , nspc , neq ) 
       END IF
 
     ELSE IF ( useSparseLU ) THEN
       ! Permutation given by Markowitz Ordering strategie
-      CALL CSRToSpRowColD( temp_LU_Dec , Miter) 
+      temp_LU_Dec = CSR_to_SpRowColD(Miter) 
 
       IF ( OrderingStrategie == 8 ) THEN
         CALL SymbLU_SpRowColD_M ( temp_LU_Dec )        
@@ -499,7 +514,7 @@ PROGRAM chemie
       END IF
 
       ! converting back to csr format
-      CALL RowColDToCSR( LU_Miter , temp_LU_Dec , nspc , neq )
+      LU_Miter = RowColD_to_CSR( temp_LU_Dec , nspc , neq )
 
       ! Get the permutation vector LU_Perm and map values of Miter
       ! to the permuted LU matrix
@@ -517,12 +532,13 @@ PROGRAM chemie
       !  CALL WriteSparseMatrix(Miter,   'MATRICES/Miter_'//TRIM(BSP), neq, nspc)
       !  CALL WriteSparseMatrix(LU_Miter,'MATRICES/LU_Miter_'//TRIM(BSP), neq, nspc)
       !  !STOP 'after writesparsematrix'
+      
       !END IF
       WRITE(*,*) 'done'
       WRITE(*,*) ' '
-      WRITE(*,*) '  Matrix Statistics: '
-      WRITE(*,*) ' '
-      CALL Matrix_Statistics(A,B,BA,BAT,S_HG,tmpJacCC,Miter,LU_Miter)
+      !WRITE(*,*) '  Matrix Statistics: '
+      !WRITE(*,*) ' '
+      !CALL Matrix_Statistics(A,B,BA,BAT,S_HG,tmpJacCC,Miter,LU_Miter)
       !STOP 'after writesparsematrix'
     END IF
 
@@ -553,6 +569,16 @@ PROGRAM chemie
   mixing_ratios_spc = ZERO;  integrated_rates  = ZERO
   mixing_ratios_spc(:,1) = InitValAct
   
+
+  ! open file to save the fluxes 
+  StpFlux  = StpNetCDF
+  iStpFlux = 1
+  !CALL OpenFile_wStream(flux_nr,flux_name);       CLOSE(flux_nr)
+  !CALL OpenFile_wSeq(fluxmeta_nr,fluxmeta_name);  CLOSE(fluxmeta_nr)
+  CALL OpenFile_wSeq(flux_nr,flux_name)
+  WRITE(flux_nr,*) neq, nspc
+  CLOSE(flux_nr)
+
   !-----------------------------------------------------------------------
   ! --- Start the integration routine 
   !-----------------------------------------------------------------------
@@ -572,6 +598,9 @@ PROGRAM chemie
   &                     , TimeIntegrationE, Timer_Finish  , TimeRateSend  &
   &                     , TimeNetCDF      , TimeErrCalc   , TimeRhsCalc   )
   !---------------------------------------------------------------
+  WRITE(*,'(A,F8.3,A)') '  Timer flux writing      = ',TimeFluxWrite,' [sec]'
+  WRITE(*,'(A,I0,A)') '  Number of flux writings   = ',iStpFlux,' [-]'
+
 
 
   IF ( Lehmann ) THEN

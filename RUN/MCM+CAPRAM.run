@@ -6,11 +6,11 @@
   constLWC    = .false.
   Ladebalken  = 1
   ErrorLog    = 0
-  MatrixPrint = .true.
-  DebugPrint  = .false.
-  NetCdfPrint = .true. 
-  ChemKin     = .false.        ! input mechanism in ChemKin notation
-  Lehmann     = .false.
+  MatrixPrint = .T.
+  DebugPrint  = .F.
+  NetCdfPrint = .T. 
+  ChemKin     = .F.        ! input mechanism in ChemKin notation
+  Lehmann     = .F.
 /END
 &FILES
   SysFile  = 'CHEM/MCM32_CAPRAM40_full.sys'  
@@ -21,15 +21,16 @@
 /END
 &TIMES
   tAnf    = 0.0d0
-  !tEnd    = 84600.0d0
-  tEnd    = 259200.0d0
+  tEnd    = 84600.0d0
+  !tEnd    = 259200.0d0
   Dust    = 0.5d0
   idate   = 010621     
   rlat    = 45.d0     
   rlon    =  0.d0
   minStp  = 1.0d-30
   maxStp  = 200.d0
-  StpNetCDF = -1.0d0
+  !StpNetCDF = -1.0d0
+  StpNetCDF = 600.0d0
 /END
 &NUMERICS
   RtolROW  = 1.0d-3

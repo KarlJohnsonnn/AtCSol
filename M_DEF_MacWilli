@@ -2,8 +2,8 @@ OPTFREE =  -ffree-form -ffixed-line-length-none -ffree-line-length-none -fcoarra
 OPTFIX =  -ffixed-line-length-none -ffree-line-length-none
 
 #COMP1=EigeneProgramme
-#LINK = mpif90 
-LINK  = mpif90 $(OPTFREE) $(CPPFLAGS) $(LDFLAGS)
+LINK = mpif90 
+#LINK  = mpif90 $(OPTFREE) $(CPPFLAGS) $(LDFLAGS)
 F90  = mpif90 $(OPTFREE) $(CPPFLAGS) $(LDFLAGS)
 F90_F  = mpif90 $(OPTFIX) $(CPPFLAGS) $(LDFLAGS) 
 

@@ -1,23 +1,25 @@
  &SCENARIO
-  BSP = 'RACM+CAPRAM24'                   ! Name der NetCDF Output-Datei
+  BSP = 'RACM+CAPRAM24'            ! Name der NetCDF Output-Datei
   pHSet = 1                        ! Berechne pH Wert zu Beginn
   LWCLevelmax = 2.0d-8             ! minimaler LWC Wert [l/cm3]
   LWCLevelmin = 3.0d-4             ! maximaler LWC Wert [l/cm3]
   constLWC = .false.               ! true = konstanter LWC wert, false /= pseudo LWC funktion wird benutzt
   Ladebalken = 1                   ! 0 = kein ladebalken, 0 /= ladebalken aktiv
   ErrorLog = 0                     ! 0 = no error output, 0 /= error output direkt auf bildschirm
-  MatrixPrint = .true.            ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
-  DebugPrint  = .false.            ! DEBUGGING Rosenbrock 
-  NetCdfPrint = .false.             ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
-  ChemKin     = .false.            ! input mechanism in ChemKin notation
+  MatrixPrint = .t.                ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
+  DebugPrint  = .f.                ! DEBUGGING Rosenbrock 
+  NetCdfPrint = .t.                ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
+  ChemKin     = .f.                ! input mechanism in ChemKin notation
  /END
  &FILES
-  SysFile = 'CHEM/RACM+C24.sys'          ! .sys Datei (ohne .sys angeben!)
+  !SysFile = 'CHEM/RACM+C24.sys'          ! .sys Datei (ohne .sys angeben!)
+  SysFile = 'CHEM/RACM+C24_NEU.sys'          ! .sys Datei (ohne .sys angeben!)
   DataFile = 'DAT/Urban.dat'          ! .dat Datei (für RO2, RO2aqua Summen)
   InitFile = 'INI/Urban.ini'          ! .ini Datei (Anfangswerte gas/flüssig), Diagnose spc
   !InitFile = 'INI/Remote.ini'
-  !InitFile = 'INI/ocean.ini'
-  MetFile  = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)
+  !InitFile  = 'INI/ocean.ini'
+  MetFile    = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)
+  !TargetFile = 'TAR/RACM+C24.ctrl'   ! .met Datei (Meteorologie Datei)
  /END
  &TIMES
   tAnf      = 0.0d0          ! Startzeit Integration
@@ -28,7 +30,8 @@
   rlon      =  0.0d0         ! ---------''---------    (Längengrad)
   minStp    = 1.0d-30        ! minimale Schrittweite für Integration
   maxStp    = 50.0d0         ! maximale Schrittweite für Integration
-  StpNetCDF = -1.0d0         ! save after StpNetCDF seconds, if < 0.0d0 save every timestep 
+  !StpNetCDF = -1.0d0         ! save after StpNetCDF seconds, if < 0.0d0 save every timestep 
+  StpNetCDF = 600.0d0         ! save after StpNetCDF seconds, if < 0.0d0 save every timestep 
   nOutP     = 1000
 /END
  &NUMERICS
@@ -38,10 +41,8 @@
   Error_Est   = 2            ! Error estimation = 2 -> 2-norm, else maxnorm
   PI_StepSize = .false.      ! Gustafsson, Söderlind
   solveLA     = 'cl'         ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
-  ImpEuler    = 0            ! 0=kein impliziter Euler, 1=impliziter Euler (kein ROW!!)
   ODEsolver   = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
   !ODEsolver  = 'LSODE'     
-  Vectorized = .true.
  /END
  &ORDERING
   OrderingStrategie  = 8     ! 8=Markowitz(SparseLU) , 1,..,7=Mumps Orderings  

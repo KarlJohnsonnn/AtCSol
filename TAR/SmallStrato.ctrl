@@ -1,7 +1,6 @@
 # This file contains the control parameter for the reduction procedures
 
 TARGET_SPC
-  M
   NO
   NO2
   O
@@ -11,8 +10,7 @@ TARGET_SPC
 END_TARGET_SPC
 
 
-# One species family per line, seperated by blankspace
-# lumped species are put toghter by Name={Name1 Name2 ...}
 SPC_FAMILIES
+  NO NO2
+  O O1D O2 O3
 END_SPC_FAMILIES
-

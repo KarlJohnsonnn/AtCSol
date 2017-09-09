@@ -23,9 +23,9 @@ MODULE hashtbl
   INTEGER, PARAMETER :: tbl_size=50
 
   TYPE sllist
-     TYPE(sllist), POINTER :: child => NULL()
+     TYPE(sllist), POINTER  :: child => NULL()
      CHARACTER, ALLOCATABLE :: key(:)
-     INTEGER :: val=0
+     INTEGER                :: val=0
    CONTAINS
      PROCEDURE :: put  => put_sll
      PROCEDURE :: get  => get_sll
@@ -33,9 +33,9 @@ MODULE hashtbl
   END TYPE sllist
 
   TYPE hash_tbl_sll
-     TYPE(sllist), DIMENSION(:), ALLOCATABLE :: vec
-     INTEGER                                 :: vec_len = 0
-     LOGICAL                                 :: is_init = .FALSE.
+     TYPE(sllist), ALLOCATABLE :: vec(:)
+     INTEGER                   :: vec_len = 0
+     LOGICAL                   :: is_init = .FALSE.
    CONTAINS
      PROCEDURE :: init => init_hash_tbl_sll
      PROCEDURE :: put  => put_hash_tbl_sll
@@ -50,15 +50,15 @@ MODULE hashtbl
   CONTAINS
 
   RECURSIVE SUBROUTINE put_sll(list,key,val)
-    CLASS(sllist),    INTENT(inout) :: list
-    CHARACTER(len=*), INTENT(in)    :: key
-    INTEGER, INTENT(IN) :: val
-    INTEGER                         :: keylen
-    INTEGER :: i
-    CHARACTER :: keyVec(LEN(TRIM(key)))
+    CLASS(sllist), INTENT(inout) :: list
+    CHARACTER(*),  INTENT(in)    :: key
+    INTEGER,       INTENT(in)    :: val
+    INTEGER                      :: keylen
+    INTEGER   :: i
+    CHARACTER :: keyVec(LEN_TRIM(key))
 
-    keylen = LEN(TRIM(key))
-    FORALL (i=1:LEN(TRIM(key)))
+    keylen = LEN_TRIM(key)
+    FORALL (i=1:LEN_TRIM(key))
        keyVec(i) = key(i:i)
     END FORALL
     IF (ALLOCATED(list%key)) THEN
@@ -69,8 +69,7 @@ MODULE hashtbl
          list%val = val
        END IF
     ELSE
-       IF (.NOT. ALLOCATED(list%key)) &
-            ALLOCATE(list%key(keylen))
+       IF (.NOT. ALLOCATED(list%key)) ALLOCATE(list%key(keylen))
        list%key = keyVec
        list%val = val
     END IF
@@ -151,10 +150,10 @@ MODULE hashtbl
 
 
   SUBROUTINE get_hash_tbl_sll(tbl,key,val)
-    CLASS(hash_tbl_sll),           INTENT(in)    :: tbl
-    CHARACTER(len=*),              INTENT(in)    :: key
-    INTEGER, INTENT(out)   :: val
-    INTEGER                                      :: hash
+    CLASS(hash_tbl_sll), INTENT(in)  :: tbl
+    CHARACTER(len=*),    INTENT(in)  :: key
+    INTEGER,             INTENT(out) :: val
+    INTEGER                          :: hash
 
     hash = MOD(sum_string(key),tbl%vec_len)
     CALL tbl%vec(hash)%get(key=key,val=val)

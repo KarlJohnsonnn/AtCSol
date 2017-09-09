@@ -20,9 +20,6 @@ MODULE Chemsys_Mod
   !
   IMPLICIT NONE
   !
-  INTEGER, PARAMETER :: LenLine=400
-  INTEGER, PARAMETER :: LenName=100
-  INTEGER, PARAMETER :: LenType=20
   !
   INTEGER, PARAMETER ::  maxLENinActDuct=9
   ! 
@@ -111,7 +108,7 @@ MODULE Chemsys_Mod
   END TYPE FRACTION_T
 
   TYPE(FRACTION_T) :: Frac
- 
+
   
   TYPE(Reaction_T), POINTER   :: System
   TYPE(ListReaction_T), SAVE  :: ListRGas, ListRHenry, ListRAqua,        &
@@ -120,6 +117,7 @@ MODULE Chemsys_Mod
   !
   TYPE(hash_tbl_sll)          :: ListAqua, ListGas, ListSolid,           &
   &                              ListPartic, ListNonReac, ListAtoms
+  TYPE(hash_tbl_sll)          :: ListFamilies
   !
   TYPE(Species_T), ALLOCATABLE, TARGET :: ListAqua2(:), ListGas2(:),     &
   &                                       ListSolid2(:), ListPartic2(:), &
@@ -634,12 +632,15 @@ MODULE Chemsys_Mod
     WRITE(Unit,*) ''
   END SUBROUTINE PrintHeadReactions
   !
-  SUBROUTINE Print_SysFile(RS)
+  SUBROUTINE Print_SysFile(RS,IndexSet)
     TYPE(ReactionStruct_T), INTENT(IN) :: RS(:)
+    INTEGER, OPTIONAL, INTENT(IN)      :: IndexSet(:)
     
-    INTEGER :: i = 0
+    INTEGER :: i, j
+    
+    write(*,*) ' new systemfile = ',ADJUSTL(TRIM(SysFile))
    
-    OPEN(UNIT=989,FILE=ADJUSTL(TRIM(SysFile)),STATUS='UNKNOWN')
+    OPEN(UNIT=989,FILE=ADJUSTL(TRIM(SysFile))//'_NEU.sys',STATUS='UNKNOWN')
   
     WRITE(989,*) '# ================= '//TRIM(BSP)//'.sys ================='
     WRITE(989,*) '# = Please copy the data into your sys-file for ='
@@ -649,22 +650,40 @@ MODULE Chemsys_Mod
     WRITE(989,*) ''
     WRITE(989,*) 'UNIT GAS    0   #    Gas phase units     (0 = molec/cm3, 1 = mol/m3)'
     WRITE(989,*) 'UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)'
+    WRITE(989,*) 'UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)'
     WRITE(989,*) ''
     WRITE(989,*) '#  ===================   Gas Phase      ======================'
     WRITE(989,*) '#'
  
-    DO 
-      i = i + 1
-      WRITE(989,*) 'CLASS: ' ,TRIM(RS(i)%Type)
-      WRITE(989,*) TRIM(RS(i)%Line1)
-      IF ( TRIM(RS(i)%Line3)   /= '' ) WRITE(989,*) TRIM(RS(i)%Line3)
-      IF ( RS(i)%Special%nVariables /= 0 ) WRITE(989,*) 'SPECIAL: ',TRIM(RS(i)%Special%Formula)//';  ',RS(i)%Special%nVariables
-      IF ( TRIM(RS(i)%Factor)  /= '' ) WRITE(989,*) 'FACTOR: ',TRIM(RS(i)%Factor)
-      WRITE(989,*) 
+    IF (PRESENT(IndexSet)) THEN
+      j = 0
+      DO 
+        j = j + 1
+        i = IndexSet(j)
+        WRITE(989,*) 'CLASS: ' ,TRIM(RS(i)%Type)
+        WRITE(989,*) TRIM(RS(i)%Line1)
+        IF ( TRIM(RS(i)%Line3)   /= '' ) WRITE(989,*) TRIM(RS(i)%Line3)
+        IF ( RS(i)%Special%nVariables /= 0 ) WRITE(989,*) 'SPECIAL: ',TRIM(RS(i)%Special%Formula)//';  ',RS(i)%Special%nVariables
+        IF ( TRIM(RS(i)%Factor)  /= '' ) WRITE(989,*) 'FACTOR: ',TRIM(RS(i)%Factor)
+        WRITE(989,*) 
+        IF ( j >= SIZE(IndexSet) ) EXIT
+        IF ( MAXVAL(INDEX(RS(i)%Type,['DISS','HENR'])) > 0 ) j = j + 1
+      END DO
+    ELSE
+      i = 0
+      DO 
+        i = i + 1
+        WRITE(989,*) 'CLASS: ' ,TRIM(RS(i)%Type)
+        WRITE(989,*) TRIM(RS(i)%Line1)
+        IF ( TRIM(RS(i)%Line3)   /= '' ) WRITE(989,*) TRIM(RS(i)%Line3)
+        IF ( RS(i)%Special%nVariables /= 0 ) WRITE(989,*) 'SPECIAL: ',TRIM(RS(i)%Special%Formula)//';  ',RS(i)%Special%nVariables
+        IF ( TRIM(RS(i)%Factor)  /= '' ) WRITE(989,*) 'FACTOR: ',TRIM(RS(i)%Factor)
+        WRITE(989,*) 
 
-      IF ( i >= SIZE(RS) ) EXIT
-      IF ( MAXVAL(INDEX(RS(i)%Type,['DISS','HENR'])) > 0 ) i = i + 1
-    END DO
+        IF ( i >= SIZE(RS) ) EXIT
+        IF ( MAXVAL(INDEX(RS(i)%Type,['DISS','HENR'])) > 0 ) i = i + 1
+      END DO
+    END IF
     CLOSE(989)
   END SUBROUTINE Print_SysFile
   !
@@ -1659,7 +1678,208 @@ MODULE Chemsys_Mod
     END IF
     CLOSE(InputUnit) 
   END SUBROUTINE InputDatFile
+
+
+  SUBROUTINE Read_Target_Spc(Idx,FileName)
+    ! This routine will read the target species for ISSA reduction algorithm.
+    ! OUT:
+    INTEGER,       ALLOCATABLE :: Idx(:)
+    CHARACTER(80), ALLOCATABLE :: Names(:)
+    ! IN:
+    CHARACTER(*)  :: FileName
+    ! TEMP:
+    INTEGER       :: i, iPos
+    CHARACTER(LenLine) :: Line
+     
+    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName)),STATUS='UNKNOWN')
+    i = FindSection(99,'TARGET_SPC')
+    IF (i==-1) RETURN
+    i = FindSection(99,'END_TARGET_SPC')
+    REWIND(99)
+
+
+    ALLOCATE(Idx(i))
+    i = FindSection(99,'TARGET_SPC')
+    i = 0
+    DO
+      READ(99,'(A)') Line;  Line = ADJUSTL(Line)
+      IF (TRIM(Line) == 'END_TARGET_SPC') EXIT
+      i = i + 1
+      iPos = PositionSpeciesAll(Line)
+      IF ( iPos > 0 ) Idx(i) = iPos
+    END DO
+    CLOSE(99)
+  END SUBROUTINE Read_Target_Spc
+
+
+  SUBROUTINE Read_Spc_Lumping(FileName)
+    ! This routine will read the target species for ISSA reduction algorithm.
+    ! OUT: globl type(LUMP_SPC) declared at start of this file
+
+    ! IN:
+    CHARACTER(*)       :: FileName
+    ! TEMP:
+    CHARACTER(LenLine) :: Line, locLine
+
+    INTEGER            :: i, j, locSp
+     
+
+    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName)),STATUS='UNKNOWN')
+    REWIND(99)
+
+    ! count number of superspecies
+    i = FindSection(99,'SPC_LUMPING')
+    IF (i==-1) RETURN
+    i = FindSection(99,'END_SPC_LUMPING')
+    REWIND(99)
+
+    ! save superspecies in type(LUMP_SPC)
+    ALLOCATE( LUMP(i) )
+    i = FindSection(99,'SPC_LUMPING')
+    i = 0
+    DO 
+      READ(99,'(A)') Line;  Line = ADJUSTL(Line)
+
+      IF (TRIM(ADJUSTL(Line)) == 'END_SPC_LUMPING') EXIT
+      i = i + 1
+
+      LUMP(i)%SuperSpc = TRIM(Line(: INDEX(Line,'=')-1))
+
+      Line = TRIM(ADJUSTL(Line(INDEX(Line,'[')+1 : INDEX(Line,']')-1)))
+      
+      ! count single species for i-th superspecies
+      j = 0
+      locLine = Line
+      DO
+        IF ( TRIM(locLine) == '' ) EXIT
+        j = j + 1
+        locLine = ADJUSTL(locLine(INDEX(locLine,' ')+1:))
+      END DO
+      ALLOCATE(LUMP(i)%cSingleSpc(j),LUMP(i)%iSingleSpc(j))
+      LUMP(i)%iSingleSpc = 0
+      
+      ! save all single species for i-th superspecies
+      locLine = Line
+      j = 0
+      DO
+        IF ( TRIM(locLine) == '' ) EXIT
+        j = j + 1
+        locSp = INDEX(locLine,' ')
+        LUMP(i)%cSingleSpc(j) = TRIM(locLine(:locSp-1))
+        LUMP(i)%iSingleSpc(j) = PositionSpeciesAll(LUMP(i)%cSingleSpc(j))
+        locLine = ADJUSTL(locLine(locSp+1:))
+      END DO
+    END DO
+
+    ! show all superspecies including singlespecies
+    !DO i = 1,SIZE(LUMP)
+    !  write(*,'(A)',ADVANCE='NO') '  SuperSpecies = '//TRIM(LUMP(i)%SuperSpc)//'  with species :: '
+    !  DO j = 1,SIZE(LUMP(i)%cSingleSpc)
+    !    write(*,'(A)',ADVANCE='NO') TRIM(LUMP(i)%cSingleSpc(j))//'  '
+    !  END DO
+    !  write(*,*)
+    !END DO
+
+    CLOSE(99) 
+  END SUBROUTINE Read_Spc_Lumping
+
+  SUBROUTINE Read_Spc_Families(FileName)
+    ! This routine will read the species families for ISSA reduction algorithm.
+    ! OUT: globl type(FAMILY_SPC) declared at start of this file
+
+    ! IN:
+    CHARACTER(*)       :: FileName
+    ! TEMP:
+    CHARACTER(LenLine) :: Line, locLine
+
+    INTEGER            :: i, j, locSp, nFamilies
+     
+    !write(*,*) ' Families File Name :: ',ADJUSTL(TRIM(FileName))
+
+    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName)),STATUS='UNKNOWN')
+    REWIND(99)
+
+    ! count number of superspecies
+    i = FindSection(99,'SPC_FAMILIES')
+    IF (i==-1) RETURN ! no species families declared
+    nFamilies = FindSection(99,'END_SPC_FAMILIES')
+    REWIND(99)
+
+    ALLOCATE(FAM(nFamilies))
+    ALLOCATE(allFAM(0))
+    i = FindSection(99,'SPC_FAMILIES')
+    i = 0
+
+    DO 
+      READ(99,'(A)') Line;  Line = ADJUSTL(Line)
+      IF (TRIM(Line) == 'END_SPC_FAMILIES') EXIT
+      i = i + 1
+
+      ! count single species for i-th family
+      j = 0
+      locLine = Line
+      DO
+        IF ( TRIM(locLine) == '' ) EXIT
+        j = j + 1
+        locLine = ADJUSTL(locLine(INDEX(locLine,' ')+1:))
+      END DO
+      ALLOCATE(FAM(i)%SpcName(j),FAM(i)%SpcIndex(j))
+      FAM(i)%SpcIndex = 0
+      
+      ! save all single species for i-th superspecies
+      locLine = Line
+      j = 0
+      DO
+        IF ( TRIM(locLine) == '' ) EXIT
+        j = j + 1
+        locSp = INDEX(locLine,' ')
+        FAM(i)%SpcName(j)  = TRIM(locLine(:locSp-1))
+        FAM(i)%SpcIndex(j) = PositionSpeciesAll(FAM(i)%SpcName(j))
+        allFAM  = [allFAM , FAM(i)%SpcIndex(j)]
+        locLine = ADJUSTL(locLine(locSp+1:))
+      END DO
+    END DO
+    
+    nallFAM = SIZE(allFAM)
+    
+    ! show all superspecies including singlespecies
+    !DO i = 1,SIZE(FAM)
+    !  write(*,'(A,I0,A)',ADVANCE='NO') '  Species Family Nr.: ', i ,'  contains:  '
+    !  DO j = 1,SIZE(FAM(i)%SpcName)
+    !    write(*,'(A)',ADVANCE='NO') TRIM(FAM(i)%SpcName(j))//'  '
+    !  END DO
+    !  write(*,*)
+    !END DO
+
+  END SUBROUTINE Read_Spc_Families
   !
+
+  FUNCTION FindSection(iUnit,SectionName) RESULT(iLine)
+    ! OUT:
+    INTEGER      :: iLine
+    ! IN: 
+    INTEGER      :: iUnit
+    CHARACTER(*) :: SectionName
+    ! TEMP: 
+    CHARACTER(LenLine) :: Line
+    INTEGER      :: io_err
+    
+    iLine = 0
+    DO
+      READ(iUnit,'(A)',IOSTAT=io_err) Line
+      IF (io_err==0) THEN
+        IF (TRIM(ADJUSTL(Line))==SectionName)  EXIT
+        iLine = iLine + 1
+      ELSEIF (io_err>0.OR.io_err<0) THEN
+        WRITE(*,*) '  No '//TRIM(SectionName)//' found.'
+        iLine = -1
+        EXIT
+      END IF
+    END DO
+
+  END FUNCTION FindSection
+
+
   !
   SUBROUTINE InsertReaction(List,Line,TypeR)
     TYPE(ListReaction_T) :: List
@@ -2373,6 +2593,7 @@ MODULE Chemsys_Mod
     CALL HashTableToList(ListNonReac,ListNonReac2)
     CALL SortList(ListNonReac2)
     CALL ListToHashTable(ListNonReac2,ListNonReac)
+
   END SUBROUTINE ReadSystem
   !
   !
@@ -2649,6 +2870,8 @@ MODULE Chemsys_Mod
           ReacStruct(i)%Constants = Current%Constants
         END IF
         !
+        ! DAS HIER MUSS ANDERS WERDEN: INDIZES SO ABSPEICHER DASS SIE AUF INDEX DER TEMP3 REAKTIONEN ZEIGEN
+        ! iR%iHENRY(icnt(29),1) müsste auf icnt(7) zeigen
         IF ( Current%Type == 'HENRY' ) THEN
           ReacStruct(i)%direction = 'GA'
           ReacStruct(i)%HenrySpc  = PositionSpeciesAll(ReacStruct(i)%Educt(1)%Species)
@@ -2829,7 +3052,7 @@ MODULE Chemsys_Mod
     INTEGER,        INTENT(IN) :: iReac
     INTEGER,        INTENT(INOUT) :: icnt(47)
 
-    SELECT CASE ( TypeR )
+    SELECT CASE ( TRIM(TypeR) )
       CASE ('CONST');   icnt(1)=icnt(1)+1; iR%iCONST(icnt(1))=iReac;   iR%CONST(icnt(1))=C(1)
       CASE ('PHOTAB');  icnt(2)=icnt(2)+1; iR%iPHOTab(icnt(2))=iReac;  iR%PHOTab(icnt(2),:)=C
       CASE ('PHOTABC'); icnt(3)=icnt(3)+1; iR%iPHOTabc(icnt(3))=iReac; iR%PHOTabc(icnt(3),:)=C 
@@ -2863,8 +3086,10 @@ MODULE Chemsys_Mod
       CASE ('ASPEC3'); icnt(32)=icnt(32)+1; iR%iASPEC3(icnt(32))=iReac; iR%ASPEC3(icnt(32),:)=C 
       CASE ('ASPEC4'); icnt(33)=icnt(33)+1; iR%iASPEC4(icnt(33))=iReac; iR%ASPEC4(icnt(33),:)=C(1)
       CASE ('DCONST')
-        icnt(34)=icnt(34)+1; iR%iDCONST(icnt(34),1)=iReac
-        iR%iDCONST(icnt(34),2)=iReac+1; iR%DCONST(icnt(34),:)=C 
+        icnt(34)=icnt(34)+1
+        iR%iDCONST(icnt(34),1)=iReac
+        iR%iDCONST(icnt(34),2)=iReac+1
+        iR%DCONST(icnt(34),:)=C 
       CASE ('DTEMP')
         icnt(35)=icnt(35)+1; iR%iDTEMP(icnt(35),1)=iReac
         iR%iDTEMP(icnt(35),2)=iReac+1; iR%DTEMP(icnt(35),:)=C 
@@ -2972,7 +3197,7 @@ MODULE Chemsys_Mod
             & iR%iFAC_RO2aq(nr_FAC_RO2aq) )
 
     !  dim1 = iReac, dim2= iSpc, dim3 = iR_g->a / iR_a->g
-    ALLOCATE( iR%iHENRY(nr_HENRY,4) )
+    ALLOCATE( iR%iHENRY(nr_henry,4) )
 
     ALLOCATE( iR%iPHOTOkpp(nr_PHOTOkpp), iR%iPHOTO2kpp(nr_PHOTO2kpp), &
             & iR%iPHOTO3kpp(nr_PHOTO3kpp),  iR%PHOTOkpp(nr_PHOTOkpp), &

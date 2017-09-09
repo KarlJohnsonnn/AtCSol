@@ -189,9 +189,10 @@
       
       !WRITE(*,*) ''
       !DO j=1,neq
-      !  WRITE(*,*) 'j,Time,Meff,k,prd,Rate =', &
-      !  &           j,Time,vMeff(j),vK(j),vProd(j),Rate(j)
+      !  WRITE(*,101) '  iR = ',j ,'  t = ',Time,'  Meff = ',vMeff(j), &
+      !  &            '  k = ',vK(j),'  prd = ',vProd(j),'  Rate = ',Rate(j)
       !END DO
+      !101 FORMAT(A,I0,A,F6.2,4(A,Es10.2))
 
       TimeRates = TimeRates + MPI_WTIME() - TimeRateA
 
@@ -223,6 +224,7 @@
       
       !REAL(dp) :: tHenry(nr_HENRY,2)
       REAL(dp) :: tHenry(nr_HENRY,2,ntFrac)
+      INTEGER  :: j,i
       !==================================================================!
       !===============calc rates for ReactionSystem======================!
       !==================================================================!
@@ -273,6 +275,15 @@
       Prod = MassActionProducts( Conc )
 
       Rate = Meff * k * Prod
+
+      !i = 0
+      !DO j=1,neq
+      !  WRITE(*,101) '  iR = ',j ,'  t = ',Time,'  Meff = ',Meff(j), &
+      !  &            '  k = ',K(j),'  prd = ',Prod(j),'  Rate = ',Rate(j), &
+      !  &            '   '//TRIM(ReactionSystem(j)%Line1)
+      !END DO
+      !101 FORMAT(A,I0,A,F6.2,4(A,Es10.2),A)
+      !STOP 'Rates_Mod'
       
       TimeRates = TimeRates + MPI_WTIME() - TimeRateA
       
@@ -386,7 +397,8 @@
       REAL(dp) :: k_T4(nr_DTEMP4,2), k_T5(nr_DTEMP5,2), mesk(nr_Meskhidze,2)
 
       ! Photoabc tempo parameter
-      REAL(dp), DIMENSION(nr_PHOTabc) :: ChiZ, yChiZ, EyChiZ
+      REAL(dp), DIMENSION(nr_PHOTabc) :: ChiZabc, yChiZabc, EyChiZabc
+      REAL(dp), DIMENSION(nr_PHOTmcm) :: ChiZmcm, yChiZmcm
       INTEGER :: i, j
       ! Aspec tempo parameter
       REAL(dp), PARAMETER   :: x = 13.0d0
@@ -419,28 +431,28 @@
 
       IF (nr_PHOTabc>0) THEN
         IF ( chi(1) < PiHalf ) THEN
-          ChiZ = chi(1) * iR%PHOTabc(:,3) 
+          ChiZabc = chi(1) * iR%PHOTabc(:,3) 
           DO i = 1,nr_PHOTabc
-            IF (ChiZ(i) < PiHalf) THEN
-              yChiZ(i) = iR%PHOTabc(i,2) * (One - One/COS(ChiZ(i)))
-              IF ( yChiZ(i) > mTHIRTY ) THEN
-                EyChiZ(i) = EXP(yChiZ(i))
+            IF (ChiZabc(i) < PiHalf) THEN
+              yChiZabc(i) = iR%PHOTabc(i,2) * (One - One/COS(ChiZabc(i)))
+              IF ( yChiZabc(i) > mTHIRTY ) THEN
+                EyChiZabc(i) = EXP(yChiZabc(i))
               ELSE
-                EyChiZ(i) = EyChiZmin   ! = 9.357d-14  
+                EyChiZabc(i) = EyChiZmin   ! = 9.357d-14  
               END IF
             ELSE
-              EyChiZ(i) = EyChiZmin   ! = 9.357d-14 
+              EyChiZabc(i) = EyChiZmin   ! = 9.357d-14 
             END IF
           END DO
-          k(iR%iPHOTabc) = Dust * iR%PHOTabc(:,1) * EyChiz
+          k(iR%iPHOTabc) = Dust * iR%PHOTabc(:,1) * EyChizabc
         END IF
       END IF
 
       IF (nr_PHOTMCM>0) THEN
         IF ( chi(1) < PiHalf ) THEN
-          ChiZ  = EXP( -iR%PHOTmcm(:,3) * chi(2) )
-          yChiZ = chi(2) ** iR%PHOTmcm(:,2)
-          k(iR%iPHOTmcm) = Dust * iR%PHOTmcm(:,1) * yChiZ * ChiZ
+          ChiZmcm  = EXP( -iR%PHOTmcm(:,3) * chi(2) )
+          yChiZmcm = chi(2) ** iR%PHOTmcm(:,2)
+          k(iR%iPHOTmcm) = Dust * iR%PHOTmcm(:,1) * yChiZmcm * ChiZmcm
         END IF
       END IF
       ! ************************************************************************

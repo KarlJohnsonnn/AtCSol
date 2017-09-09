@@ -290,48 +290,21 @@ MODULE Sparse_Mod
     copy%ColInd = orig%ColInd
     copy%Val    = orig%Val
     IF (orig%XPtr/=-42) copy%XPtr = orig%XPtr
-    IF (ALLOCATED(orig%DiagPtr)) THEN
-      ALLOCATE(copy%DiagPtr(SIZE(orig%DiagPtr)))
-      copy%DiagPtr   = orig%DiagPtr
-    END IF
-    IF (ALLOCATED(orig%DiagPtr_P)) THEN
-      ALLOCATE(copy%DiagPtr_P(SIZE(orig%DiagPtr_P)))
-      copy%DiagPtr_P = orig%DiagPtr_P
-    END IF
-    IF (ALLOCATED(orig%DiagPtr_R)) THEN
-      ALLOCATE(copy%DiagPtr_R(SIZE(orig%DiagPtr_R)))
-      copy%DiagPtr_R = orig%DiagPtr_R
-    END IF
-    IF (ALLOCATED(orig%DiagPtr_C)) THEN
-      ALLOCATE(copy%DiagPtr_C(SIZE(orig%DiagPtr_C)))
-      copy%DiagPtr_C = orig%DiagPtr_C
-    END IF
-    IF (ALLOCATED(orig%RowVectorPtr)) THEN
-      ALLOCATE(copy%RowVectorPtr(SIZE(orig%RowVectorPtr)))
-      copy%RowVectorPtr = orig%RowVectorPtr
-    END IF
-    IF (ALLOCATED(orig%ColVectorPtr)) THEN
-      ALLOCATE(copy%ColVectorPtr(SIZE(orig%ColVectorPtr)))
-      copy%ColVectorPtr = orig%ColVectorPtr
-    END IF
-    IF (ALLOCATED(orig%Permu)) THEN
-      ALLOCATE(copy%Permu(SIZE(orig%Permu)))
-      copy%Permu  = orig%Permu
-    END IF
-    IF (ALLOCATED(orig%InvPer)) THEN
-      ALLOCATE(copy%InvPer(SIZE(orig%InvPer)))
-      copy%InvPer = orig%InvPer
-    END IF
-    IF (ALLOCATED(orig%LUperm)) THEN
-      ALLOCATE(copy%LUperm(SIZE(orig%LUperm)))
-      copy%LUperm = orig%LUperm
-    END IF
+    IF (ALLOCATED(orig%DiagPtr))   copy%DiagPtr   = orig%DiagPtr
+    IF (ALLOCATED(orig%DiagPtr_P)) copy%DiagPtr_P = orig%DiagPtr_P
+    IF (ALLOCATED(orig%DiagPtr_R)) copy%DiagPtr_R = orig%DiagPtr_R
+    IF (ALLOCATED(orig%DiagPtr_C)) copy%DiagPtr_C = orig%DiagPtr_C
+    IF (ALLOCATED(orig%RowVectorPtr)) copy%RowVectorPtr = orig%RowVectorPtr
+    IF (ALLOCATED(orig%ColVectorPtr)) copy%ColVectorPtr = orig%ColVectorPtr
+    IF (ALLOCATED(orig%Permu))  copy%Permu  = orig%Permu
+    IF (ALLOCATED(orig%InvPer)) copy%InvPer = orig%InvPer
+    IF (ALLOCATED(orig%LUperm)) copy%LUperm = orig%LUperm
   END FUNCTION Copy_CSR
 
   !
-  SUBROUTINE RowColDToCSR(CSR,SpRow,m,n)
-    TYPE(CSR_Matrix_T), INTENT(OUT) :: CSR
-    TYPE(SpRowColD_T), INTENT(IN) :: SpRow
+  FUNCTION RowColD_to_CSR(SpRow,m,n) RESULT(CSR)
+    TYPE(CSR_Matrix_T) :: CSR
+    TYPE(SpRowColD_T)  :: SpRow
     INTEGER :: m, n
     !
     INTEGER :: i,j,jj,nzrA
@@ -400,10 +373,36 @@ MODULE Sparse_Mod
       CSR%DiagPtr_C = CSR%DiagPtr_P( n+1:n+m )
     END IF
     CSR%nnz = SpRow%nnz
-  END SUBROUTINE RowColDToCSR
+  END FUNCTION RowColD_to_CSR
+
+  FUNCTION SpRowIndColInd_to_CSR(SpRiCi) RESULT(CSR)
+    ! IN:
+    TYPE(SpRowIndColInd_T) :: SpRiCi
+    ! OUT:
+    TYPE(CSR_Matrix_T)     :: CSR
+    ! TEMP:
+    INTEGER :: i, ii, jj, n, m, nnz
+
+    m = SpRiCi%m
+    n = SpRiCi%n
+    nnz = SpRiCi%nnz
+
+    CSR = New_CSR(m,n,nnz)
+    
+    ii = 0
+    DO i = 1 , m
+      CSR%RowPtr(i+1) = CSR%RowPtr(i) + COUNT(SpRiCi%RowInd==i)
+      DO jj = CSR%RowPtr(i) , CSR%RowPtr(i+1)-1
+        ii = ii + 1
+        CSR%ColInd(jj) = SpRiCi%ColInd(ii)
+        CSR%Val(jj)    = SpRiCi%Val(ii)
+      END DO
+    END DO
+    CSR%nnz = ii
+  END FUNCTION SpRowIndColInd_to_CSR
   !
   !
-  SUBROUTINE CSRToSpRowColD(SpRowCol,CSR)
+  FUNCTION CSR_to_SpRowColD(CSR) RESULT(SpRowCol)
     TYPE(SpRowColD_T) :: SpRowCol
     TYPE(CSR_Matrix_T) :: CSR
     !
@@ -439,7 +438,7 @@ MODULE Sparse_Mod
     END DO  
     SpRowCol%ep=SpRowCol%RowPtr(2,SpRowCol%n)+1
     SpRowCol%last=SpRowCol%n  
-  END SUBROUTINE CSRToSpRowColD
+  END FUNCTION CSR_to_SpRowColD
   !
   !
   SUBROUTINE Sort_SpRowColD(A)
@@ -666,6 +665,8 @@ MODULE Sparse_Mod
     END DO
     vec = tmpVec
   END SUBROUTINE SortVecDesc2
+
+  !
   !
   !
   SUBROUTINE Insert_SpRowColD(A,iA,jA,ins)
@@ -1815,6 +1816,59 @@ MODULE Sparse_Mod
     END DO
     CLOSE(99)
   END SUBROUTINE PrintSparse1
+
+  SUBROUTINE PrintSparse2(m,n,ri,ci,val,FileName)
+    INTEGER :: ri(:), ci(:)
+    REAL(dp) :: val(:)
+    INTEGER :: n,m
+    CHARACTER(*), OPTIONAL :: FileName
+    !
+    INTEGER :: i
+    !
+    ! 
+    !OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName))//'.SparseMat',STATUS='UNKNOWN')
+    WRITE(*,*)
+    IF (PRESENT(FileName)) THEN     !nur Hauptdiagonale ausgeben
+      WRITE(*,*) 'Print Matrix: ',FileName
+      WRITE(*,*) 'Dim: ',m,' x ',n , 'nnz: ',SIZE(ci)
+      WRITE(*,*)
+      DO i=1,SIZE(ri); WRITE(*,'(2(1X,I5),10X,Es10.2)') ri(i),ci(i),val(i); END DO
+    ELSE
+      WRITE(*,*) 'Dim: ',m,' x ',n , 'nnz: ',SIZE(ci)
+      WRITE(*,*)
+      DO i=1,SIZE(ri); WRITE(*,'(2(1X,I5),10X,Es10.2)') ri(i),ci(i),val(i);  END DO
+    END IF
+    !CLOSE(99)
+  END SUBROUTINE PrintSparse2
+  
+  SUBROUTINE PrintSparse3(m,n,rp,ci,val,FileName)
+    INTEGER :: rp(:), ci(:)
+    REAL(dp) :: val(:)
+    INTEGER :: n,m
+    CHARACTER(*), OPTIONAL :: FileName
+    !
+    INTEGER :: i, jj
+    !
+    ! 
+    !OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName))//'.SparseMat',STATUS='UNKNOWN')
+    WRITE(*,*)
+    IF (PRESENT(FileName)) THEN     !nur Hauptdiagonale ausgeben
+      WRITE(*,*) 'Print Matrix: ',FileName
+      WRITE(*,*) 'Dim: ',m,' x ',n , 'nnz: ',SIZE(ci)
+      WRITE(*,*)
+      DO i=1,m
+        DO jj=rp(i),rp(i+1)-1; WRITE(*,'(2(1X,I5),10X,Es10.2)') i, ci(jj) ,val(jj); END DO
+      END DO
+    ELSE
+      WRITE(*,*) 'Dim: ',m,' x ',n , 'nnz: ',SIZE(ci)
+      WRITE(*,*)
+      DO i=1,m
+        DO jj=rp(i),rp(i+1)-1; WRITE(*,'(2(1X,I5),10X,Es10.2)') i,ci(jj),val(jj); END DO
+      END DO
+    END IF
+    !CLOSE(99)
+  END SUBROUTINE PrintSparse3
+ 
   !
   SUBROUTINE WriteSparseMatrix(A,FileName,nr,ns)
     TYPE(CSR_Matrix_T), INTENT(IN) :: A
@@ -1962,49 +2016,7 @@ MODULE Sparse_Mod
     WRITE(*,*) '  Writing matrices to file: ',TRIM(FileName)
   END SUBROUTINE WriteSparseMatrix
   !
-  !
-  ! PRINT SPARSE MATRIX (compressed Row format)
-  SUBROUTINE PrintSparse2(n,rowind,colind,val,FileName)
-    INTEGER :: rowind(:)
-    INTEGER :: colind(:)
-    REAL(dp) :: val(:)
-    INTEGER :: n
-    CHARACTER(*), OPTIONAL :: FileName
-    !
-    INTEGER :: i
-    !
-    WRITE(*,*) 'Print Matrix: ',FileName
-    WRITE(*,*) 'Dim: ',n,' x ',n , 'nnz: ',SIZE(ColInd)
-    WRITE(*,*)
-    ! 
-    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName))//'.SparseMat',STATUS='UNKNOWN')
-    DO i=1,SIZE(RowInD)
-      IF (FileName=='*') THEN     !nur Hauptdiagonale ausgeben
-        WRITE(*,'(1X,I5,1X,I5,10X,E23.14)') RowInd(i),ColInd(i),val(i)
-      ELSE
-        WRITE(99,'(1X,I5,1X,I5,10X,E23.14)') RowInd(i),ColInd(i),val(i)
-      END IF
-    END DO
-    CLOSE(99)
-  END SUBROUTINE PrintSparse2
-  !
-  !
-  !
-  !
-  ! PRINT SPARSE MATRIX (RowInd/ColInd format)
-  SUBROUTINE PrintMatrix(A)
-    TYPE(SpRowIndColInd_T), INTENT(IN) :: A
-    !
-    INTEGER :: j
-    !
-    WRITE(*,*) '    i ','    j   ','           Wert  '
-    WRITE(*,*) '------------------------------------------------'
-    DO j=1,SIZE(A%ColInd)
-      WRITE(*,'(1X,I5,1X,I5,10X,E12.4)') A%RowInd(j),A%ColInd(j),A%Val(j)
-    END DO
-  END SUBROUTINE PrintMatrix
-  !
-  !
+  
   ! convert compressed row format to rowindex column index format
   FUNCTION CSR_to_SpRowIndColInd(MatIn) RESULT(MatOut)
     ! only n by n matrices
@@ -2056,6 +2068,7 @@ MODULE Sparse_Mod
   END FUNCTION DAXPY_sparse
 
 
+  ! sparse matrix * vector
   FUNCTION DAX_sparse(A,X) RESULT(Rhs)
     !IN
     TYPE(CSR_Matrix_T) :: A
@@ -2065,14 +2078,13 @@ MODULE Sparse_Mod
     !TEMP
     INTEGER :: i, rp_i, rp_i1  ! RowPtr(i), RowPtr(i+1)-1
    
+    Rhs = ZERO
     DO i=1,A%m
       rp_i   = A%RowPtr(i)  ;  rp_i1  = A%RowPtr(i+1)-1
       Rhs(i) = SUM(A%Val(rp_i:rp_i1)*X(A%ColInd(rp_i:rp_i1)))
     END DO
   END FUNCTION DAX_sparse
  
-
-
   ! Print ordinary real matrix or vector
   SUBROUTINE PM_real(M)
     REAL(dp), INTENT(IN) :: M(:,:)

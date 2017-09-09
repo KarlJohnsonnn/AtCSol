@@ -178,7 +178,8 @@
     INTEGER, ALLOCATABLE :: ind_henry(:,:)
 
 !--    mass transfer coefficient, kBig
-    REAL(dp):: dkmt, kBig
+    REAL(dp) :: dkmt = 1.0d3      ! Standard Mass Trasfer Coefficient
+    REAL(dp) :: kBig = 1.0d6    ! Constant for Equilibria
 !
 !--------------------------------------------------------------
 !--    species names 

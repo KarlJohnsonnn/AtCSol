@@ -2,9 +2,9 @@ LIB/*
 LIB_D/*
 NetCDF/*
 MATRICES/*
+CHEM/*
+TAR/*
 .DS_Store
-CHEMIE
-CHEMIE_g
 *.chem
 fort.*
 list*
@@ -14,6 +14,6 @@ list*
 *.mod
 REACTION_PATHS/*
 *.txt
-chemie.exe
-chemie_dbg.exe
+*.dat
+*.exe*
 M_DEF_*

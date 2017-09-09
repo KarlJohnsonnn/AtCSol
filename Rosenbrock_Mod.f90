@@ -39,18 +39,18 @@ MODULE Rosenbrock_Mod
     REAL(dp), ALLOCATABLE :: binterpt(:,:)    ! Dense output formula
   END TYPE RosenbrockMethod_T
 
-  TYPE Out
-    REAL(dp), ALLOCATABLE :: y(:)    ! y-vector at Tend
-    INTEGER :: nsteps     = 0              ! # succ. steps
-    INTEGER :: nfailed    = 0              ! # failed steps
-    INTEGER :: nRateEvals = 0              ! # Rate evaluation
-    INTEGER :: npds       = 0              ! # Jacobian evaluation
-    INTEGER :: ndecomps   = 0              ! # LU factorisation
-    INTEGER :: nsolves    = 0              ! # solved lin algebra
-    REAL(dp) :: Ttimestep = 0.0d0  ! mean Time for one ROW step
-  END TYPE Out
-
-  TYPE(Out) :: Output
+!  TYPE Out
+!    REAL(dp), ALLOCATABLE :: y(:)    ! y-vector at Tend
+!    INTEGER :: nsteps     = 0              ! # succ. steps
+!    INTEGER :: nfailed    = 0              ! # failed steps
+!    INTEGER :: nRateEvals = 0              ! # Rate evaluation
+!    INTEGER :: npds       = 0              ! # Jacobian evaluation
+!    INTEGER :: ndecomps   = 0              ! # LU factorisation
+!    INTEGER :: nsolves    = 0              ! # solved lin algebra
+!    REAL(dp) :: Ttimestep = 0.0d0  ! mean Time for one ROW step
+!  END TYPE Out
+!
+!  TYPE(Out) :: Output
   TYPE(RosenbrockMethod_T) :: ROS
 
   REAL(dp), PRIVATE :: timerStart
@@ -87,35 +87,33 @@ MODULE Rosenbrock_Mod
     ELSE
       tmethod = TRIM(method(INDEX(method,'/')+1:INDEX(method,'.')-1))
     END IF
-    ! dynamisches inlcude möglich???
-    ! oder zeile für zeile READ ?
 
     SELECT CASE (tmethod)
-      CASE ('bwEuler')
+      CASE ('bwEuler')       
         INCLUDE 'METHODS/bwEuler.ros'
-      CASE ('Ros2AMF')
+      CASE ('Ros2AMF')       
         INCLUDE 'METHODS/Ros2AMF.ros'
-      CASE ('Ros3w')
+      CASE ('Ros3w')         
         INCLUDE 'METHODS/Ros3w.ros'
-      CASE ('Ros3Pw')
+      CASE ('Ros3Pw')        
         INCLUDE 'METHODS/Ros3Pw.ros'
-      CASE ('Ros34PW1a')
+      CASE ('Ros34PW1a')     
         INCLUDE 'METHODS/Ros34PW1a.ros'
-      CASE ('Ros34PW2')
+      CASE ('Ros34PW2')      
         INCLUDE 'METHODS/Ros34PW2.ros'
-      CASE ('Ros34PW3')
+      CASE ('Ros34PW3')      
         INCLUDE 'METHODS/Ros34PW3.ros'
-      CASE ('TSRosW2P')
+      CASE ('TSRosW2P')      
         INCLUDE 'METHODS/TSRosW2P.ros'
-      CASE ('TSRosW2M')
+      CASE ('TSRosW2M')      
         INCLUDE 'METHODS/TSRosW2M.ros'
-      CASE ('TSRosWRA3PW')
+      CASE ('TSRosWRA3PW')   
         INCLUDE 'METHODS/TSRosWRA3PW.ros'
-      CASE ('TSRosWRA34PW2')
+      CASE ('TSRosWRA34PW2') 
         INCLUDE 'METHODS/TSRosWRA34PW2.ros'
-      CASE ('TSRosWRodas3')
+      CASE ('TSRosWRodas3')  
         INCLUDE 'METHODS/TSRosWRodas3.ros'
-      CASE ('TSRosWSandu3')
+      CASE ('TSRosWSandu3')  
         INCLUDE 'METHODS/TSRosWSandu3.ros'
       CASE DEFAULT
         IF (MPI_ID==0) WRITE(*,*) '    Unknown Method:  ',method
@@ -320,6 +318,8 @@ MODULE Rosenbrock_Mod
   !    Subroutine Rosenbrock-Method universal for classic and extended case
   !=========================================================================
   SUBROUTINE Rosenbrock(YNew,err,ierr,avgRate,Y0,t,h,Euler)
+    USE issa
+    USE mo_IO
   !SUBROUTINE Rosenbrock(YNew,err,ierr,avgRate,Y0,t,h,RCo,Euler)
     !--------------------------------------------------------
     ! Input:
@@ -355,7 +355,7 @@ MODULE Rosenbrock_Mod
     REAL(dp) :: k( nDIM , ROS%nStage )
     !
     REAL(dp) :: Tarr(10)
-    REAL(dp) :: Rate(neq), rRate(neq)
+    REAL(dp) :: Rate(neq), rRate(neq), Rate_t(neq)
     REAL(dp) :: DRatedT(neq)        
     REAL(dp) :: dTdt, Jac_TT
       
@@ -365,7 +365,7 @@ MODULE Rosenbrock_Mod
     REAL(dp) :: X
     REAL(dp) :: Press
 
-    REAL(dp) :: TimeErrCalc0, TimeRhsCalc0
+    REAL(dp) :: TimeRhsCalc0
     !
     ! fuer verlgeich mit speedchem, andere spc reihenfolge
     !
@@ -415,6 +415,7 @@ MODULE Rosenbrock_Mod
       Yrh = Y0(1:nspc) / h
       CALL ReactionRatesAndDerivative_ChemKin( t, Y0, Rate, DRatedT )     
     END IF
+    Rate_t = Rate
 
     ! calculating the time averaged rate of reaction
     avgRate = Rate/h
@@ -684,11 +685,8 @@ MODULE Rosenbrock_Mod
 
     
     !--- Update Concentrations (+Temperatur)
-
     YNew = Y0
-    DO jStg = 1 , ROS%nStage
-      YNew = YNew +  ROS%m(jStg) * k(:,jStg)! new Y vector
-    END DO
+    DO jStg=1,ROS%nStage; YNew = YNew + ROS%m(jStg)*k(:,jStg); END DO
     
     IF (dprint) THEN
       print*, ''
@@ -711,19 +709,35 @@ MODULE Rosenbrock_Mod
     !  |_____||_|   |_|   \___/ |_|    |_____||___/ \__||_||_| |_| |_| \__,_| \__| |_| \___/ |_| |_|
     !                                                                                              
     !***********************************************************************************************
-    TimeErrCalc0 = MPI_WTIME()
 
     IF (.NOT.EULER) THEN
+
+      timerStart = MPI_WTIME()
+      ! embedded formula for err calc ord-1
       YHat = Y0
-      DO jStg = 1 , ROS%nStage
-        YHat = YHat + ROS%me(jStg) * k(:,jStg)! embedded formula for err calc ord-1
-      END DO
+      DO jStg=1,ROS%nStage; YHat = YHat + ROS%me(jStg)*k(:,jStg); END DO
+
       CALL ERROR( err , ierr , YNew , YHat , ATolAll , RTolROW , t )
+      TimeErrCalc = TimeErrCalc + MPI_WTIME() - timerStart
+
+      ! for analysis and reduction
+      IF ( err < ONE ) THEN
+        IF (Lehmann) integrated_rates = integrated_rates + Rate*h
+        !CALL ISSA_iter( Rate_t , YNew , t , h )
+
+        IF ( t - Tspan(1) >= StpFlux*REAL(iStpFlux,dp) ) THEN
+          iStpFlux   = iStpFlux + 1
+          timerStart = MPI_WTIME()
+          !CALL StreamWriteFluxes(Rate_t,t,h)
+          CALL SequentialWriteFluxes(Rate_t,t,h)
+          TimeFluxWrite = TimeFluxWrite + MPI_WTIME() - timerStart
+        END IF
+
+      END IF
+
     END IF
 
-    IF (Lehmann .AND. err<ONE) integrated_rates = integrated_rates + Rate*h
 
-    TimeErrCalc = TimeErrCalc + MPI_WTIME() - TimeErrCalc0
    
     IF (dprint) THEN
       print*,'debug::     Error     =  ', err, '  Error index  =  ', ierr

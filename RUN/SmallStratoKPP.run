@@ -12,7 +12,7 @@
   DataFile = 'DAT/RACM.dat'
   InitFile = 'INI/SmallStratoKPP.ini'
   MetFile  = 'MET/1day_wocloud.met'
-  Targets  = 'TAR/SmallStrato.ctrl'
+  TargetFile  = 'TAR/SmallStrato.ctrl'
  /END
  &TIMES
   tAnf    = 0.0d0

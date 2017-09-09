@@ -8,7 +8,7 @@ MODULE Cycles_Mod
                       & PrintSparseMatrix
   !USE mo_unirnk
   USE mo_reac,    ONLY: y_name
-  USE mo_control, ONLY: List
+  USE mo_control, ONLY: List, allFAM, nallFAM
 
   IMPLICIT NONE
 
@@ -49,8 +49,9 @@ MODULE Cycles_Mod
   !
   SUBROUTINE Find_Elem_Circuits(A,SpcList)
 
+    ! IN:
     TYPE(CSR_Matrix_T) :: A, sub_Ak
-    INTEGER :: SpcList(:)
+    INTEGER            :: SpcList(:)
 
     TYPE(SpRowIndColInd_T) :: sub_A
     TYPE(List), ALLOCATABLE :: scc(:) !, sub_Ak(:)
@@ -168,15 +169,15 @@ MODULE Cycles_Mod
     WRITE(99,'(A)') '   Cycle Length:       species: '
     printCYC => cycFirst
     DO i = 1,cntSCC
-      !WRITE(99,'(10X,I2,8X,*(A))') printCYC%cnt-1,               &
-      !& (TRIM(y_name(printCYC%v(j)))//' -> ' ,j=1,printCYC%cnt), &
-      !&  TRIM(y_name(printCYC%v(printCYC%cnt+1)))
-      WRITE(99,'(3X,I2,15X,*(I0,1X))') printCYC%cnt, printCYC%v
+      WRITE(99,'(10X,I2,8X,*(A))') printCYC%cnt-1,               &
+      & (TRIM(y_name(printCYC%v(j)))//' -> ' ,j=1,printCYC%cnt), &
+      &  TRIM(y_name(printCYC%v(printCYC%cnt+1)))
+      !WRITE(99,'(3X,I2,15X,*(I0,1X))') printCYC%cnt, printCYC%v
       Cyclic_Set(i)%len  = printCYC%cnt + 1
       Cyclic_Set(i)%List = [printCYC%v]
       printCYC => printCYC%next
     END DO
-    CLOSE(99)
+    !CLOSE(99)
 
   END SUBROUTINE Find_Elem_Circuits
 
@@ -203,13 +204,14 @@ MODULE Cycles_Mod
     INTEGER    :: v, s
     TYPE(CSR_Matrix_T) :: Ak
     ! TEMP:
-    INTEGER :: w, ww
+    INTEGER :: w, ww, j
     INTEGER, ALLOCATABLE :: Bnode(:)
     LOGICAL :: found_v
 
-    LOGICAL :: dbg=.false.
+    LOGICAL :: dbg=.FALSE. !, inFAM
 
     f = .FALSE.
+    !inFAM = .FALSE.
     lvl = lvl + 1
     !WRITE(*,*) ' level = ', lvl
 
@@ -229,6 +231,8 @@ MODULE Cycles_Mod
     
     DO ww = Ak%RowPtr(v),Ak%RowPtr(v+1)-1
       w = Ak%ColInd(ww)
+
+      !DO j = 1,nallFAM;  IF (allFAM(j)==w) inFAM=.TRUE.;  END DO
       
       ! found new cycle if w == s
       IF ( w == s ) THEN
@@ -242,8 +246,13 @@ MODULE Cycles_Mod
       ! if no new cycle is found check if vertex w is
       ! blocked jet, if it is not blocked continue 
       ! ciruit with node w
+
+      ! AN DER STELLE DIE FAMILIENLISTE DURCHGEHEN UND NUR WEITERMACHEN
+      ! WENN w ALS FAMILIENMITGLIED DEKLARIERT WURDE, AUßERDEM WEITER 
+      ! UNTEN NOCHMAL SCHAUEN OB ES NOCHMAL NÖTIG IST DIE LISTE ZU DURCHLAUFEN
       ELSE IF ( .NOT.blocked_Vertex(w) .AND. Stapel%len <= maxlen ) THEN
         f = Circuit(w,s,Ak)
+        !inFAM = .FALSE.
       END IF
     END DO
 

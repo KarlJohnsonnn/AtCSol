@@ -21,7 +21,7 @@
 !
       NAMELIST /FILES/  MetFile, SysFile,MWeights, InitFile, DataFile,    &
 &               NetcdfFileName, MetUnit, ChemUnit, MWUnit, InitUnit,       &
-&               DataUnit, Targets
+&               DataUnit, TargetFile
 !
       NAMELIST /TIMES/  tAnf, tEnd, idate, rlat, rlon, Dust, StpNetcdf,  &
 &               minStp, maxStp, nOutP
@@ -78,7 +78,7 @@
       SysFile  = 'CHEM/'//TRIM(RunFile)//'.sys'    ! Chemical mechanism
       DataFile = 'CHEM/'//TRIM(RunFile)//'.dat'    ! Gas and aqueous phase data
       InitFile = 'INI/'//TRIM(RunFile)//'.ini'     ! Initial concentrations
-      Targets  = ''    ! Controlfile for mechanism reduction
+      TargetFile  = ''    ! Controlfile for mechanism reduction
 
       NetcdfFileName = TRIM(Bsp)//'.nc'            ! Netcdf output file
 
@@ -101,7 +101,7 @@
       DataFile = ADJUSTL(DataFile)
       MWeights = ADJUSTL(MWeights)
       InitFile = ADJUSTL(InitFile)
-      Targets  = ADJUSTL(Targets)
+      TargetFile  = ADJUSTL(TargetFile)
 
       NetcdfFileName=ADJUSTL(NetcdfFileName)
 

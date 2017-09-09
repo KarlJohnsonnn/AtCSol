@@ -6,6 +6,4 @@ MODULE Kind_Mod
   
   INTEGER, PARAMETER :: dp = 8 !double pressicion
 
-  !LOGICAL :: ok=.FALSE.
-
 END MODULE Kind_Mod
