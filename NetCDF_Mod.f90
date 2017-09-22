@@ -19,6 +19,7 @@ MODULE NetCDF_Mod
   INTEGER :: iStpNetCDF 
   INTEGER :: itime_NetCDF
   REAL(dp), ALLOCATABLE :: yNcdf(:)     ! current output vector
+  INTEGER :: ncid
 
   INTEGER :: pH_ind
   !
@@ -40,8 +41,8 @@ MODULE NetCDF_Mod
   ! -- Input parameter --
   !
   !
-  REAL(dp) ::  StartNetcdf      &  ! First Time for Netcdf Output
-  &                 ,EndNetcdf           ! End Time of Netcdf Output
+  REAL(dp) :: StartNetcdf      &  ! First Time for Netcdf Output
+  &         , EndNetcdf           ! End Time of Netcdf Output
   !
   ! -- Output parameter --
   !
@@ -51,7 +52,7 @@ MODULE NetCDF_Mod
   !    ============================================================
   !    Variable Attribute Names
   !    ============================================================
-  CHARACTER (LEN = *), PARAMETER :: REC_NAME = "time"
+  CHARACTER (LEN = *), PARAMETER :: REC_NAME     = "time"
   CHARACTER (LEN = *), PARAMETER :: REC_LONGNAME = "time"
   CHARACTER (LEN = *), PARAMETER :: LON_NAME     = "lon"
   CHARACTER (LEN = *), PARAMETER :: LAT_NAME     = "lat"
@@ -72,10 +73,6 @@ MODULE NetCDF_Mod
   CHARACTER (LEN = *), PARAMETER :: DRYMASS_UNITS= "g/m3"
   CHARACTER (LEN = *), PARAMETER :: MOLAL_UNITS  = "g/l"
   !    ============================================================
-  !    Variable ID
-  !    ============================================================
-  INTEGER              :: ncid
-  !    ============================================================
   !    Dimension ID
   !    ============================================================
   INTEGER, PARAMETER :: NDIMS  = 1
@@ -86,22 +83,20 @@ MODULE NetCDF_Mod
   INTEGER, PARAMETER :: name_strlen=10
   LOGICAL            :: FileExist
   CHARACTER(10)      :: answer
-  CHARACTER(80)      :: NetcdfFile
   CHARACTER(60)      :: tmpName
   INTEGER            :: iDiagSpc
   INTEGER            :: strich
   !
+
   ! -- Allocate Netcdf Names etc.
   !
   ALLOCATE(Diag_LongName(OutNetcdfANZ))
   ALLOCATE(Diag_Name_Netcdf(OutNetcdfANZ),Diag_UNITS(OutNetcdfANZ))
   ALLOCATE(DiagERR_Name_Netcdf(SIZE(OutNetcdfspc)))
   ALLOCATE(Diag_varID(OutNetcdfANZ))
+  ALLOCATE(DiagERR_varID(OutNetcdfANZ))
   Diag_varID=0
-  IF (ErrorLog==1) THEN
-    ALLOCATE(DiagERR_varID(OutNetcdfANZ))
-    DiagERR_varID=0
-  END IF
+  DiagERR_varID=0
 
   jt=0
   iDiagSpc=0
@@ -117,11 +112,11 @@ MODULE NetCDF_Mod
       IF (Teq) DIAG_UNITS(jt) = 'mass fraction'
     ELSEIF (OutNetcdfPhase(iDiagSpc)=='a') THEN
       Diag_Name_Netcdf(jt) = TRIM(tmpName)//'_l'
-      Diag_LongName(jt)    = TRIM(tmpName)//'_aqua'
+      Diag_LongName(jt)    = TRIM(tmpName)//'AQUA'
       DIAG_UNITS(jt)       = "mol/l"
       jt=jt+1
       Diag_Name_Netcdf(jt) = TRIM(tmpName)//'_m3'
-      Diag_LongName(jt)    = TRIM(tmpName)//'_air'
+      Diag_LongName(jt)    = TRIM(tmpName)//'AIR'
       DIAG_UNITS(jt)       = "mol/m3"
       IF (tmpName == 'Hp' ) pH_ind = jt
     END IF
@@ -135,229 +130,194 @@ MODULE NetCDF_Mod
     IF (tmpName(1:1)=='[') THEN
       CALL check_name3(Diag_Name_Netcdf(jt))
     END IF
-    IF (ErrorLog==1) THEN
-      IF (OutNetcdfPhase(iDiagSpc)=='a') THEN
-        strich=INDEX(Diag_Name_Netcdf(jt),'_')
-        tmpName=tmpName(:strich-1)
-      END IF
-      DiagERR_Name_Netcdf(iDiagSpc)=TRIM(tmpName)//'_ERR'
+    IF (OutNetcdfPhase(iDiagSpc)=='a') THEN
+      strich=INDEX(Diag_Name_Netcdf(jt),'_')
+      tmpName=tmpName(:strich-1)
     END IF
+    DiagERR_Name_Netcdf(iDiagSpc)=TRIM(tmpName)//'_ERR'
   END DO
   !
   ! ============================================================
-  !  MAIN loop for NetCDF init
-  ! 
-  ncid=0
+  ! --  create Netcdf file (for each size bin / fraction)
+  ! ============================================================
+  ! Create new NetCDF File
   !
-    NetcdfFile = 'NetCDF/'//TRIM(NetcdfFileName)
-    ! ============================================================
-    ! --  check for existing Netcdf files 
-    ! ============================================================
-    !
-    INQUIRE(FILE=NetcdfFile,EXIST=FileExist)
-    IF (FileExist) THEN
-      Question: DO
-        !WRITE(*,*) "Overwrite existing file ",TRIM(NetcdfFile),"? (yes/no)"
-        !READ(*,*) answer
-        !WRITE(*,*) ' '
-        !WRITE(*,*) '  Overwrite existing file: '//TRIM(Netcdffile)
-        !WRITE(*,*) ' '
-        answer='y'
-        IF ((answer=="yes").OR.(answer=="y")) THEN
-          EXIT Question
-        ELSE IF ((answer=="no").OR.(answer=="n")) THEN
-          STOP
-        ELSE
-          CYCLE
-        END IF
-      END DO Question
-    END IF
-    !
-    ! ============================================================
-    ! --  create Netcdf file (for each size bin / fraction)
-    ! ============================================================
-    ! Create new NetCDF File
-    !
-    CALL check(  NF90_CREATE(  NetCDFFile       &   ! NetCDF output file name
-    &                        , NF90_CLOBBER     &   ! Overwrite existing file with the same name
-    &                        , ncid     )    )   ! Returned netCDF ID
-    !
-    ! ============================================================
-    ! --  define dimension variables
-    ! ============================================================
-    ! Define the dimensions. The record dimension is defined to have
-    ! unlimited length - it can grow as needed. In this example it is
-    ! the time dimension.
-    CALL check(  NF90_DEF_DIM(  ncid           & ! NetCDF ID, from prev call NF90_CREATE 
-    &                         , REC_NAME          & ! Time is the record dimension
-    &                         , NF90_UNLIMITED    & ! space for "unlimited" time steps
-    &                         , rec_dimID     )   ) ! returned dimension ID
-    !
-    ! ============================================================
-    ! --  define coordinate variables
-    ! ============================================================
-    ! Define the coordinate variables. We will only define coordinate
-    ! variables for lat and lon.  Ordinarily we would need to provide
-    ! an array of dimension IDs for each variable's dimensions, but
-    ! since coordinate variables only have one dimension, we can
-    ! simply provide the address of that dimension ID (lat_dimid) and
-    ! similarly for (lon_dimid).
-    !dimIDs = (/ rec_dimid, x_dimid, y_dimid, z_dimid /)
-    !
-    dimIDs = (/ rec_dimID /)
-    traj_id = 'name_strlen'
-    CALL check(  NF90_DEF_VAR(  ncid, REC_NAME,       NF90_DOUBLE, dimIDs, rec_varid  ) )
-    CALL check(  NF90_DEF_VAR(  ncid, TRIM(LON_NAME), NF90_DOUBLE, dimIDs, x_varid    ) )
-    CALL check(  NF90_DEF_VAR(  ncid, TRIM(LAT_NAME), NF90_DOUBLE, dimIDs, y_varid    ) )
-    CALL check(  NF90_DEF_VAR(  ncid, Z_NAME,         NF90_DOUBLE, dimIDs, z_varid    ) )
-    CALL check(  NF90_DEF_VAR(  ncid, "trajectory",   NF90_CHAR,           traj_varid ) )
-    !
-    ! ============================================================
-    ! --  define data variables
-    ! ============================================================
-    DO jt=1,OutNetcdfANZ
-      CALL check(  NF90_DEF_VAR(  ncid, TRIM(Diag_Name_Netcdf(jt)), NF90_DOUBLE  &
-      &                         , dimIDs,  Diag_varID(jt)                         ) )
-    END DO
-    IF (ErrorLog==1) THEN
-      DO jt=1,SIZE(DiagERR_Name_Netcdf)
-        CALL check(  NF90_DEF_VAR(  ncid, TRIM(DiagERR_Name_Netcdf(jt)), NF90_DOUBLE  &
-        &                         , dimIDs,  DiagERR_varID(jt)                         ) )
-      END DO
-    END IF
-    !
+  CALL check(  NF90_CREATE(  TRIM(NetCDFFile) &   ! NetCDF output file name
+  &                        , NF90_CLOBBER     &   ! Overwrite existing file with the same name
+  &                        , ncid     )    )      ! Returned netCDF ID
+  !
+  ! ============================================================
+  ! --  define dimension variables
+  ! ============================================================
+  ! Define the dimensions. The record dimension is defined to have
+  ! unlimited length - it can grow as needed. In this example it is
+  ! the time dimension.
+  CALL check(  NF90_DEF_DIM(  ncid           & ! NetCDF ID, from prev call NF90_CREATE 
+  &                         , REC_NAME          & ! Time is the record dimension
+  &                         , NF90_UNLIMITED    & ! space for "unlimited" time steps
+  &                         , rec_dimID     )   ) ! returned dimension ID
+  !
+  ! ============================================================
+  ! --  define coordinate variables
+  ! ============================================================
+  ! Define the coordinate variables. We will only define coordinate
+  ! variables for lat and lon.  Ordinarily we would need to provide
+  ! an array of dimension IDs for each variable's dimensions, but
+  ! since coordinate variables only have one dimension, we can
+  ! simply provide the address of that dimension ID (lat_dimid) and
+  ! similarly for (lon_dimid).
+  !dimIDs = (/ rec_dimid, x_dimid, y_dimid, z_dimid /)
+  !
+  dimIDs = (/ rec_dimID /)
+  traj_id = 'name_strlen'
+  CALL check(  NF90_DEF_VAR(  ncid, REC_NAME,       NF90_DOUBLE, dimIDs, rec_varid  ) )
+  CALL check(  NF90_DEF_VAR(  ncid, TRIM(LON_NAME), NF90_DOUBLE, dimIDs, x_varid    ) )
+  CALL check(  NF90_DEF_VAR(  ncid, TRIM(LAT_NAME), NF90_DOUBLE, dimIDs, y_varid    ) )
+  CALL check(  NF90_DEF_VAR(  ncid, Z_NAME,         NF90_DOUBLE, dimIDs, z_varid    ) )
+  CALL check(  NF90_DEF_VAR(  ncid, "trajectory",   NF90_CHAR,           traj_varid ) )
+  !
+  ! ============================================================
+  ! --  define data variables
+  ! ============================================================
+  DO jt=1,OutNetcdfANZ
+    CALL check(  NF90_DEF_VAR(  ncid, TRIM(Diag_Name_Netcdf(jt)), NF90_DOUBLE  &
+    &                         , dimIDs,  Diag_varID(jt)                         ) )
+  END DO
+  DO jt=1,SIZE(DiagERR_Name_Netcdf)
+    CALL check(  NF90_DEF_VAR(  ncid, TRIM(DiagERR_Name_Netcdf(jt)), NF90_DOUBLE  &
+    &                         , dimIDs,  DiagERR_varID(jt)                         ) )
+  END DO
+  !
+  ! lwc
+  CALL check ( NF90_DEF_VAR( ncid, 'Step_Size' , NF90_DOUBLE, dimIDS, StepSize_varid ) )
+  CALL check ( NF90_DEF_VAR( ncid, 'Zenith' , NF90_DOUBLE, dimIDS, zenith_varid ) )
+  CALL check ( NF90_DEF_VAR( ncid, 'SchwefelSumme' , NF90_DOUBLE, dimIDS, schwefel_varid ) )
+  CALL check ( NF90_DEF_VAR( ncid, 'loc_error' , NF90_DOUBLE, dimIDS, error_varid ) )
+  CALL check ( NF90_DEF_VAR( ncid, 'loc_error_spc' , NF90_DOUBLE, dimIDS, MaxErrorSpc_varid ) )
+  IF ( ns_GAS >0 ) THEN
+    CALL check ( NF90_DEF_VAR( ncid, 'GasSum'    , NF90_DOUBLE, dimIDS, gassum_varid ) )
+  END IF
+  IF ( ns_AQUA>0 ) THEN
+    CALL check ( NF90_DEF_VAR( ncid, 'LWC_Level' , NF90_DOUBLE, dimIDS, LWC_varid ) )
+    CALL check ( NF90_DEF_VAR( ncid, 'wetRadius' , NF90_DOUBLE, dimIDS, wetRadius_varid ) )
+    CALL check ( NF90_DEF_VAR( ncid, 'pH_Value' , NF90_DOUBLE, dimIDS, pH_varid ) )
+    CALL check ( NF90_DEF_VAR( ncid, 'AquaSum'   , NF90_DOUBLE, dimIDS, aquasum_varid ) )
+  END IF
+  IF ( Teq ) THEN
+    CALL check ( NF90_DEF_VAR( ncid, 'Temperature' , NF90_DOUBLE, dimIDS, Temperature_varid ) )
+  END IF
+  !
+  ! ============================================================
+  ! --  define attributes (name, unit...) of the variables
+  ! ============================================================
+  CALL check( NF90_PUT_ATT( ncid, traj_varid, "cf_role", "trajectory_id") )
+  CALL check( NF90_PUT_ATT( ncid, MaxErrorSpc_varid, "Species", "ErrorVal") )
+  ! x = longitude
+  CALL check( NF90_PUT_ATT( ncid, x_varid, "standard_name", TRIM(LON_LONGNAME) ) )
+  CALL check( NF90_PUT_ATT( ncid, x_varid, "long_name",     TRIM(LON_LONGNAME) ) )
+  CALL check( NF90_PUT_ATT( ncid, x_varid, NC_UNITS,        TRIM(LON_UNITS)    ) )
+  CALL check( NF90_PUT_ATT( ncid, x_varid, "axis",          "x"                ) )
+  CALL check( NF90_PUT_ATT( ncid, x_varid, "_CoordinateAxisType", "lon"        ) )
+  ! y = latitude
+  CALL check( NF90_PUT_ATT( ncid, y_varid, "standard_name", TRIM(LAT_LONGNAME) ) )
+  CALL check( NF90_PUT_ATT( ncid, y_varid, "long_name",     TRIM(LAT_LONGNAME) ) )
+  CALL check( NF90_PUT_ATT( ncid, y_varid, NC_UNITS,        TRIM(LAT_UNITS)    ) )
+  CALL check( NF90_PUT_ATT( ncid, y_varid, "axis",          "y"                ) )
+  CALL check( NF90_PUT_ATT( ncid, y_varid, "_CoordinateAxisType", "lat"        ) )
+  ! z = altitude
+  CALL check( NF90_PUT_ATT( ncid, z_varid, "standard_name", "altitude" ) )
+  CALL check( NF90_PUT_ATT( ncid, z_varid, "long_name",     Z_LONGNAME ) )
+  CALL check( NF90_PUT_ATT( ncid, z_varid, NC_UNITS,        Z_UNITS    ) )
+  CALL check( NF90_PUT_ATT( ncid, z_varid, "positive",      "up"       ) )
+  CALL check( NF90_PUT_ATT( ncid, z_varid, "axis",          "z"        ) )
+  CALL check( NF90_PUT_ATT( ncid, z_varid, "_CoordinateAxisType", "z"  ) )
+  ! rec = time
+  CALL check( NF90_PUT_ATT( ncid, rec_varid, "standard_name",       "time"    ) )
+  CALL check( NF90_PUT_ATT( ncid, rec_varid, "long_name",           REC_NAME  ) )
+  CALL check( NF90_PUT_ATT( ncid, rec_varid, NC_UNITS,              REC_UNITS ) )
+  CALL check( NF90_PUT_ATT( ncid, rec_varid, "_CoordinateAxisType", "time"    ) )
+  ! Diagnose species
+  DO jt=1,OutNetcdfANZ
+    CALL check( NF90_PUT_ATT(ncid, Diag_varID(jt), NC_UNITS, Diag_UNITS(jt)) )
+    CALL check( NF90_PUT_ATT(ncid, Diag_varID(jt), "long_name", TRIM(Diag_LongName(jt))) )
+    CALL check( NF90_PUT_ATT(ncid, Diag_varID(jt), "_CoordinateAxes", "time") )
+  END DO
+  DO jt=1,SIZE(DiagERR_Name_Netcdf)
+    CALL check( NF90_PUT_ATT(ncid, DiagERR_varID(jt), NC_UNITS, ' ' ) ) 
+    CALL check( NF90_PUT_ATT(ncid, DiagERR_varID(jt), "long_name",    &
+    &               'Error - '//TRIM(DiagERR_Name_Netcdf(jt))//' each step') )
+  END DO
+  !
+  ! stepsize
+  CALL check( NF90_PUT_ATT(ncid, StepSize_varid, NC_UNITS, '[sec]' ) )  
+  CALL check( NF90_PUT_ATT(ncid, StepSize_varid, "long_name", 'step size in [sec]') ) 
+  CALL check( NF90_PUT_ATT(ncid, StepSize_varid, "_CoordinateAxes", "time") )
+  IF ( ns_GAS>0 ) THEN
+    ! Gas summe
+    CALL check( NF90_PUT_ATT(ncid, Gassum_varid, NC_UNITS, '[molec/m3]' ) )  
+    CALL check( NF90_PUT_ATT(ncid, Gassum_varid, "Long_name", 'sum gaseus conc [molec/cm3]') ) 
+    CALL check( NF90_PUT_ATT(ncid, Gassum_varid, "_CoordinateAxes", "time") )
+  END IF
+  ! Zenith angle
+  CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, NC_UNITS, '[-]' ) )  
+  CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, "long_name", 'Zenith angle [-]') ) 
+  CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, "_CoordinateAxes", "time") )
+  ! schwefel summe
+  CALL check( NF90_PUT_ATT(ncid, schwefel_varid, NC_UNITS, '[molec/m3]' ) )  
+  CALL check( NF90_PUT_ATT(ncid, schwefel_varid, "long_name", 'Schwefelkonzentration') ) 
+  CALL check( NF90_PUT_ATT(ncid, schwefel_varid, "_CoordinateAxes", "time") )
+  ! local error estimation
+  CALL check( NF90_PUT_ATT(ncid, error_varid, NC_UNITS, '[-]' ) )  
+  CALL check( NF90_PUT_ATT(ncid, error_varid, "long_name", 'local error estimation') ) 
+  CALL check( NF90_PUT_ATT(ncid, error_varid, "_CoordinateAxes", "time") )
+  ! species of max local error estimation
+  CALL check( NF90_PUT_ATT(ncid, MaxErrorSpc_varid, NC_UNITS, '[-]' ) )  
+  CALL check( NF90_PUT_ATT(ncid, MaxErrorSpc_varid, "long_name", 'species of max error val') ) 
+  CALL check( NF90_PUT_ATT(ncid, MaxErrorSpc_varid, "_CoordinateAxes", "time") )
+  ! pH value
+  IF ( ns_AQUA>0 ) THEN
     ! lwc
-    CALL check ( NF90_DEF_VAR( ncid, 'Step_Size' , NF90_DOUBLE, dimIDS, StepSize_varid ) )
-    CALL check ( NF90_DEF_VAR( ncid, 'Zenith' , NF90_DOUBLE, dimIDS, zenith_varid ) )
-    CALL check ( NF90_DEF_VAR( ncid, 'SchwefelSumme' , NF90_DOUBLE, dimIDS, schwefel_varid ) )
-    CALL check ( NF90_DEF_VAR( ncid, 'loc_error' , NF90_DOUBLE, dimIDS, error_varid ) )
-    CALL check ( NF90_DEF_VAR( ncid, 'loc_error_spc' , NF90_DOUBLE, dimIDS, MaxErrorSpc_varid ) )
-    IF ( ns_GAS >0 ) THEN
-      CALL check ( NF90_DEF_VAR( ncid, 'GasSum'    , NF90_DOUBLE, dimIDS, gassum_varid ) )
-    END IF
-    IF ( ns_AQUA>0 ) THEN
-      CALL check ( NF90_DEF_VAR( ncid, 'LWC_Level' , NF90_DOUBLE, dimIDS, LWC_varid ) )
-      CALL check ( NF90_DEF_VAR( ncid, 'wetRadius' , NF90_DOUBLE, dimIDS, wetRadius_varid ) )
-      CALL check ( NF90_DEF_VAR( ncid, 'pH_Value' , NF90_DOUBLE, dimIDS, pH_varid ) )
-      CALL check ( NF90_DEF_VAR( ncid, 'AquaSum'   , NF90_DOUBLE, dimIDS, aquasum_varid ) )
-    END IF
-    IF ( Teq ) THEN
-      CALL check ( NF90_DEF_VAR( ncid, 'Temperature' , NF90_DOUBLE, dimIDS, Temperature_varid ) )
-    END IF
-    !
-    ! ============================================================
-    ! --  define attributes (name, unit...) of the variables
-    ! ============================================================
-    CALL check( NF90_PUT_ATT( ncid, traj_varid, "cf_role", "trajectory_id") )
-    CALL check( NF90_PUT_ATT( ncid, MaxErrorSpc_varid, "Species", "ErrorVal") )
-    ! x = longitude
-    CALL check( NF90_PUT_ATT( ncid, x_varid, "standard_name", TRIM(LON_LONGNAME) ) )
-    CALL check( NF90_PUT_ATT( ncid, x_varid, "long_name",     TRIM(LON_LONGNAME) ) )
-    CALL check( NF90_PUT_ATT( ncid, x_varid, NC_UNITS,        TRIM(LON_UNITS)    ) )
-    CALL check( NF90_PUT_ATT( ncid, x_varid, "axis",          "x"                ) )
-    CALL check( NF90_PUT_ATT( ncid, x_varid, "_CoordinateAxisType", "lon"        ) )
-    ! y = latitude
-    CALL check( NF90_PUT_ATT( ncid, y_varid, "standard_name", TRIM(LAT_LONGNAME) ) )
-    CALL check( NF90_PUT_ATT( ncid, y_varid, "long_name",     TRIM(LAT_LONGNAME) ) )
-    CALL check( NF90_PUT_ATT( ncid, y_varid, NC_UNITS,        TRIM(LAT_UNITS)    ) )
-    CALL check( NF90_PUT_ATT( ncid, y_varid, "axis",          "y"                ) )
-    CALL check( NF90_PUT_ATT( ncid, y_varid, "_CoordinateAxisType", "lat"        ) )
-    ! z = altitude
-    CALL check( NF90_PUT_ATT( ncid, z_varid, "standard_name", "altitude" ) )
-    CALL check( NF90_PUT_ATT( ncid, z_varid, "long_name",     Z_LONGNAME ) )
-    CALL check( NF90_PUT_ATT( ncid, z_varid, NC_UNITS,        Z_UNITS    ) )
-    CALL check( NF90_PUT_ATT( ncid, z_varid, "positive",      "up"       ) )
-    CALL check( NF90_PUT_ATT( ncid, z_varid, "axis",          "z"        ) )
-    CALL check( NF90_PUT_ATT( ncid, z_varid, "_CoordinateAxisType", "z"  ) )
-    ! rec = time
-    CALL check( NF90_PUT_ATT( ncid, rec_varid, "standard_name",       "time"    ) )
-    CALL check( NF90_PUT_ATT( ncid, rec_varid, "long_name",           REC_NAME  ) )
-    CALL check( NF90_PUT_ATT( ncid, rec_varid, NC_UNITS,              REC_UNITS ) )
-    CALL check( NF90_PUT_ATT( ncid, rec_varid, "_CoordinateAxisType", "time"    ) )
-    ! Diagnose species
-    DO jt=1,OutNetcdfANZ
-      CALL check( NF90_PUT_ATT(ncid, Diag_varID(jt), NC_UNITS, Diag_UNITS(jt)) )
-      CALL check( NF90_PUT_ATT(ncid, Diag_varID(jt), "long_name", TRIM(Diag_LongName(jt))) )
-      CALL check( NF90_PUT_ATT(ncid, Diag_varID(jt), "_CoordinateAxes", "time") )
-    END DO
-    DO jt=1,SIZE(DiagERR_Name_Netcdf)
-      IF (ErrorLog==1) THEN
-        CALL check( NF90_PUT_ATT(ncid, DiagERR_varID(jt), NC_UNITS, ' ' ) ) 
-        CALL check( NF90_PUT_ATT(ncid, DiagERR_varID(jt), "long_name",    &
-        &               'Error - '//TRIM(DiagERR_Name_Netcdf(jt))//' each step') )
-      END IF
-    END DO
-    !
-    ! stepsize
-    CALL check( NF90_PUT_ATT(ncid, StepSize_varid, NC_UNITS, '[sec]' ) )  
-    CALL check( NF90_PUT_ATT(ncid, StepSize_varid, "long_name", 'step size in [sec]') ) 
-    CALL check( NF90_PUT_ATT(ncid, StepSize_varid, "_CoordinateAxes", "time") )
-    IF ( ns_GAS>0 ) THEN
-      ! Gas summe
-      CALL check( NF90_PUT_ATT(ncid, Gassum_varid, NC_UNITS, '[molec/m3]' ) )  
-      CALL check( NF90_PUT_ATT(ncid, Gassum_varid, "Long_name", 'sum gaseus conc [molec/cm3]') ) 
-      CALL check( NF90_PUT_ATT(ncid, Gassum_varid, "_CoordinateAxes", "time") )
-    END IF
-    ! Zenith angle
-    CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, NC_UNITS, '[-]' ) )  
-    CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, "long_name", 'Zenith angle [-]') ) 
+    CALL check( NF90_PUT_ATT(ncid, LWC_varid, NC_UNITS, '[l/m3]' ) )  
+    CALL check( NF90_PUT_ATT(ncid, LWC_varid, "long_name", '[liter/m3]') ) 
+    CALL check( NF90_PUT_ATT(ncid, LWC_varid, "_CoordinateAxes", "time") )
+    ! aqua summe
+    CALL check( NF90_PUT_ATT(ncid, Aquasum_varid, NC_UNITS, '[molec/m3]' ) )  
+    CALL check( NF90_PUT_ATT(ncid, Aquasum_varid, "Long_name", 'sum aqueus conc [molec/cm3]') ) 
+    CALL check( NF90_PUT_ATT(ncid, Aquasum_varid, "_CoordinateAxes", "time") )
+    ! wet dropplet radius
+    CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, NC_UNITS, '[m]' ) )  
+    CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, "long_name", 'wet droplett radius [m]') ) 
     CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, "_CoordinateAxes", "time") )
-    ! schwefel summe
-    CALL check( NF90_PUT_ATT(ncid, schwefel_varid, NC_UNITS, '[molec/m3]' ) )  
-    CALL check( NF90_PUT_ATT(ncid, schwefel_varid, "long_name", 'Schwefelkonzentration') ) 
-    CALL check( NF90_PUT_ATT(ncid, schwefel_varid, "_CoordinateAxes", "time") )
-    ! local error estimation
-    CALL check( NF90_PUT_ATT(ncid, error_varid, NC_UNITS, '[-]' ) )  
-    CALL check( NF90_PUT_ATT(ncid, error_varid, "long_name", 'local error estimation') ) 
-    CALL check( NF90_PUT_ATT(ncid, error_varid, "_CoordinateAxes", "time") )
-    ! species of max local error estimation
-    CALL check( NF90_PUT_ATT(ncid, MaxErrorSpc_varid, NC_UNITS, '[-]' ) )  
-    CALL check( NF90_PUT_ATT(ncid, MaxErrorSpc_varid, "long_name", 'species of max error val') ) 
-    CALL check( NF90_PUT_ATT(ncid, MaxErrorSpc_varid, "_CoordinateAxes", "time") )
-    ! pH value
-    IF ( ns_AQUA>0 ) THEN
-      ! lwc
-      CALL check( NF90_PUT_ATT(ncid, LWC_varid, NC_UNITS, '[l/m3]' ) )  
-      CALL check( NF90_PUT_ATT(ncid, LWC_varid, "long_name", '[liter/m3]') ) 
-      CALL check( NF90_PUT_ATT(ncid, LWC_varid, "_CoordinateAxes", "time") )
-      ! aqua summe
-      CALL check( NF90_PUT_ATT(ncid, Aquasum_varid, NC_UNITS, '[molec/m3]' ) )  
-      CALL check( NF90_PUT_ATT(ncid, Aquasum_varid, "Long_name", 'sum aqueus conc [molec/cm3]') ) 
-      CALL check( NF90_PUT_ATT(ncid, Aquasum_varid, "_CoordinateAxes", "time") )
-      ! wet dropplet radius
-      CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, NC_UNITS, '[m]' ) )  
-      CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, "long_name", 'wet droplett radius [m]') ) 
-      CALL check( NF90_PUT_ATT(ncid, wetRadius_varid, "_CoordinateAxes", "time") )
-      CALL check( NF90_PUT_ATT(ncid, pH_varid, NC_UNITS, '[-]' ) )  
-      CALL check( NF90_PUT_ATT(ncid, pH_varid, "long_name", 'pH-Value ( = -log10[Hp] )') ) 
-      CALL check( NF90_PUT_ATT(ncid, pH_varid, "_CoordinateAxes", "time") )
-    END IF
-    ! save temperature for Teq simulation
-    IF ( Teq ) THEN
-      CALL check( NF90_PUT_ATT(ncid, Temperature_varid, NC_UNITS, '[K]' ) )  
-      CALL check( NF90_PUT_ATT(ncid, Temperature_varid, "long_name", 'Temperature in Kelvin') ) 
-      CALL check( NF90_PUT_ATT(ncid, Temperature_varid, "_CoordinateAxes", "temp") )
-    END IF
-    ! ============================================================
-    ! --  End define mode
-    ! ============================================================
-    !
-    CALL check( NF90_ENDDEF( ncid ) )
-    !
-  !  ! ============================================================
-    ! -- Write the record variable into the netCDF file.
-    ! ============================================================
-    !
-    !IF (MPI_ID==0) print *,"  *****************************************************  "
-    !IF (MPI_ID==0) print *,"  *** SUCCESS writing netcdf-file ", TRIM(NetcdfFile),  "!"
-    !IF (MPI_ID==0) print *,"  *****************************************************  "
-    !
-    ! ============================================================
-    ! --  Close netcdf file
-    ! ============================================================
-    !
-    CALL check( NF90_CLOSE( ncid ) )
-    !      
+    CALL check( NF90_PUT_ATT(ncid, pH_varid, NC_UNITS, '[-]' ) )  
+    CALL check( NF90_PUT_ATT(ncid, pH_varid, "long_name", 'pH-Value ( = -log10[Hp] )') ) 
+    CALL check( NF90_PUT_ATT(ncid, pH_varid, "_CoordinateAxes", "time") )
+  END IF
+  ! save temperature for Teq simulation
+  IF ( Teq ) THEN
+    CALL check( NF90_PUT_ATT(ncid, Temperature_varid, NC_UNITS, '[K]' ) )  
+    CALL check( NF90_PUT_ATT(ncid, Temperature_varid, "long_name", 'Temperature in Kelvin') ) 
+    CALL check( NF90_PUT_ATT(ncid, Temperature_varid, "_CoordinateAxes", "temp") )
+  END IF
+  ! ============================================================
+  ! --  End define mode
+  ! ============================================================
+  !
+  CALL check( NF90_ENDDEF( ncid ) )
+  !
+!  ! ============================================================
+  ! -- Write the record variable into the netCDF file.
+  ! ============================================================
+  !
+  !IF (MPI_ID==0) print *,"  *****************************************************  "
+  !IF (MPI_ID==0) print *,"  *** SUCCESS writing netcdf-file ", TRIM(NetcdfFile),  "!"
+  !IF (MPI_ID==0) print *,"  *****************************************************  "
+  !
+  ! ============================================================
+  ! --  Close netcdf file
+  ! ============================================================
+  !
+  CALL check( NF90_CLOSE( ncid ) )
+  !      
   !
   ! ============================================================
   CONTAINS
@@ -400,8 +360,8 @@ MODULE NetCDF_Mod
     INTEGER, INTENT ( in) :: STATUS
     ! 
     IF(STATUS /= nf90_noerr) THEN
-      PRINT *, '  Error with NetCDF data ', trim(nf90_strerror(STATUS)), STATUS
-      STOP "  Stop in NetCDF init"
+      WRITE(*,*) '  Error with NetCDF data ', trim(nf90_strerror(STATUS)), STATUS
+      STOP 
     END IF
   END SUBROUTINE check
   ! 
@@ -482,7 +442,6 @@ END SUBROUTINE InitNetCDF
   REAL(dp) :: Error
   REAL(dp) :: pH
   INTEGER :: ErrInd(1,1)
-  INTEGER :: ncid
   !
   REAL(dp) :: t                 ! Current time [in seconds]
   !
@@ -492,20 +451,15 @@ END SUBROUTINE InitNetCDF
   !-- internal variable
   INTEGER :: jt
   REAL(dp), PARAMETER :: y_Min = 1.E-40    ! minimum for logarithmic plot
-  CHARACTER(80) :: NetcdfFile
-  !
-  !------------------------------------------------------------------
-  !
-  time_ind=time_ind+1
-  !
-  NetcdfFile = TRIM(NetcdfFileName(1:INDEX(NetcdfFileName,'.nc')-1))
-  NetcdfFile = 'NetCDF/'//TRIM(NetcdfFile)//'.nc'
+
+
+  time_ind = time_ind + 1
   !
   ! ====================================================================================
   ! == Open Netcdf-File in write mode to modify data ===================================
   ! ====================================================================================
   
-  CALL check( NF90_OPEN( NetcdfFile, NF90_WRITE, ncid ) ) 
+  CALL check( NF90_OPEN( TRIM(NetcdfFile), NF90_WRITE, ncid ) ) 
 
   ! ====================================================================================
   ! == Write new data to netcdf-file ===================================================

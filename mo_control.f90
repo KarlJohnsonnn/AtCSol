@@ -9,49 +9,55 @@
 !-----------------------------------------------------------------
 !
 !--- Identifier for scenario
-      CHARACTER(20) :: Bsp           ! Identifier for scenario
+      CHARACTER(20) :: Bsp        = ''      ! Identifier for scenario
 
 !--- Files
-      CHARACTER(80) :: MetFile           & ! Meteorology file
-&                    , SysFile           & ! Chemical mechanism
-&                    , InitFile          & ! Initial concentrations
-&                    , DataFile          & ! Gas and Aqueous DATA
-&                    , MWeights          & ! molecular weights of species 
-&                    , NetcdfFileName    & ! NetCDF output file
-&                    , ODEsolver         & ! Method for Rosenbrock Integration
-&                    , TargetFile          ! file for reductions analysis (target species)
+      CHARACTER(80) :: RunFile    = ''    & ! Simulation data file
+&                    , MetFile    = ''    & ! Meteorology file
+&                    , SysFile    = ''    & ! Chemical mechanism
+&                    , ChemFile   = ''    & ! Chemical mechenism (spaccim input)
+&                    , InitFile   = ''    & ! Initial concentrations
+&                    , DataFile   = ''    & ! Gas and Aqueous DATA
+&                    , MWFile     = ''    & ! molecular weights of species 
+&                    , NetcdfFile = ''    & ! NetCDF output file
+&                    , ODEsolver  = ''    & ! Method for Rosenbrock Integration
+&                    , TargetFile = ''      ! file for reductions analysis (target species)
+
+      CHARACTER(80) :: FluxMetaFile = 'fluxmeta.dat' ! meta data for unformatted flux data
+      CHARACTER(80) :: FluxFile     = 'fluxes.dat'   ! flux data (unformatted)
 !
 !--- Unit Numbers
-      INTEGER :: MetUnit           & ! Meteorology file
-&              , ChemUnit          & ! Chemical mechanism
-&              , MWUnit            & ! molecular weights unit
-&              , InitUnit          & ! Initial concentrations
-&              , DataUnit            ! Gas and Aqueous DATA
+      INTEGER, PARAMETER :: RunUnit      = 101  & 
+&                         , MetUnit      = 102  & 
+&                         , SysUnit      = 103  & 
+&                         , ChemUnit     = 104  & 
+&                         , MWUnit       = 105  & 
+&                         , InitUnit     = 106  & 
+&                         , DataUnit     = 107  & 
+&                         , FluxMetaUnit = 109  &
+&                         , FluxUnit     = 110   
 !
 !-- Set Levels and Parameters for Processes
-      REAL(dp) :: LwcLevelmin      & ! Lower level for LWC
-&               , LwcLevelmax        ! Upper level for LWC
+      REAL(dp) :: LWCLevelmin    & ! Lower level for LWC
+&               , LWCLevelmax    & ! Upper level for LWC
+&               , Temperature0   & ! Initial temperature
+&               , Pressure0        ! Initial pressure for combustion mechanisms
 
 
 !-- print matrices of the system (alpha, beta, miter, lu_miter, permutvector,..)
-      LOGICAL :: MatrixPrint      &  ! print certain matrices to file
-&              , DebugPrint       &  ! debugging rosenbrock steps
-&              , NetCdfPrint      &  ! print out concs and other stuff to netcdf file
-&              , constLWC         &  ! true if lwc value is fixed
-&              , Lehmann          &  ! prints out pathway analysis file 
-&              , Teq                 ! prints out pathway analysis file 
- 
-!--- Control Parameter
-      INTEGER :: pHSet             & ! Initial pH by charge balance (1=on, 0=off)
-&               ,Ladebalken        & ! ladebalken im terminal bei simulation (=1, default=0)
-&               ,Error_Est         & ! error estimation 1 = inf norm  , 2 = euklid norm
-&               ,ErrorLog            ! if = 0 do not print error log 
+      LOGICAL :: MatrixPrint     & ! print certain matrices to file
+&              , DebugPrint      & ! debugging rosenbrock steps
+&              , NetCdfPrint     & ! print out concs and other stuff to netcdf file
+&              , constLWC        & ! true if lwc value is fixed
+&              , Lehmann         & ! prints out pathway analysis file 
+&              , Teq             & ! prints out pathway analysis file 
+&              , pHSet           & ! Initial pH by charge balance (1=on, 0=off)
+&              , WaitBar         & ! ladebalken im terminal bei simulation (=1, default=0)
+&              , FluxAna           ! writing flux data and analyse after simulaiton -> print new reaction file
+
+      INTEGER :: Error_Est         ! error estimation 1 = inf norm  , 2 = euklid norm
     
 !--- Output of reaction fluxes
-      INTEGER,          PARAMETER :: fluxmeta_nr   = 1978
-      INTEGER,          PARAMETER :: flux_nr       = 1979
-      CHARACTER(LEN=*), PARAMETER :: fluxmeta_name = 'fluxmeta.dat'
-      CHARACTER(LEN=*), PARAMETER :: flux_name     = 'fluxes.dat'
       REAL(dp)                    :: StpFlux
       INTEGER                     :: iStpFlux
 
@@ -63,14 +69,11 @@
 !-----------------------------------------------------------------
 !-----------------------------------------------------------------
 !--- Times:  < 0 in seconds, > 0 in hours, = 0  meteorology
-      REAL(dp) :: tAnf              & ! Model start time
+      REAL(dp) :: tBegin              & ! Model start time
 &               , tEnd              & ! Model end time
 &               , StpNetcdf           ! Time step for Netcdf output
       INTEGER  :: nOutP
 !
-!--- Initial temperature and pressure for combustion mechanisms
-      REAL(dp) :: Temperature0
-      REAL(dp) :: Pressure0  
 
 !---  Photolysis
       INTEGER :: iDate               ! Current date
@@ -111,7 +114,7 @@
 !
 
 !--- type for some statistics
-      TYPE Out
+      TYPE Output_T
         REAL(dp), ALLOCATABLE :: y(:)    ! y-vector at Tend
         INTEGER :: nsteps     = 0              ! # succ. steps
         INTEGER :: nfailed    = 0              ! # failed steps
@@ -120,21 +123,23 @@
         INTEGER :: ndecomps   = 0              ! # LU factorisation
         INTEGER :: nsolves    = 0              ! # solved lin algebra
         REAL(dp) :: Ttimestep = 0.0d0  ! mean Time for one ROW step
-      END TYPE Out
+      END TYPE Output_T
     
-      TYPE(Out) :: Output
+      TYPE(Output_T) :: Out
 !-----------------------------------------------------------------
 !---  Numerics
 !-----------------------------------------------------------------
 !
-!--- Control Parameter
-      INTEGER :: ImpEuler
 !
 !--- Tolerances for ROW Scheme
       REAL(dp) :: RtolROW        & ! Relative tolerance for ROW method
-&                     , AtolGas        & ! Absolute tolerance for gas phase
-&                     , AtolAqua       & ! Absolute tolerance for liquid phase
-&                     , AtolTemp         ! Absolute tolerance for Temperatur
+&               , AtolGas        & ! Absolute tolerance for gas phase
+&               , AtolAqua       & ! Absolute tolerance for liquid phase
+&               , AtolTemp         ! Absolute tolerance for Temperatur
+
+      INTEGER  :: Ordering     ! default = 8
+      INTEGER  :: ParOrdering  ! < 0 serial ordering , 0,1,2 parallel
+
       REAL(dp), ALLOCATABLE :: ThresholdStepSizeControl(:)
       REAL(dp), ALLOCATABLE :: ATolAll(:)
 
@@ -142,19 +147,10 @@
       LOGICAL :: PI_StepSize
       
 !--- Control Parameter for solving linear algebra  
-      CHARACTER(2) :: solveLA  ! method of solving the linear system
       ! 'cl' for classic jacobian calc or
       ! 'ex' for extended matrix without calc of jac
-      
-      INTEGER :: ROWcoef       ! chose ROW method
-!
-!-----------------------------------------------------------------
-!---  Linear Algebra
-!-----------------------------------------------------------------
-!
-!--- Control Parameter
-      INTEGER :: OrderingStrategie = 7  ! default = automatic choice
-      INTEGER :: ParOrdering = -1       ! < 0 serial ordering , 0,1,2 parallel
+      CHARACTER(2) :: LinAlg = '??'
+
 !
 !-----------------------------------------------------------------
 !---  Set Constants and Unit Conversion
@@ -197,7 +193,7 @@
 &                      , rm300    = mONE/300.d0,   r300     =   ONE/300.d0
 !
 !--- Orders of magnitude
-  REAL(dp), PARAMETER ::   nano    =     1.0d-09    &
+  REAL(dp), PARAMETER ::  nano    =     1.0d-09    &
 &                      , micro    =     1.0d-06    &
 &                      , milli    =     1.0d-03    &
 &                      , kilo     =     1.0d+03    &
@@ -205,7 +201,7 @@
 &                      , tera     =     1.0d+09
 !
 !--- Natural logarithms
-  REAL(dp), PARAMETER ::    ln10   =     LOG(TEN)    &
+  REAL(dp), PARAMETER ::   ln10   =     LOG(TEN)    &
 &                      ,  rln10   = ONE/LOG(TEN)
 !
 !--- minimum values if there is no sun
@@ -215,19 +211,19 @@
 !--- Unit Conversion constants
 !
 !     Pressure
-  REAL(dp)      , PARAMETER :: bar_to_dyncm2 = 1.0d06
-  REAL(dp)      , PARAMETER :: dyncm2_to_Pa  = 1.0d-01
-  REAL(dp)      , PARAMETER :: Pa_to_dyncm2  = 1.0d+01
-  REAL(dp)      , PARAMETER :: bar_to_Pa     = 1.0d05
-  REAL(dp)      , PARAMETER :: atm_to_Pa     = 101325.0d0
+  REAL(dp), PARAMETER :: bar_to_dyncm2 = 1.0d06
+  REAL(dp), PARAMETER :: dyncm2_to_Pa  = 1.0d-01
+  REAL(dp), PARAMETER :: Pa_to_dyncm2  = 1.0d+01
+  REAL(dp), PARAMETER :: bar_to_Pa     = 1.0d05
+  REAL(dp), PARAMETER :: atm_to_Pa     = 101325.0d0
 !
 !     Energy
-  REAL(dp)      , PARAMETER :: cal_to_joule  = 4.184d0
-  REAL(dp)      , PARAMETER :: joule_to_cal  = ONE / cal_to_joule
-  REAL(dp)      , PARAMETER :: joule_to_kcal = milli * joule_to_cal
-  REAL(dp)      , PARAMETER :: kcal_to_joule = kilo * cal_to_joule
-  REAL(dp)      , PARAMETER :: joule_to_erg  = TEN * mega
-  REAL(dp)      , PARAMETER :: erg_to_joule  = rTEN * micro
+  REAL(dp), PARAMETER :: cal_to_joule  = 4.184d0
+  REAL(dp), PARAMETER :: joule_to_cal  = ONE / cal_to_joule
+  REAL(dp), PARAMETER :: joule_to_kcal = milli * joule_to_cal
+  REAL(dp), PARAMETER :: kcal_to_joule = kilo * cal_to_joule
+  REAL(dp), PARAMETER :: joule_to_erg  = TEN * mega
+  REAL(dp), PARAMETER :: erg_to_joule  = rTEN * micro
 !
 !--- Physical constants ********************************************
 
@@ -253,28 +249,11 @@
     INTEGER :: GasUnit, AquaUnit, GasRateUnit
     REAL(dp) :: GasFac
 
-    REAL(dp) :: ConvGas, ConvAir
-
 
 !-----------------------------------------------------------------
 !---  Output control 
 !-----------------------------------------------------------------
 
-
-!-- number of Qt-Output variable
-    INTEGER :: nQtGas  = 0      & ! number of gas phase species
-&             ,nQtAqua = 0        ! number of aqueous phase species
-
-    INTEGER, PARAMETER :: nphys = 9     & ! microphysical output values
-&                        ,nmet  = 12       ! meteorological output values
-
-!--  Qt-Output species
-    INTEGER, ALLOCATABLE :: IndQtGas(:), IndQtAqua(:)    ! Flags for Qt-Output of each species
-!
-!-- control of output for different impactor stages (in measurements)
-    INTEGER ::  nOutImp = 0                     ! number of output impactor stages
-    INTEGER, ALLOCATABLE ::  IndOutImp(:,:)     ! start and end fraction indices
-    REAL(dp), ALLOCATABLE ::  OutImp(:,:)        ! boundary radii of impactor stages
 !
 !-- input chemical reaction mechnism
     INTEGER, PARAMETER :: LenLine=400

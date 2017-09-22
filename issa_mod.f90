@@ -343,4 +343,106 @@ MODULE issa
     WRITE(*,'(A1,A,I0,A,I0,A,$)') char(13),'    Cycle :: (',j,'/',k,')  processed.'
   END SUBROUTINE Progress3
 
+  SUBROUTINE Progress4(j,k)
+    INTEGER(4)  :: j,k
+    ! print the progress bar.
+    WRITE(*,'(A1,A,I0,A,I0,A,$)') char(13),'    Steps :: (',j,'/',k,')  processed.'
+  END SUBROUTINE Progress4
+
+
+
+  SUBROUTINE FluxAnalysis()
+    USE mo_control
+    USE mo_reac
+    USE mo_IO
+		USE mo_unirnk
+    USE ChemSys_Mod
+
+    ! TEMP:
+    INTEGER        :: Positions(iStpFlux)
+    REAL(dp)       :: Rates(neq,iStpFlux)!, IntRates(neq,iStpFlux)
+    REAL(dp)       :: time(iStpFlux), dt(iStpFlux)
+    INTEGER        :: i, dummy, io_stat
+    CHARACTER(200) :: io_msg=''
+
+    REAL(dp)             :: sum_abs_rates(neq), max_rates(neq)
+    REAL(dp)             :: threshold
+    INTEGER, ALLOCATABLE :: NewReactionSet(:), Perm(:)
+		INTEGER							 :: newLen
+
+    ! reading meta data (positions of record)
+    CALL OpenFile_rSeq(FluxMetaUnit,FluxMetaFile)
+    DO i = 1,iStpFlux
+      READ(FluxMetaUnit,*,IOSTAT=io_stat,IOMSG=io_msg) dummy , Positions(i)
+      IF ( io_stat>0 ) WRITE(*,*) '   ERROR :: ',io_stat,'  '//TRIM(io_msg)
+      IF ( io_stat<0 ) EXIT
+    END DO
+    CLOSE(FluxMetaUnit)
+
+    ! reading unformatted binary file
+    CALL OpenFile_rStream(FluxUnit,FluxFile)
+    DO i = 1,iStpFlux
+      READ(FluxUnit,POS=Positions(i),IOSTAT=io_stat,IOMSG=io_msg) Rates(:,i) , time(i) , dt(i)
+      IF ( io_stat>0 ) WRITE(*,*) '   ERROR :: ',io_stat,'  '//TRIM(io_msg)
+      IF ( io_stat<0 ) EXIT
+    END DO
+    CLOSE(FluxUnit)
+
+    ALLOCATE(NewReactionSet(0))
+    
+		DO i = 1,iStpFlux
+	    CALL Update_ReactionSet(NewReactionSet2,Rates(:,i))
+
+			ALLOCATE(Perm(SIZE(NewReactionSet2)))
+		  CALL unirnk(NewReactionSet2,Perm,newLen)
+		  NewReactionSet2 = NewReactionSet2(Perm)
+		  NewReactionSet2 = [NewReactionSet2(:newLen)]
+			DEALLOCATE(Perm)
+		
+			CALL Progress4(i,iStpFlux)
+		END DO
+
+    !-----------------------------------------------------------------------
+    ! --- Writing a new sys-File with less reactions
+    CALL Print_SysFile(ReactionSystem,NewReactionSet2,'CHEM/'//TRIM(BSP)//'_red.sys')
+    
+    write(*,'(A)') '  Printing New Reaction System done  ::  CHEM/'//TRIM(BSP)//'_red.sys'
+    !stop
+
+  END SUBROUTINE FluxAnalysis
+  
+  SUBROUTINE Update_ReactionSet(NewSet,Rates)
+    USE mo_reac,  ONLY: neq
+    REAL(dp) :: Rates(neq)
+		REAL(dp), PARAMETER    :: eps_red = 0.11d0
+		INTEGER,  ALLOCATABLE  :: perm(:)
+		INTEGER,  ALLOCATABLE  :: NewSet(:)
+		INTEGER :: i 
+		REAL(dp) :: sum_Rates
+
+	  CALL SortVecAsc_R(Rates,perm)
+		i = 0
+
+		DO
+			IF ( sum_Rates < eps_red ) THEN
+				i = i + 1
+				sum_Rates = sum_Rates + Rates(i)     
+				perm(i)   = -1
+			ELSE
+				EXIT
+			END IF
+		END DO
+
+		IF (.NOT.ALLOCATED(NewSet)) ALLOCATE(NewSet(0))
+		i = 1
+		DO 
+			IF ( perm(i) /= -1 ) THEN
+				NewSet = [NewSet , perm(i)]
+			END IF
+			IF (i == neq ) EXIT
+			i = i + 1
+		END DO
+
+  END SUBROUTINE Update_ReactionSet 
+
 END MODULE issa

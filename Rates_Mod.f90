@@ -218,7 +218,7 @@
       ! Temporary variables:
       REAL(dp) :: Conc(nspc)
       REAL(dp) :: chi(3), LWC
-      REAL(dp) :: T(10)
+      REAL(dp) :: T(10), Temp
       REAL(dp) :: Meff(neq) , k(neq) , Prod(neq)
       REAL(dp) :: AquaFac(nr_HOAqua)
       
@@ -244,7 +244,8 @@
      
       
       Conc = Y_in
-      T = UpdateTempArray ( 280.0_dp )
+			Temp = 280.0_dp 
+      T = UpdateTempArray( Temp )
       
       !*************************************************************
       ! --- compute rate of all reactions (gas,henry,aqua,diss) ---
@@ -325,20 +326,18 @@
 
     END FUNCTION MassActionProducts
 
-    FUNCTION MassTransfer(kin,Temp,LWC) RESULT(k)
+    FUNCTION MassTransfer(kin,T,LWC) RESULT(k)
       REAL(dp) :: k(nr_HENRY,2,ntFrac), kin(nr_HENRY)
-      REAL(dp) :: Temp(:), LWC
+      REAL(dp) :: T(:), LWC
       ! TEMO
       REAL(dp) :: kmt(nr_HENRY,ntFrac)
       REAL(dp) :: term_diff(nr_HENRY), term_accom(nr_HENRY)
       REAL(dp) :: wetRadius(ntFrac)
       INTEGER :: i
       !
-      REAL(dp) :: t1
-      !
       !---------------------------------------------------------------------------
       term_diff  = henry_diff(  iR%iHENRY(:,2) )             ! diffusion term
-      term_accom = henry_accom( iR%iHENRY(:,2) ) * Temp(10)  ! accom term
+      term_accom = henry_accom( iR%iHENRY(:,2) ) * T(10)  ! accom term
       !--------------------------------------------------------------------------!
       !
       ! Compute new wet radius for droplett class iFrac
@@ -358,7 +357,7 @@
 
       ! direaction AquaSpecies-->GasSpecies  
       DO i=1,ntFrac
-        k(:,2,i) = kmt(:,i) / (kin(:) * GasConst_R * Temp(1))  ! (...) = HenryConst*GasConstant*Temperatur
+        k(:,2,i) = kmt(:,i) / (kin(:) * GasConst_R * T(1))  ! (...) = HenryConst*GasConstant*Temperatur
       END DO
 
     END FUNCTION MassTransfer

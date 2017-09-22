@@ -57,7 +57,6 @@ MODULE Integration_Mod
     ! Temporary variables:
     !
     REAL(dp) :: Y0(nDIM), Y(nDIM)       ! old, current y vector
-    REAL(dp) :: avgRate(neq)
     !
     REAL(dp) :: t             ! current time
     REAL(dp) :: timepart
@@ -98,13 +97,8 @@ MODULE Integration_Mod
       Y(nDIM)  = Temperature0     ! = 750 [K]
     END IF
 
-    ALLOCATE(loc_RatePtr(neq))
-    loc_RatePtr = [(i , i=1,neq)]
-    loc_rateCnt = neq
-    
     ! this is for the waitbar
     tmp_tb = (Tspan(2)-Tspan(1)) * 0.01_dp
-
     
     SELECT CASE (TRIM(method(1:7)))
 
@@ -144,11 +138,9 @@ MODULE Integration_Mod
             CALL Rosenbrock(  Y             &       ! new concentration
             &               , error         &       ! error value
             &               , ierr          &       ! max error component
-            &               , avgRate       &       ! average rate of reaction (flux)
             &               , Y0            &       ! current concentration 
             &               , t             &       ! current time
             &               , h             &       ! stepsize
-            !&               , RCo           &       ! Rosenbrock parameter
             &               , Euler=.FALSE. )       ! new concentration 
             !
             tnew  = t + h
@@ -157,20 +149,20 @@ MODULE Integration_Mod
               tnew  = Tspan(2)         ! Hit end point exactly.
               h     = tnew-t                        ! Purify h.
             END IF
-            Output%ndecomps   = Output%ndecomps   + 1
-            Output%nRateEvals = Output%nRateEvals + ROS%nStage
-            Output%nSolves    = Output%nSolves    + ROS%nStage
+            Out%ndecomps   = Out%ndecomps   + 1
+            Out%nRateEvals = Out%nRateEvals + ROS%nStage
+            Out%nSolves    = Out%nSolves    + ROS%nStage
             !
             !
             failed = (error > ONE)
             !
             IF (failed) THEN               !failed step
               ! Accept the solution only if the weighted error is no more than the
-              ! tolerance rtol.  Estimate an h that will yield an error of rtol on
+              ! tolerance one.  Estimate an h that will yield an error of rtol on
               ! the next step or the next try at taking this step, as the case may be,
               ! and use 0.8 of this value to avoid failures.
               !
-              Output%nfailed  = Output%nfailed+1
+              Out%nfailed  = Out%nfailed+1
               IF ( absh <= hmin ) THEN
                 WRITE(*,*) ' Stepsize to small: ', h
                 CALL FinishMPI()
@@ -184,7 +176,7 @@ MODULE Integration_Mod
               EXIT
             END IF
           END DO
-          Output%nsteps = Output%nsteps + 1
+          Out%nsteps = Out%nsteps + 1
           !
           !
           IF ( NetCdfPrint ) THEN 
@@ -285,10 +277,10 @@ MODULE Integration_Mod
           &           , RWORK , LRW   , IWORK , LIW      , dummy   , MF    )
   
   
-          Output%nsteps     = Output%nsteps     + IWORK(11)
-          Output%nRateEvals = Output%nRateEvals + IWORK(12)
-          Output%npds       = Output%npds       + IWORK(13)
-          Output%ndecomps   = Output%ndecomps   + IWORK(21)
+          Out%nsteps     = Out%nsteps     + IWORK(11)
+          Out%nRateEvals = Out%nRateEvals + IWORK(12)
+          Out%npds       = Out%npds       + IWORK(13)
+          Out%ndecomps   = Out%ndecomps   + IWORK(21)
 
           ! save data
           IF ( NetCdfPrint ) THEN 
@@ -375,10 +367,10 @@ MODULE Integration_Mod
           &           , RWORK , LRW   , IWORK , LIW      , dummy   , MF    )
   
   
-          Output%nsteps     = Output%nsteps     + IWORK(11)
-          Output%nRateEvals = Output%nRateEvals + IWORK(12)
-          Output%npds       = Output%npds       + IWORK(13)
-          Output%ndecomps   = Output%ndecomps   + IWORK(21)
+          Out%nsteps     = Out%nsteps     + IWORK(11)
+          Out%nRateEvals = Out%nRateEvals + IWORK(12)
+          Out%npds       = Out%npds       + IWORK(13)
+          Out%ndecomps   = Out%ndecomps   + IWORK(21)
 
           ! save data
           IF ( NetCdfPrint ) THEN 
@@ -439,12 +431,10 @@ MODULE Integration_Mod
           CALL Rosenbrock(  Y             &       ! new concentration
           &               , error         &       ! error value
           &               , ierr          &       ! max error component
-          &               , avgRate       &       ! average rate of reaction (flux)
           &               , Y0            &       ! current concentration 
           &               , t             &       ! current time
           &               , h             &       ! stepsize
-          !&               , RCo           &       ! Rosenbrock parameter
-          &               , Euler=.FALSE. )       ! new concentration 
+          &               , Euler=.TRUE. )       ! new concentration 
 
           tnew = t + h
           IF (done) THEN
@@ -452,9 +442,9 @@ MODULE Integration_Mod
             h    = tnew - t         ! Purify h.
           END IF
 
-          Output%nRateEvals = Output%nRateEvals + 1
-          Output%nSolves    = Output%nSolves + 1
-          Output%nsteps     = Output%nsteps + 1
+          Out%nRateEvals = Out%nRateEvals + 1
+          Out%nSolves    = Out%nSolves + 1
+          Out%nsteps     = Out%nsteps + 1
 
           IF ( NetCdfPrint ) THEN 
             IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
@@ -509,7 +499,7 @@ MODULE Integration_Mod
 
 
     ! this is for pathway analysis
-    mixing_ratios_spc(:,2) = mixing_ratios_spc(:,2)/REAL(Output%nsteps)
+    mixing_ratios_spc(:,2) = mixing_ratios_spc(:,2)/REAL(Out%nsteps)
     mixing_ratios_spc(:,3) = Y -  mixing_ratios_spc(:,1) 
     !
     ! DEALLOCATE Mumps instance
@@ -574,8 +564,6 @@ MODULE Integration_Mod
     REAL(dp) :: Tarr(10)
     REAL(dp) :: U(nspc) , dUdT(nspc)
     REAL(dp) :: c_v
-
-
     
     IF (Teq) THEN         ! OUT:   IN:
       ! MASS CONSERVATION

@@ -25,7 +25,6 @@ PROGRAM chemie
   IMPLICIT NONE
   !
   CHARACTER(80)   :: Filename0 = ''        ! *.run file
-  CHARACTER(80)   :: ChemFile  = ''        ! *.chem file (output)
   !
   REAL(dp) :: Atol(2)
   INTEGER  :: i,j,jj,nSchwefel
@@ -43,7 +42,7 @@ PROGRAM chemie
   CHARACTER(80) :: neuTolR  = ''
   CHARACTER(80) :: neuTolA  = ''
   CHARACTER(80) :: neuROW   = ''
-  CHARACTER(2)  :: newSolveLA  = ''
+  CHARACTER(2)  :: newLinAlg  = ''
 
   ! temp variables for molecular weights
   CHARACTER(16) :: tmpchar0 = '-'
@@ -90,7 +89,7 @@ PROGRAM chemie
   IF ( FileName0 == '' ) THEN
     WRITE(*,*) 'Input RUNFilename: '; READ(*,*)   FileName0
   END IF
-  FileName0 = TRIM(ADJUSTL(FileName0))
+  RunFile = TRIM(ADJUSTL(FileName0))
 
   !================================================================
   !===                     Initialization
@@ -98,46 +97,34 @@ PROGRAM chemie
   !
   !----------------------------------------------------------------
   ! --- Read run-file
-  CALL InitRun( FileName0 )
+  CALL InitRun
   IF ( MPI_ID == 0 ) WRITE(*,*) '  Initialize run-file .......... done'
-  !
-  !----------------------------------------------------------------
-  Tspan = (/ tAnf , tEnd /)
  
   !----------------------------------------------------------------
   ! --- set cloud intervall
-  LWCBounds(1) = tAnf * HOUR
-  LWCBounds(2) = LWCBounds(1) + 1.00_dp  * HOUR
-  LWCBounds(3) = LWCBounds(2) + 0.25_dp  * HOUR
-  LWCBounds(4) = LWCBounds(3) + 9.50_dp  * HOUR
-  LWCBounds(5) = LWCBounds(4) + 0.25_dp  * HOUR
-  LWCBounds(6) = LWCBounds(5) + 1.00_dp  * HOUR
+  LWCb = Set_pseudoLWCbounds()
 
   !----------------------------------------------------------------
   !  --- read the .sys data, save coefs in sparse matrix
   Time_Read = MPI_WTIME()
 
-  ChemFile = ADJUSTL(TRIM(SysFile(:INDEX(SysFile,'.sys')-1)))
-  OPEN ( UNIT=89 , FILE=ADJUSTL(TRIM(ChemFile))//'.chem' , STATUS='UNKNOWN' )
-
   IF ( MPI_ID == 0 ) WRITE(*,'(A33)',ADVANCE='NO') '   Reading sys-file .............'
 
   IF ( Teq.AND.ChemKin ) THEN
-    
+
+    CALL Read_Elements    ( SysFile    , SysUnit )
+    CALL Read_Species     ( SysFile    , SysUnit )
+    CALL Read_Reaction    ( SysFile    , SysUnit )
+
     IF ( MPI_ID == 0 ) WRITE(*,*) 'done   ---->  Solve Gas Energy Equation '
 
-    CALL Read_Elements    ( SysFile    , 969 )
-    CALL Read_Species     ( SysFile    , 969 )
-    CALL Read_Reaction    ( SysFile    , 969 )
-
-    CALL PrintHeadSpecies   ( ChemFile    , 89 ) 
-    CALL PrintSpecies       ( ListGas2    , 89 )
-    CALL PrintHeadReactions ( 89 )
-    CALL PrintReactions     ( ReactionSystem , 89 , .TRUE. )
-    CALL PrintFinalReactions( 89 )
+   !-----------------------------------------------------------------------
+   ! --- print reactions and build A, B and (B-A) structure
+   !-----------------------------------------------------------------------
+    CALL Print_ChemFile   ( ReactionSystem , ChemFile , ChemUnit , .TRUE. )
 
     CALL GetSpeciesNames( ChemFile , y_name )
-    CALL Read_ThermoData( SwitchTemp , DataFile , 696 , nspc )
+    CALL Read_ThermoData( SwitchTemp , DataFile , DataUnit , nspc )
 
 
     !--- richtigen index holen, da TB unsortiert eingelesen wurde
@@ -147,15 +134,19 @@ PROGRAM chemie
     !--- Read initial values
     ALLOCATE( InitValAct(ns_GAS) , y_e(ns_GAS) , InitValKat(ns_KAT) )
 
-    IF ( MWeights /= '' ) THEN
-      CALL Read_MolecularWeights(MW,MWeights,MWUnit,nspc)
+		!--- malloc gibbs energy, derivates
+		ALLOCATE( GFE(nspc)   , DGFEdT(nspc)   )
+		ALLOCATE( DelGFE(neq) , DDelGFEdT(neq) )
+		GFE      = ZERO; 	DGFEdT    = ZERO
+		DelGFE   = ZERO; 	DDelGFEdT = ZERO
 
-      ALLOCATE( rMW(nspc) )  
-      rMW = ONE / MW
+    IF ( MWFile /= '' ) THEN
+      CALL Read_MolecularWeights(MW,MWFile,MWUnit,nspc)
+
+      rMW = [ONE / MW]
       
       ALLOCATE( MoleFrac(ns_GAS) , MassFrac(ns_GAS) )
-      MoleFrac = ZERO         ! mole fraction 
-      MassFrac = ZERO         ! mass fraction 
+      MoleFrac = ZERO;	MassFrac  = ZERO  
 
       CALL Read_GASini( InitFile , MoleFrac , InitValKat )
 
@@ -184,35 +175,13 @@ PROGRAM chemie
 
   ELSE
 
-    IF ( MPI_ID==0 ) WRITE(*,*) 'done  ---->  Fix Temperature'
     CALL ReadSystem( SysFile )
+    IF ( MPI_ID==0 ) WRITE(*,*) 'done  ---->  Fix Temperature'
   
-    !----------------------------------------------------------------
-    ! ---  build the coeficient matrices and write .chem
-    CALL PrintHeadSpecies ( ChemFile , 89 )
-
-    IF ( ns_GAS    > 0 ) CALL PrintSpecies( ListGas2     , 89 )
-    IF ( ns_AQUA   > 0 ) CALL PrintSpecies( ListAqua2    , 89 )
-    IF ( ns_SOLID  > 0 ) CALL PrintSpecies( ListSolid2   , 89 ) 
-    IF ( ns_PARTIC > 0 ) CALL PrintSpecies( ListPartic2  , 89 )
-    IF ( ns_KAT    > 0 ) CALL PrintSpecies( ListNonReac2 , 89 )
-
-    CALL PrintHeadReactions( 89 )
-   
-    !-----------------------------------------------------------------------
-    ! --- Build the reaction system
-    !-----------------------------------------------------------------------
-    CALL AllListsToArray( ReactionSystem            &  
-    &                   , ListRGas    , ListRHenry  &
-    &                   , ListRAqua   , ListRDiss   &
-    &                   , ListRSolid  , ListRPartic &
-    &                   , ListRMicro  )
-    
-    !-----------------------------------------------------------------------
-    ! --- print reactions and build A, B and (B-A) structure
-    !-----------------------------------------------------------------------
-    CALL PrintReactions( ReactionSystem , 89 )
-    CALL PrintFinalReactions( 89 )
+   !-----------------------------------------------------------------------
+   ! --- print reactions and build A, B and (B-A) structure
+   !-----------------------------------------------------------------------
+    CALL Print_ChemFile( ReactionSystem , ChemFile , ChemUnit , .FALSE. )
 
     !-----------------------------------------------------------------------
     ! --- initialize fpraser for reactions with special rate formula
@@ -233,17 +202,16 @@ PROGRAM chemie
     ! --- Input of initial data and thermodynamic properties
     CALL InputChemicalData( InitFile , DataFile , MetFile )
 
-    !-----------------------------------------------------------------------
-    ! --- Writing a new sys-File with less reactions
-    !CALL OpenFile_rSeq(newReac_nr,newReac_name)
-    !CALL SequentialReadNewReactionList(newReac_nr)
-    !CALL Print_SysFile(ReactionSystem,newReac_List)
-    !Stop ' New System written.'
   END IF
-  CLOSE(89)
 
-  IF (MPI_ID==0) WRITE(*,*) '  Read ini-file ................ done'
-  IF (MPI_ID==0) WRITE(*,*) '  Print chem-file .............. done'
+  IF (MPI_ID==0) THEN
+    WRITE(*,*) '  Read ini-file ................ done'
+    WRITE(*,*) '  Print chem-file .............. done'
+    WRITE(*,*)
+    WRITE(*,*) '     Number of Reactions = ', neq
+    WRITE(*,*) '     Number of Species   = ', nspc
+  END IF
+
 
   !-----------------------------------------------------------------------
   ! --- Read species for diagnose (print species concs to NetCDF file)
@@ -278,21 +246,9 @@ PROGRAM chemie
   nsr = nspc + neq
 
   IF ( Teq ) THEN
-    nDIM    = nspc + 1
-    nDIMcl  = nspc + 1
-    nDIMex  = nsr  + 1
-    Atol    = [ AtolGas , AtolTemp ]
-
-    !--- malloc gibbs energy, derivates
-    ALLOCATE( GFE(nspc)   , DGFEdT(nspc)   )
-    ALLOCATE( DelGFE(neq) , DDelGFEdT(neq) )
-    GFE    = ZERO;  DGFEdT    = ZERO
-    DelGFE = ZERO;  DDelGFEdT = ZERO
+    nDIM = nspc+1; nDIMcl = nspc+1; nDIMex = nsr+1
   ELSE
-    nDIM    = nspc
-    nDIMcl  = nspc
-    nDIMex  = nsr
-    Atol    = [ AtolGas , AtolAqua ]
+    nDIM = nspc; 	 nDIMcl = nspc;		nDIMex = nsr
   END IF
 
   rNspc = ONE/REAL(nspc,KIND=dp)  ! rNspc for error calculation
@@ -305,11 +261,11 @@ PROGRAM chemie
   !---------------------------------------------------------------------------
 
   ! if you want to change the calc of the linear systems without opening the run-file
-  CALL getarg ( 2 , newSolveLA )
-  IF (newSolveLA /= '') THEN
-    SELECT CASE (newSolveLA)
-      CASE ('cl'); CLASSIC = .TRUE.;  EXTENDED = .FALSE.; SolveLA = newSolveLA
-      CASE ('ex'); CLASSIC = .FALSE.; EXTENDED = .TRUE.;  SolveLA = newSolveLA
+  CALL getarg ( 2 , newLinAlg )
+  IF ( newLinAlg /= '' ) THEN
+    SELECT CASE (newLinAlg)
+      CASE ('cl'); CLASSIC = .TRUE.;  EXTENDED = .FALSE.; LinAlg = newLinAlg
+      CASE ('ex'); CLASSIC = .FALSE.; EXTENDED = .TRUE.;  LinAlg = newLinAlg
       CASE DEFAULT;  WRITE(*,*) '  Linear Algebra either "cl" or "ex" !'
     END SELECT
   END IF
@@ -332,7 +288,7 @@ PROGRAM chemie
   !
   !--- Print Init parameters, concs, temp, pressure,....
   IF (MPI_ID==0) THEN
-    IF ( Ladebalken==1 ) Bar = .TRUE.
+    IF ( WaitBar ) Bar = .TRUE.
     WRITE(*,*) '  Initial values:   '
     WRITE(*,*)
     fmt0 = '  [molec/cm3] '
@@ -353,12 +309,29 @@ PROGRAM chemie
   END IF
 
   !-----------------------------------------------------------------------
-  ! ---  check the consistency of input parameters
+  ! ---  Allocate arrays for some varables
   !-----------------------------------------------------------------------
-  CALL CheckInputParameters( Tspan , Atol , RtolROW )
+	ID_1 = SparseID( nDim )
   ALLOCATE( ErrVals(nspc) , Y(nspc)  )
   ALLOCATE( Rate(neq) , DRatedT(neq) )
   ALLOCATE( wetRad(ntFrac) ) 
+	! Threshold for Rosenbrock method
+	ALLOCATE( ThresholdStepSizeControl(nDIM) )
+	ThresholdStepSizeControl(:ns_GAS)   = AtolGas / RTolROW
+	ThresholdStepSizeControl(ns_GAS+1:) = AtolAqua / RTolROW
+	! All species get the same abs tolerance
+	ALLOCATE( ATolAll(nDIM) )
+	ATolAll(:ns_GAS)   = ATolGas
+	ATolAll(ns_GAS+1:) = ATolAqua
+	IF ( Teq ) THEN
+		ThresholdStepSizeControl(nDIM) = ATolTemp / RTolROW
+		ATolAll(nDIM) = ATolTemp
+	END IF
+	IF ( Teq ) THEN
+		Atol = [AtolGas , AtolTemp]		! abs. tolerance for ChemKin scenario
+	ELSE
+		Atol = [AtolGas , AtolAqua]		! abs. tolerance for Tropos scenario
+	END IF
 
   !-----------------------------------------------------------------------
   ! --- Initialize NetCDF output file
@@ -378,7 +351,7 @@ PROGRAM chemie
     yNcdf = ZERO
         
     !--  Netcdf Output File
-    IF ( ErrorLog == 1 ) ErrVals = ZERO
+    ErrVals = ZERO
     IF ( ns_AQUA > 0 ) THEN
       LWC = pseudoLWC(Tspan(1))
       wetRad(:) = (Pi34*LWC/Frac%Number(:))**(rTHREE)*0.1_dp
@@ -410,14 +383,14 @@ PROGRAM chemie
   !    - generating sparse matrecies of LU decomposition of the Jacobian
   !-----------------------------------------------------------------------
   WRITE(*,'(A33)',ADVANCE='NO') '   Symbolic-phase................'
-  StartTimer = MPI_WTIME()            ! start timer for symb phase
+  StartTimer = MPI_WTIME()              ! start timer for symb phase
   
-  CALL SymbolicAdd( BA , B , A )      ! symbolic addition:    BA = B + A
-  CALL SparseAdd  ( BA , B , A, '-' )  ! numeric subtraction:  BA = B - A
-  CALL TransposeSparse( BAT , BA )    ! transpose BA:        BAT = Transpose(BA) 
+  CALL SymbolicAdd( BA , B , A )      	! symbolic addition:    BA = B + A
+  CALL SparseAdd  ( BA , B , A, '-' )   ! numeric subtraction:  BA = B - A
+  CALL TransposeSparse( BAT , BA )    	! transpose BA:        BAT = Transpose(BA) 
 
   IF ( MatrixPrint ) THEN
-    ! write educt and product matrix to file
+
     P_HG = Copy_CSR(B)
     CALL TransposeSparse( E_HG , Copy_CSR(A) )
     P_HG%Val = ONE
@@ -436,20 +409,13 @@ PROGRAM chemie
       ! issa routines
       CALL ISSA_nue(BA,Cyclic_Set,ReactionSystem)
 
-      !WRITE(*,*) '  Continue? [y/n]'
-      !READ(*,*) inpt
-      !IF (inpt/='y') STOP
+      WRITE(*,'(A)',ADVANCE='NO') '  Continue? [y/n]  '; READ(*,*) inpt
+      IF (inpt/='y') STOP
+
       WRITE(*,'(A28,*(A,2X))') '   Important Species are :: ', (TRIM(y_name(S_imp(j))),j=1,SIZE(S_imp))
       WRITE(*,*) 
-      !STOP ' main '
+      
     END IF
-    
-    !STOP ' kreise gefunden '
-
-    !CALL WriteSparseMatrix(P_HG,'MATRICES/P_HG_'//BSP,neq,nspc)
-    !CALL WriteSparseMatrix(E_HG,'MATRICES/E_HG_'//BSP,neq,nspc)
-    !CALL WriteSparseMatrix(S_HG,'MATRICES/S_HG_'//BSP,neq,nspc)
-    !CALL WriteSparseMatrix(R_HG,'MATRICES/R_HG_'//BSP,neq,nspc)
   END IF
 
   ! if either Rosenbrock method or backward Euler was choosen
@@ -497,7 +463,7 @@ PROGRAM chemie
       ! Permutation given by Markowitz Ordering strategie
       temp_LU_Dec = CSR_to_SpRowColD(Miter) 
 
-      IF ( OrderingStrategie == 8 ) THEN
+      IF ( Ordering == 8 ) THEN
         CALL SymbLU_SpRowColD_M ( temp_LU_Dec )        
       ELSE 
         ALLOCATE(PivOrder(temp_LU_Dec%n))
@@ -526,22 +492,32 @@ PROGRAM chemie
     END IF
 
     IF (MPI_ID==0) THEN
-      !IF (MatrixPrint) THEN
-      !  CALL WriteSparseMatrix(tmpJacCC,'MATRICES/JAC_'//TRIM(BSP), neq, nspc)
-      !  CALL WriteSparseMatrix(BA,      'MATRICES/BA_'//TRIM(BSP), neq, nspc)
-      !  CALL WriteSparseMatrix(Miter,   'MATRICES/Miter_'//TRIM(BSP), neq, nspc)
-      !  CALL WriteSparseMatrix(LU_Miter,'MATRICES/LU_Miter_'//TRIM(BSP), neq, nspc)
-      !  !STOP 'after writesparsematrix'
       
-      !END IF
-      WRITE(*,*) 'done'
+      WRITE(*,*) 'done'     ! Symbolic phase
       WRITE(*,*) ' '
-      !WRITE(*,*) '  Matrix Statistics: '
-      !WRITE(*,*) ' '
-      !CALL Matrix_Statistics(A,B,BA,BAT,S_HG,tmpJacCC,Miter,LU_Miter)
-      !STOP 'after writesparsematrix'
+
+      IF (MatrixPrint) THEN
+			  !CALL WriteSparseMatrix(P_HG,'MATRICES/P_HG_'//TRIM(BSP),neq,nspc)
+        !CALL WriteSparseMatrix(E_HG,'MATRICES/E_HG_'//TRIM(BSP),neq,nspc)
+    	  !CALL WriteSparseMatrix(S_HG,'MATRICES/S_HG_'//TRIM(BSP),neq,nspc)
+    		!CALL WriteSparseMatrix(R_HG,'MATRICES/R_HG_'//TRIM(BSP),neq,nspc)
+        CALL WriteSparseMatrix(tmpJacCC,'MATRICES/JAC_'//TRIM(BSP), neq, nspc)
+        CALL WriteSparseMatrix(BA,      'MATRICES/BA_'//TRIM(BSP), neq, nspc)
+        CALL WriteSparseMatrix(Miter,   'MATRICES/Miter_'//TRIM(BSP), neq, nspc)
+        CALL WriteSparseMatrix(LU_Miter,'MATRICES/LU_Miter_'//TRIM(BSP), neq, nspc)
+        WRITE(*,*) '  Continue? [y/n]';  READ(*,*) inpt
+        IF (inpt/='y') STOP
+      END IF
+
+      WRITE(*,*) '  Matrix Statistics: '
+      WRITE(*,*) ' '
+      CALL Matrix_Statistics(A,B,BA,BAT,S_HG,tmpJacCC,Miter,LU_Miter)
     END IF
 
+    CALL Free_Matrix_CSR( E_HG )
+    CALL Free_Matrix_CSR( P_HG )
+    CALL Free_Matrix_CSR( S_HG )
+    CALL Free_Matrix_CSR( R_HG )
     CALL Free_Matrix_CSR( tmpJacCC )
     CALL Free_SpRowColD( temp_LU_Dec )
 
@@ -556,10 +532,10 @@ PROGRAM chemie
     Y = MAX( ABS(InitValAct) , eps ) * SIGN( ONE , InitValAct )    ! |y| >= eps
     
     ! ---- Calculate values of Jacobian
-    StartTimer  = MPI_WTIME()
+    StartTimer = MPI_WTIME()
     CALL Jacobian_CC( Jac_CC , BAT , A , Rate , Y )
-    TimeJac     = TimeJac + MPI_WTIME() - StartTimer
-    Output%npds = Output%npds + 1
+    Out%npds = Out%npds + 1
+    TimeJac  = TimeJac + MPI_WTIME() - StartTimer
   END IF
 
   !-----------------------------------------------------------------------
@@ -571,13 +547,15 @@ PROGRAM chemie
   
 
   ! open file to save the fluxes 
-  StpFlux  = StpNetCDF
-  iStpFlux = 1
-  !CALL OpenFile_wStream(flux_nr,flux_name);       CLOSE(flux_nr)
-  !CALL OpenFile_wSeq(fluxmeta_nr,fluxmeta_name);  CLOSE(fluxmeta_nr)
-  CALL OpenFile_wSeq(flux_nr,flux_name)
-  WRITE(flux_nr,*) neq, nspc
-  CLOSE(flux_nr)
+  IF ( MPI_ID == 0 .AND. FluxAna ) THEN
+    StpFlux  = StpNetCDF
+    iStpFlux = 0
+    CALL OpenFile_wStream(FluxUnit,FluxFile);       CLOSE(FluxUnit)
+    CALL OpenFile_wSeq(FluxMetaUnit,FluxMetaFile);  CLOSE(FluxMetaUnit)
+    !CALL OpenFile_wSeq(flux_nr,flux_name)
+    !WRITE(flux_nr,*) neq, nspc
+    !CLOSE(flux_nr)
+  END IF
 
   !-----------------------------------------------------------------------
   ! --- Start the integration routine 
@@ -585,9 +563,9 @@ PROGRAM chemie
   CALL Integrate (  InitValAct     &  ! initial concentrations activ species
   &               , Rate           &  ! reaction rates at time=t0
   &               , Tspan          &  ! integration invervall
-  &               , Atol           &  ! abs. tolerance gas species
+  &               , Atol           &  ! abs. tolerance of species
   &               , RtolROW        &  ! rel. tolerance Rosenbrock method
-  &               , ODEsolver      )  ! methode for solving the ode
+  &               , ODEsolver      )  ! methode for solving the ode system
   !---------------------------------------------------------------
   ! --- stop timer and print output statistics
   Timer_Finish = MPI_WTIME() - Timer_Start + Time_Read
@@ -598,9 +576,11 @@ PROGRAM chemie
   &                     , TimeIntegrationE, Timer_Finish  , TimeRateSend  &
   &                     , TimeNetCDF      , TimeErrCalc   , TimeRhsCalc   )
   !---------------------------------------------------------------
-  WRITE(*,'(A,F8.3,A)') '  Timer flux writing      = ',TimeFluxWrite,' [sec]'
-  WRITE(*,'(A,I0,A)') '  Number of flux writings   = ',iStpFlux,' [-]'
-
+  IF ( MPI_ID == 0 .AND. FluxAna ) THEN
+    WRITE(*,'(A40,3X,F13.6,A6)') '    Timer flux writing        = ', TimeFluxWrite, ' [sec]'
+    WRITE(*,'(A40,3X,I10)')      '    Number of flux writings   = ', iStpFlux
+    CALL FluxAnalysis()
+  END IF
 
 
   IF ( Lehmann ) THEN
@@ -611,6 +591,7 @@ PROGRAM chemie
   END IF
 
   ! --- Close MPI 
+  WRITE(*,*); WRITE(*,*)
   CALL FinishMPI()
 
   !================================================================

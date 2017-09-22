@@ -31,48 +31,48 @@ MODULE Chemsys_Mod
   END TYPE Duct_T
 
   TYPE Special_T
-    INTEGER :: nVariables
-    INTEGER, ALLOCATABLE :: iVariables(:)
+    INTEGER                         :: nVariables = 0
+    INTEGER,            ALLOCATABLE :: iVariables(:)
     CHARACTER(LenName), ALLOCATABLE :: cVariables(:)
-    CHARACTER(LenLine) :: Formula
-    LOGICAL :: Temp=.FALSE.
+    CHARACTER(LenLine)              :: Formula = ''
+    LOGICAL                         :: Temp = .FALSE.
   END TYPE Special_T
   !
   ! LIST FORM
   TYPE Reaction_T
-    CHARACTER(LenType) :: Type, TypeConstant
-    CHARACTER(LenName) :: Comment
-    CHARACTER(LenLine) :: Line1, Line2, Line3, Line4
-    CHARACTER(LenName) :: Factor
-    TYPE(Duct_T), POINTER :: Educt(:)=>NULL(), Product(:)=>NULL()
-    REAL(dp), ALLOCATABLE :: Constants(:)
-    TYPE(Duct_T), POINTER :: InActEduct(:)=>NULL(), InActProduct(:)=>NULL()
-    TYPE(Special_T)       :: Special
-    INTEGER               :: nInActEd=0, nInActPro=0
+    CHARACTER(LenType)        :: Type, TypeConstant
+    CHARACTER(LenName)        :: Comment
+    CHARACTER(LenLine)        :: Line1, Line2, Line3, Line4
+    CHARACTER(LenName)        :: Factor
+    TYPE(Duct_T),     POINTER :: Educt(:)=>NULL(), Product(:)=>NULL()
+    REAL(dp),     ALLOCATABLE :: Constants(:)
+    TYPE(Duct_T),     POINTER :: InActEduct(:)=>NULL(), InActProduct(:)=>NULL()
+    TYPE(Special_T)           :: Special
+    INTEGER                   :: nInActEd=0, nInActPro=0
     TYPE(Reaction_T), POINTER :: Next=>NULL()
   END TYPE Reaction_T
   !
   ! ARRAY FORM
   TYPE ReactionStruct_T
-    CHARACTER(LenType)  :: Type,  TypeConstant
-    CHARACTER(LenLine)  :: Line1='' , Line2='' , Line3='', Line4=''
-    LOGICAL             :: bR = .FALSE. , brX = .FALSE. 
-    CHARACTER(LenName)  :: Factor = ''
-    CHARACTER(LenName)  :: Comment = ''
-    CHARACTER(2)        :: direction = ''
-    REAL(dp)            :: SumAqCoef     
-    TYPE(Special_T)     :: Special
-    TYPE(Duct_T)  , ALLOCATABLE :: Educt(:), Product(:)
-    REAL(dp), ALLOCATABLE       :: Constants(:)
-    REAL(dp), ALLOCATABLE       :: LowConst(:), HighConst(:), TroeConst(:) ! combustion press dep reactions
-    REAL(dp), ALLOCATABLE       :: InActEduct(:), InActProduct(:)
-    INTEGER                     :: nInActEd = 0, nInActPro = 0, nActEd = 0, nActPro = 0
-    INTEGER                     :: nConst = 0
-    INTEGER                     :: HenrySpc = 0
+    CHARACTER(LenType)              :: Type,  TypeConstant
+    CHARACTER(LenLine)              :: Line1='' , Line2='' , Line3='', Line4=''
+    LOGICAL                         :: bR = .FALSE. , brX = .FALSE. 
+    CHARACTER(LenName)              :: Factor = ''
+    CHARACTER(LenName)              :: Comment = ''
+    CHARACTER(2)                    :: direction = ''
+    REAL(dp)                        :: SumAqCoef     
+    TYPE(Special_T)                 :: Special
+    TYPE(Duct_T)  ,     ALLOCATABLE :: Educt(:), Product(:)
+    REAL(dp),           ALLOCATABLE :: Constants(:)
+    REAL(dp),           ALLOCATABLE :: LowConst(:), HighConst(:), TroeConst(:) ! combustion press dep reactions
+    REAL(dp),           ALLOCATABLE :: InActEduct(:), InActProduct(:)
+    INTEGER                         :: nInActEd = 0, nInActPro = 0, nActEd = 0, nActPro = 0
+    INTEGER                         :: nConst = 0
+    INTEGER                         :: HenrySpc = 0
     LOGICAL                         :: TB = .FALSE. , TBextra=.FALSE.
-    INTEGER, ALLOCATABLE            :: TBidx(:)
+    INTEGER,            ALLOCATABLE :: TBidx(:)
     CHARACTER(LenName), ALLOCATABLE :: TBspc(:)
-    REAL(dp), ALLOCATABLE       :: TBalpha(:)
+    REAL(dp),           ALLOCATABLE :: TBalpha(:)
     CHARACTER(LenName), ALLOCATABLE :: InActEductSpc(:), InActProductSpc(:)
   END TYPE ReactionStruct_T
   !
@@ -474,6 +474,7 @@ MODULE Chemsys_Mod
 
         CASE DEFAULT
           WRITE(*,*) '  Unknown reaction CLASS: ', CLASS
+          STOP
       END SELECT
 
       Out = .FALSE.
@@ -539,9 +540,8 @@ MODULE Chemsys_Mod
     WRITE(Unit,*) ' ========     Output -  Chemical Reaction Data      ========'
     WRITE(Unit,*) ' ==========================================================='
     WRITE(Unit,*) ''
-    WRITE(Unit,*) ' Created:             ',Date(7:8),'.',Date(5:6),'.',Date(1:4)
-    WRITE(Unit,*) ' Chemical Mechanism:  '                                     &
-    &             , TRIM(ADJUSTL(FileName(INDEX(FileName,'/',.TRUE.)+1:))),'.chem'
+    WRITE(Unit,*) ' Created:             ', Date(7:8),'.',Date(5:6),'.',Date(1:4)
+    WRITE(Unit,*) ' Chemical Mechanism:  ', TRIM(ADJUSTL(FileName))
     WRITE(Unit,*) ''
     WRITE(Unit,*) ' =================     Units         ======================='
     WRITE(Unit,*) ''
@@ -632,53 +632,52 @@ MODULE Chemsys_Mod
     WRITE(Unit,*) ''
   END SUBROUTINE PrintHeadReactions
   !
-  SUBROUTINE Print_SysFile(RS,IndexSet)
+  SUBROUTINE Print_SysFile(RS,IndexSet,NewName)
     TYPE(ReactionStruct_T), INTENT(IN) :: RS(:)
-    INTEGER, OPTIONAL, INTENT(IN)      :: IndexSet(:)
+    INTEGER,      OPTIONAL, INTENT(IN) :: IndexSet(:)
+    CHARACTER(*), OPTIONAL             :: NewName
     
     INTEGER :: i, j
     
-    write(*,*) ' new systemfile = ',ADJUSTL(TRIM(SysFile))
-   
-    OPEN(UNIT=989,FILE=ADJUSTL(TRIM(SysFile))//'_NEU.sys',STATUS='UNKNOWN')
+    OPEN(UNIT=989,FILE=ADJUSTL(TRIM(NewName)),STATUS='UNKNOWN')
   
-    WRITE(989,*) '# ================= '//TRIM(BSP)//'.sys ================='
-    WRITE(989,*) '# = Please copy the data into your sys-file for ='
-    WRITE(989,*) '# =============== chemical input. ==============='
-    WRITE(989,*) '#'
-    WRITE(989,*) '#  ===================   Unit options   ======================'
-    WRITE(989,*) ''
-    WRITE(989,*) 'UNIT GAS    0   #    Gas phase units     (0 = molec/cm3, 1 = mol/m3)'
-    WRITE(989,*) 'UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)'
-    WRITE(989,*) 'UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)'
-    WRITE(989,*) ''
-    WRITE(989,*) '#  ===================   Gas Phase      ======================'
-    WRITE(989,*) '#'
+    WRITE(989,'(A)') '# ================= '//TRIM(NewName)//' ================='
+    WRITE(989,'(A)') '# = Please copy the data into your sys-file for ='
+    WRITE(989,'(A)') '# =============== chemical input. ==============='
+    WRITE(989,'(A)') '#'
+    WRITE(989,'(A)') '#  ===================   Unit options   ======================'
+    WRITE(989,'(A)') ''
+    WRITE(989,'(A)') 'UNIT GAS    0   #    Gas phase units     (0 = molec/cm3, 1 = mol/m3)'
+    WRITE(989,'(A)') 'UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)'
+    WRITE(989,'(A)') 'UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)'
+    WRITE(989,'(A)') ''
+    WRITE(989,'(A)') '#  ===================   Gas Phase      ======================'
+    WRITE(989,'(A)') '#'
  
     IF (PRESENT(IndexSet)) THEN
       j = 0
       DO 
         j = j + 1
         i = IndexSet(j)
-        WRITE(989,*) 'CLASS: ' ,TRIM(RS(i)%Type)
-        WRITE(989,*) TRIM(RS(i)%Line1)
-        IF ( TRIM(RS(i)%Line3)   /= '' ) WRITE(989,*) TRIM(RS(i)%Line3)
-        IF ( RS(i)%Special%nVariables /= 0 ) WRITE(989,*) 'SPECIAL: ',TRIM(RS(i)%Special%Formula)//';  ',RS(i)%Special%nVariables
-        IF ( TRIM(RS(i)%Factor)  /= '' ) WRITE(989,*) 'FACTOR: ',TRIM(RS(i)%Factor)
-        WRITE(989,*) 
-        IF ( j >= SIZE(IndexSet) ) EXIT
+        WRITE(989,'(A)') 'CLASS: '//TRIM(RS(i)%Type)
+        WRITE(989,'(A)') TRIM(RS(i)%Line1)
+        IF ( TRIM(RS(i)%Line3)   /= '' ) WRITE(989,'(A)') TRIM(RS(i)%Line3)
+        IF ( TRIM(RS(i)%Special%Formula) /= '' ) WRITE(989,'(A,I0)') 'SPECIAL: '//TRIM(RS(i)%Special%Formula)//';  ',RS(i)%Special%nVariables
+        IF ( TRIM(RS(i)%Factor)  /= '' ) WRITE(989,'(A)') 'FACTOR: '//TRIM(RS(i)%Factor)
+        WRITE(989,'(A)') 
         IF ( MAXVAL(INDEX(RS(i)%Type,['DISS','HENR'])) > 0 ) j = j + 1
+        IF ( j >= SIZE(IndexSet) ) EXIT
       END DO
     ELSE
       i = 0
       DO 
         i = i + 1
-        WRITE(989,*) 'CLASS: ' ,TRIM(RS(i)%Type)
-        WRITE(989,*) TRIM(RS(i)%Line1)
-        IF ( TRIM(RS(i)%Line3)   /= '' ) WRITE(989,*) TRIM(RS(i)%Line3)
-        IF ( RS(i)%Special%nVariables /= 0 ) WRITE(989,*) 'SPECIAL: ',TRIM(RS(i)%Special%Formula)//';  ',RS(i)%Special%nVariables
-        IF ( TRIM(RS(i)%Factor)  /= '' ) WRITE(989,*) 'FACTOR: ',TRIM(RS(i)%Factor)
-        WRITE(989,*) 
+        WRITE(989,'(A)') 'CLASS: '//TRIM(RS(i)%Type)
+        WRITE(989,'(A)') TRIM(RS(i)%Line1)
+        IF ( TRIM(RS(i)%Line3)   /= '' ) WRITE(989,'(A)') TRIM(RS(i)%Line3)
+        IF ( TRIM(RS(i)%Special%Formula) /= '' ) WRITE(989,'(A,I0)') 'SPECIAL: '//TRIM(RS(i)%Special%Formula)//';  ',RS(i)%Special%nVariables
+        IF ( TRIM(RS(i)%Factor)  /= '' ) WRITE(989,'(A)') 'FACTOR: '//TRIM(RS(i)%Factor)
+        WRITE(989,'(A)') 
 
         IF ( i >= SIZE(RS) ) EXIT
         IF ( MAXVAL(INDEX(RS(i)%Type,['DISS','HENR'])) > 0 ) i = i + 1
@@ -687,23 +686,55 @@ MODULE Chemsys_Mod
     CLOSE(989)
   END SUBROUTINE Print_SysFile
   !
-  SUBROUTINE PrintReactions(ReacStruct,Unit,CK)
-    !TYPE(ListReaction_T) :: List
-    TYPE(ReactionStruct_T), ALLOCATABLE :: ReacStruct(:)
-    INTEGER :: Unit
-    LOGICAL, OPTIONAL :: CK
-    !
-    INTEGER :: i,j,m,iR
-    INTEGER :: nEduct,nProd
+  SUBROUTINE Print_ChemFile(RS,File,Unit,CK)
+    ! IN:
+    TYPE(ReactionStruct_T), ALLOCATABLE :: RS(:)
+    CHARACTER(*) :: File
+    INTEGER      :: Unit
+    LOGICAL      :: CK
+    ! TEMP:
+    INTEGER      :: io_stat
+    INTEGER      :: i,j,m,iR
+    INTEGER      :: nEduct,nProd
     TYPE(Duct_T) :: ActiveEduct(30)
     TYPE(Duct_T) :: ActiveProduct(30)
     !
-    INTEGER :: nnzA, nnzB
+    INTEGER      :: nnzA, nnzB
     !
-    INTEGER, ALLOCATABLE :: tmpIdx(:)
+    INTEGER,  ALLOCATABLE :: tmpIdx(:)
     REAL(dp), ALLOCATABLE :: tmpVal(:)
-    INTEGER, ALLOCATABLE :: permutation(:)
+    INTEGER,  ALLOCATABLE :: permutation(:)
     INTEGER :: newLen
+
+    OPEN(unit=Unit, file=File, status='replace', action='write', access='sequential', iostat=io_stat)
+    IF ( io_stat /= 0 ) WRITE(*,*) '  ERROR creating chem-file :: ',io_stat
+    REWIND(ChemUnit)
+    !----------------------------------------------------------------
+    ! ---  build the coeficient matrices and write .chem
+    CALL PrintHeadSpecies ( File , Unit )
+    
+    IF ( ns_GAS    > 0 ) CALL PrintSpecies( ListGas2     , Unit )
+    IF ( ns_AQUA   > 0 ) CALL PrintSpecies( ListAqua2    , Unit )
+    IF ( ns_SOLID  > 0 ) CALL PrintSpecies( ListSolid2   , Unit )
+    IF ( ns_PARTIC > 0 ) CALL PrintSpecies( ListPartic2  , Unit )
+    IF ( ns_KAT    > 0 ) CALL PrintSpecies( ListNonReac2 , Unit )
+     
+    CALL PrintHeadReactions( Unit )
+     
+    !-----------------------------------------------------------------------
+    ! --- Build the reaction system
+    !-----------------------------------------------------------------------
+    IF ( .NOT.CK ) THEN
+      CALL AllListsToArray( RS            &
+      &                   , ListRGas    , ListRHenry  &
+      &                   , ListRAqua   , ListRDiss   &
+      &                   , ListRSolid  , ListRPartic &
+      &                   , ListRMicro  )
+    END IF
+    
+    !-----------------------------------------------------------------------
+    ! --- print reactions and build A, B and (B-A) structure
+    !-----------------------------------------------------------------------
    
     ! set matrix dimensions
     A%m  = neq;   A%n  = nspc
@@ -719,23 +750,23 @@ MODULE Chemsys_Mod
     DO iR=1,neq
       ! count activ educts in reaction iR
       nEduct = 0
-      !print*, 'DEBUG::chemsys    sizeRSe,p= ',iR,SIZE(ReactionSystem(iR)%Educt),SIZE(ReactionSystem(iR)%Product)
-      !print*, 'DEBUG::chemsys    reaktion = ',TRIM(ReactionSystem(iR)%Line1)
-      DO i=1,SIZE(ReactionSystem(iR)%Educt)
-        SELECT CASE(ReactionSystem(iR)%Educt(i)%Type)
+      !print*, 'DEBUG::chemsys    sizeRSe,p= ',iR,SIZE(RS(iR)%Educt),SIZE(RS(iR)%Product)
+      !print*, 'DEBUG::chemsys    reaktion = ',TRIM(RS(iR)%Line1)
+      DO i=1,SIZE(RS(iR)%Educt)
+        SELECT CASE(RS(iR)%Educt(i)%Type)
           CASE ('Gas','Aqua','Solid','Partic','Micro','GAS')
             nEduct = nEduct + 1
-            ActiveEduct(nEduct) = ReactionSystem(iR)%Educt(i)
+            ActiveEduct(nEduct) = RS(iR)%Educt(i)
             !print*, 'debug::chemssys   ActiveEduct(nEduct)=',ActiveEduct(nEduct)
         END SELECT
       END DO
       ! count activ products in reaction iR
       nProd = 0
-      DO i=1,SIZE(ReactionSystem(iR)%Product)
-        SELECT CASE(ReactionSystem(iR)%Product(i)%Type)
+      DO i=1,SIZE(RS(iR)%Product)
+        SELECT CASE(RS(iR)%Product(i)%Type)
           CASE ('Gas','Aqua','Solid','Partic','Micro','GAS')
             nProd = nProd + 1
-            ActiveProduct(nProd) = ReactionSystem(iR)%Product(i)
+            ActiveProduct(nProd) = RS(iR)%Product(i)
             !print*, 'debug::chemssys   ActiveProduct(nProd)=',ActiveProduct(nProd)
         END SELECT
       END DO
@@ -744,11 +775,11 @@ MODULE Chemsys_Mod
       WRITE(Unit,*)
       WRITE(Unit,'(A,I6,A)') '#-----------', iR ,'. Reaction ----------- '
     
-      WRITE(Unit,*) TRIM(ReactionSystem(iR)%Type)//'   '//        &
-      &             TRIM(ReactionSystem(iR)%TypeConstant)
+      WRITE(Unit,*) TRIM(RS(iR)%Type)//'   '//        &
+      &             TRIM(RS(iR)%TypeConstant)
      
-      WRITE(Unit,*) SIZE(ReactionSystem(iR)%Educt),               &
-      &             SIZE(ReactionSystem(iR)%Product), nEduct, nProd
+      WRITE(Unit,*) SIZE(RS(iR)%Educt),               &
+      &             SIZE(RS(iR)%Product), nEduct, nProd
       
       ! Educt Matrix A
       IF ( nEduct > 1 ) THEN
@@ -784,10 +815,10 @@ MODULE Chemsys_Mod
       ! SpeziesIndx Edukt=> 1:#Edukt von Reaktion iR
       ! SpeziesIndx Produkt=> #Edukt+1:#Edukt+#Produkt von Reaktion iR
       ! #aktiver Stoffe der Reaktion
-      WRITE(Unit,*) (PositionSpeciesAll(ReactionSystem(iR)%Educt(i)%Species),  &
-      &             i=1,SIZE(ReactionSystem(iR)%Educt)),                       &
-      &             (PositionSpeciesAll(ReactionSystem(iR)%Product(i)%Species),&
-      &             i=1,SIZE(ReactionSystem(iR)%Product)),                     &
+      WRITE(Unit,*) (PositionSpeciesAll(RS(iR)%Educt(i)%Species),  &
+      &             i=1,SIZE(RS(iR)%Educt)),                       &
+      &             (PositionSpeciesAll(RS(iR)%Product(i)%Species),&
+      &             i=1,SIZE(RS(iR)%Product)),                     &
       &             nEduct+nProd
       ! 
       !----------------------------------------------------
@@ -800,23 +831,23 @@ MODULE Chemsys_Mod
       &                  ,   ActiveProduct(i)%Koeff,i=1,nProd )
       WRITE(Unit,*)
       !
-      IF (ReactionSystem(iR)%TypeConstant=='SPECIAL') THEN
-        WRITE(Unit,*) TRIM(ReactionSystem(iR)%Line3)
+      IF (RS(iR)%TypeConstant=='SPECIAL') THEN
+        WRITE(Unit,*) TRIM(RS(iR)%Line3)
       ELSE
-        WRITE(Unit,*) SIZE(ReactionSystem(iR)%Constants), ReactionSystem(iR)%Constants
+        WRITE(Unit,*) SIZE(RS(iR)%Constants), RS(iR)%Constants
       END IF
       !
       ! #Reaktionskonstanten, Reaktionskonstanten 1:#
 
-      IF (ReactionSystem(iR)%Factor /= '') WRITE(Unit,*) 'FACTOR:  ',ReactionSystem(iR)%Factor
+      IF (RS(iR)%Factor /= '') WRITE(Unit,*) 'FACTOR:  ',RS(iR)%Factor
 
-      SELECT CASE (ReactionSystem(iR)%Factor)
+      SELECT CASE (RS(iR)%Factor)
         CASE ('$RO2');   hasRO2   = .TRUE.
         CASE ('$RO2aq'); hasRO2aq = .TRUE.
       END SELECT
       
-      IF (PRESENT(CK)) WRITE(Unit,*) 'EXTRA1:  ',ADJUSTL(TRIM(ReactionSystem(iR)%Line2))
-      IF (PRESENT(CK)) WRITE(Unit,*) 'EXTRA2:  ',ADJUSTL(TRIM(ReactionSystem(iR)%Line3))
+      IF (CK) WRITE(Unit,*) 'EXTRA1:  ',ADJUSTL(TRIM(RS(iR)%Line2))
+      IF (CK) WRITE(Unit,*) 'EXTRA2:  ',ADJUSTL(TRIM(RS(iR)%Line3))
     END DO
    
     ! loop again to set ColInd and Val on A and B
@@ -832,19 +863,19 @@ MODULE Chemsys_Mod
     !
     DO iR = 1,neq
       nEduct = 0
-      DO i=1,SIZE(ReactionSystem(iR)%Educt)
-        SELECT CASE(ReactionSystem(iR)%Educt(i)%Type)
+      DO i=1,SIZE(RS(iR)%Educt)
+        SELECT CASE(RS(iR)%Educt(i)%Type)
           CASE ('Gas','Aqua','Solid','Partic','Micro','GAS')
             nEduct = nEduct + 1
-            ActiveEduct(nEduct) = ReactionSystem(iR)%Educt(i)
+            ActiveEduct(nEduct) = RS(iR)%Educt(i)
         END SELECT
       END DO
       nProd = 0
-      DO i=1,SIZE(ReactionSystem(iR)%Product)
-        SELECT CASE(ReactionSystem(iR)%Product(i)%Type)
+      DO i=1,SIZE(RS(iR)%Product)
+        SELECT CASE(RS(iR)%Product(i)%Type)
           CASE ('Gas','Aqua','Solid','Partic','Micro','GAS')
             nProd = nProd + 1
-            ActiveProduct(nProd) = ReactionSystem(iR)%Product(i)
+            ActiveProduct(nProd) = RS(iR)%Product(i)
         END SELECT
       END DO
       
@@ -910,7 +941,10 @@ MODULE Chemsys_Mod
 
     A%nnz = nnzA
     B%nnz = nnzB
-  END SUBROUTINE PrintReactions
+
+    CALL PrintFinalReactions( Unit )
+    CLOSE(ChemUnit)
+  END SUBROUTINE Print_ChemFile
 
   SUBROUTINE Setup_SpeciesOrder(A)
     
@@ -983,6 +1017,7 @@ MODULE Chemsys_Mod
     !
     INTEGER, PARAMETER :: GasRateUnit=0 ! ???
     INTEGER :: iSpc, i, iPos, lb, ub
+    INTEGER :: io_stat
     REAL(dp) :: pi43, LWC
     CHARACTER(60) :: string = ''
     !
@@ -1002,9 +1037,11 @@ MODULE Chemsys_Mod
     !=========================================================================
     !
     !-- Open .chem-file and skip the first 24 lines (head)
-    OPEN(UNIT=89,FILE=ADJUSTL(TRIM(SysFile))//'.chem',STATUS='UNKNOWN')
-    REWIND(89)
-    DO i=1,24;  READ(89,*);  END DO         ! skip the first 24 lines
+    OPEN(unit=ChemUnit, file=ChemFile, status='old', action='read', access='sequential', iostat=io_stat)
+    IF ( io_stat /= 0 ) WRITE(*,*) '  ERROR opening chem-file :: ',io_stat
+    REWIND(ChemUnit)
+    
+    DO i=1,24;  READ(ChemUnit,*);  END DO         ! skip the first 24 lines
 
     !---  set indices for pH and water dissociation 
     Hp_ind =0
@@ -1023,7 +1060,7 @@ MODULE Chemsys_Mod
     IF (ns_GAS>0) THEN
       ALLOCATE(GasName(ns_GAS))
       DO iSpc = 1 , ns_GAS
-        READ(89,*)  y_name(iSpc)
+        READ(ChemUnit,*)  y_name(iSpc)
       END DO
       GasName = y_name(1:ns_GAS)
     END IF
@@ -1033,7 +1070,7 @@ MODULE Chemsys_Mod
       lb = ns_GAS+1; ub = ns_AQUA+ns_GAS
       ALLOCATE(AquaName(ns_AQUA))
       DO iSpc = lb,ub
-        READ(89,*)  y_name(iSpc)
+        READ(ChemUnit,*)  y_name(iSpc)
         IF ( y_name(iSpc)=='Hp' )   Hp_ind = iSpc
         IF ( y_name(iSpc)=='OHm' ) OHm_ind = iSpc
       END DO
@@ -1046,7 +1083,7 @@ MODULE Chemsys_Mod
       lb = ns_AQUA+ns_GAS+1
       ub = ns_AQUA+ns_GAS+ns_SOLID
       DO iSpc = lb,ub
-        READ(89,*)  y_name(iSpc) 
+        READ(ChemUnit,*)  y_name(iSpc) 
       END DO
       SolidName = y_name(lb:ub)
     END IF
@@ -1057,7 +1094,7 @@ MODULE Chemsys_Mod
       lb = ns_SOLID+ns_AQUA+ns_GAS+1
       ub = ns_AQUA+ns_GAS+ns_SOLID+ns_PARTIC
       DO iSpc = lb,ub
-        READ(89,*)  y_name(iSpc) 
+        READ(ChemUnit,*)  y_name(iSpc) 
       END DO
       ParticName = y_name(lb:ub)
     END IF
@@ -1068,7 +1105,7 @@ MODULE Chemsys_Mod
       lb = ns_AQUA+ns_GAS+ns_SOLID+ns_PARTIC+1
       ub = ns_KAT+ns_AQUA+ns_GAS+ns_SOLID+ns_PARTIC
       DO iSpc = lb,ub
-        READ(89,*)  y_name(iSpc)
+        READ(ChemUnit,*)  y_name(iSpc)
         IF ( y_name(iSpc)=='[aH2O]' ) THEN
           aH2O_ind = iSpc -(ns_AQUA+ns_GAS+ns_SOLID+ns_PARTIC)
         ELSE
@@ -1084,7 +1121,7 @@ MODULE Chemsys_Mod
       IF (ohm_ind==0)  WRITE(*,*) 'ReadChem...Warning: OHm  not in mechanism!' 
       IF (ah2o_ind==0) WRITE(*,*) 'ReadChem...Warning: aH2O  not in mechanism!' 
     END IF
-    CLOSE(89)
+    REWIND(ChemUnit);  CLOSE(ChemUnit)
     
     !=========================================================================
     !===  Set  Chemical DATA  
@@ -1161,7 +1198,7 @@ MODULE Chemsys_Mod
       CALL Read_AFRAC( InitAFrac, InitFileName )
       CALL Read_Frac( Frac , InitFileName )
       
-      LWC  = pseudoLWC(tAnf)
+      LWC  = pseudoLWC(tBegin)
      
       IF ( ns_A_KAT > 0 ) THEN
         DO i=1,ns_KAT
@@ -1193,7 +1230,7 @@ MODULE Chemsys_Mod
     !======================================================
     !---  Compute pH value and number of ions
     !---  Initial pH by charge balance 
-    IF ( pHSet>=1.AND.ns_AQUA>0 )  THEN
+    IF ( pHSet .AND. ns_AQUA>0 )  THEN
       Kappa = pHValue( InitValAct(ns_GAS+1:) )
       IF ( Kappa > ZERO )  THEN
         InitValAct(Hp_ind)  = Kappa
@@ -1599,7 +1636,7 @@ MODULE Chemsys_Mod
     ALLOCATE( Fractions%Radius(ntFrac)  , Fractions%Number(ntFrac)    &
     &       , Fractions%Density(ntFrac) , Fractions%wetRadius(ntFrac) ) 
     !
-    LWC = pseudoLWC(tAnf)
+    LWC = pseudoLWC(tBegin)
     cnt = 0
     REWIND(InputUnit_Initials)
     CALL ClearIniFile()

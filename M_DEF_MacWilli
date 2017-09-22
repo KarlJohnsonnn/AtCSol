@@ -1,4 +1,5 @@
-OPTFREE =  -ffree-form -ffixed-line-length-none -ffree-line-length-none -fcoarray=lib
+#OPTFREE =  -ffree-form -ffixed-line-length-none -ffree-line-length-none -fcoarray=lib
+OPTFREE =  -ffree-form -ffixed-line-length-none -ffree-line-length-none
 OPTFIX =  -ffixed-line-length-none -ffree-line-length-none
 
 #COMP1=EigeneProgramme
@@ -37,6 +38,4 @@ NETCDF=-lcurl -L/usr/local/lib -lnetcdf -L/usr/local/lib -lnetcdff -L/usr/local/
 
 LAPACK=-llapack
 
-COARRAY = -L/usr/local/Cellar/opencoarrays/1.8.10/lib/ -lcaf_mpi
-
-#ModSuf=mod
+#COARRAY = -L/usr/local/Cellar/opencoarrays/1.8.10/lib/ -lcaf_mpi

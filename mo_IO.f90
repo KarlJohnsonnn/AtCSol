@@ -34,15 +34,15 @@ MODULE mo_IO
       WRITE(*,*)   '  Run - Paramter:'
       WRITE(*,*)   ''
       WRITE(*,*)   '     Mechanism:             ', TRIM(SysFile)
-      IF (NetCdfPrint) THEN
-        WRITE(*,*)   '     NetCDF-File:           ', 'NetCDF/'//TRIM(BSP)//'.nc'
+      IF (NetCdfFile /= '') THEN
+        WRITE(*,*)   '     NetCDF-File:           ', TRIM(NetCdfFile)
       ELSE
         WRITE(*,*)   '     NetCDF-File:           ', '*** no NetCDF output ***'
       END IF
       WRITE(*,*)   '     Initials:              ', InitFile
       WRITE(*,*)   '     ODE solver:            ', ODEsolver
       IF (ODEsolver/='LSODE') THEN
-        IF (solveLA=='cl') THEN 
+        IF ( CLASSIC ) THEN 
           WRITE(*,*)   '     Linear Algebra:        Classic'
         ELSE
           WRITE(*,*)   '     Linear Algebra:        Extended'
@@ -52,22 +52,20 @@ MODULE mo_IO
         ELSE
           WRITE(*,*)   '     Error Estimation:      Maximum Norm'
         END IF
-        IF (OrderingStrategie==8) THEN
+        IF (Ordering==8) THEN
           WRITE(*,*)   '     Solve Linear Systems:  Sparse LU, Markowitz Ordering Algorithm'
         ELSE 
-          WRITE(*,*)   '     Solve Linear Systems:  MUMPS, Ordering Stragegie:  ',OrderingStrategie 
+          WRITE(*,*)   '     Solve Linear Systems:  MUMPS, Ordering Stragegie:  ',Ordering
         END IF
       END IF
       WRITE(*,*)   ''
-      IF(ImpEuler/=1) THEN
-        WRITE(*,*)   '  Tolerance:   '
-        WRITE(*,*)   ''
-        WRITE(*,'(A34,2X,Es8.2)')   '      Relative Rosenbrock        = ',RtolROW
-        WRITE(*,'(A34,2X,Es8.2)')   '      Absolute (gaseous species) = ',AtolGas
-        IF (ns_AQUA>0) WRITE(*,'(A34,2X,Es8.2)')   '      Absolute (aqueous species) = ',AtolAqua
-        IF ( Teq ) THEN
-          WRITE(*,'(A34,2X,Es8.2)')   '      Absolute Temperature       = ',AtolTemp
-        END IF
+      WRITE(*,*)   '  Tolerance:   '
+      WRITE(*,*)   ''
+      WRITE(*,'(A34,2X,Es8.2)')   '      Relative Rosenbrock        = ',RtolROW
+      WRITE(*,'(A34,2X,Es8.2)')   '      Absolute (gaseous species) = ',AtolGas
+      IF (ns_AQUA>0) WRITE(*,'(A34,2X,Es8.2)')   '      Absolute (aqueous species) = ',AtolAqua
+      IF ( Teq ) THEN
+        WRITE(*,'(A34,2X,Es8.2)')   '      Absolute Temperature       = ',AtolTemp
       END IF
       WRITE(*,*)   ''
     END IF
@@ -109,12 +107,12 @@ MODULE mo_IO
       WRITE(*,*)   '================================ Statistics ==============================='
       WRITE(*,*)   '==========================================================================='
       WRITE(*,*)   ''
-      WRITE(*,298) ' Number of successful time steps   =', Output%nsteps
-      WRITE(*,298) ' Number of failed time step        =', Output%nfailed
-      WRITE(*,298) ' Number of rate evaluations        =', Output%nRateEvals
-      WRITE(*,298) ' Number of Jacobian calculations   =', Output%npds
-      WRITE(*,298) ' Number of LU factorisations       =', Output%ndecomps
-      WRITE(*,298) ' Number of solved linear systems   =', Output%nsolves
+      WRITE(*,298) ' Number of successful time steps   =', Out%nsteps
+      WRITE(*,298) ' Number of failed time step        =', Out%nfailed
+      WRITE(*,298) ' Number of rate evaluations        =', Out%nRateEvals
+      WRITE(*,298) ' Number of Jacobian calculations   =', Out%npds
+      WRITE(*,298) ' Number of LU factorisations       =', Out%ndecomps
+      WRITE(*,298) ' Number of solved linear systems   =', Out%nsolves
       WRITE(*,*)   ''
       WRITE(*,*)   ''
       WRITE(*,*)   ' ========================================================================='
@@ -140,53 +138,11 @@ MODULE mo_IO
       WRITE(*,*)  ''
     END IF
   END SUBROUTINE
-  !
-  !
-  SUBROUTINE PrintHeadSimul(ChemFile) 
-    USE mo_MPI
-    USE mo_control
-    CHARACTER(*) ::ChemFile
-    INTEGER :: Unit=90
-    !---- save data:
-    !   - evaluated times => t Vector
-    !   - evaluated concentrations => y vector
-    !   - calculated step sizes => h vector
-    !   - more?
-    !
-    IF (MPI_Id==0) THEN
-      !
-      OPEN(UNIT=90,FILE=ADJUSTL(TRIM(ChemFile))//'.simul',STATUS='UNKNOWN')
-      WRITE(Unit,*) ' ============================================================'
-      WRITE(Unit,*) ' ====== Simulation of chemical systems / TESTVERSION ========'
-      WRITE(Unit,*) ' ========     Output -  Chemical Reaction Data      ========='
-      WRITE(Unit,*) ' ============================================================'
-      WRITE(Unit,*) '  '
-      WRITE(Unit,*) '  step        time          stepsize          concentrations   '
-      WRITE(Unit,*) '=====================================================================>'
-      WRITE(Unit,*) ' '
-    END IF
-  END SUBROUTINE PrintHeadSimul
-  !
-  !
-  SUBROUTINE SaveTimeStp(Unit,nsteps,tnew,h,y)
-    USE Kind_Mod
-    USE mo_MPI
-    INTEGER :: Unit
-    INTEGER :: nsteps
-    REAL(dp) :: tnew, h
-    REAL(dp) :: y(:)
-    IF (MPI_ID==0) THEN
-      ! Output Label
-      !199 format(I6,3X,E18.12,4X,E18.12,4X,2(E16.6,1X) )
-      WRITE(Unit,*) nsteps,tnew,h,y(:)
-    END IF
-  END SUBROUTINE SaveTimeStp
-  !
-  !
+  
+ 
   SUBROUTINE SaveMatricies(aMat,bMat,cMat,dMat,eMat,fName)
     USE mo_MPI
-    USE Factorisation_Mod
-    USE ChemSys_Mod, ONLY: CSR_Matrix_T
+    USE Sparse_Mod
 
     TYPE(CSR_Matrix_T)   :: aMat,bMat,cMat,dMat,eMat
     CHARACTER(*)         :: fName
@@ -204,7 +160,7 @@ MODULE mo_IO
       CALL WriteSparseMatrix(cMat,TRIM('matrixOut/_beta-alpha_T'//fName))
       CALL WriteSparseMatrix(dMat,TRIM('matrixOut/Miter0'//fName))
       !
-      IF (OrderingStrategie<8) THEN
+      IF (Ordering<8) THEN
         !
         ! ordering<8 --> MUMPS auto choice ordering
         ! Print structure of LU matrix and Permutation vector
@@ -387,40 +343,41 @@ MODULE mo_IO
 
   SUBROUTINE StreamWriteFluxes(Rate,t,h)
     USE Kind_Mod
-    USE mo_control, ONLY: flux_nr, flux_name, fluxmeta_nr, fluxmeta_name, iStpFlux
+    USE mo_control, ONLY: FluxUnit, FluxFile, FluxMetaUnit, FluxMetaFile, iStpFlux
     REAL(dp) :: Rate(:)
     REAL(dp) :: t , h
 
     INTEGER :: io_stat, io_pos
     CHARACTER(100) :: io_msg
 
-    OPEN(unit=flux_nr,      file=flux_name,  status='old',   action='write', &
+    OPEN(unit=FluxUnit,      file=FluxFile,  status='old',   action='write', &
     &    position='append', access='stream', iostat=io_stat, iomsg=io_msg    )
-    CALL file_err(flux_name,io_stat,io_msg)
-    WRITE(flux_nr) Rate,t,h
-    INQUIRE(flux_nr, POS=io_pos)
-    CLOSE(flux_nr)
+    CALL file_err(FluxFile,io_stat,io_msg)
+    INQUIRE(FluxUnit, POS=io_pos)
+    WRITE(FluxUnit) Rate,t,h
+    CLOSE(FluxUnit)
 
-    OPEN(unit=fluxmeta_nr, file=fluxmeta_name, status='old', action='write', position='append')
-    WRITE(fluxmeta_nr,*) iStpFlux, io_pos 
-    CLOSE(fluxmeta_nr)
+    iStpFlux   = iStpFlux + 1
+    OPEN(unit=FluxMetaUnit, file=FluxMetaFile, status='old', action='write', position='append')
+    WRITE(FluxMetaUnit,*) iStpFlux, io_pos 
+    CLOSE(FluxMetaUnit)
   END SUBROUTINE StreamWriteFluxes
 
 
   SUBROUTINE SequentialWriteFluxes(Rate,t,h)
     USE Kind_Mod
-    USE mo_control, ONLY: flux_nr, flux_name, fluxmeta_nr, fluxmeta_name, iStpFlux
+    USE mo_control, ONLY: FluxUnit, FluxFile, FluxMetaUnit, FluxMetaFile, iStpFlux
     REAL(dp) :: Rate(:)
     REAL(dp) :: t , h
 
     INTEGER :: io_stat, io_pos
     CHARACTER(100) :: io_msg
 
-    OPEN(unit=flux_nr,      file=flux_name,  status='old',   action='write', &
+    OPEN(unit=FluxUnit,      file=FluxFile,  status='old',   action='write', &
     &    position='append', access='sequential', iostat=io_stat, iomsg=io_msg )
-    CALL file_err(flux_name,io_stat,io_msg)
-    WRITE(flux_nr,'(*(1X,E16.10))') Rate, t, h
-    CLOSE(flux_nr)
+    CALL file_err(FluxFile,io_stat,io_msg)
+    WRITE(FluxUnit,'(*(1X,E16.10))') Rate, t, h
+    CLOSE(FluxUnit)
 
   END SUBROUTINE SequentialWriteFluxes
 
@@ -487,5 +444,13 @@ MODULE mo_IO
     OPEN(unit=UnitNr, file=FileName, status='old', action='read', access='sequential', iostat=io_stat)
     CALL file_err(FileName,io_stat)
   END SUBROUTINE OpenFile_rSeq
+
+  SUBROUTINE OpenFile_rStream(UnitNr,FileName)
+    INTEGER,      INTENT(IN) :: UnitNr
+    CHARACTER(*), INTENT(IN) :: FileName
+    INTEGER :: io_stat
+    OPEN(unit=UnitNr, file=FileName, status='old', action='read', access='stream', iostat=io_stat)
+    CALL file_err(FileName,io_stat)
+  END SUBROUTINE OpenFile_rStream
 END MODULE mo_IO
 

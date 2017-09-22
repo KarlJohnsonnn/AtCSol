@@ -11,7 +11,7 @@ MODULE Rosenbrock_Mod
   USE Kind_Mod
   USE Sparse_Mod
   USE Chemsys_Mod
-  USE Factorisation_Mod
+  USE Mumps_Mod
   USE Rates_Mod
   USE mo_control
   USE mo_reac
@@ -175,67 +175,6 @@ MODULE Rosenbrock_Mod
   END SUBROUTINE SetRosenbrockMethod
   !
   !
-  !=================================================================
-  !         Check some values and set few parameters
-  !=================================================================
-  SUBROUTINE CheckInputParameters(Tspan,aTol,rTolROW)
-    !--------------------------------------------------------------------
-    ! Input:
-    !   - Tspan
-    !   - aTol, rTolROW
-    REAL(dp) :: Tspan(2)               
-    REAL(dp) :: aTol(2)
-    REAL(dp) :: rTolROW
-    !
-    ALLOCATE(ThresholdStepSizeControl(nDIM))
-    ThresholdStepSizeControl(:ns_GAS)=AtolGas/RTolROW
-    ThresholdStepSizeControl(ns_GAS+1:)=AtolAqua/RTolROW
-    ALLOCATE(ATolAll(nDIM))
-    ATolAll(:ns_GAS)=ATolGas
-    ATolAll(ns_GAS+1:)=ATolAqua
-    IF ( Teq ) THEN
-      ThresholdStepSizeControl(nDIM)=ATolTemp/RTolROW
-      ATolAll(nDIM)=ATolTemp
-    END IF
-    ! Test that Tspan is internally consistent.
-    IF ( Tspan(1)>=Tspan(2) ) THEN
-      WRITE(*,*) ' '
-      WRITE(*,*) ' '
-      WRITE(*,*) 'start time >= end time'
-      CALL FinishMPI()
-      STOP '  STOP  '
-    END IF
-    !
-    ! Test that Rosenbrock tolerance > 0
-    IF ( rTolROW<=ZERO ) THEN
-      WRITE(*,*) ' '
-      WRITE(*,*) ' '
-      WRITE(*,*) 'RTol must be positiv scalar'
-      CALL FinishMPI()
-      STOP '  STOP  '
-    END IF
-    !
-    ! Test that absolute tolerance for gas and aqua species is > 0
-    IF ( .NOT.(ALL(aTol>=ZERO)) ) THEN
-      WRITE(*,*) ' '
-      WRITE(*,*) ' '
-      WRITE(*,*) 'ATols must be positive'
-      CALL FinishMPI()
-      STOP '  STOP  '
-    END IF
-    !
-    ! Test if maximum stepsize is not to small/big
-    IF ( (maxStp<=ZERO).OR.(maxStp>Tspan(2)-Tspan(1)) ) THEN
-      WRITE(*,*) ' '
-      WRITE(*,*) ' '
-      WRITE(*,*) 'Maximum stepsize = ',maxStp, ' to low or to high'
-      CALL FinishMPI()
-      STOP 'STOP'
-    END IF
-    ID_1 = SparseID( nDim )
-  END SUBROUTINE CheckInputParameters
-  !
-  !
   !==========================================================
   !   Calculates an initial stepsize based on 2. deriv.
   !==========================================================
@@ -297,7 +236,7 @@ MODULE Rosenbrock_Mod
     ELSE
       CALL ReactionRates_Tropos( t+tdel , Y , Rate )
     END IF
-    Output%nRateEvals = Output%nRateEvals + 1
+    Out%nRateEvals = Out%nRateEvals + 1
 
     f1 = DAXPY_sparse( BAT , Rate , Y_e )
     DfDt  = ( f1 - f0 ) / tdel
@@ -317,10 +256,9 @@ MODULE Rosenbrock_Mod
   !=========================================================================
   !    Subroutine Rosenbrock-Method universal for classic and extended case
   !=========================================================================
-  SUBROUTINE Rosenbrock(YNew,err,ierr,avgRate,Y0,t,h,Euler)
+  SUBROUTINE Rosenbrock(YNew,err,ierr,Y0,t,h,Euler)
     USE issa
     USE mo_IO
-  !SUBROUTINE Rosenbrock(YNew,err,ierr,avgRate,Y0,t,h,RCo,Euler)
     !--------------------------------------------------------
     ! Input:
     !   - Y0............. concentrations at Time = t
@@ -343,7 +281,6 @@ MODULE Rosenbrock_Mod
     REAL(dp), INTENT(OUT) :: YNew(nDIM)
     REAL(dp), INTENT(OUT) :: err
     INTEGER , INTENT(OUT) :: ierr(1,1)
-    REAL(dp), INTENT(OUT) :: avgRate(neq)
     !-------------------------------------------------------
     ! TemporarY variables:
     !
@@ -384,7 +321,6 @@ MODULE Rosenbrock_Mod
     fRhs    = ZERO
     Rate    = ZERO
     rRate   = ZERO
-    avgRate = ZERO
     bb      = ZERO
     Y       = Y0
     !
@@ -408,21 +344,14 @@ MODULE Rosenbrock_Mod
     IF ( .NOT.Teq ) THEN
       Y   = MAX( ABS(Y0)  , eps ) * SIGN( ONE , Y0 )  ! concentrations =/= 0
       Yrh = Y(1:nspc) / h
-      CALL ReactionRates_Tropos( t, Y, Rate )     ! Y or Y0 ?
-      Rate  = MAX( ABS(Rate) , eps ) * SIGN( ONE , Rate )    ! reaction rates =/= 0
+      CALL ReactionRates_Tropos( t, Y, Rate )
+      Rate  = MAX( ABS(Rate) , eps ) * SIGN( ONE , Rate )    ! |r| >= eps
       rRate = ONE / Rate
     ELSE
       Yrh = Y0(1:nspc) / h
       CALL ReactionRatesAndDerivative_ChemKin( t, Y0, Rate, DRatedT )     
     END IF
     Rate_t = Rate
-
-    ! calculating the time averaged rate of reaction
-    avgRate = Rate/h
-
-    
-    ! HIER  NICHT VON Y(:nspc) AUF Y0(:nspc) ÄNDERN
-    !Yrh  = Y(1:nspc) / h
 
     IF ( Teq ) THEN
       Tarr = UpdateTempArray   ( Y0(nDIM) )       
@@ -436,7 +365,7 @@ MODULE Rosenbrock_Mod
 
       dCdt = DAXPY_sparse( BAT   , Rate , Y_e )
 
-      dTdt    = - SUM( U * dCdt) * rRho/cv
+      dTdt    = - SUM(U * dCdt) * rRho/cv
       UMat    = ROS%ga*dcvdT*dTdt*Y0(1:nspc) + U*Yrh
       dRatedT = ROS%ga*dRatedT
       X       = cv/(h*rRho) + ROS%ga/cv*dcvdT*dTdt + ROS%ga*SUM(dUdT*dCdt) 
@@ -484,7 +413,7 @@ MODULE Rosenbrock_Mod
       ELSE
         CALL Miter_Classic( Miter , h , ROS%ga , Jac_CC )
       END IF
-      Output%npds = Output%npds + 1
+      Out%npds = Out%npds + 1
 
       IF ( useSparseLU ) THEN
         CALL SetLUvaluesCL( LU_Miter , Miter , LU_Perm )
@@ -528,13 +457,13 @@ MODULE Rosenbrock_Mod
     !     \__,_|\___|\___\___/|_| |_| |_| .__/ \___/|___/_|\__|_|\___/|_| |_|
     !                                   |_|                                   
     ! --- LU - Decomposition ---
-    timerStart  = MPI_WTIME()
+    timerStart = MPI_WTIME()
     IF ( useSparseLU ) THEN
       CALL SparseLU( LU_Miter )
     ELSE
       CALL MumpsLU( Miter%Val )
     END IF
-    TimeFac     = TimeFac + (MPI_WTIME()-timerStart)
+    TimeFac = TimeFac + (MPI_WTIME()-timerStart)
 
     IF (dprint) THEN
       print*, '------------------------------------------------------------------------------'
@@ -606,13 +535,9 @@ MODULE Rosenbrock_Mod
 
         dCdt = DAXPY_sparse( BAT , Rate , Y_e )           
         fRhs(1:nspc) =  h * dCdt
+        IF (Teq) fRhs( nDIM ) = - h * SUM(U*dCdt) * rRho / cv
 
-        IF (Teq) &
-        fRhs( nDIM ) = - h * SUM(U*dCdt) * rRho / cv
-
-        DO jStg = 1 , iStg-1
-          fRhs  = fRhs + ROS%C(iStg,jStg) * k(:,jStg)
-        END DO
+        DO jStg=1,iStg-1; fRhs = fRhs + ROS%C(iStg,jStg)*k(:,jStg); END DO
 
         IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',fRhs( 1:iprnt)
 
@@ -721,16 +646,17 @@ MODULE Rosenbrock_Mod
       TimeErrCalc = TimeErrCalc + MPI_WTIME() - timerStart
 
       ! for analysis and reduction
-      IF ( err < ONE ) THEN
-        IF (Lehmann) integrated_rates = integrated_rates + Rate*h
+      IF ( MPI_ID == 0 .AND. err < ONE ) THEN
+        IF ( Lehmann ) integrated_rates = integrated_rates + Rate*h
         !CALL ISSA_iter( Rate_t , YNew , t , h )
 
-        IF ( t - Tspan(1) >= StpFlux*REAL(iStpFlux,dp) ) THEN
-          iStpFlux   = iStpFlux + 1
-          timerStart = MPI_WTIME()
-          !CALL StreamWriteFluxes(Rate_t,t,h)
-          CALL SequentialWriteFluxes(Rate_t,t,h)
-          TimeFluxWrite = TimeFluxWrite + MPI_WTIME() - timerStart
+        IF ( FluxAna ) THEN
+          IF ( t - Tspan(1) >= StpFlux*REAL(iStpFlux,dp) ) THEN
+            timerStart = MPI_WTIME()
+            CALL StreamWriteFluxes(Rate_t,t,h)
+            !CALL SequentialWriteFluxes(Rate_t,t,h)
+            TimeFluxWrite = TimeFluxWrite + MPI_WTIME() - timerStart
+          END IF
         END IF
 
       END IF

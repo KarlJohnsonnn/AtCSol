@@ -1,170 +1,255 @@
-   SUBROUTINE InitRun(RunFile)
+   SUBROUTINE InitRun()
 !==================================================
 !===  Reading and Setting of Run Control Parameters
 !==================================================
-!
       USE mo_control
-!
-!-----------------------------------------------------------------
-      IMPLICIT NONE
-      
-      CHARACTER(80) :: RunFile
+			USE mo_MPI
 
+      IMPLICIT NONE
+
+      INTEGER        :: io_stat
+      CHARACTER(400) :: io_msg = ''
       
-!
 !-----------------------------------------------------------------
 !--- NAMELISTS
-      NAMELIST /SCENARIO/  Bsp,                                            &
-&               LwcLevelmin, LwcLevelmax, Ladebalken,  pHSet,              &
-&               constLWC, ErrorLog, MatrixPrint, NetCdfPrint, Temperature0,&
-&               Pressure0, DebugPrint, ChemKin, Lehmann
-!
-      NAMELIST /FILES/  MetFile, SysFile,MWeights, InitFile, DataFile,    &
-&               NetcdfFileName, MetUnit, ChemUnit, MWUnit, InitUnit,       &
-&               DataUnit, TargetFile
-!
-      NAMELIST /TIMES/  tAnf, tEnd, idate, rlat, rlon, Dust, StpNetcdf,  &
-&               minStp, maxStp, nOutP
-!
-      NAMELIST /NUMERICS/  RtolROW, AtolGas, AtolAqua, AtolTemp, PI_StepSize,      &
-&               solveLA,  ODEsolver, ImpEuler, Error_Est
-!
-      NAMELIST /ORDERING/  OrderingStrategie, ParOrdering
-!      
+      NAMELIST /SCENARIO/  Bsp ,     &
+      &                    WaitBar , &
+      &                    ChemKin , &
+      &                    FluxAna , &
+      &                    Lehmann
+
+      NAMELIST /FILES/  SysFile ,    &
+      &                 DataFile ,   &
+      &                 InitFile ,   &
+      &                 MetFile ,    &
+      &                 TargetFile , &
+      &                 MWFile
+
+      NAMELIST /TIMES/  tBegin , tEnd
+
+      NAMELIST /METEO/  LWCLevelmin , &
+      &                 LWCLevelmax , &
+      &                 pHSet ,       &
+      &                 iDate ,       &
+      &                 rlat ,        &
+      &                 rlon ,        &
+      &                 dust ,        &
+      &                 Temperature0 ,&
+      &                 Pressure0
+      
+      NAMELIST /NUMERICS/  RtolROW ,     &
+      &                    AtolGas ,     &
+      &                    AtolAqua ,    & 
+      &                    AtolTemp,     &
+      &                    PI_StepSize , &
+      &                    minStp ,      &
+      &                    maxStp ,      &
+      &                    LinAlg ,      &  
+      &                    ODEsolver ,   &
+      &                    Error_Est ,   &
+      &                    Ordering ,    &
+      &                    ParOrdering
+
+      NAMELIST /OUTPUT/  NetCdfFile , &
+      &                  StpNetcdf ,  &
+      &                  nOutP ,      &
+      &                  DebugPrint , &
+      &                  MatrixPrint 
 
 !
 !===================================================================
-!===  Set and Read Default Values
-!==================================================
+!===  Set and Read Simulation Values
+!===================================================================
 !
-!--- ROpen run control file
-      OPEN(UNIT=15,FILE=RunFile)
+!--- Open run control file
+      OPEN(UNIT=RunUnit,FILE=RunFile,IOSTAT=io_stat,IOMSG=io_msg)
+      CALL ErrorCheck(io_stat,io_msg,'opening run-file')
 
 !-----------------------------------------------------------------
 !---  Scenario
 !-----------------------------------------------------------------
 !
-!--- CHARACTER(20) : Suffix
-      Bsp = ''                                     ! Identifier of scenario
-!
-!-- REAL(8) : Set Levels and Parameters for Processes
-      LwcLevelmin = 1.0d-12       ! Lower level for LWC      {l/m3]
-      LwcLevelmin = 3.0d-10       ! Lower level for LWC      {l/m3]
-      constLWC = .FALSE.          ! true = konstanter LWC wert für ges. Simulation
+!--- Set Default Values for SCENARIO Namelist
 
-!--- INTEGER : Control Parameter
-      pHSet     = 1          ! Initial pH by charge balance (1=on, 0=off)
-      Error_Est = 2          ! default for error estimation is euklid norm
-      ErrorLog  = 0 
-      MatrixPrint = .FALSE.       ! 0 = Print no matrix, 0 /= Print all matrices -> no simulation
-      DebugPrint  = .FALSE.
-      NetCdfPrint = .FALSE.
-      ChemKin     = .FALSE.
-      Temperature0= 750.0d0
-      Pressure0   = 2.0d5
-      Lehmann     = .FALSE.
+      WaitBar  = .TRUE.
+      ChemKin  = .FALSE.
+      FluxAna  = .FALSE.
+      Lehmann  = .FALSE.
 
 !--- Read SCENARIO namelist
-      READ(15,SCENARIO)
+      READ(RunUnit,SCENARIO,IOSTAT=io_stat,IOMSG=io_msg)
+      CALL ErrorCheck(io_stat,io_msg,'reading SCENARIO list')
       
       IF (ChemKin) Teq = .TRUE.
 
 !-----------------------------------------------------------------
 !---  Files
 !-----------------------------------------------------------------
-!
-!--- CHARACTER(80) : Files
-      MetFile  = 'MET/initial'             ! Meteorology file
-      SysFile  = 'CHEM/'//TRIM(RunFile)//'.sys'    ! Chemical mechanism
-      DataFile = 'CHEM/'//TRIM(RunFile)//'.dat'    ! Gas and aqueous phase data
-      InitFile = 'INI/'//TRIM(RunFile)//'.ini'     ! Initial concentrations
-      TargetFile  = ''    ! Controlfile for mechanism reduction
-
-      NetcdfFileName = TRIM(Bsp)//'.nc'            ! Netcdf output file
-
-!
-!--- INTEGER : Unit Numbers
-      MetUnit  = 15           ! Meteorology file
-      ChemUnit = 10           ! Chemical mechanism
-      MWUnit   = 19           ! Chemical mechanism
-      InitUnit = 12           ! Initial concentrations
-      DataUnit = 13           ! Gas and aqueous phase data
-      
-!--- Read FILES namelist
-      READ(15,FILES)
+      READ(RunUnit,FILES,IOSTAT=io_stat,IOMSG=io_msg)
+      CALL ErrorCheck(io_stat,io_msg,'reading FILES list')
       
 !--- Adjust Filenames
-      Bsp  = ADJUSTL(Bsp)
+      CALL FileNameCheck(MetFile,'MetFile')
+      CALL FileNameCheck(SysFile,'SysFile')
+      CALL FileNameCheck(DataFile,'DataFile')
+      CALL FileNameCheck(InitFile,'InitFile')
+      ChemFile   = ADJUSTL(SysFile(:INDEX(SysFile,'.sys')-1)//'.chem')
+      MWFile     = ADJUSTL(MWFile)
+      TargetFile = ADJUSTL(TargetFile)
 
-      MetFile  = ADJUSTL(MetFile)
-      SysFile  = ADJUSTL(SysFile)
-      DataFile = ADJUSTL(DataFile)
-      MWeights = ADJUSTL(MWeights)
-      InitFile = ADJUSTL(InitFile)
-      TargetFile  = ADJUSTL(TargetFile)
-
-      NetcdfFileName=ADJUSTL(NetcdfFileName)
+      IF ( TRIM(BSP) == '' ) THEN
+			  Bsp = ADJUSTL(SysFile(INDEX(SysFile,'/')+1:INDEX(SysFile,'.sys')-1))
+			ELSE
+        Bsp = ADJUSTL(Bsp)
+			END IF
 
 !-----------------------------------------------------------------
 !---  Times
 !-----------------------------------------------------------------
 !
-!--- REAL(8): Times ( < 0 in seconds, > 0 in hours, = 0  meteorology)
-      tAnf    =  0.0_dp        ! Model start time    [in h}
-      tEnd    =  0.0_dp        ! model end time      [in h}
+!--- Set Default Values for TIMES Namelist
 
-!--- REAL(8): Times in seconds.
-      StpNetcdf   = 0.0_dp      ! Time step for Netcdf output      [in sec]
-
-      nOutP = 100
-
-!---  Photolysis (Here: FEBUKO chemistry-case I)
-      idate = 011027          ! Date: yymmdd  (21.June 2001)
-      rlat  = 50.65_dp       ! latitude  [grad] (Schmuecke)
-      rlon  = 10.77_dp       ! longitude [grad] (Schmuecke)
-      Dust  = 1.0_dp           ! dust factor (damping of photolysis)
+      tBegin = 0.0_dp
+      tEnd   = 0.0_dp
 
 !--- Read TIMES namelist
-      READ(15,TIMES)
+      READ(RunUnit,TIMES,IOSTAT=io_stat,IOMSG=io_msg)
+      CALL ErrorCheck(io_stat,io_msg,'reading TIMES list')
 
-      ! minimum output steps are 2
-      IF (nOutP<2) nOutP = 2
+			IF ( tBegin >= tEnd ) THEN
+    	  WRITE(*,*) '  tBegin >= tEnd  '
+    	  CALL FinishMPI(); STOP 
+			ELSE
+				Tspan = [tBegin , tEnd]
+    	END IF
+!
+!-----------------------------------------------------------------
+!---  Meteorology
+!-----------------------------------------------------------------
+!
+!--- Set Default Values for METEO Namelist
+      pHSet       = .TRUE.
+      LwcLevelmin = 2.0e-08_dp 
+      LwcLevelmax = 3.0e-04_dp 
+      constLWC    = .FALSE. 
 
+      idate  = 011027
+      rlat   = 50.65_dp
+      rlon   = 10.77_dp
+      Dust   = 1.0_dp
+
+      Temperature0 = 280.0_dp
+      Pressure0    = 200000.0_dp
+
+      REWIND(RunUnit)
+      READ(RunUnit,METEO,IOSTAT=io_stat,IOMSG=io_msg)
+      CALL ErrorCheck(io_stat,io_msg,'reading METEO list')
+
+      IF ( LWCLevelmin ==  LWCLevelmax ) constLWC = .TRUE.
+
+!
 !-----------------------------------------------------------------
 !---  Numerics
 !-----------------------------------------------------------------
 !
-
-!--- REAL(RealKind) : Tolerances for ROW Scheme
-      RtolROW  = 1.0d-5               ! Relative tolerance For ROW
-      AtolGas  = 1.0d-7               ! Absolute tolerance for gas phase
-      AtolAqua = 1.0d-7               ! Absolute tolerance for liquid phase
-      AtolTemp = 1.0d-7               ! Absolute tolerance for temperature
+!--- Set Default Values for NUMERICS Namelist
+      RtolROW     = 1.0e-5_dp   ! Relative tolerance For ROW
+      AtolGas     = 1.0e-7_dp   ! Absolute tolerance for gas phase
+      AtolAqua    = 1.0e-7_dp   ! Absolute tolerance for liquid phase
+      AtolTemp    = 1.0e-7_dp   ! Absolute tolerance for temperature
+      Error_Est   = 2           ! error estimation default 2-norm
       PI_StepSize = .FALSE.
-      solveLA  = 'ex'                 ! method of solving linear algebra
-      ODEsolver  = 'ROS34PW3'  ! ROW scheme
-      ImpEuler = 0                    ! 1 for implicit euler integration
+      minStp      = 1.0e-20_dp  ! minimum timestep of ROW method in [sec]
+      maxStp      = 250.0_dp     ! maximum timestep of ROW method in [sec]
+      LinAlg      = 'cl'        ! method of solving linear algebra (classic)
+      ODEsolver   = 'ROS34PW3'  ! ROW scheme
+      Ordering    = 8           ! sparse LU, no numerical pivoting
+      ParOrdering = -1          ! -1 = serial ordering, 0,1,2 = parallel ordering
       
-!
 !--- Read NUMERICS namelist
-      READ(15,NUMERICS)
+      READ(RunUnit,NUMERICS,IOSTAT=io_stat,IOMSG=io_msg)
+      CALL ErrorCheck(io_stat,io_msg,'reading NUMERICS list')
 
-      IF ( solveLA=='cl' ) CLASSIC  = .TRUE.
-      IF ( solveLA=='ex' ) EXTENDED = .TRUE.
-!
+      IF      ( LinAlg == 'cl' ) THEN
+        CLASSIC  = .TRUE.
+      ELSE IF ( LinAlg == 'ex' ) THEN
+        EXTENDED = .TRUE.
+      ELSE
+        WRITE(*,*) '  Check run-file: LinAlg either "cl" or "ex" !'
+				CALL FinishMPI();  STOP
+      END IF
+
+			 ! Test that Rosenbrock tolerance > 0
+	    IF ( RtolROW <= ZERO ) THEN
+	      WRITE(*,*) '  RtolROW must be positiv scalar!'
+	      CALL FinishMPI();  STOP
+	    END IF
+
+			! Test that absolute tolerance for gas and aqua species is > 0
+			IF ( .NOT.(AtolGas*AtolAqua*AtolTemp) >= ZERO ) THEN
+				WRITE(*,*) '  ATols must be positive!'
+				CALL FinishMPI(); STOP
+			END IF
+
+			! Test if maximum stepsize is not to small/big
+			IF ( maxStp <= ZERO ) THEN
+			  WRITE(*,*) '  Maximum stepsize = ',maxStp, ' to low!'
+				CALL FinishMPI(); STOP
+			ELSE IF ( maxStp > tEnd-tBegin ) THEN
+				WRITE(*,*) '  Maximum stepsize = ',maxStp, ' to high!'
+				CALL FinishMPI(); STOP
+			END IF
+			IF ( minStp <= 1.e-35_dp ) THEN
+			  WRITE(*,*) '  Minimums stepsize = ',minStp, ' to low!'
+				CALL FinishMPI(); STOP
+		  ELSE IF ( minStp > maxStp ) THEN
+			  WRITE(*,*) '  Minimums stepsize = ', minStp, ' > ', maxStp
+				CALL FinishMPI(); STOP
+			END IF
+
+
+      IF ( Ordering <  8 .OR. ParOrdering >= 0 ) useMUMPS = .TRUE.
+      IF ( Ordering >= 8 ) useSparseLU = .TRUE.
+
+
 !-----------------------------------------------------------------
-!---  Linear Algebra
+!---  Output of Data
 !-----------------------------------------------------------------
 !
-!--- Control Parameter
-      READ(15,ORDERING)
+!--- Set Default Values for OUTPUT Namelist
+      StpNetcdf   = -1.0_dp      ! Time step for Netcdf output      [in sec]
+      nOutP       = 100
+      MatrixPrint = .FALSE.
+      DebugPrint  = .FALSE.
+      NetCdfPrint = .TRUE.
+!
+!--- Read OUTPUT namelist
+      READ(RunUnit,OUTPUT,IOSTAT=io_stat,IOMSG=io_msg)
+      CALL ErrorCheck(io_stat,io_msg,'reading OUTPUT list')
 
-      IF (OrderingStrategie<8 .OR. ParOrdering>=0 ) useMUMPS = .TRUE.
-      IF (OrderingStrategie>=8) useSparseLU = .TRUE.
+      NetCDFFile = ADJUSTL(NetCDFFile)
+      IF ( NetCdfFile == '' ) NetCdfPrint = .FALSE.   ! no output if no filename is declared
+      IF ( nOutP < 2 ) nOutP = 2                          ! minimum output steps are 2
 
-      !OrderingStrategie=7
-      !WRITE(*,*) '    ORDERINGSTRATEGIE FIXED TO MUMPS = 7'
+      CLOSE(RunUnit)
+      
+      CONTAINS
 
-      CLOSE(15)
+        SUBROUTINE ErrorCheck(io_stat,io_msg,cause)
+          INTEGER      :: io_stat
+          CHARACTER(*) :: io_msg, cause
+          IF ( io_stat>0 ) WRITE(*,*) '   ERROR while '//cause//'  ::  ',io_stat,'  '//TRIM(io_msg)
+        END SUBROUTINE ErrorCheck
+
+				SUBROUTINE FileNameCheck(Name,miss)
+          CHARACTER(*) :: Name
+					CHARACTER(*) :: miss
+					IF ( TRIM(Name) == '' ) THEN
+						WRITE(*,*) '   ERROR :: Missing File: ',TRIM(miss)
+						!CALL FinishMPI(); STOP
+					ELSE
+  		      Name = ADJUSTL(Name)
+					END IF
+        END SUBROUTINE FileNameCheck
 
    END SUBROUTINE InitRun

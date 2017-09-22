@@ -1891,7 +1891,7 @@ MODULE Sparse_Mod
     WRITE(99,*) '#     Dimension:   ' , A%m,' x ',A%n
     WRITE(99,*) '#     Nonzeros:    ' , A%nnz
     WRITE(99,*) '#     nreac, nspc: ' , nr,' , ',ns
-    WRITE(99,*) '#     Matrix Form: ' , solveLA
+    WRITE(99,*) '#     Matrix Form: ' , LinAlg
     WRITE(99,*) '###########################################################'
     WRITE(99,*)
 

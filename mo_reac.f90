@@ -6,16 +6,9 @@
   MODULE mo_reac
     USE Kind_Mod
 
-!---  Files and Units
-    CHARACTER(30) :: file_name
-
     CHARACTER(9) :: measure_gas_ph(2)=(/"molec/cm3", "mol/m3   "/)
     CHARACTER(9) :: measure_aqua_ph(1)=(/"mol/l"/)
     CHARACTER(12):: units(2)
-
-    INTEGER, PARAMETER     :: a_unit  = 2   &
-                             ,a_gas_u = 2
-    REAL(dp) :: dcon1,dcon2
 
 !--------------------------------------------------------------
 !---  Reaction Mechanism
@@ -169,7 +162,8 @@
 !--    define indices of special species
     INTEGER ::   Hp_ind,         &   ! Index Hp
 &               OHm_ind,         &   ! Index OHm
-&              aH2O_ind,         &   ! Index aH2O
+&               H2O_ind,         &   ! Index H2O (gas)
+&              aH2O_ind,         &   ! Index aH2O (aqua)
 &              Temp_ind              ! Index Temperatur
 
 !--------------------------------------------------------------
@@ -209,14 +203,14 @@
 !&                                 ,Hen_anz(:)  &
 !&                                 ,Diss_anz(:) &
 !&                                 ,Sol_anz(:)
-    INTEGER, PARAMETER          :: ndiag_gas = 11  &
-&                                 ,ndiag_aq = 16  
+!    INTEGER, PARAMETER          :: ndiag_gas = 11  &
+!&                                 ,ndiag_aq = 16  
     CHARACTER(60), ALLOCATABLE  :: Diag_Name_Netcdf(:) &
 &                                , Diag_LongName(:)    &
 &                                , DiagERR_Name_Netcdf(:)
 
-    CHARACTER(60)               :: Diag_Name_Gas(ndiag_gas)  &
-&                                 ,Diag_Name_Aqua(ndiag_aq)  
+!    CHARACTER(60)               :: Diag_Name_Gas(ndiag_gas)  &
+!&                                 ,Diag_Name_Aqua(ndiag_aq)  
 
     INTEGER, ALLOCATABLE  :: iDiag_Schwefel(:)  
 !--------------------------------------------------------------
@@ -250,10 +244,10 @@
     REAL(dp), ALLOCATABLE :: FracImpac(:,:)  ! mass fractions per stage
     REAL(dp), ALLOCATABLE :: DryMod(:,:)     ! modal input masses per fractions
 
-!--    Input from impactor measurements
-    INTEGER :: ntAConc = 0                   ! number  of initialized concentrations
-    INTEGER, ALLOCATABLE :: AConcInd(:)      ! indices of initialized concentrations
-    REAL(dp), ALLOCATABLE :: AquaConc(:)      ! initial aqueous phase concentrations 
+!!--    Input from impactor measurements
+!    INTEGER :: ntAConc = 0                   ! number  of initialized concentrations
+!    INTEGER, ALLOCATABLE :: AConcInd(:)      ! indices of initialized concentrations
+!    REAL(dp), ALLOCATABLE :: AquaConc(:)      ! initial aqueous phase concentrations 
                                              ! after activation
 !--------------------------------------------------------------
 !--    input arrays

@@ -29,18 +29,22 @@ MODULE mo_ckinput
 CONTAINS
   !
   !
-  SUBROUTINE OpenFile(nUnit,FileName,Type)
+  SUBROUTINE OpenFile(nUnit,FileName)
     INTEGER :: nUnit
     CHARACTER(*) :: Filename
-    CHARACTER(*) :: Type
     !
     LOGICAL :: ExistFile
+    INTEGER :: io_stat
+    CHARACTER(400) :: io_msg
     !
-    INQUIRE(FILE=TRIM(Filename)//'.'//TRIM(Type),EXIST=ExistFile)
+    INQUIRE(FILE=TRIM(Filename),EXIST=ExistFile)
     IF (ExistFile) THEN
-      OPEN(UNIT=nUnit,FILE=TRIM(Filename)//'.'//TRIM(Type),STATUS='UNKNOWN')
+      OPEN(UNIT=nUnit,FILE=TRIM(Filename),STATUS='UNKNOWN',IOSTAT=io_stat,IOMSG=io_msg)
+      CALL ErrorCheck(io_stat,io_msg,'opening '//TRIM(FileName))
     ELSE
+      WRITE(*,*)
       WRITE(*,*) ' File: ',TRIM(Filename),'  does not exist.'
+      WRITE(*,*)
     END IF
   END SUBROUTINE OpenFile
   !
@@ -105,7 +109,8 @@ CONTAINS
     DO i=1,nspc
       IF (MW0(i)<ZERO) WRITE(*,*) '  Molecular weight missing! Species: ',y_name(i)
     END DO
-    CALL CloseFile(UnitMW,DatMW,'mw')
+    !CALL CloseFile(UnitMW,DatMW,'mw')
+    REWIND(UnitMW); CLOSE(UnitMW)
 
   END SUBROUTINE Read_MolecularWeights
   !
@@ -145,7 +150,7 @@ CONTAINS
     4 FORMAT(4(E15.8),I1)
     !
     !
-    CALL OpenFile(UnitThermo,DatThermo(1:INDEX(DatThermo,'.')-1),'dat')
+    CALL OpenFile(UnitThermo,DatThermo)
     ALLOCATE(lowA(nspc),lowB(nspc),lowC(nspc),lowD(nspc),lowE(nspc),lowF(nspc),lowG(nspc),STAT=ALLOC_ERR)
     ALLOCATE(highA(nspc),highB(nspc),highC(nspc),highD(nspc),highE(nspc),highF(nspc),highG(nspc),STAT=ALLOC_ERR)
     ALLOCATE(ThermSwitchTemp(nspc))
@@ -264,7 +269,7 @@ CONTAINS
     INTEGER :: i, nAtoms, iAtom
     INTEGER :: iWS
     !
-    CALL OpenFile(UnitReac,DataReac(1:LEN(DataReac)-4),'sys')
+    CALL OpenFile(UnitReac,DataReac)
     !
     nAtoms=0
     DO
@@ -291,7 +296,8 @@ CONTAINS
         END DO
       END IF
     END DO
-    CALL CloseFile(UnitReac,DataReac(1:LEN(DataReac)-4),'sys')
+    !CALL CloseFile(UnitReac,DataReac(1:LEN(DataReac)-4),'sys')
+    REWIND(UnitReac); CLOSE(UnitReac)
 
 
     CALL InitHashTable(ListAtoms,nAtoms)
@@ -322,7 +328,7 @@ CONTAINS
     ns_GAS=0
     CALL Init_HashTbls(ListGas)
     !
-    CALL OpenFile(UnitReac,TRIM(DataReac),'sys')
+    CALL OpenFile(UnitReac,TRIM(DataReac))
     !
     i=0
     CALL FindSection(UnitReac,'species',headline)
@@ -340,7 +346,8 @@ CONTAINS
         iLine=iLine(iWS:)
       END DO
     END DO
-    CALL CloseFile(UnitReac,TRIM(DataReac),'sys')
+    !CALL CloseFile(UnitReac,TRIM(DataReac),'sys')
+    REWIND(UnitReac); CLOSE(UnitReac)
     !
     nspc=ns_GAS
 
@@ -387,7 +394,7 @@ CONTAINS
     !
     REAL(dp) :: Rcal = 1.987d0
     !
-    CALL OpenFile(UnitReac,TRIM(DataReac),'sys')
+    CALL OpenFile(UnitReac,TRIM(DataReac))
     REWIND UnitReac
     !
     CALL FindSection(UnitReac,'reactions',headline)
@@ -1048,13 +1055,8 @@ CONTAINS
     REAL(dp), OPTIONAL :: rho    
     !OUT
     REAL(dp) :: cvmixture         ! in [J/kg/K]
-    !TEMP
-    REAL(dp) :: ravgConc          ! in [cm3/mol][mol/g]
 
     IF (PRESENT(MoleConc)) THEN
-      !ravgConc  = ONE / SUM( MoleConc * MW )  
-      !cvmixture = kilo * R * SUM( MoleConc * dUdT ) * ravgConc
-
       cvmixture = R * SUM( MoleConc * dUdT ) * rRho  ! neu: ohne MW
     ELSE IF (PRESENT(MassFr)) THEN
       cvmixture = kilo * R * SUM( MassFr * dUdT * rMW )
@@ -1417,18 +1419,18 @@ CONTAINS
     INTEGER :: i
     !
     !-- Open .chem-file and skip the first 24 lines (head)
-    OPEN(UNIT=89,FILE=ADJUSTL(TRIM(FileName))//'.chem',STATUS='UNKNOWN')
-    REWIND(89)
+    OPEN(UNIT=ChemUnit,FILE=ADJUSTL(TRIM(FileName)),STATUS='UNKNOWN')
+    REWIND(ChemUnit)
     DO i=1,24
-      READ(89,*)
+      READ(ChemUnit,*)
     END DO
     !--- allocate space for a list of all species (incl. kat spc)
     ALLOCATE(Species(nspc))
     !
     DO i=1,ns_GAS
-      READ(89,*)  Species(i)
+      READ(ChemUnit,*)  Species(i)
     END DO
-    CLOSE(89)
+    CLOSE(ChemUnit)
     !
   END SUBROUTINE GetSpeciesNames
   !
@@ -1530,5 +1532,11 @@ CONTAINS
     WRITE(*,*) '      String failed:   ',TRIM(ADJUSTL(String))
     STOP '  Reading chemical system '
   END SUBROUTINE PrintError
+
+  SUBROUTINE ErrorCheck(io_stat,io_msg,cause)
+    INTEGER      :: io_stat
+    CHARACTER(*) :: io_msg, cause
+    IF ( io_stat>0 ) WRITE(*,*) '   ERROR while '//cause//'  ::  ',io_stat,'  '//TRIM(io_msg)
+  END SUBROUTINE ErrorCheck
   !
 END MODULE mo_ckinput
