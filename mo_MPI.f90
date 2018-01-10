@@ -10,6 +10,7 @@ MODULE mo_MPI
   INTEGER :: MPI_ID
   INTEGER :: MPI_np
   INTEGER :: MPIErr
+  LOGICAL :: MPI_master
   !
   INTEGER, ALLOCATABLE :: MyParties(:,:)
   !
@@ -25,6 +26,11 @@ MODULE mo_MPI
     CALL MPI_COMM_SIZE( MPI_COMM_WORLD, MPI_np, MPIErr )
     CALL CheckMPIErr() 
     MPI_dp=MPI_Double_Precision
+    IF ( MPI_id == 0 ) THEN
+      MPI_master = .TRUE.
+    ELSE
+      MPI_master = .FALSE.
+    END IF
   END SUBROUTINE StartMPI
   !
   !
@@ -161,5 +167,23 @@ MODULE mo_MPI
     CALL CheckMPIErr()
   END SUBROUTINE SendReal
 
+  FUNCTION GatherAquaFractions(sbuf) RESULT(rbuf)
+    USE mo_reac,    ONLY: nFrac
+    USE mo_control, ONLY: nNcdfAqua
+    REAL(dp), INTENT(IN) :: sbuf(nNcdfAqua)    
+    REAL(dp)             :: rbuf(nFrac*nNcdfAqua)
+
+    CALL MPI_GATHER( sbuf            &  ! sendbuffer 
+    &              , nNcdfAqua       &  ! sendcount 
+    &              , MPI_DOUBLE      &  ! sendtype
+    &              , rbuf            &  ! recvbuffer
+    &              , nNcdfAqua       &  ! receivecount 
+    &              , MPI_DOUBLE      &  ! recvtype
+    &              , 0               &  ! send to root
+    &              , MPI_COMM_WORLD  &  ! communicator
+    &              , MPIErr          )  ! error code-
+    CALL CheckMPIErr
+
+  END FUNCTION GatherAquaFractions
 
 END MODULE mo_MPI

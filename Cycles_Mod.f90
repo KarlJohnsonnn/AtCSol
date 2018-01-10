@@ -8,14 +8,14 @@ MODULE Cycles_Mod
                       & PrintSparseMatrix
   !USE mo_unirnk
   USE mo_reac,    ONLY: y_name
-  USE mo_control, ONLY: List, allFAM, nallFAM
+  USE mo_control, ONLY: Cyclic_Set, Cyclic_Set_red, nCycles, nCycles_red, List
 
   IMPLICIT NONE
 
 
   TYPE Node_T
-    INTEGER :: Id, cnt
-    INTEGER, ALLOCATABLE  :: v(:)
+    INTEGER :: Id, cnt=0
+    INTEGER,  ALLOCATABLE :: v(:)
     TYPE(Node_T), POINTER :: next=>NULL()
   END TYPE Node_T
 
@@ -26,18 +26,16 @@ MODULE Cycles_Mod
     LOGICAL, ALLOCATABLE :: onStack(:)
   END TYPE Tarjan_T
 
-  TYPE(Node_T), POINTER   :: cycFirst, cyc, sccFirst, scc_List
-  TYPE(Tarjan_T), PRIVATE :: Tar
-  TYPE(List), PRIVATE     :: Stapel
+  TYPE(Node_T),   POINTER, PRIVATE :: cycFirst, cyc, sccFirst, scc_List
+  TYPE(Tarjan_T),          PRIVATE :: Tar
+  TYPE(List),              PRIVATE :: Stapel
   TYPE(List), ALLOCATABLE, PRIVATE :: Tar_SCC(:), blocked_List(:), Graph(:)
   INTEGER,    ALLOCATABLE, PRIVATE :: Tar_stack(:)
-  INTEGER, PRIVATE :: Tar_idx, cntSCC
-  LOGICAL, ALLOCATABLE, PRIVATE :: blocked_Vertex(:)
-
-  TYPE(List), ALLOCATABLE :: Cyclic_Set(:)
+  INTEGER,                 PRIVATE :: Tar_idx, cntSCC
+  LOGICAL,    ALLOCATABLE, PRIVATE :: blocked_Vertex(:)
 
   INTEGER :: lvl
-  INTEGER :: maxlen
+  INTEGER, PARAMETER :: maxlen = 2
 
   CONTAINS
  
@@ -47,43 +45,47 @@ MODULE Cycles_Mod
   ! INPUT: (IA,JA) if there is a edge from vertex I to vertex J
   !        length(IA) = length(JA) = nnz(A)
   !
-  SUBROUTINE Find_Elem_Circuits(A,SpcList)
+  SUBROUTINE Find_Elem_Circuits(A,FAMS)
+  !SUBROUTINE Find_Elem_Circuits(A,SpcList)
+    USE mo_control,   ONLY: Families_T
 
     ! IN:
-    TYPE(CSR_Matrix_T) :: A, sub_Ak
-    INTEGER            :: SpcList(:)
+    TYPE(CSR_Matrix_T)   :: A, sub_Ak
+    TYPE(Families_T)     :: FAMS(:)
+    INTEGER, ALLOCATABLE :: SpcList(:)
 
     TYPE(SpRowIndColInd_T) :: sub_A
     TYPE(List), ALLOCATABLE :: scc(:) !, sub_Ak(:)
     INTEGER :: n, s, least_node, nspc
-    INTEGER :: i, j, ispc , cnt, nnz
+    INTEGER :: i, j, k, ispc , cnt, nnz, iFam
+    INTEGER :: iC
     INTEGER, ALLOCATABLE :: comp_nodes(:)
+    INTEGER, ALLOCATABLE :: iCyc_red(:)
     LOGICAL :: dummy
     TYPE(Node_T), POINTER :: printCYC
+
+     777 FORMAT(10X,A)
 
     IF ( A%m /= A%n ) THEN
       WRITE(*,*) '   Input matrix is no square matrix   '
       RETURN
     END IF
 
-
-    WRITE(*,*); WRITE(*,*); WRITE(*,*) '  Calculating simple cycles:'
+    WRITE(*,777) REPEAT('*',39)
+    WRITE(*,777) '********** Structure Analysis *********'
+    WRITE(*,777) REPEAT('*',39)
     WRITE(*,*)
-    !WRITE(*,'(A31)',ADVANCE='NO') '   Enter maximum cycle length: '
-    !READ(*,*) maxlen
-    WRITE(*,*) '   Maximum cycle length: 5';
-    maxlen = 5
-
+    WRITE(*,'(10X,A,I0)') '    Maximum cycle length = ',maxlen
+    WRITE(*,*)
 
     n    = A%n
     nnz  = A%nnz
-    nspc = SIZE(SpcList)
 
     sub_A = CSR_to_SpRowIndColInd(A)
 
     ! Initialize global arrays
     ALLOCATE( blocked_Vertex(n) , blocked_List(n) , Stapel%List(0) )
-    blocked_Vertex   = .FALSE.
+    blocked_Vertex = .FALSE.
 
     DO s=1,n; ALLOCATE( blocked_List(s)%list(0) ); END DO
     blocked_List%len = 0
@@ -99,85 +101,175 @@ MODULE Cycles_Mod
     ! diese schleife später nur über ausgewählte knoten s
     s = 1
 
-    DO j = 1 , nspc
+    DO iFam = 1 , SIZE(FAMS)
 
-      ! Generate Subgraph 
-      IF ( j > 1 ) THEN
-        CALL Purge_Vertex( sub_A , SpcList(j-1) )
-        !CALL Purge_Vertex( sub_A , s-1 )
-        !print*, ''
-        !print*, ' purge = ', s-1
-        !WRITE(*,'(A,*(I3))') ' sub_Ai = ',sub_A%RowInd
-        !WRITE(*,'(A,*(I3))') ' sub_Aj = ',sub_A%ColInd
-        !print*, ''
-      END IF
+      SpcList = [ FAMS(iFam)%Index ]
+      nspc = SIZE(SpcList)
 
-      ! find strong connected components (Tarjan algorithm)
-      CALL Tarjan( scc , ispc , SpcList(j) , sub_A )
+      DO j = 1 , nspc
 
-      IF ( scc(ispc)%len > 1 ) THEN
-        
-        comp_nodes = scc(ispc)%List
-        least_node = SpcList(j)
+        ! Generate Subgraph 
+        IF ( j > 1 ) CALL Purge_Vertex( sub_A , SpcList(j-1) ) 
 
-        !WRITE(*,*) ' size scc list = ',SIZE(scc)
-        !WRITE(*,'(A,*(I0,1X))') ' scc%list : ',comp_nodes
+        ! find strong connected components (Tarjan algorithm)
+        CALL Tarjan( scc , ispc , SpcList(j) , sub_A )
 
-        sub_Ak = Generate_Submatrix( comp_nodes , sub_A )
+        IF ( scc(ispc)%len > 1 ) THEN
+          
+          comp_nodes = scc(ispc)%List
+          least_node = SpcList(j)
 
-        !print*, ' least_node = ', least_node
+          sub_Ak = Generate_Submatrix( comp_nodes , sub_A )
 
-        blocked_Vertex = .FALSE.
-        DO i = 1,scc(ispc)%len
-          IF (ALLOCATED(blocked_List(i)%List)) THEN
-            DEALLOCATE(blocked_List(i)%List)
-            ALLOCATE(blocked_List(i)%List(0))
-          END IF
-          blocked_List(i)%len = 0
-        END DO
+          blocked_Vertex = .FALSE.
+          DO i = 1,scc(ispc)%len
+            IF (ALLOCATED(blocked_List(i)%List)) THEN
+              DEALLOCATE(blocked_List(i)%List)
+              ALLOCATE(blocked_List(i)%List(0))
+            END IF
+            blocked_List(i)%len = 0
+          END DO
 
-        s = least_node
+          s = least_node
 
-        dummy = Circuit( s, s, sub_Ak )
+          dummy = Circuit( s, s, sub_Ak )
 
-        DEALLOCATE(scc)
-        s = s + 1
-        CALL Progress(j,nspc)
-      ELSE
-        CALL Progress(nspc,nspc)
-        EXIT
-      END IF
-    END DO
+          DEALLOCATE(scc)
+          s = s + 1
+          CALL Progress(j,nspc)
+        ELSE
+          CALL Progress(nspc,nspc)
+          EXIT
+        END IF
+      END DO
+
+    END DO ! 1,SIZE(FAM)
     
     cntSCC = 0
     printCYC => cycFirst
     DO WHILE (ASSOCIATED(printCYC))
-      cntSCC = cntSCC + 1
+      IF ( printCYC%cnt > 1 ) cntSCC = cntSCC + 1
       printCYC => printCYC%next
     END DO
-    cntSCC = cntSCC - 1
-    ALLOCATE(Cyclic_Set(cntSCC))
-    WRITE(*,*) ' '
-    WRITE(*,*) ' '
-    WRITE(*,'(A,*(I0))') '       Anzahl Zyklen:   ',cntSCC
-    WRITE(*,*) ' '
+    nCycles = cntSCC
+    ALLOCATE(Cyclic_Set(nCycles))
+
+    
+
+
 
     ! write paths to file and save it in a allcatable array
     OPEN(UNIT=99,FILE='reaction_paths.txt',STATUS='UNKNOWN')
     WRITE(99,*)
-    WRITE(99,'(A,*(I0))') '   Anzahl Zyklen:   ',cntSCC
+    WRITE(99,'(A,*(I0))') '   Anzahl Zyklen:   ',nCycles
     WRITE(99,'(A)') '   Cycle Length:       species: '
     printCYC => cycFirst
-    DO i = 1,cntSCC
-      WRITE(99,'(10X,I2,8X,*(A))') printCYC%cnt-1,               &
-      & (TRIM(y_name(printCYC%v(j)))//' -> ' ,j=1,printCYC%cnt), &
-      &  TRIM(y_name(printCYC%v(printCYC%cnt+1)))
-      !WRITE(99,'(3X,I2,15X,*(I0,1X))') printCYC%cnt, printCYC%v
-      Cyclic_Set(i)%len  = printCYC%cnt + 1
-      Cyclic_Set(i)%List = [printCYC%v]
+    i = 0
+    DO 
+      IF ( ASSOCIATED(PrintCYC%next) ) THEN
+        IF ( printCYC%cnt > 1 ) THEN
+
+          i = i + 1
+
+          Cyclic_Set(i)%len  = printCYC%cnt+1
+          Cyclic_Set(i)%List = [printCYC%v]
+
+          ! zum anschauen
+          WRITE(99,'(10X,I2,8X,*(A))') Cyclic_Set(i)%len,                      &
+          & (TRIM(y_name(Cyclic_Set(i)%List(j)))//' -> ' ,j=1,Cyclic_Set(i)%len-1), &
+          &  TRIM(y_name(Cyclic_Set(i)%List(Cyclic_Set(i)%len)))
+
+
+        END IF
+      ELSE
+        EXIT
+      END IF
       printCYC => printCYC%next
     END DO
-    !CLOSE(99)
+    CLOSE(99)
+
+    
+    ! write paths to file and save it in a allcatable array
+    cntSCC = 0
+    ALLOCATE(iCyc_red(0))
+    DO iC = 1, nCycles
+
+      iFam = Find_Familie(Cyclic_Set(iC)%List(1))
+
+      IF ( iFam > 0 ) THEN
+        cnt = 0
+        DO i = 2 , Cyclic_Set(iC)%len-1
+          IF ( Is_Spc_In_Cycle( Cyclic_Set(iC)%List(i)             &
+            &                 , FAMS(iFam)%Index                   &
+            &                 , SIZE(FAMS(iFam)%Index) ) > 0 )  THEN
+            cnt = cnt + 1
+          END IF
+        END DO
+
+        IF ( cnt == Cyclic_Set(iC)%len-2 ) THEN 
+          cntSCC = cntSCC + 1
+          iCyc_red = [iCyc_red , iC]
+        END IF
+
+      END IF
+
+    END DO
+    
+    WRITE(*,*); WRITE(*,*) 
+    WRITE(*,'(10X,A,I0)') '    Number of cycles = ',cntSCC
+    WRITE(*,*); WRITE(*,*) 
+
+    nCycles_red = cntSCC
+    ALLOCATE(Cyclic_Set_red(nCycles_red))
+    OPEN(UNIT=98,FILE='reaction_path_short.txt',STATUS='UNKNOWN')
+    WRITE(98,*)
+    WRITE(98,'(A)') '   Cycle Length:       species: '
+    WRITE(98,'(A,*(I0))') '   Anzahl Zyklen nach kuerzen:   ',nCycles_red
+    DO i = 1, nCycles_red
+      iC = iCyc_red(i)
+      Cyclic_Set_red(i)%len = Cyclic_Set(iC)%len
+      Cyclic_Set_red(i)%List = [Cyclic_Set(iC)%List]
+      WRITE(98,'(10X,I2,8X,*(A))') Cyclic_Set_red(i)%len,                      &
+      & (TRIM(y_name(Cyclic_Set_red(i)%List(k)))//' -> ' ,k=1,Cyclic_Set_red(i)%len-1), &
+      &  TRIM(y_name(Cyclic_Set_red(i)%List(Cyclic_Set_red(i)%len)))
+      ! matlab output
+      !WRITE(97,'(*(I0,2X))') (Cyclic_Set_red(i)%List(j) , j=1,Cyclic_Set_red(i)%len)
+    END DO
+
+    CLOSE(98)
+
+
+    CONTAINS
+
+    FUNCTION Find_Familie(iSpc) RESULT(iFa)
+      INTEGER :: iFa
+      INTEGER :: iSpc
+      INTEGER :: ii, jj
+
+      iFa=0
+      DO ii = 1 , SIZE(FAMS)
+        DO jj = 1 , SIZE(FAMS(ii)%Index)
+          IF ( FAMS(ii)%Index(jj) == iSpc ) THEN
+            iFa = ii
+            RETURN
+          END IF
+        END DO
+      END DO
+    END FUNCTION Find_Familie
+
+    FUNCTION Is_Spc_In_Cycle(iSpc,List,n) RESULT(iRow)
+      INTEGER             :: iRow
+      INTEGER, INTENT(IN) :: List(:)
+      INTEGER, INTENT(IN) :: iSpc, n
+      INTEGER :: i
+
+      iRow=0
+      DO i=1,n
+        IF ( List(i)==iSpc ) THEN
+          iRow=i;  RETURN
+        END IF
+      END DO
+    END FUNCTION Is_Spc_In_Cycle
 
   END SUBROUTINE Find_Elem_Circuits
 
@@ -601,7 +693,7 @@ MODULE Cycles_Mod
   SUBROUTINE Progress(j,k)
     INTEGER(4)  :: j,k 
     ! print the progress bar.
-    WRITE(*,'(A1,A,I0,A,I0,A,$)') char(13),'       Node :: (',j,'/',k,')  processed.'
+    WRITE(*,'(A1,14X,A,I0,A,I0,A,$)') char(13),'Node :: (',j,'/',k,')  processed.'
   END SUBROUTINE Progress
 
 END MODULE Cycles_Mod

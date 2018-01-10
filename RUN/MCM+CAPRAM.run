@@ -1,22 +1,23 @@
 &SCENARIO
   BSP      = 'MCM32+CAPRAM40'
   WaitBar  = .T.
-  FluxAna  = .T.
+  FluxAna  = .F.
   ChemKin  = .F.        ! input mechanism in ChemKin notation
   Lehmann  = .F.
 /END
 &FILES
-  !SysFile  = 'CHEM/MCM32_CAPRAM40_full.sys'  
-  SysFile  = 'CHEM/MCM32+CAPRAM40_red2.sys'  
+  SysFile  = 'CHEM/MCM32_CAPRAM40_full.sys'  
+  !SysFile  = 'CHEM/MCM32+CAPRAM40_red.sys'  
   DataFile = 'DAT/MCM32_CAPRAM40_full.dat'
   InitFile = 'INI/Urban.ini'
   MetFile  = 'MET/Urban.met'
-  !TargetFile  = 'TAR/CAPRAM.ctrl'   
+  TargetFile = 'TAR/RACM+C24.ctrl'
 /END
 &TIMES
   tBegin      = 0.0d0
-  !tEnd        = 84600.0d0
-  tEnd        = 259200.0d0
+  !tEnd        = 172800.0d0
+  tEnd        = 84600.0d0
+  !tEnd        = 259200.0d0
 /END
 &METEO
   pHSet       = .T.          ! Berechne pH Wert zu Beginn
@@ -41,8 +42,8 @@
   Ordering  = 8
 /END
 &OUTPUT
-  !NetCdfFile  = 'NetCDF/MCM32+C40_full.nc' ! location and name of NetCDF output file
-  NetCdfFile  = 'NetCDF/MCM32+C40_red.nc' ! location and name of NetCDF output file
+  NetCdfFile  = 'NetCDF/MCM32+C40_full.nc' ! location and name of NetCDF output file
+  !NetCdfFile  = 'NetCDF/MCM32+C40_red.nc' ! location and name of NetCDF output file
   StpNetCDF   = 600.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock

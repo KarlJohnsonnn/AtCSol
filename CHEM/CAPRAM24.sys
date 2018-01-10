@@ -1,3 +1,15 @@
+COMMENT  CAPRAM 2.4 
+COMMENT  last update 05-05-2011 (pb)
+COMMENT   ===================   Unit options   ======================
+
+UNIT GAS    0   COMMENT     Gas phase units     (0 = molec/cm3, 1 = mol/m3)
+UNIT AQUA   0   COMMENT     Aqueous phase units (0 = mol/l)
+UNIT AQUA   0   COMMENT     Aqueous phase units (0 = mol/l)
+
+
+COMMENT   ====================== PHASE TRANSFER ==========================
+
+
 COMMENT  All the names of non- ionic aqueous phase species begin with a, cations end  
 COMMENT  with p and anions end with m, respectively.  
  

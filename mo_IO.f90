@@ -5,22 +5,30 @@ MODULE mo_IO
   SUBROUTINE Logo()
     USE mo_MPI
     IF (MPI_ID==0) THEN
-      WRITE(*,*) ''
-      WRITE(*,*) '===================================================================================='
-      WRITE(*,*) '|      ___           ___           ___           ___                       ___     |'
-      WRITE(*,*) '|     /\  \         /\__\         /\  \         /\__\          ___        /\  \    |'
-      WRITE(*,*) '|    /::\  \       /:/  /        /::\  \       /::|  |        /\  \      /::\  \   |'
-      WRITE(*,*) '|   /:/\:\  \     /:/__/        /:/\:\  \     /:|:|  |        \:\  \    /:/\:\  \  |'
-      WRITE(*,*) '|  /:/  \:\  \   /::\  \ ___   /::\~\:\  \   /:/|:|__|__      /::\__\  /::\~\:\  \ |'
-      WRITE(*,*) '| /:/__/ \:\__\ /:/\:\  /\__\ /:/\:\ \:\__\ /:/ |::::\__\  __/:/\/__/ /:/\:\ \:\__\|'
-      WRITE(*,*) '| \:\  \  \/__/ \/__\:\/:/  / \:\~\:\ \/__/ \/__/~~/:/  / /\/:/  /    \:\~\:\ \/__/|'
-      WRITE(*,*) '|  \:\  \            \::/  /   \:\ \:\__\         /:/  /  \::/__/      \:\ \:\__\  |'
-      WRITE(*,*) '|   \:\  \           /:/  /     \:\ \/__/        /:/  /    \:\__\       \:\ \/__/  |'
-      WRITE(*,*) '|    \:\__\         /:/  /       \:\__\         /:/  /      \/__/        \:\__\    |'
-      WRITE(*,*) '|     \/__/         \/__/         \/__/         \/__/                     \/__/    |'
-      WRITE(*,*) '===================================================================================='
-      WRITE(*,*) ''
+      WRITE(*,777) 
+      WRITE(*,777) '************ ********** ************ ********** ************'
+      WRITE(*,777) "*                                                          *"
+      WRITE(*,777) "*         _                ____      ____            ___   *"
+      WRITE(*,777) "*        dM.              6MMMMb/   6MMMMb\          `MM   *"
+      WRITE(*,777) "*       ,MMb      /      8P    YM  6M'    `           MM   *"
+      WRITE(*,777) "*       d'YM.    /M     6M      Y  MM         _____   MM   *"
+      WRITE(*,777) "*      ,P `Mb   /MMMMM  MM         YM.       6MMMMMb  MM   *"
+      WRITE(*,777) "*      d'  YM.   MM     MM          YMMMMb  6M'   `Mb MM   *"
+      WRITE(*,777) "*     ,P   `Mb   MM     MM              `Mb MM     MM MM   *"
+      WRITE(*,777) "*     d'    YM.  MM     MM               MM MM     MM MM   *"
+      WRITE(*,777) "*    ,MMMMMMMMb  MM     YM      6        MM MM     MM MM   *"
+      WRITE(*,777) "*    d'      YM. YM.  ,  8b    d9  L    ,M9 YM.   ,M9 MM   *"
+      WRITE(*,777) "*  _dM_     _dMM_ YMMM9   YMMMM9   MYMMMM9   YMMMMM9 _MM_  *"
+      WRITE(*,777) "*                                                          *"
+      WRITE(*,777) '************ ********** ************ ********** ************'
+      WRITE(*,*) 
+      WRITE(*,777) "               Atmospheric Chemistry Solver                 " 
+      WRITE(*,*) 
+      WRITE(*,777) "      An experimental Fortran program for the analysis      "
+      WRITE(*,777) "         of complex chemical multiphase mechanisms          " 
+      WRITE(*,*) ; WRITE(*,*)
     END IF
+    777 FORMAT(10X,A)
   END SUBROUTINE Logo
   !
   !
@@ -29,46 +37,49 @@ MODULE mo_IO
     USE mo_control
     USE mo_reac
 
+    IF ( INDEX(SysFile,'.sys')==0)  SysFile = TRIM(SysFile)//'.sys'
+
     IF (MPI_ID==0) THEN
-      WRITE(*,*)   ''
-      WRITE(*,*)   '  Run - Paramter:'
-      WRITE(*,*)   ''
-      WRITE(*,*)   '     Mechanism:             ', TRIM(SysFile)
+      WRITE(*,*)
+      WRITE(*,777)   'Run - Paramter:'
+      WRITE(*,*)
+      WRITE(*,777)   '    Mechanism:             '//TRIM(SysFile)
       IF (NetCdfFile /= '') THEN
-        WRITE(*,*)   '     NetCDF-File:           ', TRIM(NetCdfFile)
+        WRITE(*,777)   '    NetCDF-File:           '//TRIM(NetCdfFile)
       ELSE
-        WRITE(*,*)   '     NetCDF-File:           ', '*** no NetCDF output ***'
+        WRITE(*,777)   '    NetCDF-File:           *** no NetCDF output ***'
       END IF
-      WRITE(*,*)   '     Initials:              ', InitFile
-      WRITE(*,*)   '     ODE solver:            ', ODEsolver
+      WRITE(*,777)   '    Initials:              '//TRIM(InitFile)
+      WRITE(*,777)   '    ODE solver:            '//TRIM(ODEsolver)
       IF (ODEsolver/='LSODE') THEN
         IF ( CLASSIC ) THEN 
-          WRITE(*,*)   '     Linear Algebra:        Classic'
+          WRITE(*,777)   '    Linear Algebra:        Classic'
         ELSE
-          WRITE(*,*)   '     Linear Algebra:        Extended'
+          WRITE(*,777)   '    Linear Algebra:        Extended'
         END IF
         IF (Error_Est==2) THEN
-          WRITE(*,*)   '     Error Estimation:      Euklid Norm'
+          WRITE(*,777)   '    Error Estimation:      Euklid Norm'
         ELSE
-          WRITE(*,*)   '     Error Estimation:      Maximum Norm'
+          WRITE(*,777)   '    Error Estimation:      Maximum Norm'
         END IF
         IF (Ordering==8) THEN
-          WRITE(*,*)   '     Solve Linear Systems:  Sparse LU, Markowitz Ordering Algorithm'
+          WRITE(*,777)   '    Solve Linear Systems:  Sparse LU, Markowitz Ordering Algorithm'
         ELSE 
-          WRITE(*,*)   '     Solve Linear Systems:  MUMPS, Ordering Stragegie:  ',Ordering
+          WRITE(*,777)   '    Solve Linear Systems:  MUMPS, Ordering Stragegie:  ',Ordering
         END IF
       END IF
-      WRITE(*,*)   ''
-      WRITE(*,*)   '  Tolerance:   '
-      WRITE(*,*)   ''
-      WRITE(*,'(A34,2X,Es8.2)')   '      Relative Rosenbrock        = ',RtolROW
-      WRITE(*,'(A34,2X,Es8.2)')   '      Absolute (gaseous species) = ',AtolGas
-      IF (ns_AQUA>0) WRITE(*,'(A34,2X,Es8.2)')   '      Absolute (aqueous species) = ',AtolAqua
+      WRITE(*,777)
+      WRITE(*,777)   'Tolerance:   '
+      WRITE(*,777)
+      WRITE(*,'(10X,A,2X,Es8.2)')   '    Relative Rosenbrock        = ',RtolROW
+      WRITE(*,'(10X,A,2X,Es8.2)')   '    Absolute (gaseous species) = ',AtolGas
+      IF (ns_AQUA>0) WRITE(*,'(10X,A,2X,Es8.2)')   '    Absolute (aqueous species) = ',AtolAqua
       IF ( Teq ) THEN
-        WRITE(*,'(A34,2X,Es8.2)')   '      Absolute Temperature       = ',AtolTemp
+        WRITE(*,'(10X,A,2X,Es8.2)')   '    Absolute Temperature       = ',AtolTemp
       END IF
-      WRITE(*,*)   ''
+      WRITE(*,*) 
     END IF
+    777 FORMAT(10X,A)
   END SUBROUTINE Print_Run_Param
   !
   !
@@ -96,46 +107,35 @@ MODULE mo_IO
     !
     IF (MPI_ID==0) THEN
       ! print the statistics
-      299 format(A40,3X,F13.6,A6)
-      298 format(A40,3X,I10)
-      WRITE(*,*)   ''
-      WRITE(*,*)   '                                    DONE' 
-      WRITE(*,*)   ''
-      WRITE(*,*)   ''
-      WRITE(*,*)   ''
-      WRITE(*,*)   '==========================================================================='
-      WRITE(*,*)   '================================ Statistics ==============================='
-      WRITE(*,*)   '==========================================================================='
-      WRITE(*,*)   ''
-      WRITE(*,298) ' Number of successful time steps   =', Out%nsteps
-      WRITE(*,298) ' Number of failed time step        =', Out%nfailed
-      WRITE(*,298) ' Number of rate evaluations        =', Out%nRateEvals
-      WRITE(*,298) ' Number of Jacobian calculations   =', Out%npds
-      WRITE(*,298) ' Number of LU factorisations       =', Out%ndecomps
-      WRITE(*,298) ' Number of solved linear systems   =', Out%nsolves
-      WRITE(*,*)   ''
-      WRITE(*,*)   ''
-      WRITE(*,*)   ' ========================================================================='
-      WRITE(*,*)   ' ======================= max times of all processes ====================== '
-      WRITE(*,*)   ' ========================================================================= '
-      WRITE(*,*)   ''
-      WRITE(*,299) ' Time to read the input system     =', maxTRead,' [sec]'
-      WRITE(*,299) ' Time for symbolic phase           =', maxTSymb,' [sec]'
-      WRITE(*,299) ' Time writing NetCDF-File          =', maxTNcdf,' [sec]'
-      WRITE(*,299) ' Time for integration              =', maxTInte-maxTNcdf,' [sec]'
-      WRITE(*,*)   ' -------------------------------------+-----------------------------------'
-      WRITE(*,299) '          - Factorisation          =', maxTFac  ,' [sec]'
-      WRITE(*,299) '          - Right hand side calc   =', maxTRhs  ,' [sec]'
-      WRITE(*,299) '          - Solve linear Systems   =', maxTSolve,' [sec]'
-      WRITE(*,299) '          - Rates                  =', maxTRates,' [sec]'
-      IF(MPI_np>1) WRITE(*,299) '          - Ratessend              =', maxTSend ,' [sec]'
-      WRITE(*,299) '          - Jacobian               =', maxTJac  ,' [sec]'
-      WRITE(*,299) '          - Error calculation      =', maxTErr  ,' [sec]'
-      WRITE(*,*)   ' = = = = = = = = = = = = = = = = = ======= = = = = = = = = = = = = = = = ='
-      WRITE(*,299) ' Total runtime                     =', maxTAll,' [sec]'
-      WRITE(*,*)  '===========================================================================' 
-      WRITE(*,*)  ''
-      WRITE(*,*)  ''
+      299 format(10X,A,3X,F13.6,A)
+      298 format(10X,A,3X,I10)
+      777 FORMAT(10X,A)
+      WRITE(*,*);  WRITE(*,*);    WRITE(*,*)
+      WRITE(*,777) 'Statistics (Numbers):'; 
+      WRITE(*,*)
+      WRITE(*,298) '    successful time steps   =', Out%nsteps
+      WRITE(*,298) '    failed time step        =', Out%nfailed
+      WRITE(*,298) '    rate evaluations        =', Out%nRateEvals
+      WRITE(*,298) '    Jacobian calculations   =', Out%npds
+      WRITE(*,298) '    LU factorisations       =', Out%ndecomps
+      WRITE(*,298) '    solved linear systems   =', Out%nsolves
+      WRITE(*,*);  WRITE(*,*)
+      WRITE(*,777)   'Statistics (Time):'
+      WRITE(*,*)
+      WRITE(*,299) '    reading mechanism       =', maxTRead,' [sec]'
+      WRITE(*,299) '    symbolic phase          =', maxTSymb,' [sec]'
+      WRITE(*,299) '    writing NetCDF-File     =', maxTNcdf,' [sec]'; WRITE(*,*)
+      !WRITE(*,777) '    ------------------------+----------------------------'
+      WRITE(*,299) '            factorisation   =', maxTFac  ,' [sec]'
+      WRITE(*,299) '          + right-hand side =', maxTRhs  ,' [sec]'
+      WRITE(*,299) '          + linear systems  =', maxTSolve,' [sec]'
+      WRITE(*,299) '          + reaction rates  =', maxTRates,' [sec]'
+      WRITE(*,299) '          + Jacobian        =', maxTJac  ,' [sec]'
+      WRITE(*,299) '          + error calc      =', maxTErr  ,' [sec]'
+      WRITE(*,777) '    ------------------------=----------------------'
+      WRITE(*,299) '    integration             =', maxTInte-maxTNcdf,' [sec]'; WRITE(*,*)
+      WRITE(*,299) '    total runtime           =', maxTAll,' [sec]'
+      WRITE(*,*);  WRITE(*,*);  WRITE(*,*)
     END IF
   END SUBROUTINE
   
@@ -252,18 +252,19 @@ MODULE mo_IO
     
     USE Sparse_Mod, ONLY: CSR_Matrix_T
     TYPE(CSR_Matrix_T) :: A,B,BA,BAT,S_HG,Jac,M,LUM
+    297 format(10X,A)
+    298 format(10X,A18,3(I12,A2))
 
-    298 format(A18,3(I12,A2))
-
-    WRITE(*,*)   '                |     rows    |    colums   |      nnz    |'
-    WRITE(*,*)   '  --------------+-------------+-------------+-------------+-'
+    WRITE(*,297) '                 |     rows    |    colums   |      nnz    |'
+    WRITE(*,297) ' ----------------+-------------+-------------+-------------+-'
     WRITE(*,298) '           alpha |', A%m,   ' |',A%n,     ' |',A%nnz,   ' |'
     WRITE(*,298) '            beta |', B%m,   ' |',B%n,     ' |',B%nnz,   ' |'
     WRITE(*,298) '  (beta-alpha)^T |', BAT%m, ' |',BAT%n,   ' |',BAT%nnz, ' |'
-    WRITE(*,298) '   Species Graph |', S_HG%m,' |',S_HG%n,  ' |',S_HG%nnz,' |'
+    !WRITE(*,298) '   Species Graph |', S_HG%m,' |',S_HG%n,  ' |',S_HG%nnz,' |'
     WRITE(*,298) '  Jacobian (= J) |', Jac%m, ' |',Jac%n,   ' |',Jac%nnz, ' |'
     WRITE(*,298) '       I - h*g*J |', M%m,   ' |',M%n,     ' |',M%nnz,   ' |'
     WRITE(*,298) '   LU(I - h*g*J) |', LUM%m, ' |',LUM%n,   ' |',LUM%nnz, ' |'
+    WRITE(*,*)
     WRITE(*,*)
 
   END SUBROUTINE Matrix_Statistics
@@ -341,27 +342,27 @@ MODULE mo_IO
     WRITE(*,*)
   END SUBROUTINE WriteAnalysisFile
 
-  SUBROUTINE StreamWriteFluxes(Rate,t,h)
-    USE Kind_Mod
-    USE mo_control, ONLY: FluxUnit, FluxFile, FluxMetaUnit, FluxMetaFile, iStpFlux
-    REAL(dp) :: Rate(:)
-    REAL(dp) :: t , h
-
-    INTEGER :: io_stat, io_pos
-    CHARACTER(100) :: io_msg
-
-    OPEN(unit=FluxUnit,      file=FluxFile,  status='old',   action='write', &
-    &    position='append', access='stream', iostat=io_stat, iomsg=io_msg    )
-    CALL file_err(FluxFile,io_stat,io_msg)
-    INQUIRE(FluxUnit, POS=io_pos)
-    WRITE(FluxUnit) Rate,t,h
-    CLOSE(FluxUnit)
-
-    iStpFlux   = iStpFlux + 1
-    OPEN(unit=FluxMetaUnit, file=FluxMetaFile, status='old', action='write', position='append')
-    WRITE(FluxMetaUnit,*) iStpFlux, io_pos 
-    CLOSE(FluxMetaUnit)
-  END SUBROUTINE StreamWriteFluxes
+!  SUBROUTINE StreamWriteFluxes(Rate,t,h)
+!    USE Kind_Mod
+!    USE mo_control, ONLY: FluxUnit, FluxFile, FluxMetaUnit, FluxMetaFile, iStpFlux
+!    REAL(dp) :: Rate(:)
+!    REAL(dp) :: t , h
+!
+!    INTEGER :: io_stat, io_pos
+!    CHARACTER(100) :: io_msg
+!
+!    OPEN(unit=FluxUnit,      file=FluxFile,  status='old',   action='write', &
+!    &    position='append', access='stream', iostat=io_stat, iomsg=io_msg    )
+!    CALL file_err(FluxFile,io_stat,io_msg)
+!    INQUIRE(FluxUnit, POS=io_pos)
+!    WRITE(FluxUnit) Rate,t,h
+!    CLOSE(FluxUnit)
+!
+!    iStpFlux   = iStpFlux + 1
+!    OPEN(unit=FluxMetaUnit, file=FluxMetaFile, status='old', action='write', position='append')
+!    WRITE(FluxMetaUnit,*) iStpFlux, io_pos 
+!    CLOSE(FluxMetaUnit)
+!  END SUBROUTINE StreamWriteFluxes
 
 
   SUBROUTINE SequentialWriteFluxes(Rate,t,h)

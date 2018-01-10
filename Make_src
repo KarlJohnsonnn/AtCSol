@@ -4,8 +4,8 @@ OBJ = mo_unirnk.f90\
       csv_file.f90\
       LexicalStringSort.f90\
       Kind_Mod.f90\
-      mo_reac.f90\
       mo_control.f90\
+      mo_reac.f90\
       Meteo_Mod.f90\
       mo_MPI.f90\
       InitRun.f90\
@@ -25,7 +25,7 @@ OBJ = mo_unirnk.f90\
       issa_Mod.f90\
       Rosenbrock_Mod.f90\
       Integration_Mod.f90\
-      chemie.f90
+      AtCSol.f90
       
 
 

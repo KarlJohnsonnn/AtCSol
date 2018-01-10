@@ -89,7 +89,7 @@
       CALL ErrorCheck(io_stat,io_msg,'reading FILES list')
       
 !--- Adjust Filenames
-      CALL FileNameCheck(MetFile,'MetFile')
+      IF (.NOT.ChemKin) CALL FileNameCheck(MetFile,'MetFile')
       CALL FileNameCheck(SysFile,'SysFile')
       CALL FileNameCheck(DataFile,'DataFile')
       CALL FileNameCheck(InitFile,'InitFile')
@@ -199,7 +199,7 @@
 				WRITE(*,*) '  Maximum stepsize = ',maxStp, ' to high!'
 				CALL FinishMPI(); STOP
 			END IF
-			IF ( minStp <= 1.e-35_dp ) THEN
+			IF ( minStp <= 1.e-50_dp ) THEN
 			  WRITE(*,*) '  Minimums stepsize = ',minStp, ' to low!'
 				CALL FinishMPI(); STOP
 		  ELSE IF ( minStp > maxStp ) THEN

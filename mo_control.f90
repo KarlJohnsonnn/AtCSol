@@ -73,6 +73,11 @@
 &               , tEnd              & ! Model end time
 &               , StpNetcdf           ! Time step for Netcdf output
       INTEGER  :: nOutP
+
+!--- NetCDF globals      
+      INTEGER, ALLOCATABLE :: iNcdfGas(:), iNcdfAqua(:), iNcdfSolid(:), iNcdfParti(:)
+      INTEGER, ALLOCATABLE :: iNCout_G(:), iNCout_A_l(:), iNCout_A_m3(:), iNCout_S(:), iNCout_P(:)
+      INTEGER  :: nNcdfGas=0, nNcdfAqua=0, nNcdfSolid=0, nNcdfParti=0 ! number of output spc for each phase
 !
 
 !---  Photolysis
@@ -140,7 +145,7 @@
       INTEGER  :: Ordering     ! default = 8
       INTEGER  :: ParOrdering  ! < 0 serial ordering , 0,1,2 parallel
 
-      REAL(dp), ALLOCATABLE :: ThresholdStepSizeControl(:)
+      
       REAL(dp), ALLOCATABLE :: ATolAll(:)
 
 !--- Logical variable for PI setsize controler
@@ -269,8 +274,6 @@
 
     LOGICAL :: ChemKin = .FALSE.
 
-    LOGICAL :: Bar = .FALSE.
-
     REAL(dp), ALLOCATABLE :: integrated_rates(:)
     REAL(dp), ALLOCATABLE :: mixing_ratios_spc(:,:)
 
@@ -296,14 +299,19 @@
 
     TYPE(LUMP_SPC), ALLOCATABLE :: LUMP(:)
 
-    TYPE FAMILY_SPC
-      CHARACTER(LenName), ALLOCATABLE :: SpcName(:)
-      INTEGER,            ALLOCATABLE :: SpcIndex(:)
-    END TYPE FAMILY_SPC
+    TYPE Families_T
+      CHARACTER(LenName), ALLOCATABLE :: Name(:)
+      INTEGER,            ALLOCATABLE :: Index(:)
+    END TYPE Families_T
    
-    TYPE(FAMILY_SPC), ALLOCATABLE :: FAM(:)
-    INTEGER,          ALLOCATABLE :: allFAM(:)
-    INTEGER                       :: nallFAM
+    TYPE(Families_T), ALLOCATABLE :: Families(:)
+
+    TYPE(List), ALLOCATABLE :: Cyclic_Set(:)
+    TYPE(List), ALLOCATABLE :: Cyclic_Set_red(:)
+    INTEGER                 :: nCycles=0, nCycles_red=0
+
+
+
 
  END MODULE mo_control
 

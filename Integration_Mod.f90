@@ -62,10 +62,11 @@ MODULE Integration_Mod
     REAL(dp) :: timepart
     REAL(dp) :: StartTimer
 
-    REAL(dp) :: h, hmin, absh, tnew, tmp, hOld
+    REAL(dp) :: h, hmin, tnew, tmp, hOld
     REAL(dp) :: error, errorOld
     REAL(dp) :: tmp_tb
-    REAL(dp) :: actLWC, zen, wetRad
+    REAL(dp) :: actLWC, zen, Temperature
+    REAL(dp) :: wetRad(nFrac)
     INTEGER  :: ierr(1,1)
     REAL(dp) :: ErrVals(nspc)
     ! 
@@ -95,141 +96,123 @@ MODULE Integration_Mod
       !--- initial temperature
       Y0(nDIM) = Temperature0     ! = 750 [K] aus speedchem debug
       Y(nDIM)  = Temperature0     ! = 750 [K]
+
+      Y = MAX( ABS(Y) , eps ) * SIGN( ONE , Y )    ! |y| >= eps
+      Y0 = MAX( ABS(Y0) , eps ) * SIGN( ONE , Y0 )    ! |y| >= eps
     END IF
+
+    t = Tspan(1)
+    tnew = Tspan(1)
 
     ! this is for the waitbar
     tmp_tb = (Tspan(2)-Tspan(1)) * 0.01_dp
     
+    
     SELECT CASE (TRIM(method(1:7)))
 
       CASE('METHODS')
+
     
         !---- Calculate a first stepsize based on 2nd deriv.
-        CALL InitialStepSize( h , hmin , absh , Jac_CC , R0   &
-        &                   , Tspan(1) , Y(1:nspc) , ROS%pow  )
-     
-        !
-        !===============================================================================
-        !=================================THE MAIN LOOP=================================
-        !===============================================================================
+        h = InitialStepSize( Jac_CC, R0, t, Y, ROS%pow )
+
+        IF (MPI_master) WRITE(*,'(10X,A)',ADVANCE='NO') 'Start Integration.............      '
         TimeIntegrationA = MPI_WTIME()
-        IF (MPI_ID==0) WRITE(*,*) '  Start Integration............. '; WRITE(*,*) ' '
        
-        t     = Tspan(1)
-        tnew  = Tspan(1)
             
         MAIN_LOOP_ROSENBROCK_METHOD: DO 
-          !
-          absh  = MIN( maxStp, MAX( minStp , absh ) )
-          h     = absh
-          !
+          
+          h = MIN( maxStp, MAX( minStp , h ) )
+          
           !-- Stretch the step if within 5% of tfinal-t.
-          IF ( 1.05_dp * absh >= Tspan(2) - t ) THEN
-            h     = Tspan(2) - t
-            absh  = ABS(h)
-            done  = .TRUE.
+          IF ( 1.05_dp * h >= Tspan(2) - t ) THEN
+            h = ABS(Tspan(2) - t)
+            done = .TRUE.
           END IF
-          DO                                ! Evaluate the formula.
-            !
+
+          DO    ! Evaluate the formula.
+            
             !-- LOOP FOR ADVANCING ONE STEP.
-            failed  = .FALSE.                   ! no failed attempts
-            !
+            failed = .FALSE.      ! no failed attempts
+            
             ! Rosenbrock Timestep 
-            CALL Rosenbrock(  Y             &       ! new concentration
-            &               , error         &       ! error value
-            &               , ierr          &       ! max error component
-            &               , Y0            &       ! current concentration 
-            &               , t             &       ! current time
-            &               , h             &       ! stepsize
-            &               , Euler=.FALSE. )       ! new concentration 
-            !
+            CALL Rosenbrock(  Y             & ! new concentration
+            &               , error         & ! error value
+            &               , ierr          & ! max error component
+            &               , Y0            & ! current concentration 
+            &               , t             & ! current time
+            &               , h             & ! stepsize
+            &               , Euler=.FALSE. ) ! new concentration 
+            
             tnew  = t + h
-            !
+            
             IF (done) THEN
-              tnew  = Tspan(2)         ! Hit end point exactly.
-              h     = tnew-t                        ! Purify h.
+              tnew  = Tspan(2)    ! Hit end point exactly.
+              h     = tnew-t      ! Purify h.
             END IF
             Out%ndecomps   = Out%ndecomps   + 1
             Out%nRateEvals = Out%nRateEvals + ROS%nStage
             Out%nSolves    = Out%nSolves    + ROS%nStage
-            !
-            !
+            
+            
             failed = (error > ONE)
-            !
-            IF (failed) THEN               !failed step
+            
+            IF (failed) THEN      ! failed step
               ! Accept the solution only if the weighted error is no more than the
               ! tolerance one.  Estimate an h that will yield an error of rtol on
               ! the next step or the next try at taking this step, as the case may be,
               ! and use 0.8 of this value to avoid failures.
-              !
+              
               Out%nfailed  = Out%nfailed+1
-              IF ( absh <= hmin ) THEN
+              IF ( h <= hmin ) THEN
                 WRITE(*,*) ' Stepsize to small: ', h
                 CALL FinishMPI()
                 STOP '....Integration_Mod '
               END IF
-              !
-              absh  = MAX( hmin , absh * MAX( rTEN , 0.8_dp * error**(-ROS%pow) ) )
-              h     = absh
-              done  = .FALSE.
-            ELSE                            !succ. step
+              
+              h    = MAX( hmin , h * MAX( rTEN , 0.8_dp * error**(-ROS%pow) ) )
+              done = .FALSE.
+            ELSE                  ! successful step
               EXIT
             END IF
           END DO
           Out%nsteps = Out%nsteps + 1
-          !
-          !
+          
+          
           IF ( NetCdfPrint ) THEN 
             TimeNetCDFA = MPI_WTIME()
+            ! Time to save a step?
             IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
               iStpNetCDF  = iStpNetCDF + 1
-              zen = Zenith(t)
-              IF ( ns_AQUA > 0 ) THEN
-                actLWC  = pseudoLWC(t)
-                wetRad  = (Pi34*actLWC/Frac%Number(1))**(rTHREE)*0.1_dp
-              END IF
-              ! save data in NetCDF File
-              CALL SetOutputNCDF(  Y,    yNcdf, t ,  actLWC)
-              !
-              CALL StepNetCDF   ( t                                &
-              &                 , yNcdf                            &
-              &                 , itime_NetCDF                     &
-              &                 , (/ actLWC                        &
-              &                    , h                             &
-              &                    , SUM(Y(1:ns_GAS))               &
-              &                    , SUM(Y(ns_GAS+1:ns_GAS+ns_AQUA))  &
-              &                    , wetRad                        &
-              &                    , zen                        /) &
-              &                 , ierr                           &
-              &                 , SUM(y(iDiag_Schwefel))           &
-              &                 , error                            )
-              !
-              TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
+              ! Update NetCDF struct and save the new set of values
+              IF ( ChemKin ) Temperature = Y(nDIM)
+              CALL SetOutputNCDF( NetCDF, t , h , ierr , error , Y , Temperature )
+              CALL StepNetCDF( NetCDF )
             END IF
+            TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
           END IF
-          !
+          
           !-- Call progress bar.
-          IF ( Bar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
+          IF ( WaitBar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
             iBar = iBar + 1         ! iBar runs from 0 to 100
             CALL Progress(iBar)
           END IF
-          !
+          
           !-- Termination condition for the main loop.
           IF ( done ) EXIT
-          !
+          
           !-- If there were no failures compute a new h.
           tmp = 1.25_dp * error**ROS%pow
           IF ( TWO * tmp > ONE ) THEN
-            absh  = absh / tmp
+            h  = h / tmp
           ELSE
-            absh  = absh * TWO
+            h  = h * TWO
           END IF
-          !
+          
           !-- Advance the integration one step.
           t   = tnew
           Y0  = Y
-          mixing_ratios_spc(:,2) = mixing_ratios_spc(:,2) + Y
-          !
+          
           !-- for PI stepsize control
           errorOld  = error
           hOld      = h
@@ -261,9 +244,6 @@ MODULE Integration_Mod
         RWORK(6) = maxStp
         RWORK(7) = minStp
 
-
-        IF (MPI_ID==0) WRITE(*,*) '  Start Integration............. '; WRITE(*,*) ' '
-
         t        = Tspan(1)
         timepart = (Tspan(2)-Tspan(1)) / REAL(nOutP - 1, dp)
         tnew     = t + timepart
@@ -272,9 +252,9 @@ MODULE Integration_Mod
           
           IWORK(6) = maxnsteps
            
-          CALL DLSODE ( FRhs  , nDIM  , Y     , t        , tnew            &
-          &           , ITOL  , RTOL1 , ATOL1 , ITASK    , ISTATE  , IOPT  &
-          &           , RWORK , LRW   , IWORK , LIW      , dummy   , MF    )
+          CALL DLSODE ( FRhs  , nDIM  , Y     , t     , tnew           &
+          &           , ITOL  , RTOL1 , ATOL1 , ITASK , ISTATE , IOPT  &
+          &           , RWORK , LRW   , IWORK , LIW   , dummy  , MF    )
   
   
           Out%nsteps     = Out%nsteps     + IWORK(11)
@@ -285,35 +265,20 @@ MODULE Integration_Mod
           ! save data
           IF ( NetCdfPrint ) THEN 
             TimeNetCDFA = MPI_WTIME()
-            iStpNetCDF  = iStpNetCDF + 1
-            zen = Zenith(t)
-            IF ( ns_AQUA > 0 ) THEN
-              actLWC  = pseudoLWC(t)
-              wetRad  = (Pi34*actLWC/Frac%Number(1))**(rTHREE)*0.1_dp
+            ! Time to save a step?
+            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
+              iStpNetCDF  = iStpNetCDF + 1
+              ! Update NetCDF struct and save a new step
+              IF ( ChemKin ) Temperature = Y(nDIM)
+              CALL SetOutputNCDF( NetCDF, t , h , ierr , error , Y , Temperature )
+              CALL StepNetCDF( NetCDF )
             END IF
-
-            ! save data in NetCDF File
-            CALL SetOutputNCDF(  Y , yNcdf, t , actLWC)
-          
-            CALL StepNetCDF (   t                      &
-                            & , yNcdf                  &
-                            & , itime_NetCDF           &
-                            & , (/  actLWC                        &  ! LWC
-                            &     , RWORK(11)                     &  ! Stepsize
-                            &     , SUM(Y(1:ns_GAS))               &    ! Sum gas conc
-                            &     , SUM(Y(ns_GAS+1:ns_GAS+ns_AQUA))  &    ! Sum aqua conc
-                            &     , wetRad                        &    ! wet radius
-                            &     , zen               /)          &  ! zenith
-                            & , ierr                 &  ! max error index = 0
-                            & , ZERO                   &  ! Sum sulfuric conc
-                            & , error                  )   ! error 
-            
             TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
           END IF
 
 
           !-- Call progress bar.
-          IF ( Bar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
+          IF ( WaitBar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
             iBar = iBar + 1         ! iBar runs from 0 to 100
             CALL Progress(iBar)
           END IF
@@ -351,9 +316,6 @@ MODULE Integration_Mod
         RWORK(6) = maxStp
         RWORK(7) = minStp
 
-
-        IF (MPI_ID==0) WRITE(*,*) '  Start Integration............. '; WRITE(*,*) ' '
-
         t        = Tspan(1)
         timepart = (Tspan(2)-Tspan(1)) / REAL(nOutP - 1, dp)
         tnew     = t + timepart
@@ -362,9 +324,9 @@ MODULE Integration_Mod
           
           IWORK(6) = maxnsteps
            
-          CALL DLSODES( FRhs  , nDIM  , Y     , t        , tnew            &
-          &           , ITOL  , RTOL1 , ATOL1 , ITASK    , ISTATE  , IOPT  &
-          &           , RWORK , LRW   , IWORK , LIW      , dummy   , MF    )
+          CALL DLSODES( FRhs  , nDIM  , Y     , t     , tnew           &
+          &           , ITOL  , RTOL1 , ATOL1 , ITASK , ISTATE , IOPT  &
+          &           , RWORK , LRW   , IWORK , LIW   , dummy  , MF    )
   
   
           Out%nsteps     = Out%nsteps     + IWORK(11)
@@ -375,35 +337,20 @@ MODULE Integration_Mod
           ! save data
           IF ( NetCdfPrint ) THEN 
             TimeNetCDFA = MPI_WTIME()
-            iStpNetCDF  = iStpNetCDF + 1
-            zen = Zenith(t)
-            IF ( ns_AQUA > 0 ) THEN
-              actLWC  = pseudoLWC(t)
-              wetRad  = (Pi34*actLWC/Frac%Number(1))**(rTHREE)*0.1_dp
+            ! Time to save a step?
+            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
+              iStpNetCDF  = iStpNetCDF + 1
+              ! Update NetCDF struct and save a new step
+              IF ( ChemKin ) Temperature = Y(nDIM)
+              CALL SetOutputNCDF( NetCDF, t , h , ierr , error , Y , Temperature )
+              CALL StepNetCDF( NetCDF )
             END IF
-
-            ! save data in NetCDF File
-            CALL SetOutputNCDF(  Y , yNcdf, t , actLWC)
-          
-            CALL StepNetCDF (   t                      &
-                            & , yNcdf                  &
-                            & , itime_NetCDF           &
-                            & , (/  actLWC                        &  ! LWC
-                            &     , RWORK(11)                     &  ! Stepsize
-                            &     , SUM(Y(1:ns_GAS))               &    ! Sum gas conc
-                            &     , SUM(Y(ns_GAS+1:ns_GAS+ns_AQUA))  &    ! Sum aqua conc
-                            &     , wetRad                        &    ! wet radius
-                            &     , zen               /)          &  ! zenith
-                            & , ierr                 &  ! max error index = 0
-                            & , ZERO                   &  ! Sum sulfuric conc
-                            & , error                  )   ! error 
-            
             TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
           END IF
 
 
           !-- Call progress bar.
-          IF ( Bar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
+          IF ( WaitBar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
             iBar = iBar + 1         ! iBar runs from 0 to 100
             CALL Progress(iBar)
           END IF
@@ -415,11 +362,10 @@ MODULE Integration_Mod
 
         CALL Progress(100) ! last * needs an extra call
 
-
       CASE ('bwEuler')
 
         h = maxStp
-        
+
         BACKWARD_EULER: DO
           
           !-- Stretch the step if within 10% of tfinal-t.
@@ -428,18 +374,18 @@ MODULE Integration_Mod
             done = .TRUE.
           END IF
 
-          CALL Rosenbrock(  Y             &       ! new concentration
-          &               , error         &       ! error value
-          &               , ierr          &       ! max error component
-          &               , Y0            &       ! current concentration 
-          &               , t             &       ! current time
-          &               , h             &       ! stepsize
-          &               , Euler=.TRUE. )       ! new concentration 
+          CALL Rosenbrock(  Y             & ! new concentration
+          &               , error         & ! error value
+          &               , ierr          & ! max error component
+          &               , Y0            & ! current concentration 
+          &               , t             & ! current time
+          &               , h             & ! stepsize
+          &               , Euler=.TRUE. )  ! new concentration 
 
           tnew = t + h
           IF (done) THEN
-            tnew = Tspan(2)         ! Hit end point exactly.
-            h    = tnew - t         ! Purify h.
+            tnew = Tspan(2)  ! Hit end point exactly.
+            h    = tnew - t  ! Purify h.
           END IF
 
           Out%nRateEvals = Out%nRateEvals + 1
@@ -447,36 +393,20 @@ MODULE Integration_Mod
           Out%nsteps     = Out%nsteps + 1
 
           IF ( NetCdfPrint ) THEN 
+            TimeNetCDFA = MPI_WTIME()
+            ! Time to save a step?
             IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
               iStpNetCDF  = iStpNetCDF + 1
-              zen = Zenith(t)
-              IF ( ns_AQUA > 0 ) THEN
-                actLWC  = pseudoLWC(t)
-                wetRad  = (Pi34*actLWC/Frac%Number(1))**(rTHREE)*0.1_dp
-              END IF
-              ! save data in NetCDF File
-              TimeNetCDFA = MPI_WTIME()
-              CALL SetOutputNCDF(  Y,    yNcdf, t ,  actLWC)
-              !
-              CALL StepNetCDF   ( t                                &
-              &                 , yNcdf                            &
-              &                 , itime_NetCDF                     &
-              &                 , (/ actLWC                        &
-              &                    , h                             &
-              &                    , SUM(Y(1:ns_GAS))               &
-              &                    , SUM(Y(ns_GAS+1:ns_GAS+ns_AQUA))  &
-              &                    , wetRad                        &
-              &                    , zen                        /) &
-              &                 , ierr                           &
-              &                 , SUM(y(iDiag_Schwefel))           &
-              &                 , error                            ) 
-              !
-              TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
+              ! Update NetCDF struct and save a new step
+              IF ( ChemKin ) Temperature = Y(nDIM)
+              CALL SetOutputNCDF( NetCDF, t , h , ierr , error , Y , Temperature )
+              CALL StepNetCDF( NetCDF )
             END IF
+            TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
           END IF
 
           !-- Call progress bar.
-          IF ( Bar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
+          IF ( WaitBar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
             iBar = iBar + 1         ! iBar runs from 0 to 100
             CALL Progress(iBar)
           END IF
@@ -497,10 +427,6 @@ MODULE Integration_Mod
     END SELECT
     TimeIntegrationE  = MPI_WTIME() - TimeIntegrationA
 
-
-    ! this is for pathway analysis
-    mixing_ratios_spc(:,2) = mixing_ratios_spc(:,2)/REAL(Out%nsteps)
-    mixing_ratios_spc(:,3) = Y -  mixing_ratios_spc(:,1) 
     !
     ! DEALLOCATE Mumps instance
     IF ( useMUMPS ) THEN
@@ -514,16 +440,16 @@ MODULE Integration_Mod
   SUBROUTINE Progress(j)
     !
     INTEGER(4)    :: j,k
-    CHARACTER(29) :: bar="  ???% |                    |"
+    CHARACTER(69) :: bar="          Start Integration...........    ???% |                    |"
     !
     IF (MPI_ID==0) THEN
-      WRITE(bar(3:5),'(I3)') j
+      WRITE(bar(43:45),'(I3)') j
       !
       DO k=1,j/5
-        bar(8+k:8+k)="*"
+        bar(48+k:48+k)="*"
       END DO
       ! print the progress bar.
-      WRITE(*,'(A1,A29,$)') char(13), bar
+      WRITE(*,'(A1,A69,$)') char(13), bar
     END IF
   END SUBROUTINE Progress
   !
@@ -568,12 +494,12 @@ MODULE Integration_Mod
     IF (Teq) THEN         ! OUT:   IN:
       ! MASS CONSERVATION
       CALL ReactionRatesAndDerivative_ChemKin( T , Y , Rate , DRate)
-      dCdt = DAXPY_sparse( BAT , Rate , Y_e )  ! [mol/cm3/s]
+      dCdt = BAT * Rate + y_emi   ! [mol/cm3/s]
     
-      YDOT(1:nspc) =  dCdt
+      YDOT(1:nspc) = dCdt
 
       ! ENERGY CONSERVATION
-      Tarr = UpdateTempArray   ( Y(NEQ1) )
+      Tarr = UpdateTempArray ( Y(NEQ1) )
       CALL InternalEnergy    (  U   , Tarr )
       CALL DiffInternalEnergy( dUdT , Tarr) 
       CALL MassAveMixSpecHeat( c_v  , dUdT               &
@@ -584,9 +510,9 @@ MODULE Integration_Mod
     ELSE
       ! MASS CONSERVATION
       CALL ReactionRates_Tropos( T , Y , Rate )
-      dCdt = DAXPY_sparse( BAT , Rate , Y_e )  ! [mol/cm3/s]
+      dCdt = BAT * Rate + y_emi   ! [mol/cm3/s]
       
-      YDOT(1:nspc) =  dCdt
+      YDOT(1:nspc) = dCdt
     END IF
 
   END SUBROUTINE FRhs

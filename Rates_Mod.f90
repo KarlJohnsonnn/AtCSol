@@ -21,10 +21,10 @@
     IMPLICIT NONE
     !
     ! 
-    REAL(dp) :: LAT  = 45.0_dp
-    REAL(dp) :: LONG =  0.0_dp
+    !REAL(dp) :: LAT  = 45.0_dp
+    !REAL(dp) :: LONG =  0.0_dp
+    !INTEGER  :: IDAT = 010619
     REAL(dp) :: fac_exp = 1.0_dp, fac_A = 1.0_dp
-    INTEGER  :: IDAT = 010619
     !
     ! some factors for calculating Troe press dep. reactions
     REAL(dp) :: rFacEq      ! factor nessesary for equilibrium constant
@@ -33,6 +33,8 @@
 
     REAL(dp) :: log10_Pr, log10_Fcent, Pr
     INTEGER :: globi
+
+    INTEGER :: RateCnt
     !
     CONTAINS
     !
@@ -186,6 +188,11 @@
       vProd = MassActionProducts( Conc )
       
       Rate  = vMeff * vk * vProd
+
+      !DO j=1,SIZE(Rate); WRITE(987,*) 'DBg:: i, k , prd, Rate =', j, vK(j), vProd(j), Rate(j), vMeff(j); END DO
+      !WRITE(*,*) ' SIEZERATE =', SIZE(Rate), SUM(Rate)
+      !WRITE(987,*)
+      !stop
       
       !WRITE(*,*) ''
       !DO j=1,neq
@@ -220,10 +227,11 @@
       REAL(dp) :: chi(3), LWC
       REAL(dp) :: T(10), Temp
       REAL(dp) :: Meff(neq) , k(neq) , Prod(neq)
+      REAL(dp) :: mAir
       REAL(dp) :: AquaFac(nr_HOAqua)
       
       !REAL(dp) :: tHenry(nr_HENRY,2)
-      REAL(dp) :: tHenry(nr_HENRY,2,ntFrac)
+      REAL(dp) :: tHenry(nr_HENRY,2,nFrac)
       INTEGER  :: j,i
       !==================================================================!
       !===============calc rates for ReactionSystem======================!
@@ -252,11 +260,12 @@
       !*************************************************************
 
       ! ====== Computing effective molecularity 
+      mAir = 2.46e19_dp / T(1) * 298.15_dp * Pres / p0
       Meff = ONE
-      IF ( nr_FACTOR > 0 ) Meff = EffectiveMolecularity( Conc )
+      IF ( nr_FACTOR > 0 ) Meff = EffectiveMolecularity( Conc , mAir )
       
       ! ====== Compute the rate constant for specific reaction type
-      CALL ComputeRateConstant( k, T, Time, chi, mAir, Conc, Meff )
+      CALL ComputeRateConstant( k, T, Time, chi, mAir, Conc )
 
       ! ===== correct unit of concentrations for higher order aqueous reactions
       IF ( ns_AQUA > 0 ) THEN
@@ -276,17 +285,31 @@
       Prod = MassActionProducts( Conc )
 
       Rate = Meff * k * Prod
-
-      !i = 0
-      !DO j=1,neq
-      !  WRITE(*,101) '  iR = ',j ,'  t = ',Time,'  Meff = ',Meff(j), &
-      !  &            '  k = ',K(j),'  prd = ',Prod(j),'  Rate = ',Rate(j), &
-      !  &            '   '//TRIM(ReactionSystem(j)%Line1)
-      !END DO
-      !101 FORMAT(A,I0,A,F6.2,4(A,Es10.2),A)
-      !STOP 'Rates_Mod'
+      RateCnt = RateCnt + 1
+      !CALL Debug_Rates(ReactionSystem,Time,Meff,k,Prod,Rate)
       
       TimeRates = TimeRates + MPI_WTIME() - TimeRateA
+
+      CONTAINS
+        SUBROUTINE Debug_Rates(RS,Time,Meff,k,Prod,Rate)
+          TYPE(ReactionStruct_T)   :: RS(:)
+          REAL(dp)                 :: Time
+          REAL(dp), DIMENSION(:) :: Meff, k, Prod, Rate
+
+          INTEGER :: j
+          
+          WRITE(987,*)
+          WRITE(987,*) REPEAT('*',80)
+          DO j=1,nr
+            WRITE(987,101) RateCnt,j,TRIM(RS(j)%Type),TRIM(RS(j)%TypeConstant),TRIM(RS(j)%Line1)
+            WRITE(987,102) Time,Meff(j),k(j),Prod(j),Rate(j)
+          END DO
+          WRITE(987,*); WRITE(987,*)
+          101 FORMAT( ' NR :: ',I0,'    Reaction(',I0,')   ::   TYPE = ', A, '   ReacTYPE = ', A,'   ReactionString = ',A )
+          102 FORMAT( '     t = ',F8.4, '  Meff = ',Es12.4,'  k = ',Es12.4  &
+          &         , '  Prod = ', Es12.4, '  Rate = ', Es12.4 )
+          !STOP 'Rates_Mod'
+        END SUBROUTINE Debug_Rates
       
     END SUBROUTINE ReactionRates_Tropos
 
@@ -297,57 +320,58 @@
       INTEGER :: i
 
       Prod = ONE
+
       !
       ! stoechometric coefficients equal 1
       DO i=1,nFirst_order
-        Prod(first_order(i,1)) = Prod(first_order(i,1)) &
-         &                     * Conc(first_order(i,2))
+        Prod(iFO(i,1)) = Prod(iFO(i,1)) * Conc(iFO(i,2))
+        !write(988,*) ' FO     :: Prod , Conc = ',iFO(i,1),Prod(iFO(i,1)),iFO(i,2),Conc(iFO(i,2))
       END DO
       !
       ! stoechometric coefficients equal 2
       DO i=1,nSecond_order
-        Prod(second_order(i,1)) = Prod(second_order(i,1))    &
-        &                       * Conc(second_order(i,2))    &
-        &                       * ABS(Conc(second_order(i,2)))
+        Prod(iSO(i,1)) = Prod(iSO(i,1)) * Conc(iSO(i,2)) * ABS(Conc(iSO(i,2)))
+        !write(988,*) ' SO     :: Prod , Conc = ',iSO(i,1),Prod(iSO(i,1)),iSO(i,2),Conc(iSO(i,2))
       END DO
       !
       ! stoechometric coefficients not equal 1 or 2
       DO i=1,nHigher_order
-        Prod(higher_order(i,1)) =  Prod(higher_order(i,1)) &
-        &                       *  Conc(higher_order(i,2)) &
-        &                       ** ahigher_order(i)
+        Prod(iHO(i,1)) = Prod(iHO(i,1)) * Conc(iHO(i,2)) ** aHO(i)
+        !write(988,*) ' HO     :: Prod , Conc = ',iHO(i,1),Prod(iHO(i,1)),iHO(i,2),Conc(iHO(i,2)), aHO(i)
       END DO
       !
       ! if there are passive (katalytic) species e.g. [N2], [O2] or [aH2O]
       DO i=1,nfirst_orderKAT
-        Prod(first_orderKAT(i,1)) = Prod(first_orderKAT(i,1))     & 
-        &                         * InitValKat(first_orderKAT(i,2)) 
+        Prod(iFO_kat(i,1)) = Prod(iFO_kat(i,1)) * InitValKat(iFO_kat(i,2)) 
+        !write(988,*) ' FO KAT :: Prod , Conc = ',iFO_kat(i,1),Prod(iFO_kat(i,1)),iFO_kat(i,2),InitValKat(iFO_kat(i,2))
       END DO
 
     END FUNCTION MassActionProducts
 
     FUNCTION MassTransfer(kin,T,LWC) RESULT(k)
-      REAL(dp) :: k(nr_HENRY,2,ntFrac), kin(nr_HENRY)
+      REAL(dp) :: k(nr_HENRY,2,nFrac), kin(nr_HENRY)
       REAL(dp) :: T(:), LWC
       ! TEMO
-      REAL(dp) :: kmt(nr_HENRY,ntFrac)
+      REAL(dp) :: kmt(nr_HENRY,nFrac)
       REAL(dp) :: term_diff(nr_HENRY), term_accom(nr_HENRY)
-      REAL(dp) :: wetRadius(ntFrac)
+      REAL(dp) :: r_wet(nFrac)
+      REAL(dp) :: r_wet2(nFrac)
       INTEGER :: i
       !
       !---------------------------------------------------------------------------
       term_diff  = henry_diff(  iR%iHENRY(:,2) )             ! diffusion term
       term_accom = henry_accom( iR%iHENRY(:,2) ) * T(10)  ! accom term
       !--------------------------------------------------------------------------!
-      !
+      
       ! Compute new wet radius for droplett class iFrac
-      wetRadius(:) = (Pi34*LWC/Frac%Number(:))**(rTHREE)
-      !
+      r_wet  = (Pi34*LWC/Mode%Number)**(rTHREE)
+      r_wet2 = r_wet * r_wet
+      
       !--  mass transfer coefficient
       kmt = dkmt  ! set minimal transfer coefficient
       DO  i = 1,nr_HENRY 
         IF (term_diff(i) /= ZERO) THEN
-          kmt(i,:) = term_diff(i)*wetRadius(:)*wetRadius(:) + term_accom(i)*wetRadius(:)
+          kmt(i,:) = term_diff(i)*r_wet2 + term_accom(i)*r_wet
         END IF
       END DO 
       kmt = ONE / kmt
@@ -356,41 +380,41 @@
       k(:,1,:) = milli * kmt(:,:) * LWC
 
       ! direaction AquaSpecies-->GasSpecies  
-      DO i=1,ntFrac
+      DO i=1,nFrac
         k(:,2,i) = kmt(:,i) / (kin(:) * GasConst_R * T(1))  ! (...) = HenryConst*GasConstant*Temperatur
       END DO
 
     END FUNCTION MassTransfer
     
-    FUNCTION EffectiveMolecularity(Conc) RESULT(M)
+    FUNCTION EffectiveMolecularity(Conc,mAir) RESULT(M)
       !OUT
       REAL(dp) :: M(neq)
       !IN
       REAL(dp) :: Conc(:)
+      REAL(dp) :: mAir
       !
       M = ONE
 
-      IF(nr_FAC_H2>0)    M(iR%iFAC_H2)   = ((mH2*mair)**fac_exp)*fac_A
-      IF(nr_FAC_O2N2>0)  M(iR%iFAC_O2N2) = (((mO2*mair)*(mN2*mair))**fac_exp)*fac_A
-      IF(nr_FAC_M>0)     M(iR%iFAC_M)    = (mair**fac_exp)*fac_A
-      IF(nr_FAC_O2>0)    M(iR%iFAC_O2)   = ((mO2*mair)**fac_exp)*fac_A
-      IF(nr_FAC_N2>0)    M(iR%iFAC_N2)   = ((mN2*mair)**fac_exp)*fac_A
+      IF(nr_FAC_H2>0)    M(iR%iFAC_H2)   = ((mH2*mAir)**fac_exp)*fac_A
+      IF(nr_FAC_O2N2>0)  M(iR%iFAC_O2N2) = (((mO2*mAir)*(mN2*mAir))**fac_exp)*fac_A
+      IF(nr_FAC_M>0)     M(iR%iFAC_M)    = (mAir**fac_exp)*fac_A
+      IF(nr_FAC_O2>0)    M(iR%iFAC_O2)   = ((mO2*mAir)**fac_exp)*fac_A
+      IF(nr_FAC_N2>0)    M(iR%iFAC_N2)   = ((mN2*mAir)**fac_exp)*fac_A
       IF(nr_FAC_H2O>0)   M(iR%iFAC_H2O)  = (mH2O**fac_exp)*fac_A
       IF(nr_FAC_RO2>0)   M(iR%iFAC_RO2)  = SUM(Conc(RO2))
-      IF(nr_FAC_O2O2>0)  M(iR%iFAC_O2O2) = (((mO2*mair)*(mO2*mair))**fac_exp)*fac_A
+      IF(nr_FAC_O2O2>0)  M(iR%iFAC_O2O2) = (((mO2*mAir)*(mO2*mAir))**fac_exp)*fac_A
       !IF(nr_FAC_aH2O>0) M(iR%iFAC_aH2O) = aH2OmolperL*LWC*mol2part
       IF(nr_FAC_RO2aq>0) M(iR%iFAC_RO2aq) = SUM(Conc(RO2aq))
 
     END FUNCTION EffectiveMolecularity
 
-    SUBROUTINE ComputeRateConstant(k,T,Time,chi,mAir,Conc,Meff)
+    SUBROUTINE ComputeRateConstant(k,T,Time,chi,mAir,Conc)
       USE fparser
 
       REAL(dp), INTENT(OUT)   :: k(neq)
       REAL(dp), INTENT(IN)    :: Time, mAir, chi(:)
       REAL(dp), INTENT(IN)    :: T(:)
       REAL(dp), INTENT(IN)    :: Conc(:)
-      REAL(dp), INTENT(INOUT) :: Meff(neq)
 
       REAL(dp) :: k_DC(nr_DCONST,2), k_T1(nr_DTEMP,2), k_T2(nr_DTEMP2,2), k_T3(nr_DTEMP3,2)
       REAL(dp) :: k_T4(nr_DTEMP4,2), k_T5(nr_DTEMP5,2), mesk(nr_Meskhidze,2)
@@ -670,139 +694,139 @@
     END SUBROUTINE ComputeRateConstant
     
 
-    !=========================================================================!
-    !                  calculate sun 
-    !=========================================================================!
-    FUNCTION Zenith(Time) RESULT(Chi)
-      !-----------------------------------------------------------------------!
-      ! Input:
-      !   - Time
-      REAL(dp) :: Time
-      !-----------------------------------------------------------------------!
-      ! Output:
-      !   - sun angle chi
-      REAL(dp) :: Chi
-      !-----------------------------------------------------------------------!
-      ! Temporary variables:
-      !INTEGER :: IDAT
-      REAL(dp) :: LBGMT, LZGMT
-      REAL(dp) :: ML
-      ! 
-      REAL(dp) :: GMT
-      REAL(dp) :: RLT, RPHI
-      !    
-      INTEGER  :: IIYEAR, IYEAR, IMTH, IDAY, IIY, NYEARS, LEAP, NOLEAP
-      REAL(dp) :: YREF,YR
-      !   
-      INTEGER  :: I, IJ, JD, IJD, IN
-      REAL(dp) :: D, RML, W, WR, EC, EPSI, PEPSI, YT, CW, SW, SSW  & 
-      &         , EYT, FEQT1, FEQT2, FEQT3, FEQT4, FEQT5, FEQT6 &
-      &         , FEQT7, FEQT, EQT
-      !         
-      REAL(dp) :: REQT, RA, RRA, TAB, RDECL, DECL, ZPT, CSZ, ZR    &
-      &         , CAZ, RAZ, AZIMUTH
-      !           
-      INTEGER :: IMN(12)
-      DATA IMN/31,28,31,30,31,30,31,31,30,31,30,31/
-      !
-      !----------------------------------------------------------------------!
-      !
-      ! set GMT
-      GMT = Time / HOUR
-      !
-      !  convert to radians
-      RLT = LAT*DR
-      RPHI = LONG*DR
-      !
-      !  parse date
-      IIYEAR = IDAT/10000
-      IYEAR = 19*100 + IIYEAR
-      IF (IIYEAR <= 50) IYEAR = IYEAR + 100 
-      IMTH = (IDAT - IIYEAR*10000)/100
-      IDAY = IDAT - IIYEAR*10000 - IMTH*100
-      !
-      !  identify and correct leap years
-      IIY = (IIYEAR/4)*4
-      IF(IIY.EQ.IIYEAR) IMN(2) = 29
-      !
-      !  count days from Dec.31,1973 to Jan 1, YEAR, then add to 2,442,047.5
-      YREF =  2442047.5_dp
-      NYEARS = IYEAR - 1974
-      LEAP = (NYEARS+1)/4
-      IF(NYEARS.LE.-1) LEAP = (NYEARS-2)/4
-      NOLEAP = NYEARS - LEAP
-      YR = YREF + 365.0_dp*NOLEAP + 366.0_dp*LEAP
-      !
-      IJD = 0
-      IN = IMTH - 1
-      IF(IN.EQ.0) GO TO 40
-      DO 30 I=1,IN
-      IJD = IJD + IMN(I)
-    30   CONTINUE
-      IJD = IJD + IDAY
-      GO TO 50
-    40   IJD = IDAY
-    50   IJ = IYEAR - 1973
-      !
-      !      print julian days current "ijd"
-      JD = IJD + (YR - YREF)
-      D = JD + GMT/24.0_dp
-      !
-      !      calc geom mean longitude
-      ML = 279.2801988_dp + .9856473354_dp*D + 2.267e-13_dp*D*D
-      RML = ML*DR
-      !
-      !      calc equation of time in sec
-      !      w = mean long of perigee
-      !      e = eccentricity
-      !      epsi = mean obliquity of ecliptic
-      W = 282.4932328_dp + 4.70684e-5_dp*D + 3.39e-13_dp*D*D
-      WR = W*DR
-      EC = 1.6720041e-2_dp - 1.1444e-9_dp*D - 9.4e-17_dp*D*D
-      EPSI = 23.44266511_dp - 3.5626e-7_dp*D - 1.23e-15_dp*D*D
-      PEPSI = EPSI*DR
-      YT = (TAN(PEPSI*rTWO))**2
-      CW = COS(WR)
-      SW = SIN(WR)
-      SSW = SIN(TWO*WR)
-      EYT = TWO*EC*YT
-      FEQT1 = SIN(RML)*(-EYT*CW - TWO*EC*CW)
-      FEQT2 = COS(RML)*(TWO*EC*SW - EYT*SW)
-      FEQT3 = SIN(TWO*RML)*(YT - (FIVE*EC*EC*rFOUR)*(CW*CW-SW*SW))
-      FEQT4 = COS(TWO*RML)*(FIVE*EC**2*SSW*rFOUR)
-      FEQT5 = SIN(THREE*RML)*(EYT*CW)
-      FEQT6 = COS(THREE*RML)*(-EYT*SW)
-      FEQT7 = -SIN(FOUR*RML)*(rTWO*YT*YT)
-      FEQT = FEQT1 + FEQT2 + FEQT3 + FEQT4 + FEQT5 + FEQT6 + FEQT7
-      EQT = FEQT*13751.0_dp
-      !
-      !   convert eq of time from sec to deg
-      REQT = EQT/240.0_dp
-      !
-      !   calc right ascension in rads
-      RA = ML - REQT
-      RRA = RA*DR
-      !
-      !   calc declination in rads, deg
-      TAB = 0.43360_dp*SIN(RRA)
-      RDECL = ATAN(TAB)
-      DECL = RDECL/DR
-      !
-      !   calc local hour angle
-      LBGMT = 12.0_dp - EQT/HOUR + LONG*24.0_dp/360.0_dp
-      LZGMT = 15.0_dp*(GMT - LBGMT)
-      ZPT = LZGMT*DR
-      CSZ = SIN(RLT)*SIN(RDECL) + COS(RLT)*COS(RDECL)*COS(ZPT)
-      ZR = ACOS(CSZ)
-      ! 
-      !   calc local solar azimuth
-      CAZ = (SIN(RDECL) - SIN(RLT)*COS(ZR))/(COS(RLT)*SIN(ZR))
-      RAZ = ACOS(CAZ)
-      AZIMUTH = RAZ/DR
-      !
-      !--- set Zenith Angle
-      Chi =  1.745329252e-02_dp * ZR/DR
-    END FUNCTION Zenith
+!    !=========================================================================!
+!    !                  calculate sun 
+!    !=========================================================================!
+!    FUNCTION Zenith(Time) RESULT(Chi)
+!      !-----------------------------------------------------------------------!
+!      ! Input:
+!      !   - Time
+!      REAL(dp) :: Time
+!      !-----------------------------------------------------------------------!
+!      ! Output:
+!      !   - sun angle chi
+!      REAL(dp) :: Chi
+!      !-----------------------------------------------------------------------!
+!      ! Temporary variables:
+!      !INTEGER :: IDAT
+!      REAL(dp) :: LBGMT, LZGMT
+!      REAL(dp) :: ML
+!      ! 
+!      REAL(dp) :: GMT
+!      REAL(dp) :: RLT, RPHI
+!      !    
+!      INTEGER  :: IIYEAR, IYEAR, IMTH, IDAY, IIY, NYEARS, LEAP, NOLEAP
+!      REAL(dp) :: YREF,YR
+!      !   
+!      INTEGER  :: I, IJ, JD, IJD, IN
+!      REAL(dp) :: D, RML, W, WR, EC, EPSI, PEPSI, YT, CW, SW, SSW  & 
+!      &         , EYT, FEQT1, FEQT2, FEQT3, FEQT4, FEQT5, FEQT6 &
+!      &         , FEQT7, FEQT, EQT
+!      !         
+!      REAL(dp) :: REQT, RA, RRA, TAB, RDECL, DECL, ZPT, CSZ, ZR    &
+!      &         , CAZ, RAZ, AZIMUTH
+!      !           
+!      INTEGER :: IMN(12)
+!      DATA IMN/31,28,31,30,31,30,31,31,30,31,30,31/
+!      !
+!      !----------------------------------------------------------------------!
+!      !
+!      ! set GMT
+!      GMT = Time / HOUR
+!      !
+!      !  convert to radians
+!      RLT = LAT*DR
+!      RPHI = LONG*DR
+!      !
+!      !  parse date
+!      IIYEAR = IDAT/10000
+!      IYEAR = 19*100 + IIYEAR
+!      IF (IIYEAR <= 50) IYEAR = IYEAR + 100 
+!      IMTH = (IDAT - IIYEAR*10000)/100
+!      IDAY = IDAT - IIYEAR*10000 - IMTH*100
+!      !
+!      !  identify and correct leap years
+!      IIY = (IIYEAR/4)*4
+!      IF(IIY.EQ.IIYEAR) IMN(2) = 29
+!      !
+!      !  count days from Dec.31,1973 to Jan 1, YEAR, then add to 2,442,047.5
+!      YREF =  2442047.5_dp
+!      NYEARS = IYEAR - 1974
+!      LEAP = (NYEARS+1)/4
+!      IF(NYEARS.LE.-1) LEAP = (NYEARS-2)/4
+!      NOLEAP = NYEARS - LEAP
+!      YR = YREF + 365.0_dp*NOLEAP + 366.0_dp*LEAP
+!      !
+!      IJD = 0
+!      IN = IMTH - 1
+!      IF(IN.EQ.0) GO TO 40
+!      DO 30 I=1,IN
+!      IJD = IJD + IMN(I)
+!    30   CONTINUE
+!      IJD = IJD + IDAY
+!      GO TO 50
+!    40   IJD = IDAY
+!    50   IJ = IYEAR - 1973
+!      !
+!      !      print julian days current "ijd"
+!      JD = IJD + (YR - YREF)
+!      D = JD + GMT/24.0_dp
+!      !
+!      !      calc geom mean longitude
+!      ML = 279.2801988_dp + .9856473354_dp*D + 2.267e-13_dp*D*D
+!      RML = ML*DR
+!      !
+!      !      calc equation of time in sec
+!      !      w = mean long of perigee
+!      !      e = eccentricity
+!      !      epsi = mean obliquity of ecliptic
+!      W = 282.4932328_dp + 4.70684e-5_dp*D + 3.39e-13_dp*D*D
+!      WR = W*DR
+!      EC = 1.6720041e-2_dp - 1.1444e-9_dp*D - 9.4e-17_dp*D*D
+!      EPSI = 23.44266511_dp - 3.5626e-7_dp*D - 1.23e-15_dp*D*D
+!      PEPSI = EPSI*DR
+!      YT = (TAN(PEPSI*rTWO))**2
+!      CW = COS(WR)
+!      SW = SIN(WR)
+!      SSW = SIN(TWO*WR)
+!      EYT = TWO*EC*YT
+!      FEQT1 = SIN(RML)*(-EYT*CW - TWO*EC*CW)
+!      FEQT2 = COS(RML)*(TWO*EC*SW - EYT*SW)
+!      FEQT3 = SIN(TWO*RML)*(YT - (FIVE*EC*EC*rFOUR)*(CW*CW-SW*SW))
+!      FEQT4 = COS(TWO*RML)*(FIVE*EC**2*SSW*rFOUR)
+!      FEQT5 = SIN(THREE*RML)*(EYT*CW)
+!      FEQT6 = COS(THREE*RML)*(-EYT*SW)
+!      FEQT7 = -SIN(FOUR*RML)*(rTWO*YT*YT)
+!      FEQT = FEQT1 + FEQT2 + FEQT3 + FEQT4 + FEQT5 + FEQT6 + FEQT7
+!      EQT = FEQT*13751.0_dp
+!      !
+!      !   convert eq of time from sec to deg
+!      REQT = EQT/240.0_dp
+!      !
+!      !   calc right ascension in rads
+!      RA = ML - REQT
+!      RRA = RA*DR
+!      !
+!      !   calc declination in rads, deg
+!      TAB = 0.43360_dp*SIN(RRA)
+!      RDECL = ATAN(TAB)
+!      DECL = RDECL/DR
+!      !
+!      !   calc local hour angle
+!      LBGMT = 12.0_dp - EQT/HOUR + LONG*24.0_dp/360.0_dp
+!      LZGMT = 15.0_dp*(GMT - LBGMT)
+!      ZPT = LZGMT*DR
+!      CSZ = SIN(RLT)*SIN(RDECL) + COS(RLT)*COS(RDECL)*COS(ZPT)
+!      ZR = ACOS(CSZ)
+!      ! 
+!      !   calc local solar azimuth
+!      CAZ = (SIN(RDECL) - SIN(RLT)*COS(ZR))/(COS(RLT)*SIN(ZR))
+!      RAZ = ACOS(CAZ)
+!      AZIMUTH = RAZ/DR
+!      !
+!      !--- set Zenith Angle
+!      Chi =  1.745329252e-02_dp * ZR/DR
+!    END FUNCTION Zenith
 
     FUNCTION UpdateSun(Time) RESULT(Sun)
       !--------------------------------------------------------------------

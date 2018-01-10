@@ -6,17 +6,18 @@
   Lehmann    = .F.
 /END
 &FILES
-  SysFile    = 'CHEM/RACM+C24.sys'      ! .sys Datei (ohne .sys angeben!)
-  !SysFile    = 'CHEM/RACM+C24_red2.sys'      ! .sys Datei (ohne .sys angeben!)
+  SysFile    = 'CHEM/RACM+C24_copy.sys'      ! .sys Datei (ohne .sys angeben!)
+  !SysFile    = 'CHEM/RACM+C24.sys'      ! .sys Datei (ohne .sys angeben!)
   DataFile   = 'DAT/Urban.dat'          ! .dat Datei (für RO2, RO2aqua Summen)
   InitFile   = 'INI/Urban.ini'          ! .ini Datei (Anfangswerte gas/flüssig), Diagnose spc
   MetFile    = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)
-  !TargetFile = 'TAR/RACM+C24.ctrl'     ! .ctrl Datei (Zielspezies,Spezies Familen,gelumpte Species)
+  TargetFile = 'TAR/RACM+C24.ctrl'     ! .ctrl Datei (Zielspezies,Spezies Familen,gelumpte Species)
 /END
 &TIMES
   tBegin      = 0.0d0          ! Startzeit Integration   (in [sec])
-  !tEnd        = 86400.0d0      ! Endzeit   Integration   (in [sec])
-  tEnd        = 259200.0d0      ! Endzeit   Integration   (in [sec])
+  !tEnd        = 172800.0d0      ! Endzeit   Integration   (in [sec])
+  tEnd        = 86400.0d0      ! Endzeit   Integration   (in [sec])
+  !tEnd        = 259200.0d0      ! Endzeit   Integration   (in [sec])
 /END
 &METEO
   pHSet       = .T.          ! Berechne pH Wert zu Beginn
@@ -42,8 +43,8 @@
 /END
 &OUTPUT
   NetCdfFile  = 'NetCDF/RACM+C24_full.nc' ! location and name of NetCDF output file
-  !NetCdfFile  = 'NetCDF/RACM+C24_red2.nc' ! location and name of NetCDF output file
-  StpNetCDF   = 600.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep 
+  StpNetCDF   = -1.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep 
+  !StpNetCDF   = 600.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep 
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock 
   MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix

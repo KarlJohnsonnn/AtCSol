@@ -1,282 +1,441 @@
 MODULE issa
   
   USE Kind_Mod
-  USE Sparse_Mod, ONLY: SpRowIndColInd_T, CSR_Matrix_T
+  USE Sparse_Mod, ONLY: CSR_Matrix_T
 
   IMPLICIT NONE
 
-  ! OUT of ISSA_nue:
-  !TYPE(SpRowIndColInd_T), ALLOCATABLE :: nue_p(:), nue_m(:)
-  INTEGER, ALLOCATABLE :: S_imp(:), R_imp(:)    ! Sets of importent Species/Reactions
-  INTEGER              :: len_S_imp=0, len_R_imp=0
 
-  TYPE, EXTENDS(CSR_Matrix_T) :: CSR_Matrix_T_issa
-    REAl(dp), ALLOCATABLE :: nvc(:)
-  END TYPE CSR_Matrix_T_issa
-
-  TYPE(CSR_Matrix_T), ALLOCATABLE :: nue_p(:), nue_m(:)
-  !TYPE(CSR_Matrix_T_issa), ALLOCATABLE :: nue1_p(:), nue1_m(:)
 
   CONTAINS  
 
 
-  SUBROUTINE ISSA_nue(nue,cyc,RS)
-    USE mo_reac,     ONLY: neq, nspc, y_name
-    USE mo_control,  ONLY: List, Chain, ZERO
-    USE Sparse_Mod,  ONLY: CSR_Matrix_T, New_CSR, CSR_to_SpRowIndColInd,  &
-    &                   SpRowIndColInd_to_CSR, PrintSparse2, PrintSparse3
-    USE ChemSys_Mod, ONLY: ReactionStruct_T
+!*********************************************************************************************
+!
+! 8888888888 8888888 888      8888888888                  8888888        d88P  .d88888b.  
+! 888          888   888      888                           888         d88P  d88P" "Y88b 
+! 888          888   888      888                           888        d88P   888     888 
+! 8888888      888   888      8888888                       888       d88P    888     888 
+! 888          888   888      888                           888      d88P     888     888 
+! 888          888   888      888             888888        888     d88P      888     888 
+! 888          888   888      888                           888    d88P       Y88b. .d88P 
+! 888        8888888 88888888 8888888888                  8888888 d88P         "Y88888P" 
+!
+!*********************************************************************************************
+
+  FUNCTION Read_Target_Spc(FileName) RESULT(Idx)
+    USE ChemSys_Mod, ONLY: PositionSpeciesAll
+    USE mo_control,  ONLY: LenLine
+    USE mo_reac,     ONLY: y_name
+    ! This routine will read the target species for ISSA reduction algorithm.
+    ! OUT:
+    INTEGER, ALLOCATABLE :: Idx(:)
     ! IN:
-    TYPE(CSR_Matrix_T)      :: nue
-    TYPE(List), ALLOCATABLE :: cyc(:)
-    TYPE(ReactionStruct_T), ALLOCATABLE :: RS(:)
+    CHARACTER(*)  :: FileName
     ! TEMP:
-    INTEGER :: i, ii, iR, iE, iP, j, jj,  k, n_c, len_c, nE, nP, nnz_k
-    INTEGER,     ALLOCATABLE :: tsi(:), perm(:)
-    INTEGER,     ALLOCATABLE :: ri_p(:), ci_p(:), ri_m(:), ci_m(:)
-    REAL(dp),    ALLOCATABLE :: v_p(:), v_m(:)
-    TYPE(Chain), ALLOCATABLE :: R_k(:)
-    TYPE(SpRowIndColInd_T)   :: sp_nue
+    INTEGER       :: iPos, j
+    CHARACTER(LenLine) :: Line
+     
+    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName)),STATUS='UNKNOWN')
+    REWIND(99)
 
-    ! Debugging Formats
+    ALLOCATE(Idx(0))
+    iPos = FindSection(99,'TARGET_SPC')
+    IF (iPos==-1) RETURN ! no target species declared
+    DO
+      READ(99,'(A)') Line;  Line = ADJUSTL(Line)
+      IF (TRIM(Line) == 'END_TARGET_SPC') EXIT
+      IF (TRIM(Line) == '' ) CYCLE
+      iPos = PositionSpeciesAll(Line)
+      IF ( iPos > 0 ) Idx = [ Idx , iPos ]
+    END DO
+    CLOSE(99)
+    
+    WRITE(*,777) REPEAT('*',39)
+    WRITE(*,777) '********** Important Species **********'
+    WRITE(*,777) REPEAT('*',39)
+    WRITE(*,*)
+    DO j=1,SIZE(Idx)
+      WRITE(*,'(10X,A,I2,A,I6,5X,A)') '    - S_imp(',j,') = ',Idx(j),TRIM(y_name(Idx(j)))
+    END DO
+    WRITE(*,*); WRITE(*,*)
 
-    n_c = SIZE(cyc)
+    
+    777 FORMAT(10X,A)
+  END FUNCTION Read_Target_Spc
 
-    write(*,*) '_____________________________________________'
-    write(*,*)
-    write(*,*) '  Testing ISSA stuff: building nue+ and nue- '
-    write(*,*) '_____________________________________________'
-    write(*,*)
 
-    ! build nue_p and nue_m (see atmospheric env. 39 (2005) page: 4343)
-    ALLOCATE( nue_p(0:n_c) , nue_m(0:n_c) , R_k(0:n_c) )
+  FUNCTION Read_Spc_Families(FileName) RESULT(Fam)
+    USE ChemSys_Mod, ONLY: PositionSpeciesAll
+    USE mo_control,  ONLY: Families_T, LenLine
+    ! This routine will read the species families for ISSA reduction algorithm.
+    ! OUT: globl type(Families_T) declared at start of this file
+    TYPE(Families_T), ALLOCATABLE :: Fam(:)
+    ! IN:
+    CHARACTER(*)       :: FileName
+    ! TEMP:
+    CHARACTER(LenLine) :: Line, locLine
+    INTEGER            :: i, j, locSp, nFam
+     
+    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName)),STATUS='UNKNOWN')
+    REWIND(99)
 
-    sp_nue = CSR_to_SpRowIndColInd(nue)
+    ! count number of superspecies
+    i = FindSection(99,'SPC_FAMILIES')
+    IF (i==-1) RETURN ! no species families declared
+    nFam = FindSection(99,'END_SPC_FAMILIES')
+    REWIND(99)
 
-    LOOP_OVER_ALL_CYCLES: DO k = 1,n_c ! Kette Nummer: k
+    ALLOCATE(Fam(nFam))
+    i = FindSection(99,'SPC_FAMILIES')
+    i = 0
+
+    DO 
+      READ(99,'(A)') Line;  Line = ADJUSTL(Line)
+      IF (TRIM(Line) == 'END_SPC_FAMILIES') EXIT
+      IF (TRIM(Line) == '' ) CYCLE
+      i = i + 1
+
+      ! count single species for i-th family
+      nFam = 0
+      locLine = Line
+      DO 
+        IF ( TRIM(locLine) == '' ) EXIT
+        nFam = nFam + 1
+        locLine = ADJUSTL(locLine(INDEX(locLine,' ')+1:))
+      END DO
+      ALLOCATE( Fam(i)%Name(nFam), Fam(i)%Index(nFam) )
+      Fam(i)%Index = -11
       
-      ! First we need to detect the reactions of each species cycle
-      len_c = cyc(k)%len
-      tsi   = cyc(k)%List
+      ! save all single species for i-th family
+      locLine = ADJUSTL(Line)
+      DO j=1,nFam
+        locSp = INDEX(locLine,' ')
+        Fam(i)%Name(j)  = TRIM(locLine(:locSp-1))
+        Fam(i)%Index(j) = PositionSpeciesAll(Fam(i)%Name(j))
+        locLine = ADJUSTL(locLine(locSp+1:))
+      END DO
+    END DO
 
-      ALLOCATE( ri_p(0), ci_p(0), v_p(0), ri_m(0), ci_m(0), v_m(0) )
+    WRITE(*,777) REPEAT('*',39)
+    WRITE(*,777) '*********** Species Familes ***********'
+    WRITE(*,777) REPEAT('*',39)
+    WRITE(*,*)
+    DO j=1,SIZE(Fam)
+      WRITE(*,'(10X,A,I2,A,*(A))')      '    - Family(',j,')  -->  ',    &
+      &    ( TRIM(Fam(j)%Name(i))//' , ' , i=1,SIZE(Fam(j)%Name)-1 ),&
+      &      TRIM(Fam(j)%Name(SIZE(Fam(j)%Name)))
+    END DO
+    WRITE(*,*); WRITE(*,*)
+    777 FORMAT(10X,A)
+  END FUNCTION Read_Spc_Families
 
-      !ALLOCATE( R_k(k)%sName(len_c-1,2), R_k(k)%sIdx(len_c-1,2), R_k(k)%rIdx(len_c-1) )
+  FUNCTION FindSection(iUnit,SectionName) RESULT(iLine)
+    USE mo_control, ONLY: lenLine
+    ! OUT:
+    INTEGER      :: iLine
+    ! IN: 
+    INTEGER      :: iUnit
+    CHARACTER(*) :: SectionName
+    ! TEMP: 
+    CHARACTER(LenLine) :: Line
+    INTEGER      :: io_err
+    
+    iLine = 0
+    DO
+      READ(iUnit,'(A)',IOSTAT=io_err) Line
+      IF (io_err==0) THEN
+        IF (TRIM(ADJUSTL(Line))==SectionName)  EXIT
+        iLine = iLine + 1
+      ELSEIF (io_err>0.OR.io_err<0) THEN
+        WRITE(*,777) '    ****  No '//TRIM(SectionName)//' found.  ****'
+        iLine = -1
+        EXIT
+      END IF
+    END DO
+     777 FORMAT(10X,A)
+  END FUNCTION FindSection
 
-      !write(*,*) REPEAT('-',32)//'  Browse Cycle: ',k,'  with length: ',len_c
-      !write(*,'(5X,*(A))')  ( TRIM(y_name(cyc(k)%List(j)))//' -> ' , j=1,len_c-1 ) ,&
-      !&                       TRIM(y_name(cyc(k)%List(len_c)))
-      !write(*,*) 
 
-      DO ii = 1,len_c-1
-        !ALLOCATE( R_k(k)%rIdx(ii)%List(0), R_k(k)%rIdx(ii)%ListE(0), R_k(k)%rIdx(ii)%ListP(0) ) 
-        DO iR = 1,neq
+  ! writing reaction rates , time and stepsize h to file via stream access
+  SUBROUTINE StreamWriteFluxes(Rate,t,h)
+    USE Kind_Mod
+    USE mo_control, ONLY: FluxUnit, FluxFile, FluxMetaUnit, FluxMetaFile, iStpFlux
+    REAL(dp) :: Rate(:)
+    REAL(dp) :: t , h
 
-          nE = SIZE(RS(iR)%Educt)
-          nP = SIZE(RS(iR)%Product)
+    INTEGER :: io_stat, io_pos
+    CHARACTER(100) :: io_msg
 
-          DO iE = 1,nE
-            IF ( tsi(ii) == RS(iR)%Educt(iE)%iSpecies ) THEN
-              !R_k(k)%sName(ii,1) = RS(iR)%Educt(iE)%Species
-              !R_k(k)%sIdx(ii,1)  = RS(iR)%Educt(iE)%iSpecies
-            
-              DO iP = 1,nP
-                IF ( tsi(ii+1) == RS(iR)%Product(iP)%iSpecies ) THEN
-                  !R_k(k)%sName(ii,2)   = TRIM(RS(iR)%Product(iP)%Species)
-                  !R_k(k)%sIdx(ii,2)    = RS(iR)%Product(iP)%iSpecies
-                  !R_k(k)%rIdx(ii)%List = [R_k(k)%rIdx(ii)%List , iR]
-                  !R_k(k)%rIdx(ii)%ListE = [-RS(iR)%Educt(iE)%Koeff,  R_k(k)%rIdx(ii)%ListE]
-                  !R_k(k)%rIdx(ii)%ListP = [RS(iR)%Product(iP)%Koeff, R_k(k)%rIdx(ii)%ListP]
-                  !write(*,'(A14,I0,A)',    ADVANCE='NO') '  Reaction :: ',iR,':  '//TRIM(RS(iR)%Line1)
-                  !write(*,'(A9,F4.1,1X,A)',ADVANCE='NO') '  Educt: ', RS(iR)%Educt(iP)%Koeff,TRIM(RS(iR)%Educt(iE)%Species)
-                  !write(*,'(A15,F4.1,1X,A)')             '  and Product: ', RS(iR)%Product(iP)%Koeff,TRIM(RS(iR)%Product(iP)%Species)
+    OPEN(unit=FluxUnit,      file=FluxFile,  status='old',   action='write', &
+    &    position='append', access='stream', iostat=io_stat, iomsg=io_msg    )
+    CALL file_err(FluxFile,io_stat,io_msg)
+    INQUIRE(FluxUnit, POS=io_pos)
+    WRITE(FluxUnit) Rate,t,h
+    CLOSE(FluxUnit)
 
-                  !write(*,'(A,I0,A3,2X,*(I0,5X))') '  spc in (beta-alpha)_(iR,j) = ',iR,' | ',nue%ColInd(nue%RowPtr(iR):nue%RowPtr(iR+1)-1)
-                  !write(*,'(A,I0,A3,*(F4.1,2X))')  '  val in (beta-alpha)_(iR,j) = ',iR,' | ',nue%Val(nue%RowPtr(iR):nue%RowPtr(iR+1)-1)
+    iStpFlux   = iStpFlux + 1
+    OPEN(unit=FluxMetaUnit, file=FluxMetaFile, status='old', action='write', position='append')
+    WRITE(FluxMetaUnit,*) iStpFlux, io_pos 
+    CLOSE(FluxMetaUnit)
 
-                  DO jj = nue%RowPtr(iR),nue%RowPtr(iR+1)-1
-                    IF (nue%ColInd(jj)==RS(iR)%Educt(iE)%iSpecies .OR. nue%ColInd(jj)==RS(iR)%Product(iP)%iSpecies) THEN
-                      !write(*,'(A,I0,A1,I0,A4,F5.1)') '  spc in (beta-alpha)_(',iR,',',nue%ColInd(jj),') = ',nue%Val(jj)
-                      IF ( nue%Val(jj) > ZERO ) THEN
-                        ci_p = [ci_p, iR]
-                        ri_p = [ri_p, nue%ColInd(jj)]
-                        v_p  = [v_p, ABS(nue%Val(jj))]
-                      ELSE
-                        ci_m = [ci_m, iR]
-                        ri_m = [ri_m, nue%ColInd(jj)]
-                        v_m  = [v_m, ABS(nue%Val(jj))]
-                      END IF
-                    END IF
-                  END DO
+    CONTAINS
 
-                END IF 
-              END DO
+      SUBROUTINE file_err(filename,io_stat,io_msg)
+        CHARACTER(Len=*), INTENT(in) :: filename
+        INTEGER         , INTENT(in) :: io_stat
+        CHARACTER(Len=*), INTENT(in), OPTIONAL :: io_msg
+        IF (io_stat /= 0) THEN
+          WRITE(*,"(79('!'))")
+          WRITE(*,'(A,I0)')    'ERROR operating on file:  '//TRIM(filename)//'  with io status:  ',io_stat 
+          IF (PRESENT(io_msg)) WRITE(*,'(A)')       'Message:  '//TRIM(io_msg)
+          WRITE(*,"(79('!'))")
+          WRITE(*,*)'Exit ...'
+          STOP
+        END IF
+      END SUBROUTINE file_err
+  END SUBROUTINE StreamWriteFluxes
 
+  SUBROUTINE WriteReaction(Name,iReac,Mech,Class,Param)
+    CHARACTER(*) :: Name, Mech, Class, Param
+    INTEGER      :: iReac
+    INTEGER, PARAMETER :: Reac_Unit = 112
+
+    IF ( iReac == 1 ) THEN
+      OPEN(unit=Reac_Unit, file='Reactions_'//Mech//'.txt', action='write')
+    ELSE
+      OPEN(unit=Reac_Unit, file='Reactions_'//Mech//'.txt', status='old', action='write', position='append')
+    END IF
+
+    WRITE(Reac_Unit,'(A)') Class // ' ::: ' // Name // ' ::: ' // Param
+    CLOSE(Reac_Unit)
+
+  END SUBROUTINE WriteReaction
+
+
+!******************************************************************************************************************
+!
+!  .d8888b. 88888888888 8888888b.  888     888  .d8888b. 88888888888 888     888 8888888b.  8888888888 
+! d88P  Y88b    888     888   Y88b 888     888 d88P  Y88b    888     888     888 888   Y88b 888        
+! Y88b.         888     888    888 888     888 888    888    888     888     888 888    888 888        
+!  "Y888b.      888     888   d88P 888     888 888           888     888     888 888   d88P 8888888    
+!     "Y88b.    888     8888888P"  888     888 888           888     888     888 8888888P"  888        
+!       "888    888     888 T88b   888     888 888    888    888     888     888 888 T88b   888        
+! Y88b  d88P    888     888  T88b  Y88b. .d88P Y88b  d88P    888     Y88b. .d88P 888  T88b  888        
+!  "Y8888P"     888     888   T88b  "Y88888P"   "Y8888P"     888      "Y88888P"  888   T88b 8888888888  
+!
+!******************************************************************************************************************
+
+  SUBROUTINE Get_Rk(R_k,A_T)
+    USE mo_control, ONLY: List, nCycles_red, Cyclic_Set_red
+    USE Sparse_Mod, ONLY: B, WriteSparseMatrix
+    USE mo_unirnk
+
+    TYPE(List), ALLOCATABLE :: R_k(:)
+    TYPE(CSR_Matrix_T) :: A_T
+
+    INTEGER, ALLOCATABLE :: ReacSet(:), Perm(:)
+    INTEGER :: iSpc
+    INTEGER :: newLen
+    INTEGER :: i, jj, j , iC, iR, iS, iSpcE, iSpcP, iR_a, iS_b
+
+    ALLOCATE(R_k(nCycles_red+1))
+ 
+    DO iC = 1,nCycles_red
+
+      ALLOCATE(R_k(iC)%List(0))
+
+      DO iS = 1 , Cyclic_Set_red(iC)%len-1
+        iSpcE = Cyclic_Set_red(iC)%List(iS)
+        iSpcP = Cyclic_Set_red(iC)%List(iS+1)
+
+        ALLOCATE(ReacSet(0))
+        DO jj = A_T%RowPtr(iSpcE),A_T%RowPtr(iSpcE+1)-1
+          iR_a = A_T%ColInd(jj)
+          DO iS_b = B%RowPtr(iR_a),B%RowPtr(iR_a+1)-1
+            IF ( B%ColInd(iS_b) == iSpcP ) THEN
+              ReacSet = [ ReacSet, iR_a]
             END IF
           END DO
+        END DO
+        
+        R_k(iC)%List = [R_k(iC)%List , ReacSet]
+        DEALLOCATE(ReacSet)
 
+      END DO
+
+      ALLOCATE(Perm(SIZE(R_k(iC)%List)))
+      CALL unirnk( R_k(iC)%List , Perm , newLen )
+      R_k(iC)%len   = newLen
+      R_k(iC)%List = [ R_k(iC)%List(Perm(1:newLen)) ]
+      DEALLOCATE(Perm)
+
+      !WRITE(*,'(A,I0,A,*(I0,3X))') ' R_k(',iC,')%List = ', R_k(iC)%List
+    END DO
+   !stop 'issa_MOD'
+
+
+  END SUBROUTINE Get_Rk
+
+
+  SUBROUTINE ISSA_structure(R_k,nue,A_T,cycles,RS)
+    USE mo_reac,    ONLY: nr, nspc, y_name
+    USE mo_control, ONLY: List, nCycles_red
+    USE ChemSys_Mod,ONLY: ReactionStruct_T
+    USE Sparse_Mod
+
+    TYPE(List), ALLOCATABLE, INTENT(OUT) :: R_k(:)
+    TYPE(CSR_Matrix_T)     , INTENT(IN) :: nue, A_T
+    TYPE(List)             :: cycles(:)
+    TYPE(ReactionStruct_T) :: RS(:)
+
+    INTEGER,    ALLOCATABLE :: tnue_pos(:),tnue_neg(:)
+    INTEGER,    ALLOCATABLE :: tnue_pos0(:),tnue_neg0(:), Perm(:)
+    INTEGER,    ALLOCATABLE :: NonCyclicRemainder(:)
+    INTEGER                 :: nNonCycRem=0
+
+
+    INTEGER :: i, jj, j , k, kk, iR, iS, iSpc
+    INTEGER :: cnt_pos, cnt_neg, nS, N_pos0, N_neg0
+
+    nCycles_red = SIZE(cycles)
+    
+    CALL Get_Rk(R_k,A_T)
+
+    ! this routine generates the nue_plus and nue_minus matricies 
+    ! decribed by Mauersberger [2005] in section 2.2 
+
+    ALLOCATE(tnue_pos0(0) , tnue_neg0(0) )
+
+    DO k = 1, nCycles_red
+
+      ALLOCATE( tnue_pos(0) , tnue_neg(0) )
+      DO iS = 1, cycles(k)%len-1
+        iSpc = cycles(k)%List(iS)
+        cnt_pos = 0
+        cnt_neg = 0
+        DO jj = nue%RowPtr(iSpc), nue%RowPtr(iSpc+1) - 1
+          j = nue%ColInd(jj)
+          DO kk = 1,R_k(k)%len
+            iR = R_k(k)%List(kk)
+            IF ( j == iR ) THEN
+              IF ( nue%Val(jj) > 0.0_dp ) THEN
+                cnt_pos  = cnt_pos + 1
+                tnue_pos = [tnue_pos , jj]
+              ELSE
+                cnt_neg  = cnt_neg + 1
+                tnue_neg = [tnue_neg , jj]
+              END IF
+            END IF
+          END DO
         END DO
       END DO
-      DEALLOCATE(tsi)
 
-      CALL Progress3(k,n_c)
+      tnue_pos0 = [tnue_pos0,nue%ColInd(tnue_pos)]
+      tnue_neg0 = [tnue_neg0,nue%ColInd(tnue_neg)]
 
-      ! build the sparse matrices nue_plus_ijk and nue_minus_ijk
-      CALL SortVecAsc_I(ri_p,perm)
-      ci_p = ci_p(perm)
-      v_p  = v_p(perm)
-      nnz_k = SIZE(ri_p)
-      nue_p(k) = New_CSR(nue%n,nue%m,nnz_k,ri_p,ci_p,v_p)
-      DEALLOCATE(ri_p,ci_p,v_p,perm)
+      DEALLOCATE( tnue_pos, tnue_neg )
 
-      CALL SortVecAsc_I(ri_m,perm)
-      ci_m = ci_m(perm)
-      v_m  = v_m(perm)
-      nnz_k = SIZE(ri_m)
-      nue_m(k) = New_CSR(nue%n,nue%m,nnz_k,ri_m,ci_m,v_m)
-      DEALLOCATE(ri_m,ci_m,v_m,perm)
+    END DO
 
-      !CALL PrintSparse3(nue_p(k)%m, nue_p(k)%n, nue_p(k)%RowPtr, nue_p(k)%ColInd , nue_p(k)%Val , 'nue_p')
-      !CALL PrintSparse3(nue_m(k)%m, nue_m(k)%n, nue_m(k)%RowPtr, nue_m(k)%ColInd , nue_m(k)%Val , 'nue_m')
+    ! last matricies nue_pos(0) and nue_neg(0) (NON-CYCLIC REMAINDER)
+    ALLOCATE(Perm(SIZE(tnue_pos0)))
+    CALL unirnk( tnue_pos0 , Perm , N_pos0 )
+    tnue_pos0 = [ tnue_pos0(Perm(1:N_pos0)) ] 
+    DEALLOCATE(Perm)
 
-      !write(*,*) '  Cycle: ',k, '  with nnz_p = ',nue_p(k)%nnz, '  and nnz_m = ',nue_m(k)%nnz
+    ALLOCATE(Perm(SIZE(tnue_neg0)))
+    CALL unirnk( tnue_neg0 , Perm , N_neg0 )
+    tnue_neg0 = [ tnue_neg0(1:N_neg0) ] 
+    DEALLOCATE(Perm)
 
-    END DO LOOP_OVER_ALL_CYCLES
-    WRITE(*,*)
+    ALLOCATE(tnue_pos(0),tnue_neg(0))
+    cnt_pos = 1
+    cnt_neg = 1
+    DO iR = 1, nr
+      IF ( iR == tnue_pos0(cnt_pos) ) THEN
+        IF ( cnt_pos < N_pos0 ) cnt_pos = cnt_pos + 1
+      ELSE
+        tnue_pos = [tnue_pos , iR]
+      END IF
+      IF ( iR == tnue_neg0(cnt_neg) ) THEN
+        IF ( cnt_neg < N_neg0 ) cnt_neg = cnt_neg + 1
+      ELSE
+        tnue_neg = [tnue_neg , iR]
+      END IF
+    END DO
+    DEALLOCATE(tnue_pos0, tnue_neg0)
+    cnt_pos = SIZE(tnue_pos)
+    cnt_neg = SIZE(tnue_neg)
 
-    !CALL ShowChain(R_k)
+    ! get species indices out of residual reactions set
+    ALLOCATE(tnue_pos0(0))
+    nS = 0
+    DO i = 1, cnt_pos
+      iR = tnue_pos(i)
+      DO jj = BA%RowPtr(iR),BA%RowPtr(iR+1)-1
+        IF ( BA%Val(jj) > 0.0_dp ) THEN
+          nS  = nS + 1
+          tnue_pos0 = [tnue_pos0 , BA%ColInd(jj)]
+        END IF
+      END DO
+    END DO
 
-  END SUBROUTINE ISSA_nue
+    ALLOCATE(Perm(SIZE(tnue_pos0)))
+    CALL unirnk( tnue_pos0 , Perm , nS )
+    tnue_pos0 = [ tnue_pos0(Perm(1:nS)) ] 
+    DEALLOCATE(Perm)
 
-  SUBROUTINE ISSA_iter(Rate_t,Conc,t,h)
+    NonCyclicRemainder = [tnue_pos0]
 
-    USE Rates_Mod,  ONLY: ReactionRatesAndDerivative_ChemKin, ReactionRates_Tropos
-    USE mo_control, ONLY: Teq, ZERO, List
-    USE mo_reac,    ONLY: neq, nspc
-    USE Sparse_Mod, ONLY: DAX_sparse
-
-    ! IN:
-    REAL(dp) :: Rate_t(neq)
-    REAL(dp) :: Conc(nspc)
-    REAL(dp) :: t, h
-
-    ! TEMP:
-    REAL(dp), DIMENSION(neq) :: Rate_th, DRatedT, avg_Rate
-    INTEGER                  :: i, j, k, ii, jj, n_c, nnz, n_Simp
-    REAL(dp)                 :: v, f_ijk, g_ijk
-    INTEGER,    ALLOCATABLE  :: F_ik(:), G_ik(:)
-    TYPE(List), ALLOCATABLE  :: tF(:), tG(:)
-    INTEGER,    ALLOCATABLE  :: perm(:)
-
-    REAL(dp)                 :: sum_p(nspc), sum_m(nspc)
-
-    ! debugging format
-    101 FORMAT( 3(A,I0), 2(A,Es10.3,2X) )
-    102 FORMAT( A,I0, 2(A,I0,A,Es10.3,2X) )
-    
-    n_c       = SIZE(nue_p)-1 ! because nue_p index from 0 to n_c
-    len_S_imp = SIZE(S_imp)
-
-    IF (Teq) THEN
-      CALL ReactionRatesAndDerivative_ChemKin( t+h , Conc , Rate_th , DRatedT )
-    ELSE
-      CALL ReactionRates_Tropos( t+h , Conc , Rate_th )
-    END IF
-    avg_Rate = ABS(Rate_th-Rate_t)/h
-
-    !write(*,'(5X,A,I0,A,Es10.2)') ( 'avg_Rate(',j,') = ',avg_Rate(j) , j=1,neq ) 
-
-    write(*,*)
-    write(*,*) '----- Calculating normal. valu. coeffs -----'
-    write(*,*)
-
-    LOOP_OVER_ALL_CYCLES: DO k = 1,n_c
-      
-      !---------------------------------------------------------------------------------
-      ! (a) "For the actual group of important species (index set S_imp) the valuation 
-      !      coefficients f_ijk, g_ijk are calculated. At the start S_imp contains the 
-      !      target species only." (See Atmosph. Env. 39 (2005) page 4343)
-      !---------------------------------------------------------------------------------
-
-      sum_p = DAX_sparse( nue_p(k) , avg_Rate )
-      sum_m = DAX_sparse( nue_m(k) , avg_Rate )
-
-      !DO i =1,nspc    ! debug test
-      !  write(*,102) '  Cycle: ',k,'.  sum(nue_p_(',i,',:)*r(:)) = ', sum_p(i) ,' and  sum(nue_m_(',i,',:)*r(:)) = ', sum_m(i)
-      !END DO
-      !write(*,*)
-
-      
-
-!   ALT muss vlt komplett weg
-!
-!      CALC__f_ijk: DO jj = 1,nue_p(k)%nnz
-!
-!
-!      ! ACHTUNG i muss wieder her!!!!
-!
-!        !i = nue_p(k)%RowInd(jj)
-!        !ALLOCATE( tF(ii) )
-!
-!        DO ii = 1,n_Simp
-!          IF ( S_imp(ii) == i ) THEN
-!            j = nue_p(k)%ColInd(jj)
-!            v = nue_p(k)%Val(jj)
-!            f_ijk = v*avg_Rate(j) / sum_p
-!            !write(*,101) '  Cycle: ',k,'.  nue_p_(',i,',',j,') = ', v,',   f = ',f_ijk
-!            !nue_p(k)%nvc(jj) = f_ijk
-!            !tF(ii)%ListE = [tF(ii)%ListE , f_ijk]
-!          END IF
-!        END DO
-!        !CALL SortVecAsc_R( tF(ii)%ListE , perm )
-!        !write(*,*) '  f_ijk_perm = ', ( tF(ii)%ListE , ii=1,SIZE(tf) )
-!        !DEALLOCATE(tF)
-!
-!      END DO CALC__f_ijk
-!      write(*,*)
-!
-!      DO jj = 1,nue_m(k)%nnz
-!      ! ACHTUNG i muss wieder her!!!!
-!        !i = nue_m(k)%RowInd(jj)
-!        DO ii = 1,n_Simp
-!          IF ( i == S_imp(ii) ) THEN
-!            j = nue_m(k)%ColInd(jj)
-!            v = nue_m(k)%Val(jj)
-!            g_ijk = v*avg_Rate(j) / sum_m
-!            !write(*,101) '  Cycle: ',k,'.  nue_m_(',i,',',j,') = ', v,',   g = ',g_ijk
-!            !nue_m(k)%nvc(jj) = g_ijk
-!          END IF
-!        END DO
-!      END DO
-!      !write(*,*)
-
-      !-------------------------------------------------------------------------------------
-      ! (b) "The maximum member groups of redundant reactions (index sets F_ik, G_ik) with
-      !      the property [SUM__(j in F_ik) f_ijk] < eps and [SUM__(j in G_ik) g_ijk] < eps
-      !      are determined. Especially reactions with f_ijk = 0, g_ijk = 0 are always part 
-      !      of F_ik, G_ik respectivley. The treshold value eps with 0 <= eps <= 1 controls
-      !      the reduction intensity." (See Atmosph. Env. 39 (2005) page 4343)
-      !-------------------------------------------------------------------------------------
-      
+    ALLOCATE(tnue_neg0(0))
+    nS = 0
+    DO i = 1, cnt_neg
+      iR = tnue_neg(i)
+      DO jj = BA%RowPtr(iR),BA%RowPtr(iR+1)-1
+        IF ( BA%Val(jj) < 0.0_dp ) THEN
+          nS  = nS + 1
+          tnue_neg0 = [tnue_neg0 , BA%ColInd(jj)]
+        END IF
+      END DO
+    END DO
+    ALLOCATE(Perm(SIZE(tnue_neg0)))
+    CALL unirnk( tnue_neg0 , Perm , nS )
+    tnue_neg0 = [ tnue_neg0(Perm(1:nS)) ] 
+    DEALLOCATE(Perm)
+    NonCyclicRemainder = [NonCyclicRemainder,tnue_neg0]
 
 
+    ALLOCATE(Perm(SIZE(NonCyclicRemainder)))
+    CALL unirnk( NonCyclicRemainder , Perm , cnt_pos )
+    NonCyclicRemainder = [ NonCyclicRemainder(Perm(1:cnt_pos)) ] 
+    DEALLOCATE(Perm)
+    nNonCycRem = cnt_pos
 
-    END DO LOOP_OVER_ALL_CYCLES
+    R_k(nCycles_red+1)%len  = nNonCycRem
+    R_k(nCycles_red+1)%List = [NonCyclicRemainder]
 
-    stop 'issa_mod'
-    
-  END SUBROUTINE ISSA_iter
+    !write(*,*) ' noncyclic remainder = ', NonCyclicRemainder
+    !stop
 
-  SUBROUTINE SortVecAsc_R(v,q)
+
+  END SUBROUTINE ISSA_structure
+
+  SUBROUTINE SortVecAsc_R(v,q,m)
     USE mo_control, ONLY: big
 
     REAL(dp), INTENT(INOUT) :: v(:)
     INTEGER,  ALLOCATABLE, OPTIONAL :: q(:)
+    INTEGER,               OPTIONAL :: m
     !
     INTEGER :: i,n,im(1)
     REAL(dp), ALLOCATABLE :: tv(:)
    
-    n = SIZE(v)
+    IF (PRESENT(m)) THEN
+      n = m
+    ELSE
+      n = SIZE(v)
+    END IF
     ALLOCATE(tv(n));  tv = 0
    
     IF (PRESENT(q).AND..NOT.ALLOCATED(q)) ALLOCATE(q(n))
@@ -335,6 +494,7 @@ MODULE issa
       END DO
       write(*,*)
     END DO
+     777 FORMAT(10X,A)
   END SUBROUTINE ShowChain
 
   SUBROUTINE Progress3(j,k)
@@ -343,38 +503,83 @@ MODULE issa
     WRITE(*,'(A1,A,I0,A,I0,A,$)') char(13),'    Cycle :: (',j,'/',k,')  processed.'
   END SUBROUTINE Progress3
 
-  SUBROUTINE Progress4(j,k)
-    INTEGER(4)  :: j,k
-    ! print the progress bar.
-    WRITE(*,'(A1,A,I0,A,I0,A,$)') char(13),'    Steps :: (',j,'/',k,')  processed.'
-  END SUBROUTINE Progress4
+  
+
+!******************************************************************************************************************
+!
+!                                                                                                                                                                     
+!  .d8888b.   .d8888b.  8888888b.  8888888888 8888888888 888b    888 8888888 888b    888  .d8888b.  
+! d88P  Y88b d88P  Y88b 888   Y88b 888        888        8888b   888   888   8888b   888 d88P  Y88b 
+! Y88b.      888    888 888    888 888        888        88888b  888   888   88888b  888 888    888 
+!  "Y888b.   888        888   d88P 8888888    8888888    888Y88b 888   888   888Y88b 888 888        
+!     "Y88b. 888        8888888P"  888        888        888 Y88b888   888   888 Y88b888 888  88888 
+!       "888 888    888 888 T88b   888        888        888  Y88888   888   888  Y88888 888    888 
+! Y88b  d88P Y88b  d88P 888  T88b  888        888        888   Y8888   888   888   Y8888 Y88b  d88P 
+!  "Y8888P"   "Y8888P"  888   T88b 8888888888 8888888888 888    Y888 8888888 888    Y888  "Y8888P88
+!
+!******************************************************************************************************************
 
 
-
-  SUBROUTINE FluxAnalysis()
+  SUBROUTINE ISSA_screening(RS,R_k,S_imp_ini)
     USE mo_control
     USE mo_reac
     USE mo_IO
-		USE mo_unirnk
+    USE mo_unirnk
     USE ChemSys_Mod
+    USE Sparse_Mod
+
+    TYPE(ReactionStruct_T), INTENT(IN) :: RS(:)         ! struct of reaction system 
+    TYPE(List),             INTENT(IN) :: R_k(:)        ! cyclic sets of reactions
+    INTEGER,                INTENT(IN) :: S_imp_ini(:)  ! initial set of importent Species
 
     ! TEMP:
     INTEGER        :: Positions(iStpFlux)
-    REAL(dp)       :: Rates(neq,iStpFlux)!, IntRates(neq,iStpFlux)
+    REAL(dp)       :: Rates(nr,iStpFlux)
+    REAL(dp)       :: Rate(nr)
     REAL(dp)       :: time(iStpFlux), dt(iStpFlux)
-    INTEGER        :: i, dummy, io_stat
-    CHARACTER(200) :: io_msg=''
+    INTEGER        :: i, j, jj, k, kk, l, dummy, cnt
+    
+    INTEGER        :: io_stat = 0
+    CHARACTER(200) :: io_msg  = ''
 
-    REAL(dp)             :: sum_abs_rates(neq), max_rates(neq)
-    REAL(dp)             :: threshold
+    INTEGER, ALLOCATABLE  :: S_imp(:), R_imp(:)    ! Sets of importent Species/Reactions
+    INTEGER, ALLOCATABLE  :: S_imp_new(:)
+    INTEGER               :: nS_imp=0, nR_k=0, nIter=0
+    INTEGER               :: iS=0, iSpc=0, iReac=0
+
+    TYPE(CSR_Matrix_T)    :: pos_BAT, neg_BAT, neg_BA
+
+    INTEGER               :: rp_iSpc(2), rp_iSpcP1(2) ! rowpointer: 1 for source terms, 2 for sink terms
+    INTEGER,  ALLOCATABLE :: source_reacs(:), sink_reacs(:)   ! stoech. coefficientes of cycle k
+    LOGICAL               :: any_sources, any_sinks
+
+    INTEGER               :: inR_f, inR_g
+
+    REAL(dp), ALLOCATABLE :: f_iJk(:), g_iJk(:)   ! valuation coefficientes (noncyclic reactions)
+    REAL(dp)              :: sum_f_ijk, sum_g_ijk
+    INTEGER,  ALLOCATABLE :: CF_ik(:), CG_ik(:)  ! max. member groups of redundant reactions (index sets)
+    
+    INTEGER,  ALLOCATABLE :: f_p(:),  g_p(:)    ! permuation vector of reaction set
+    INTEGER,  ALLOCATABLE :: f_iR(:), g_iR(:)    ! permuation vector of reaction set
+
+    REAL(dp), PARAMETER   :: eps_red = 0.11
+    INTEGER,  PARAMETER   :: maxIter = 42
+
+
     INTEGER, ALLOCATABLE :: NewReactionSet(:), Perm(:)
-		INTEGER							 :: newLen
+    INTEGER              :: newLen
+
+          
+    WRITE(*,777) REPEAT('*',39)
+    WRITE(*,777) '**** Iterative Screening Procedure ****'
+    WRITE(*,777) REPEAT('*',39)
+    WRITE(*,*)
 
     ! reading meta data (positions of record)
     CALL OpenFile_rSeq(FluxMetaUnit,FluxMetaFile)
     DO i = 1,iStpFlux
       READ(FluxMetaUnit,*,IOSTAT=io_stat,IOMSG=io_msg) dummy , Positions(i)
-      IF ( io_stat>0 ) WRITE(*,*) '   ERROR :: ',io_stat,'  '//TRIM(io_msg)
+      IF ( io_stat>0 ) WRITE(*,'(10X,A,I0,A)') '   ERROR :: ',io_stat,'  '//TRIM(io_msg)
       IF ( io_stat<0 ) EXIT
     END DO
     CLOSE(FluxMetaUnit)
@@ -383,66 +588,235 @@ MODULE issa
     CALL OpenFile_rStream(FluxUnit,FluxFile)
     DO i = 1,iStpFlux
       READ(FluxUnit,POS=Positions(i),IOSTAT=io_stat,IOMSG=io_msg) Rates(:,i) , time(i) , dt(i)
-      IF ( io_stat>0 ) WRITE(*,*) '   ERROR :: ',io_stat,'  '//TRIM(io_msg)
+      IF ( io_stat>0 ) WRITE(*,'(10X,A,I0,A)') '   ERROR :: ',io_stat,'  '//TRIM(io_msg)
       IF ( io_stat<0 ) EXIT
     END DO
     CLOSE(FluxUnit)
 
-    ALLOCATE(NewReactionSet(0))
+   
+
+    ! calculate time-averaged rate of reactions
+    Rate = 0_dp
+    DO i = 1,iStpFlux
+      Rate = Rate + ABS(Rates(:,i))*dt(i)
+    END DO
+    Rate = Rate/REAL(iStpFlux)
+
+
+    OPEN(unit=199, file='Rates_'//BSP//'.txt', action='write')
+    DO j=1,SIZE(Rate) 
+      WRITE(199,'(A,I0,A,Es16.8,A)') ' integr. rate(',j,') = ',rate(j), '    '//TRIM(RS(j)%Type)//'    '//TRIM(RS(j)%Line1)
+    END DO
+    CLOSE(199)
+
+
+    ! vorbereitend: positive und negative elemente separieren
+    CALL SeperatePosNegValues( pos_BAT , neg_BAT , BAT)
+    neg_BAT%Val = ABS(neg_BAT%Val)
+    CALL TransposeSparse(neg_BA,neg_BAT)
+
+    S_imp  = [S_imp_ini]
+    nS_imp = SIZE(S_imp_ini)
+    ALLOCATE( R_imp(0) )
+
+    nR_k = SIZE(R_k)
+
+    ! ITERATIVE LOOP
+    nIter = 1
+
+    ITERATIVE_PROCEDURE: DO !WHILE (nIter <= maxIter)
+      
+      CALL Progress_Step(nIter,nS_imp)
+
+      !******************************************************************
+      ! (a) For the actual group of important species (index set S_imp) 
+      !     the valuation coefficients f_ijk, g_ijk are calculated. At
+      !     the start S_imp contains the target species only.
+      !****************************************************************** 
+
+      DO iS = 1 , nS_imp
+
+        iSpc       = S_imp(iS)
+        rp_iSpc(1) = pos_BAT%RowPtr(iSpc);  rp_iSpcP1(1) = pos_BAT%RowPtr(iSpc+1)-1
+        rp_iSpc(2) = neg_BAT%RowPtr(iSpc);  rp_iSpcP1(2) = neg_BAT%RowPtr(iSpc+1)-1
+      
+        DO k = 1, nR_k
+
+          ! --- SOURCE terms
+          ALLOCATE(source_reacs(0)); any_sources = .FALSE.
+          DO jj = rp_iSpc(1) , rp_iSpcP1(1)
+            IF ( ANY( pos_BAT%ColInd(jj) == R_k(k)%List ) ) THEN
+              source_reacs = [source_reacs , jj]
+              any_sources = .TRUE.
+            END IF
+          END DO
+          
+          IF (any_sources) THEN
+            f_iR  = [ pos_BAT%ColInd(source_reacs) ]
+            inR_f = SIZE(f_iR)
+            f_iJk = [ pos_BAT%Val(source_reacs) * Rate(f_iR) ]
+            f_iJk = f_iJk / SUM(f_iJk)
+
+            CALL SortVecAsc_R( f_iJk , f_p , inR_f )
+            f_iR = f_iR(f_p)
+            DEALLOCATE(f_p)
+            !DO j=1,inR_f;  WRITE(*,'(A,Es16.8)') ' f_iJk = ',f_iJk(j);  END DO
+          ELSE
+            inR_f = 0
+          END IF
+
+
+          ! --- SINK terms
+          ALLOCATE(sink_reacs(0)); any_sinks = .FALSE.
+          DO jj = rp_iSpc(2) , rp_iSpcP1(2)
+            IF ( ANY( neg_BAT%ColInd(jj) == R_k(k)%List ) ) THEN
+              sink_reacs = [sink_reacs , jj]
+              any_sinks = .TRUE.
+            END IF
+          END DO
+          
+          IF (any_sinks) THEN
+            g_iR = [ neg_BAT%ColInd(sink_reacs) ]
+            inR_g = SIZE(g_iR)
+            g_iJk = [ pos_BAT%Val(sink_reacs) * Rate(g_iR) ]
+            g_iJk = g_iJk / SUM(g_iJk)
+
+            CALL SortVecAsc_R( g_iJk , g_p , inR_g )
+            g_iR = g_iR(g_p)
+            DEALLOCATE(g_p)
+            !DO j=1,inR_g;  WRITE(*,'(A,Es16.8)') ' g_iJk = ',g_iJk(j);  END DO
+          ELSE
+            inR_g = 0
+          END IF
+
+          
+          !*******************************************************************
+          ! (b) The maximum member groups of redundant reactions (index sets 
+          !     F_ik, G_ik) with the property SUM(f_ijk) < eps_red, and 
+          !     SUM(f_ijk) < eps_red are determined. Especially reactions with 
+          !     f_ijk=0, g_ijk=0 are always part of F_ik, G_ik, respectivley.
+          !     The threshold value with 0 <= eps_red <= 1 controls the 
+          !     reduction intensity.
+          !*******************************************************************
+
+          ALLOCATE(CF_ik(0),CG_ik(0))
+          sum_f_ijk = 0.0_dp
+          DO j = 1,inR_f
+            IF ( sum_f_iJk < eps_red ) THEN
+              sum_f_ijk = sum_f_ijk + f_iJk(j)
+            ELSE
+              CF_ik = [(f_iR(l) , l=j-1,inR_f)]
+              EXIT
+            END IF
+          END DO
+
+          sum_g_ijk = 0.0_dp
+          DO j = 1,inR_g
+            IF ( sum_g_ijk < eps_red ) THEN
+              sum_g_ijk = sum_g_ijk + g_iJk(j)
+            ELSE
+              CG_ik = [(g_iR(l) , l=j-1,inR_g)]
+              EXIT
+            END IF
+          END DO
+
+          !*******************************************************************
+          ! (c) The important reactions (index set R_imp) of important species 
+          !     in S_imp are calculated by R_imp = set_add(CF_ik , CG_ik)
+          !     where i in S_imp.
+          !*******************************************************************
+
+          R_imp = [ R_imp , CF_ik , CG_ik ]
+
+          DEALLOCATE( CF_ik, CG_ik, source_reacs, sink_reacs )
+
+        END DO   !  k = 1, nCycles
+        !READ(*,*)
+      END DO     !  i = 1 , nS_imp
+
+      !*******************************************************************************
+      ! (d) The reactants of R_imp (species i with nue_ij<0 for j in R_imp) form
+      !     the new set of important species S_imp_new with S_imp_new >= S_imp. If
+      !     S_imp_new > S_imp then the iteration goes on with S_imp = S_imp_new
+      !     in step (a). In the other case the iteration is finished; S_imp and R_imp
+      !     contain the important species and reactions of the reduced mechanism.
+      !*******************************************************************************
+      ALLOCATE(S_imp_new(0))
+      DO j = 1,SIZE(R_imp)
+        jj = R_imp(j)
+        S_imp_new = [S_imp_new ,                                          &
+        &           neg_BA%ColInd(neg_BA%RowPtr(jj):neg_BA%RowPtr(jj+1)-1)]
+      END DO
+      
+
+      ! --- set addition -> sort -> remove duplicates
+      S_imp_new = [S_imp , S_imp_new]
+      CALL Sort_And_Remove_Duplicates(S_imp_new,nS_imp)
+
+      IF ( nS_imp == SIZE(S_imp) ) THEN
+        EXIT ITERATIVE_PROCEDURE
+      ELSE
+        S_imp = [S_imp_new]
+        DEALLOCATE(S_imp_new)
+        nIter = nIter + 1
+      END IF
+
+    END DO ITERATIVE_PROCEDURE
+
+    CALL Sort_And_Remove_Duplicates(R_imp,newLen)
+
+    !DO j=1,SIZE(R_imp); WRITE(*,'(A,I0,A,I0)') ' R_imp(',j,') = ',R_imp(j); END DO
+    !DO j=1,SIZE(S_imp); WRITE(*,'(A,I0,A,I0)') ' S_imp(',j,') = ',S_imp(j); END DO
     
-		DO i = 1,iStpFlux
-	    CALL Update_ReactionSet(NewReactionSet2,Rates(:,i))
-
-			ALLOCATE(Perm(SIZE(NewReactionSet2)))
-		  CALL unirnk(NewReactionSet2,Perm,newLen)
-		  NewReactionSet2 = NewReactionSet2(Perm)
-		  NewReactionSet2 = [NewReactionSet2(:newLen)]
-			DEALLOCATE(Perm)
-		
-			CALL Progress4(i,iStpFlux)
-		END DO
-
     !-----------------------------------------------------------------------
     ! --- Writing a new sys-File with less reactions
-    CALL Print_SysFile(ReactionSystem,NewReactionSet2,'CHEM/'//TRIM(BSP)//'_red.sys')
-    
-    write(*,'(A)') '  Printing New Reaction System done  ::  CHEM/'//TRIM(BSP)//'_red.sys'
+    CALL Print_SysFile(ReactionSystem,R_imp,'CHEM/'//TRIM(BSP)//'_red.sys')
+    write(*,*); write(*,*) 
+    write(*,777) '    Printing reduced system  ::  CHEM/'//TRIM(BSP)//'_red.sys'
+    WRITE(*,*)
+    write(*,'(10X,A,I6)') '    Reduced system :: Number of Reactions = ',newLen
+    write(*,'(10X,A,I6)') '                      Number of Species   = ',nS_imp
     !stop
+    777 FORMAT(10X,A)
 
-  END SUBROUTINE FluxAnalysis
+
+    !STOP ' UNDER CONSTRUCTION '
+
+    CONTAINS
+
+      SUBROUTINE Progress_Step(j,k)
+        INTEGER :: j,k
+        ! print the progress bar.
+        WRITE(*,'(14X,2(A,I0,4X))') 'Iteration ::  ',j,'nSpecies = ',k
+        !WRITE(*,'(A1,14X,2(A,I0,4X),$)') char(13),'Iteration ::  ',j,'nSpecies = ',k
+      END SUBROUTINE Progress_Step
+      
+      FUNCTION Is_ImpSpc_In_Cycle(iSpc,List,n) RESULT(iRow)
+        INTEGER             :: iRow
+        INTEGER, INTENT(IN) :: List(:)
+        INTEGER, INTENT(IN) :: iSpc, n
+        INTEGER :: i
+
+        iRow=0
+        DO i=1,n
+          IF ( List(i)==iSpc ) THEN
+            iRow=i;  RETURN
+          END IF
+        END DO
+      END FUNCTION Is_ImpSpc_In_Cycle
+
+      SUBROUTINE Sort_And_Remove_Duplicates(Array,n)
+        INTEGER, ALLOCATABLE, INTENT(INOUT) :: Array(:)
+        INTEGER, ALLOCATABLE                :: Perm(:)
+        INTEGER                             :: n
+
+        ALLOCATE(Perm(SIZE(Array)))
+        CALL unirnk( Array , Perm , n )
+        Array = [Array(Perm(1:n))]
+        DEALLOCATE(Perm)
+      END SUBROUTINE Sort_And_Remove_Duplicates
+
+  END SUBROUTINE ISSA_screening
+
   
-  SUBROUTINE Update_ReactionSet(NewSet,Rates)
-    USE mo_reac,  ONLY: neq
-    REAL(dp) :: Rates(neq)
-		REAL(dp), PARAMETER    :: eps_red = 0.11d0
-		INTEGER,  ALLOCATABLE  :: perm(:)
-		INTEGER,  ALLOCATABLE  :: NewSet(:)
-		INTEGER :: i 
-		REAL(dp) :: sum_Rates
-
-	  CALL SortVecAsc_R(Rates,perm)
-		i = 0
-
-		DO
-			IF ( sum_Rates < eps_red ) THEN
-				i = i + 1
-				sum_Rates = sum_Rates + Rates(i)     
-				perm(i)   = -1
-			ELSE
-				EXIT
-			END IF
-		END DO
-
-		IF (.NOT.ALLOCATED(NewSet)) ALLOCATE(NewSet(0))
-		i = 1
-		DO 
-			IF ( perm(i) /= -1 ) THEN
-				NewSet = [NewSet , perm(i)]
-			END IF
-			IF (i == neq ) EXIT
-			i = i + 1
-		END DO
-
-  END SUBROUTINE Update_ReactionSet 
-
 END MODULE issa

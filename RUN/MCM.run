@@ -1,41 +1,44 @@
- &SCENARIO
-  BSP = 'MCM32'
-  constLWC = .false.
-  Ladebalken = 1 
-  ErrorLog = 0
-  NetCdfPrint = .true.
- /END
- &FILES
-  SysFile  = 'CHEM/MCM3-2new4Willi'
-  DataFile = 'DAT/MCM.dat'
-  !InitFile = 'INI/urbMCM+C30m_neu1_HH5.ini'
-  InitFile = 'INI/Urban.ini'
-  MetFile  = 'MET/1day_wocloud.met'
- /END
- &TIMES
-  tAnf    = 0.0d0
-  tEnd    = 86400.0d0
-  Dust    = 0.5d0
-  idate   = 010619     
-  rlat    = 45.d0     
-  rlon    =  0.d0
-  minStp  = 1.0d-25
-  maxStp  = 200.d0
+&SCENARIO
+  BSP      = 'MCM32_gas'
+  WaitBar  = .T.
+  FluxAna  = .F.
+  ChemKin  = .F.        ! input mechanism in ChemKin notation
+  Lehmann  = .F.
 /END
- &METEO
- /END
- &NUMERICS
-  RtolROW  = 1.0d-3                            ! rel. Toleranz für Rosenbrock-Wanner Fehlersteuerung
-  AtolGas  = 1.0d-4                             ! abs. Toleranzen für gasförmige Stoffe 
-  AtolAqua = 1.0d-4                             ! abs. Toleranzen für aquatische Stoffe
-  Error_Est= 2                                  ! Error estimation = 2 -> 2-norm, else maxnorm
-  PI_StepSize = .false.                         ! Gustafsson, Söderlind
-  solveLA = 'cl'                                ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
-  ImpEuler = 0                                  ! 0=kein impliziter Euler, 1=impliziter Euler (kein ROW!!)
-  ODEsolver = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
-  Vectorized = .true.
- /END
- &ORDERING
-  OrderingStrategie  = 8                  ! 8=Markowitz(SparseLU) , 1,..,7=Mumps Orderings  
-  ParOrdering = -1
- /END
+&FILES
+  SysFile  = 'CHEM/MCM3-2new4Willi.sys'
+  DataFile = 'DAT/MCM.dat'
+  InitFile = 'INI/Urban.ini'
+  !NetCdfFile  = 'NetCDF/MCM3dd2+C40_full.nc' ! location and name of NetCDF output file
+/END
+&TIMES
+  tBegin  = 0.0d0
+  tEnd    = 84600.0d0
+  !tEnd   = 259200.0d0
+/END
+&METEO
+  Dust        = 0.5d0        ! Zenith Berechnung       (Staub)
+  idate       = 010621       ! ---------''---------    (Datum: YYMMDD)
+  rlat        = 45.0d0       ! ---------''---------    (Breitengrad)
+  rlon        = 0.0d0        ! ---------''---------    (Längengrad)
+  Temperature0= 280.0d0
+/END
+&NUMERICS
+  RtolROW  = 1.0d-3
+  AtolGas  = 1.0d-5
+  AtolAqua = 1.0d-7
+  Error_Est = 2
+  PI_StepSize = .F.
+  LinAlg  = 'cl'
+  minStp  = 1.0d-30
+  maxStp  = 400.d0
+  ODEsolver = 'METHODS/TSRosWRodas3.ros'
+  Ordering  = 8
+/END
+&OUTPUT
+  NetCdfFile  = 'NetCDF/MCM32.nc' ! location and name of NetCDF output file
+  StpNetCDF   = 600.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep
+  nOutP       = 1000                 ! number of output steps for LSODE case
+  DebugPrint  = .F.                ! DEBUGGING Rosenbrock
+  MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
+/END

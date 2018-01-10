@@ -5,6 +5,7 @@
 !
   MODULE mo_reac
     USE Kind_Mod
+    USE mo_control
 
     CHARACTER(9) :: measure_gas_ph(2)=(/"molec/cm3", "mol/m3   "/)
     CHARACTER(9) :: measure_aqua_ph(1)=(/"mol/l"/)
@@ -115,23 +116,33 @@
 
 !--------------------------------------------------------------
 !--   dimensions
-    INTEGER :: nt=0
-    INTEGER :: ntFrac=0                  ! number of aquatic droplett classes
-
-    INTEGER :: neq=0, nspc=0
-    INTEGER :: nr=0                      ! number of all reactions
-    INTEGER :: nDIM=0
-    INTEGER :: nDIMcl=0
-    INTEGER :: nDIMex=0
-    REAL(dp) :: rNspc
+    INTEGER :: nt=0           ! unused?
+    INTEGER :: nFrac=0        ! number of aquatic droplett classes
+		INTEGER :: nspc=0         ! Number of all species excluding katalytic/passive species
+    INTEGER :: nr=0           ! number of all reactions, HENRY/DISS counts as two reactions
+    INTEGER :: neq=0          ! number of all reactions, HENRY/DISS counts as two reactions
+    INTEGER :: nPhases=0      ! number of involed species phases
+    INTEGER :: nDIM=0         ! Dimension of ODE system
+    INTEGER :: nDIMcl=0       ! Dimension of ODE system for classic linear algebra
+    INTEGER :: nDIMex=0       ! Dimension of ODE system for extended linear algebra 
+    REAL(dp) :: rNspc					! real value 1/nspc for error calcualtion
 
     ! number of species in each phase/state
     INTEGER :: ns = 0, ns_KAT = 0, ns_G_KAT = 0, ns_A_KAT = 0
-    INTEGER :: ns_GAS = 0, ns_AQUA = 0, ns_SOLID = 0, ns_PARTIC = 0
+    INTEGER :: ns_GAS = 0, ns_AQUA = 0, ns_SOLID = 0, ns_PARTI = 0
 
     ! number of each reaction class
-    INTEGER :: nr_gas = 0, nr_aqua = 0, nr_henry = 0, nr_diss = 0, nr_solid = 0, nr_partic = 0, nr_micphys = 0
+    INTEGER :: nr_gas = 0, nr_aqua = 0, nr_henry = 0, nr_diss = 0, nr_solid = 0, nr_parti = 0, nr_micphys = 0
     INTEGER :: nr_special = 0 
+
+    INTEGER :: nr_liquid = 0  ! = nr_diss+nr_aqua
+
+
+    LOGICAL :: hasGasSpc=.FALSE. , hasAquaSpc=.FALSE. , hasSolidSpc=.FALSE. , hasPartiSpc=.FALSE.
+    LOGICAL :: hasGasReac=.FALSE. ,   hasAquaReac=.FALSE. , hasSolidReac=.FALSE. , hasPartiReac=.FALSE. &
+		&        , hasHenryReac=.FALSE. , hasDissReac=.FALSE. , hasMicroReac=.FALSE. , hasLiquidReac=.FALSE.
+
+    LOGICAL :: hasPhotoReac=.FALSE. , hasFactorReac=.FALSE.
 
     ! number of each reaction type
     INTEGER :: nr_G_photo = 0, nr_G_const = 0, nr_G_temp = 0, nr_G_troe =0, nr_G_spec = 0, nr_G_lind = 0
@@ -252,18 +263,16 @@
 !--------------------------------------------------------------
 !--    input arrays
     !REAL(dp):: tcur
-    !REAL(dp), ALLOCATABLE :: y_iconc(:)
     REAL(dp), ALLOCATABLE :: InitValAct(:)
     REAL(dp), ALLOCATABLE :: InitValKat(:)
 
-    !REAL(dp), ALLOCATABLE :: y_emi(:)
     REAL(dp), ALLOCATABLE :: henry_diff(:)
     REAL(dp), ALLOCATABLE :: henry_accom(:)
 
 !--------------------------------------------------------------
 !--    deposition and emissions
     REAL(dp), ALLOCATABLE :: vd(:)
-    REAL(dp), ALLOCATABLE :: y_e(:)
+    REAL(dp), ALLOCATABLE :: y_emi(:)
 
 !--------------------------------------------------------------
     
@@ -419,11 +428,11 @@
 
     INTEGER, ALLOCATABLE  :: AtomicMatrix(:,:)  ! dim = (nspc, natoms), where natoms = number of different elements in the system
 
-    INTEGER, ALLOCATABLE  :: first_orderKAT(:,:) ! reaction number where stoech coef == ONE
-    INTEGER, ALLOCATABLE  :: first_order(:,:) ! reaction number where stoech coef == ONE
-    INTEGER, ALLOCATABLE  :: second_order(:,:) ! reactions where species have second order 
-    INTEGER, ALLOCATABLE  :: higher_order(:,:) ! higher order reactions
-    REAL(dp), ALLOCATABLE :: ahigher_order(:) ! higher order reactions contains also fractions and noninteger values
+    INTEGER, ALLOCATABLE  :: iFO_kat(:,:) ! reaction number where stoech coef == ONE
+    INTEGER, ALLOCATABLE  :: iFO(:,:) ! reaction number where stoech coef == ONE
+    INTEGER, ALLOCATABLE  :: iSO(:,:) ! reactions where species have second order 
+    INTEGER, ALLOCATABLE  :: iHO(:,:) ! higher order reactions
+    REAL(dp), ALLOCATABLE :: aHO(:) ! higher order reactions contains also fractions and noninteger values
     INTEGER :: nFirst_order=0, nSecond_order=0, nHigher_order=0, nFirst_orderKAT=0
 
     ! array for Troe reactions
@@ -445,4 +454,34 @@
     END TYPE SPC_Index_T
 
     TYPE (SPC_Index_T) :: iGas, iAqua, iKat
+
+
+    INTEGER, SAVE        :: bGs(2),bAs(2),bSs(2),bPs(2)          ! phase boundaries
+		INTEGER, ALLOCATABLE :: bGr(:),bHr(:),bAr(:),bSr(:),bPr(:)   ! phase boundaries
+
+		INTEGER, ALLOCATABLE :: iGs(:),iAs(:),iSs(:),iPs(:)          ! indices phases
+    INTEGER, ALLOCATABLE :: iGr(:),iHr(:),iAr(:),iSr(:),iPr(:)   ! indices phases
+
+
+
+  TYPE AFrac_T
+    CHARACTER(LenName), ALLOCATABLE :: Species(:)
+    REAL(dp),           ALLOCATABLE :: MolMass(:)   ! [g/mol]
+    INTEGER,            ALLOCATABLE :: Charge(:)    ! ladung (+,-,++,--,...)
+    REAL(dp),           ALLOCATABLE :: SolubInd(:)  ! Löslichkeitsindex
+    REAL(dp),           ALLOCATABLE :: Frac1(:)     ! [g/g]
+  END TYPE AFrac_T
+
+  TYPE(AFRAC_T) :: AFrac
+
+
+  TYPE Modes_T
+    REAL(dp), ALLOCATABLE :: Radius(:)    ! [m] radius particle
+    REAL(dp), ALLOCATABLE :: wetRadius(:) ! [m] radius droplett
+    REAL(dp), ALLOCATABLE :: Number(:)    ! [#/cm3]
+    REAL(dp), ALLOCATABLE :: Density(:)   ! [kg/m3]
+  END TYPE Modes_T
+
+  TYPE(Modes_T) :: Mode
+
 END MODULE mo_reac

@@ -83,10 +83,11 @@ MODULE Rosenbrock_Mod
     INTEGER :: i
     !
     IF ( TRIM(method(1:7)) == 'bwEuler') THEN
-      tmethod = ADJUSTL(method)
+      tmethod = ADJUSTL(method(:INDEX(method,'.')-1))
     ELSE
-      tmethod = TRIM(method(INDEX(method,'/')+1:INDEX(method,'.')-1))
+      tmethod = ADJUSTL(method(INDEX(method,'/')+1:INDEX(method,'.')-1))
     END IF
+
 
     SELECT CASE (tmethod)
       CASE ('bwEuler')       
@@ -178,79 +179,81 @@ MODULE Rosenbrock_Mod
   !==========================================================
   !   Calculates an initial stepsize based on 2. deriv.
   !==========================================================
-  SUBROUTINE InitialStepSize(h,hmin,absh,Jac,Rate,t,Y,pow)
+  FUNCTION InitialStepSize(Jac,Rate,t,Y_in,pow) RESULT(h)
     !------------------------------------------------- 
     ! Input:
     !        - public variables
     !        - Tspan 
     !        - Y0  ( initial vector )
     !        - Jacobian matrix
-    REAL(dp), INTENT(IN) :: t, pow
-    REAL(dp), INTENT(IN) :: Y(nspc)
     TYPE(CSR_Matrix_T), INTENT(IN) :: Jac
-    REAL(dp) :: Rate(neq)
-    REAL(dp) :: DRatedT(neq)     ! part. derv. rate over temperatur vector
+    REAL(dp), INTENT(IN) :: t, pow
+    REAL(dp), INTENT(IN) :: Y_in(:)
+    REAL(dP), INTENT(INOUT) :: Rate(:)
+    !REAL(dp) :: DRatedT(nr)     ! part. derv. rate over temperatur vector
     !-------------------------------------------------
     ! Output:
     !        - initial step size
-    REAL(dp)  , INTENT(OUT) :: absh
-    REAL(dp) :: h, hmin 
-    REAL(dp) :: f0(nspc)
+    REAL(dp) :: h 
     !-------------------------------------------------
     !
     ! Temp vars:
-    REAL(dp) :: tdel, rh
-    REAL(dp), DIMENSION(nspc) ::  wt, DfDt, Tmp, f1, zeros
-    REAL(dp) :: sqrteps=SQRT(eps)
+    REAL(dp) :: tdel, rh, absh
+    REAL(dp), DIMENSION(nDIM) :: Y
+    REAL(dp), DIMENSION(nspc) :: wt, DfDt, Tmp, f0, f1, zeros
+    REAL(dp), DIMENSION(nr)   :: dRdT
+    REAL(dp), ALLOCATABLE     :: thresh(:)
     ! DEBUG
     INTEGER :: i  
 
-    zeros = ZERO    
+    zeros = ZERO
+
+    Y = Y_in 
 
     ! hmin is a small number such that t + hmin is clearlY different from t in
     ! the working precision, but with this definition, it is 0 if t = 0.
-    hmin  = minStp
 
     !---- Compute an initial step size h using Yp=Y'(t) 
-    f0 = DAXPY_sparse( BAT , Rate , Y_e )
-    !print*, 'debug:: sum(bat),rate =', SUM(BAT%val),SUM(rate)
-    !print*, 'debug:: sum(f0)=', SUM(f0)
-    !stop
-    wt    = MAX( ABS(Y) , ThresholdStepSizeControl(1:nspc) )
-    rh    = ( 1.25_dp * MAXVAL( ABS(f0(:)/wt(:)) ) )/(RTolRow**pow)
-    absh  = MIN( maxStp , Tspan(2)-Tspan(1) )
+    f0 = BAT * Rate + y_emi
+
+    ALLOCATE( thresh(nDIM) )
+    IF ( Teq ) THEN
+      thresh(iGs)  = AtolGas / RTolROW
+      thresh(nDIM) = AtolTemp / RTolROW
+    ELSE
+      thresh(iGs) = AtolGas / RTolROW
+      thresh(iAs) = AtolAqua / RTolROW
+    END IF
+
+    wt   = MAX( ABS(Y(1:nspc)) , thresh(1:nspc) )
+    rh   = ( 1.25_dp * MAXVAL(ABS(f0/wt)) )/(RTolRow**pow)
+    absh = MIN( maxStp , Tspan(2)-Tspan(1) )
     IF ( absh * rh > ONE )  absh = ONE / rh
-    !print*, 'Debug:: f0 = ', f0, SUM(Y_e), SUM(Rate)
-    !do i=1,nspc
-    !  print*, Rate(i)
-    !end do 
-    !stop
 
     !---- Compute Y''(t) and a better initial step size
-    h     = absh
-    !tdel  = ( t + MIN( sqrteps * MAX( ABS(t) , ABS(t+h) ) , absh ) ) - t
-    tdel  = t + MIN( sqrteps * MAX( ABS(t) , ABS(t+h) ) , absh )
+    h = absh
+    tdel  = t + MIN( SQRT(eps) * MAX( ABS(t) , ABS(t+h) ) , absh )
 
     IF (Teq) THEN
-      CALL ReactionRatesAndDerivative_ChemKin( t+tdel , Y , Rate , DRatedT )
+      CALL ReactionRatesAndDerivative_ChemKin( t+tdel , Y , Rate , dRdT )
     ELSE
-      CALL ReactionRates_Tropos( t+tdel , Y , Rate )
+      CALL ReactionRates_Tropos( t+tdel , Y , Rate)
     END IF
     Out%nRateEvals = Out%nRateEvals + 1
 
-    f1 = DAXPY_sparse( BAT , Rate , Y_e )
-    DfDt  = ( f1 - f0 ) / tdel
+    f1   = BAT * Rate + y_emi
+    DfDt = ( f1 - f0 ) / tdel
     
-    tmp = DAXPY_sparse( Jac , f0 , zeros )
-    DfDt  = DfDt  + Tmp
+    tmp  = Jac * f0 
+    DfDt = DfDt + Tmp
+
+    rh   = 1.25_dp * SQRT( rTWO * MAXVAL( ABS(DfDt/wt) ) ) / RTolRow**pow
   
-    rh    = 1.25_dp * SQRT( rTWO * MAXVAL( ABS(DfDt/wt) ) ) / RTolRow**pow
-   
-    absh  = MIN( maxStp , Tspan(2)-Tspan(1) )
-    IF ( absh * rh > ONE )  absh = ONE / rh
-    absh  = MAX( absh , hmin )
+    absh = MIN( maxStp , Tspan(2)-Tspan(1) )
+    IF ( absh*rh > ONE )  absh = ONE/rh
+    h = MAX( absh , minStp )
     
-  END SUBROUTINE InitialStepSize
+  END FUNCTION InitialStepSize
   !
   !
   !=========================================================================
@@ -314,7 +317,7 @@ MODULE Rosenbrock_Mod
 
     dprint = DebugPrint   !init run
     !
-    !iprnt = MinVAL((/ 5 , neq , nspc /))
+    iprnt = 4
 
     ! Initial settings
     k       = ZERO
@@ -363,7 +366,7 @@ MODULE Rosenbrock_Mod
       CALL MassAveMixSpecHeat  ( cv      , dUdT    , MoleConc=Y0(1:nspc) , rho=rho)
       CALL MassAveMixSpecHeat  ( dcvdT   , d2UdT2  , MoleConc=Y0(1:nspc) , rho=rho)
 
-      dCdt = DAXPY_sparse( BAT   , Rate , Y_e )
+      dCdT = BAT * Rate + y_emi
 
       dTdt    = - SUM(U * dCdt) * rRho/cv
       UMat    = ROS%ga*dcvdT*dTdt*Y0(1:nspc) + U*Yrh
@@ -460,15 +463,25 @@ MODULE Rosenbrock_Mod
     timerStart = MPI_WTIME()
     IF ( useSparseLU ) THEN
       CALL SparseLU( LU_Miter )
+
+      !WRITE(888,*) ' Step = ',Out%nSteps
+      !DO i=1,LU_Miter%nnz
+      !  WRITE(888,'(A,I0,A,Es16.6)') ' Val(',i,') = ',LU_Miter%Val(i)
+      !END DO
+      !WRITE(888,*) 
+     
     ELSE
       CALL MumpsLU( Miter%Val )
     END IF
     TimeFac = TimeFac + (MPI_WTIME()-timerStart)
 
     IF (dprint) THEN
+      print*,
+      print*,
       print*, '------------------------------------------------------------------------------'
       print*, '|    Rosenbrock Input                                                        |'
       print*, '------------------------------------------------------------------------------'
+      !print*, 'debug     i-th step      =  ',Out%nsteps
       print*, 'debug     Stepsize       =  ',h
       print*, 'debug     Time           =  ',t
       print*, 'debug     SUM(Y0)        =  ',SUM(Y0)
@@ -497,11 +510,12 @@ MODULE Rosenbrock_Mod
     
     LOOP_n_STAGES:  DO iStg = 1 , ROS%nStage
 
+
       IF ( iStg==1 ) THEN
 
         IF ( EXTENDED ) THEN
           bb( 1     : neq ) = mONE 
-          bb( neq+1 : nsr ) = Y_e 
+          bb( neq+1 : nsr ) = y_emi 
           IF ( Teq ) bb(nDIMex)  = ZERO
           IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:iprnt)
         END IF
@@ -523,21 +537,38 @@ MODULE Rosenbrock_Mod
         END IF
 
         IF (dprint) THEN
+          !DO i=1,nspc; WRITE(*,'(A,I0,A,Es18.10)') ' Conc(',i,') = ', Y(i); END DO
+          !DO i=1,nr; WRITE(*,'(A,I0,A,Es18.10)')   ' Rate(',i,') = ', Rate(i); END DO
+          !DO i=1,nspc; WRITE(*,'(A,I0,A,Es18.10)') ' Emis(',i,') = ', y_emi(i); END DO
+          !DO i=1,nspc; WRITE(*,'(A,I0,A,4Es18.10)') '    k(',i,',:) = ', k(i,:); END DO
+          !print*, '        STAGE :: ',iStg
           print*, ''
           print*, 'debug::         SUM(concentration) at (Y + a*k)  = ',SUM(Y)
           print*, 'debug::  SUM(Rates) at (t + SumA*h),  (Y + a*k)  = ',SUM(Rate)
         END IF
       END IF
+
       
       TimeRhsCalc0 = MPI_WTIME()
       !--- Calculate the right hand side of the linear System
       IF ( CLASSIC ) THEN
 
-        dCdt = DAXPY_sparse( BAT , Rate , Y_e )           
+        !DO i=1,BAT%nnz; WRITE(*,'(A,I0,A,Es18.10)') ' BAT val(',i,') = ', BAT%Val(i); END DO
+
+        dCdt = BAT * Rate + y_emi
         fRhs(1:nspc) =  h * dCdt
         IF (Teq) fRhs( nDIM ) = - h * SUM(U*dCdt) * rRho / cv
 
+
+        !write(*,*) ' rhs vor schritt  = ',Out%nSteps,iStg
+        !write(*,'("     ",Es16.8)') fRhs
+        !write(*,*)
+
         DO jStg=1,iStg-1; fRhs = fRhs + ROS%C(iStg,jStg)*k(:,jStg); END DO
+
+        !write(*,*) ' rhs nach schritt = ',Out%nSteps,iStg
+        !write(*,'("     ",Es16.8)') fRhs
+        !write(*,*); write(*,*)
 
         IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',fRhs( 1:iprnt)
 
@@ -557,7 +588,7 @@ MODULE Rosenbrock_Mod
           ! right hand side of the extended linear system
 
           bb( 1      : neq )  = -rRate * Rate
-          bb( neq+1  : nsr )  = Y_e + fRhs(1:nspc)/h
+          bb( neq+1  : nsr )  = y_emi + fRhs(1:nspc)/h
           IF (Teq) bb(nDIMex) = fRhs(nDIM)/h
 
           IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:iprnt)
@@ -660,18 +691,21 @@ MODULE Rosenbrock_Mod
         END IF
 
       END IF
+      
+      IF (dprint) THEN
+        print*,'debug::     Error     =  ', err, '  Error index  =  ', ierr
+        print*, '------------------------------------------------------------------------------'
+        print*, ''
+        print*, ' Press ENTER to calculate next step '
+        read(*,*) 
+        !IF (Out%nSteps==100) STOP ' nach 100 steps'
+      END IF
 
     END IF
 
 
    
-    IF (dprint) THEN
-      print*,'debug::     Error     =  ', err, '  Error index  =  ', ierr
-      print*, '------------------------------------------------------------------------------'
-      print*, ''
-      print*, ' Press ENTER to calculate next step '
-      read(*,*) 
-    END IF
+    
 
    
   END SUBROUTINE Rosenbrock

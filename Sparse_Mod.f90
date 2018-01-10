@@ -89,6 +89,10 @@ MODULE Sparse_Mod
   ! analysis matrix  (connectivity method)
   TYPE(CSR_Matrix_T) :: CM_1, CM_1T
 
+  INTERFACE OPERATOR(*)
+    MODULE PROCEDURE DAX_sparse
+    !MODULE PROCEDURE DAX_sparse_n3
+  END INTERFACE
 
   !
   CONTAINS
@@ -289,6 +293,7 @@ MODULE Sparse_Mod
     copy%RowPtr = orig%RowPtr
     copy%ColInd = orig%ColInd
     copy%Val    = orig%Val
+    Copy%nnz    = orig%nnz
     IF (orig%XPtr/=-42) copy%XPtr = orig%XPtr
     IF (ALLOCATED(orig%DiagPtr))   copy%DiagPtr   = orig%DiagPtr
     IF (ALLOCATED(orig%DiagPtr_P)) copy%DiagPtr_P = orig%DiagPtr_P
@@ -665,6 +670,46 @@ MODULE Sparse_Mod
     END DO
     vec = tmpVec
   END SUBROUTINE SortVecDesc2
+
+
+
+  SUBROUTINE SeperatePosNegValues(p_out,n_out,m_in)
+    TYPE(CSR_Matrix_T), INTENT(OUT) :: p_out, n_out
+    TYPE(CSR_Matrix_T), INTENT(IN)  :: m_in
+
+    INTEGER :: i , jj, cnt_pos, cnt_neg
+    INTEGER, ALLOCATABLE :: tc_pos(:), tc_neg(:)
+    
+
+    ALLOCATE(tc_pos(0),tc_neg(0))
+
+    p_out = New_CSR( m_in%m, m_in%n )
+    n_out = New_CSR( m_in%m, m_in%n )
+
+    DO i = 1, m_in%m
+      cnt_pos = 0
+      cnt_neg = 0
+      DO jj = m_in%RowPtr(i), m_in%RowPtr(i+1)-1
+        IF ( m_in%Val(jj) > 0.0d0 ) THEN
+          tc_pos = [tc_pos , jj]
+          cnt_pos = cnt_pos + 1
+        ELSE
+          tc_neg = [tc_neg , jj]
+          cnt_neg = cnt_neg + 1
+        END IF
+      END DO
+      p_out%RowPtr(i+1) = p_out%RowPtr(i) + cnt_pos
+      n_out%RowPtr(i+1) = n_out%RowPtr(i) + cnt_neg
+    END DO
+    p_out%nnz    = SIZE(tc_pos)
+    p_out%ColInd = m_in%ColInd(tc_pos)
+    p_out%Val    = m_in%val(tc_pos)
+
+    n_out%nnz    = SIZE(tc_neg)
+    n_out%ColInd = m_in%ColInd(tc_neg)
+    n_out%Val    = m_in%val(tc_neg)
+
+  END SUBROUTINE SeperatePosNegValues
 
   !
   !
@@ -1779,14 +1824,18 @@ MODULE Sparse_Mod
   !
   !
   ! PRINT SPARSE MATRIX (compressed Row format)
-  SUBROUTINE PrintSparseMatrix(A)
+  SUBROUTINE PrintSparseMatrix(A,k)
     TYPE(CSR_Matrix_T), INTENT(IN) :: A
+    !CHARACTER(*),       INTENT(IN) :: name
+    INTEGER,            INTENT(IN) :: k
     !
     INTEGER :: i,j,jj
     !
     !
+    WRITE(*,*) 'nummber        ',k
     WRITE(*,*) 'dimension:     ', A%m,A%n
     WRITE(*,*) 'nonzeros:      ', SIZE(A%ColInd)
+    WRITE(*,*)
     ! 
     DO i=1,A%m
       DO jj=A%RowPtr(i),A%RowPtr(i+1)-1
@@ -1794,6 +1843,7 @@ MODULE Sparse_Mod
         WRITE(*,'(1X,I5,1X,I5,10X,E23.14)') i,j,A%Val(jj)
       END DO
     END DO
+    WRITE(*,*)
   END SUBROUTINE PrintSparseMatrix
   !
   !
@@ -2071,8 +2121,8 @@ MODULE Sparse_Mod
   ! sparse matrix * vector
   FUNCTION DAX_sparse(A,X) RESULT(Rhs)
     !IN
-    TYPE(CSR_Matrix_T) :: A
-    REAL(dp) :: X(:)
+    TYPE(CSR_Matrix_T), INTENT(IN) :: A
+    REAL(dp),           INTENT(IN) :: X(:)
     !OUT
     REAL(dp) :: Rhs(A%m)
     !TEMP
@@ -2235,6 +2285,7 @@ MODULE Sparse_Mod
     
     !--  Back-Permutation of solution
     Rhs( LU%InvPer ) = b
+
 
   END SUBROUTINE SolveSparse
 

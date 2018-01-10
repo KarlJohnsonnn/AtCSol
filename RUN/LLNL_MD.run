@@ -20,11 +20,11 @@
   Pressure0   = 2.0d+5        ! in [Pa]
 /END
 &NUMERICS
-  RtolROW   = 1.0d-6
+  RtolROW   = 1.0d-4
   AtolGas   = 1.0d-15
   AtolTemp  = 1.0d-1
   Error_Est = 2
-  minStp    = 1.0d-30
+  minStp    = 1.0d-45
   maxStp    = 2.0d-4
   LinAlg    = 'ex' 
   ODEsolver = 'METHODS/TSRosWRA34PW2.fort'
@@ -32,7 +32,7 @@
 /END
 &OUTPUT
   NetCdfFile  = 'NetCDF/LLNL_MD.nc'
-  StpNetCDF   = -1.0d0
+  StpNetCDF   = 8.0d-5
   nOutP       = 1000
   MatrixPrint = .F.  
   DebugPrint  = .F.
