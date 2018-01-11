@@ -513,7 +513,7 @@ PROGRAM AtCSol
     WRITE(*,'(10X,A)') '**                                                 **'
     WRITE(*,'(10X,A)') '*****************************************************'
     WRITE(*,*)
-    WRITE(*,'(10X,A,I0)') 'Number of saved steps = ', iStpFlux
+    WRITE(*,'(10X,A,I0)') 'Number of flux records = ', iStpFlux
     WRITE(*,*)
 
     DO i=1,nr           ! Name,iReac,Mech,Class,Type,Param)
