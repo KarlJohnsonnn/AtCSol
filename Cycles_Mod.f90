@@ -159,7 +159,7 @@ MODULE Cycles_Mod
 
 
     ! write paths to file and save it in a allcatable array
-    OPEN(UNIT=99,FILE='reaction_paths_'//BSP//'.txt',STATUS='UNKNOWN')
+    OPEN(UNIT=99,FILE='reaction_paths_'//TRIM(BSP)//'.txt',STATUS='UNKNOWN')
     WRITE(99,*)
     WRITE(99,'(A,*(I0))') '   Anzahl Zyklen:   ',nCycles
     WRITE(99,'(A)') '   Cycle Length:       species: '
@@ -221,7 +221,7 @@ MODULE Cycles_Mod
 
     nCycles_red = cntSCC
     ALLOCATE(Cyclic_Set_red(nCycles_red))
-    OPEN(UNIT=98,FILE='reaction_path_short_'//BSP//'.txt',STATUS='UNKNOWN')
+    OPEN(UNIT=98,FILE='reaction_path_short_'//TRIM(BSP)//'.txt',STATUS='UNKNOWN')
     WRITE(98,*)
     WRITE(98,'(A)') '   Cycle Length:       species: '
     WRITE(98,'(A,*(I0))') '   Anzahl Zyklen nach kuerzen:   ',nCycles_red
@@ -264,11 +264,7 @@ MODULE Cycles_Mod
       INTEGER :: i
 
       iRow=0
-      DO i=1,n
-        IF ( List(i)==iSpc ) THEN
-          iRow=i;  RETURN
-        END IF
-      END DO
+      DO i=1,n; IF ( List(i)==iSpc ) iRow=i;  RETURN;  END DO
     END FUNCTION Is_Spc_In_Cycle
 
   END SUBROUTINE Find_Elem_Circuits

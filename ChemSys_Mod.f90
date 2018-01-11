@@ -2474,17 +2474,6 @@ MODULE Chemsys_Mod
       ELSE
         Species = ADJUSTL(LocString)
       END IF
-      
-      ! check syntax for missing white space 
-      !e.g.:  NO2 = O3PX +NO -->  missing white space between + and NO
-      IF ( INDEX(TRIM(Species),' +') > 0 .OR. INDEX(TRIM(Species),' -') > 0        ) THEN
-        WRITE(*,777) 'ERROR: Missing blank space in reaction: '//String
-        WRITE(*,777) 'Species = '//TRIM(Species)
-        WRITE(*,777) 'Check syntax in .sys!'
-        CALL FinishMPI()
-        STOP 
-      END IF
-      777 FORMAT(10X,A)
 
       PosSpecies = SCAN(Species,SetSpecies)
       NumSpec = NumSpec + 1
@@ -2527,21 +2516,25 @@ MODULE Chemsys_Mod
         END IF
       END IF
 
+      ! Syntax check for missing seperators, e.g. "+CO2" insted of "+ CO2" or "CO2+" insted of "CO2 +"
+      IF  ( INDEX(TRIM(ADJUSTL(Duct(NumSpec)%Species)),' ',.TRUE.) > 0 ) THEN
+        WRITE(*,*); WRITE(*,*)
+        WRITE(*,777) 'ERROR: Missing white space in reaction substring: '//TRIM(String)
+        WRITE(*,777) '       Species = '//TRIM(Duct(NumSpec)%Species)
+        WRITE(*,777) '       Check syntax in '//TRIM(SysFile)//'.sys!'
+        WRITE(*,*); WRITE(*,*)
+        CALL FinishMPI()
+        STOP 
+      END IF
+
       ! if no dummy species was found then add new species to hash table
-      !IF ( INDEX(TRIM(ADJUSTL(Duct(NumSpec)%Species)),'+',.TRUE.) == LEN_TRIM(Duct(NumSpec)%Species) .OR. &
-      !&    INDEX(TRIM(ADJUSTL(Duct(NumSpec)%Species)),'-',.TRUE.) == LEN_TRIM(Duct(NumSpec)%Species) ) THEN
-      !  WRITE(*,777) 'ERROR: Missing blank space in reaction: '//String
-      !  WRITE(*,777) 'Species = '//TRIM(Species)
-      !  WRITE(*,777) 'Check syntax in .sys!'
-      !  CALL FinishMPI()
-      !  STOP
-      !END IF
       CALL InsertSpecies( Duct(NumSpec)%Species, Duct(NumSpec)%Type )
 
       ! if there are no further species exit the loop
       IF ( PosPlus==0 .AND. PosMinus==0 ) EXIT
 
     END DO
+    777 FORMAT(10X,A)
   END SUBROUTINE ExtractSpecies
   !
   !
@@ -2552,7 +2545,7 @@ MODULE Chemsys_Mod
     INTEGER :: len
 
     len = LEN_TRIM(Species)
-    !
+
     IF (Species(1:1)=='p') THEN
       CALL InsertHash( ListPartic , TRIM(ADJUSTL(Species)) , ns_PARTI)
       Type = 'Partic'

@@ -603,7 +603,7 @@ MODULE issa
     Rate = Rate/REAL(iStpFlux)
 
 
-    OPEN(unit=199, file='Rates_'//BSP//'.txt', action='write')
+    OPEN(unit=199, file='Rates_'//TRIM(BSP)//'.txt', action='write')
     DO j=1,SIZE(Rate) 
       WRITE(199,'(A,I0,A,Es16.8,A)') ' integr. rate(',j,') = ',rate(j), '    '//TRIM(RS(j)%Type)//'    '//TRIM(RS(j)%Line1)
     END DO

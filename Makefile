@@ -7,7 +7,7 @@ OBJg = -L$(LIB_D) -lchemieg
 
 all: AtCSol AtCSol_g
        
-AtCSol:  Optimize  
+AtCSol:  Optimized  
 	$(LINK) $(OPT_O) $(KINCL_O) -o AtCSol.exe \
         AtCSol.f90 SOLVER/opkdmain.o SOLVER/opkda1.o SOLVER/opkda2.o  \
 				$(OP) $(OBJo) $(METIS) $(MUMPS) $(UMF) $(LAPACK) $(SCOTCH) $(SCALAP) $(PARMETIS) $(NETCDF) $(LMPI) $(CL) $(COARRAY) -lblas -llapack  ;
@@ -17,7 +17,7 @@ AtCSol_g:  Debug
         AtCSol.f90 SOLVER/opkdmain.o SOLVER/opkda1.o SOLVER/opkda2.o  \
 				$(OP) $(OBJg) $(METIS) $(MUMPS) $(UMF) $(LAPACK) $(SCOTCH)  $(SCALAP) $(PARMETIS) $(NETCDF) $(LMPI) $(CL) $(COARRAY) -lblas -llapack  ;
 
-Optimize: 
+Optimized: 
 	@make -f Make_src "IN2=$(IN1)" "LIB2=$(LIB_O)" "OPT2=$(OPT_O)" "CHEM=chemieo" "KINCL=$(KINCL_O)"
 
 Debug: 
@@ -27,7 +27,7 @@ clean:
 	rm -f *.o *.mod LIB*/*
 
 
-Test:
+test:
 	./AtCSol.exe RUN/RACM+C24.run
 	./AtCSol.exe RUN/MCM+CAPRAM.run
 	./AtCSol.exe RUN/ERC_nheptane.run
