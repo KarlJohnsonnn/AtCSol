@@ -27,7 +27,7 @@ PROGRAM AtCSol
   !
   CHARACTER(80)   :: Filename0 = ''        ! *.run file
   !
-  REAL(dp) :: Atol(2)
+  REAL(dp), ALLOCATABLE :: Atol(:)
   INTEGER  :: i,j,jj,nSchwefel
   INTEGER  :: io_err,  STAT
 
@@ -330,7 +330,8 @@ PROGRAM AtCSol
 	IF ( Teq ) THEN
 		Atol = [AtolGas , AtolTemp]		! abs. tolerance for ChemKin scenario
 	ELSE
-		Atol = [AtolGas , AtolAqua]		! abs. tolerance for Tropos scenario
+		Atol = [AtolGas]		! abs. tolerance for Tropos scenario
+		IF ( hasAquaSpc ) Atol = [AtolGas , AtolAqua]		! abs. tolerance for Tropos scenario
   END IF
 
   !-----------------------------------------------------------------------
@@ -462,7 +463,6 @@ PROGRAM AtCSol
     CALL Free_SpRowColD( temp_LU_Dec )
 
     TimeSymbolic = MPI_WTIME() - StartTimer   ! stop timer for symbolic matrix calculations
-
     ! ---- Calculate first reaction rates
     RateCnt = 0
     IF (Teq) THEN

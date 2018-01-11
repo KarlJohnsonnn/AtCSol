@@ -241,6 +241,7 @@
           IF ( io_stat>0 ) WRITE(*,*) '   ERROR while '//cause//'  ::  ',io_stat,'  '//TRIM(io_msg)
         END SUBROUTINE ErrorCheck
 
+          ! CHECK ob file überhaupt existiert
 				SUBROUTINE FileNameCheck(Name,miss)
           CHARACTER(*) :: Name
 					CHARACTER(*) :: miss

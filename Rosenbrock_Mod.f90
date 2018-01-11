@@ -221,8 +221,8 @@ MODULE Rosenbrock_Mod
       thresh(iGs)  = AtolGas / RTolROW
       thresh(nDIM) = AtolTemp / RTolROW
     ELSE
-      thresh(iGs) = AtolGas / RTolROW
-      thresh(iAs) = AtolAqua / RTolROW
+      IF ( hasGasSpc  ) thresh(iGs) = AtolGas / RTolROW
+      IF ( hasAquaSpc ) thresh(iAs) = AtolAqua / RTolROW
     END IF
 
     wt   = MAX( ABS(Y(1:nspc)) , thresh(1:nspc) )

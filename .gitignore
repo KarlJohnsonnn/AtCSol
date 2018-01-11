@@ -2,8 +2,6 @@ LIB/*
 LIB_D/*
 NetCDF/*
 MATRICES/*
-CHEM/*
-TAR/*
 .DS_Store
 *.chem
 fort.*

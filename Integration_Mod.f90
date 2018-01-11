@@ -113,8 +113,10 @@ MODULE Integration_Mod
       CASE('METHODS')
 
     
+WRITE(*,*) '      VOR'
         !---- Calculate a first stepsize based on 2nd deriv.
         h = InitialStepSize( Jac_CC, R0, t, Y0, ROS%pow )
+WRITE(*,*) '      `NACH'
 
         IF (MPI_master) WRITE(*,'(10X,A)',ADVANCE='NO') 'Start Integration.............      '
         time_int = MPI_WTIME()

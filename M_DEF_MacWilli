@@ -36,6 +36,6 @@ SCOTCH=-L/Users/schimmel/Documents/SparseLinearSolver/scotch_6.0.4/lib -lesmumps
 NETCDF=-lcurl -L/usr/local/lib -lnetcdf -L/usr/local/lib -lnetcdff -L/usr/local/lib -lhdf5_hl \
 -L/usr/local/lib -lhdf5 
 
-LAPACK=-llapack
+LAPACK=-llapack -lblas
 
 #COARRAY = -L/usr/local/Cellar/opencoarrays/1.8.10/lib/ -lcaf_mpi

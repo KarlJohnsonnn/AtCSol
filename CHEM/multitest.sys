@@ -1,0 +1,27 @@
+COMMENT  multiphasen polydispers
+COMMENT  last update 05-05-2011 (pb)
+COMMENT   ===================   Unit options   ======================
+
+UNIT GAS    0   COMMENT     Gas phase units     (0 = molec/cm3, 1 = mol/m3)
+UNIT AQUA   0   COMMENT     Aqueous phase units (0 = mol/l)
+UNIT AQUA   0   COMMENT     Aqueous phase units (0 = mol/l)
+
+COMMENT   ===========================================================
+
+COMMENT   ====================== GAS PHASE ==========================
+
+CLASS: GAS
+O3            =     O3PX
+PHOTMCM:   I:  5.685E-04   M: 0.273   N: 0.135
+
+CLASS: DISS
+[aH2O]          =  OHm + Hp
+DTEMP:   A: 1.8e-16  B: -6800.0  C: 1.3e11
+
+CLASS: HENRY
+O3 = aO3
+TEMP3:   A: 1.14e-2  B: 2300.0
+
+CLASS: AQUA
+aO3PX + aO2 = aO3
+TEMP3:  A: 4e9  B: 0.0
