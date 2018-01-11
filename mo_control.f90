@@ -95,27 +95,23 @@
       REAL(dp) :: Tspan(2)
   
 
+      REAL(dp) :: Time_Read=0.0d0
+      REAL(dp) :: TimeRates=0.0d0
+      REAL(dp) :: TimeSymbolic=0.0d0
       REAL(dp) :: TimeFac=0.0d0
       REAL(dp) :: TimeSolve=0.0d0
-      REAL(dp) :: TimeRates=0.0d0
-      REAL(dp) :: TimeRateSend=0.0d0
       REAL(dp) :: TimeJac=0.0d0
-      REAL(dp) :: Time_Read=0.0d0
-      REAL(dp) :: TimeSymbolic=0.0d0
       REAL(dp) :: TimeNetCDF=0.0d0
       REAL(dp) :: TimeErrCalc=0.0d0
       REAL(dp) :: TimeFluxWrite=0.0d0
+      REAL(dp) :: TimeRhsCalc=0.0d0
   
-      REAL(dp) :: TimeIntegrationA=0.0d0
-      REAL(dp) :: TimeIntegrationE=0.0d0
+      REAL(dp) :: TimeIntegration=0.0d0
       REAL(dp) :: TimeRateA=0.0d0
       REAL(dp) :: TimeRateE=0.0d0
-      REAL(dp) :: TimeRateSendA=0.0d0
-      REAL(dp) :: TimeRateSendE=0.0d0
       REAL(dp) :: TimeJacobianA=0.0d0
       REAL(dp) :: TimeJacobianE=0.0d0
       REAL(dp) :: TimeNetCDFA=0.0d0
-      REAL(dp) :: TimeRhsCalc=0.0d0
 !
 
 !--- type for some statistics

@@ -35,6 +35,11 @@
     INTEGER :: globi
 
     INTEGER :: RateCnt
+
+    INTERFACE ReactionRates
+      MODULE PROCEDURE ReactionRates_ChemKin
+      MODULE PROCEDURE ReactionRates_Tropos
+    END INTERFACE ReactionRates
     !
     CONTAINS
     !
@@ -42,7 +47,7 @@
     !======================================================================!
     !      Calculate the Rates for current concentraions and time
     !======================================================================!
-    SUBROUTINE ReactionRatesAndDerivative_ChemKin(Time,Y_in,Rate,DRatedT)
+    SUBROUTINE ReactionRates_ChemKin(Time,Y_in,Rate,DRatedT)
       !--------------------------------------------------------------------!
       ! Input: 
       !   - Time
@@ -204,7 +209,7 @@
       TimeRates = TimeRates + MPI_WTIME() - TimeRateA
 
       !stop 'ratesmod'
-    END SUBROUTINE ReactionRatesAndDerivative_ChemKin
+    END SUBROUTINE ReactionRates_ChemKin
 
     !======================================================================!
     !      Calculate the Rates for current concentraions and time
@@ -265,7 +270,7 @@
       IF ( nr_FACTOR > 0 ) Meff = EffectiveMolecularity( Conc , mAir )
       
       ! ====== Compute the rate constant for specific reaction type
-      CALL ComputeRateConstant( k, T, Time, chi, mAir, Conc )
+      k = ComputeRateConstant( T, Time, chi, mAir, Conc )
 
       ! ===== correct unit of concentrations for higher order aqueous reactions
       IF ( ns_AQUA > 0 ) THEN
@@ -314,9 +319,9 @@
     END SUBROUTINE ReactionRates_Tropos
 
 
-    FUNCTION MassActionProducts(Conc) RESULT(Prod)
-      REAL(dp) :: Prod(neq)
-      REAL(dp) :: Conc(nspc)
+    PURE FUNCTION MassActionProducts(Conc) RESULT(Prod)
+      REAL(dp)             :: Prod(neq)
+      REAL(dp), INTENT(IN) :: Conc(nspc)
       INTEGER :: i
 
       Prod = ONE
@@ -348,9 +353,10 @@
 
     END FUNCTION MassActionProducts
 
-    FUNCTION MassTransfer(kin,T,LWC) RESULT(k)
-      REAL(dp) :: k(nr_HENRY,2,nFrac), kin(nr_HENRY)
-      REAL(dp) :: T(:), LWC
+    PURE FUNCTION MassTransfer(kin,T,LWC) RESULT(k)
+      REAL(dp)             :: k(nr_HENRY,2,nFrac)
+      REAL(dp), INTENT(IN) :: kin(nr_HENRY)
+      REAL(dp), INTENT(IN) :: T(:), LWC
       ! TEMO
       REAL(dp) :: kmt(nr_HENRY,nFrac)
       REAL(dp) :: term_diff(nr_HENRY), term_accom(nr_HENRY)
@@ -386,12 +392,12 @@
 
     END FUNCTION MassTransfer
     
-    FUNCTION EffectiveMolecularity(Conc,mAir) RESULT(M)
+    PURE FUNCTION EffectiveMolecularity(Conc,mAir) RESULT(M)
       !OUT
       REAL(dp) :: M(neq)
       !IN
-      REAL(dp) :: Conc(:)
-      REAL(dp) :: mAir
+      REAL(dp), INTENT(IN) :: Conc(:)
+      REAL(dp), INTENT(IN) :: mAir
       !
       M = ONE
 
@@ -408,10 +414,10 @@
 
     END FUNCTION EffectiveMolecularity
 
-    SUBROUTINE ComputeRateConstant(k,T,Time,chi,mAir,Conc)
+    PURE FUNCTION ComputeRateConstant(T,Time,chi,mAir,Conc) RESULT(k)
       USE fparser
 
-      REAL(dp), INTENT(OUT)   :: k(neq)
+      REAL(dp)                :: k(neq)
       REAL(dp), INTENT(IN)    :: Time, mAir, chi(:)
       REAL(dp), INTENT(IN)    :: T(:)
       REAL(dp), INTENT(IN)    :: Conc(:)
@@ -523,39 +529,38 @@
       ! *** dissociation reactions
       !
       IF (nr_DCONST>0) THEN
-        k_DC = vDConstCompute( )
-        k(iR%iDCONST(:,1)) = k_DC(:,1) ! forward reactions
-        k(iR%iDCONST(:,2)) = k_DC(:,2) ! backward reactions
+        k(iR%iDCONST(:,2)) = iR%DCONST(:,2) ! backward reactions
+        k(iR%iDCONST(:,1)) = iR%DCONST(:,1) * k(iR%iDCONST(:,2)) ! forward reactions
       END IF
       IF (nr_DTEMP>0)  THEN 
-        k_T1 = vDTempCompute( T )
-        k(iR%iDTEMP(:,1)) = k_T1(:,1) ! forward reactions
-        k(iR%iDTEMP(:,2)) = k_T1(:,2) ! backward reactions
+        k(iR%iDTEMP(:,2)) = iR%DTEMP(:,3) ! backward reactions
+        k(iR%iDTEMP(:,1)) = iR%DTEMP(:,1)*EXP(iR%DTEMP(:,2)*(T(6)-InvRefTemp)) * k(iR%iDTEMP(:,2)) ! forward reactions
       END IF
       IF (nr_DTEMP2>0) THEN 
-        k_T2 = vDTemp2Compute( T )
-        k(iR%iDTEMP2(:,1)) = k_T2(:,1) ! forward reactions
-        k(iR%iDTEMP2(:,2)) = k_T2(:,2) ! backward reactions
+        k(iR%iDTEMP2(:,2)) = iR%DTEMP2(:,3)*EXP(iR%DTEMP2(:,4)*(T(6)-InvRefTemp)) ! backward reactions
+        k(iR%iDTEMP2(:,1)) = iR%DTEMP2(:,1)*EXP(iR%DTEMP2(:,2)*(T(6)-InvRefTemp)) * k(iR%iDTEMP2(:,2))! forward reactions
       END IF
       IF (nr_DTEMP3>0) THEN 
-        k_T3 = vDTemp3Compute( T )
-        k(iR%iDTEMP3(:,1)) = k_T3(:,1) ! forward reactions
-        k(iR%iDTEMP3(:,2)) = k_T3(:,2) ! backward reactions
+        k(iR%iDTEMP3(:,2)) = iR%DTEMP3(:,4) ! backward reactions
+        k(iR%iDTEMP3(:,1)) = iR%DTEMP3(:,1) * EXP(iR%DTEMP3(:,2)*(RefTemp*T(6)-ONE)         &
+        &      + iR%DTEMP3(:,3)*(One-RefTemp*T(6) + LOG10(RefTemp*T(6)))) * k(iR%iDTEMP3(:,2)) ! forward reactions
       END IF
       IF (nr_DTEMP4>0) THEN 
-        k_T4 = vDTemp4Compute( T )
-        k(iR%iDTEMP4(:,1)) = k_T4(:,1) ! forward reactions
-        k(iR%iDTEMP4(:,2)) = k_T4(:,2) ! backward reactions
+        k(iR%iDTEMP4(:,2)) = ONE ! backward reactions
+        k(iR%iDTEMP4(:,1)) = iR%DTEMP4(:,1)*EXP(iR%DTEMP4(:,2)        &
+        &      * (T(1)*InvRefTemp-One) + iR%DTEMP4(:,3)            &
+        &      * (ONE+LOG(T(1)*InvRefTemp)-T(1)*InvRefTemp)) * k(iR%iDTEMP4(:,2)) ! forward reactions
       END IF
       IF (nr_DTEMP5>0) THEN 
-        k_T5 = vDTemp5Compute( T )
-        k(iR%iDTEMP5(:,1)) = k_T5(:,1) ! forward reactions
-        k(iR%iDTEMP5(:,2)) = k_T5(:,2) ! backward reactions
+        k(iR%iDTEMP5(:,2)) = ONE ! backward reactions
+        k(iR%iDTEMP5(:,1)) = iR%DTEMP5(:,1)*(T*InvRefTemp)**iR%DTEMP4(:,2)  &
+        &      * EXP(iR%DTEMP5(:,3)*(T(6)-InvRefTemp)) * k(iR%iDTEMP5(:,2))! forward reactions
       END IF
       IF (nr_Meskhidze>0) THEN
-        mesk = vMeskhidzeCompute( T )
-        k(iR%iMeskhidze(:,1)) = mesk(:,1) ! forward reactions
-        k(iR%iMeskhidze(:,2)) = mesk(:,2) ! backward reactions
+        k(iR%iMeskhidze(:,2)) = iR%Meskhidze(:,4) * EXP(iR%Meskhidze(:,5)  &
+        &      * (T(6)-InvRefTemp)) * iR%Meskhidze(:,7) ! backward reactions
+        k(iR%iMeskhidze(:,1)) = iR%Meskhidze(:,1) * (T*InvRefTemp)**iR%Meskhidze(:,2)  &
+        &      * EXP(iR%Meskhidze(:,3)*(T(6)-InvRefTemp)) * k(iR%iMeskhidze(:,2)) ! forward reactions
       END IF
       ! ************************************************************************
      
@@ -670,13 +675,13 @@
       
       ! *** KKP photolytic reactions
       IF (nr_PHOTOkpp>0)  THEN 
-        k(iR%iPHOTOkpp)  = vPhotokppCompute ( Time, Chi(3) )
+        k(iR%iPHOTOkpp)  = iR%PHOTOkpp(:) * Chi(3)
       END IF
       IF (nr_PHOTO2kpp>0) THEN 
-        k(iR%iPHOTO2kpp) = vPhoto2kppCompute( Time, Chi(3) )
+        k(iR%iPHOTO2kpp) = iR%PHOTO2kpp(:) * Chi(3)*Chi(3)
       END IF
       IF (nr_PHOTO3kpp>0) THEN 
-        k(iR%iPHOTO3kpp) = vPhoto3kppCompute( Time, Chi(3) )
+        k(iR%iPHOTO3kpp) = iR%PHOTO3kpp(:) * Chi(3)*Chi(3)*Chi(3)
       END IF
       
       ! special reactions
@@ -684,149 +689,15 @@
         DO i = 1,nr_SPECIAL
           j = iR%iSPECIAL(i)
           IF (ReactionSystem(j)%Special%Temp) THEN
-            k(j) = evalf(i,[ Conc(ReactionSystem(j)%Special%iVariables),T(1)])
+            !k(j) = evalf(i,[ Conc(ReactionSystem(j)%Special%iVariables),T(1)])
           ELSE
-            k(j) = evalf(i,Conc(ReactionSystem(j)%Special%iVariables))
+            !k(j) = evalf(i,Conc(ReactionSystem(j)%Special%iVariables))
           END IF
         END DO
       END IF
 
-    END SUBROUTINE ComputeRateConstant
+    END FUNCTION ComputeRateConstant
     
-
-!    !=========================================================================!
-!    !                  calculate sun 
-!    !=========================================================================!
-!    FUNCTION Zenith(Time) RESULT(Chi)
-!      !-----------------------------------------------------------------------!
-!      ! Input:
-!      !   - Time
-!      REAL(dp) :: Time
-!      !-----------------------------------------------------------------------!
-!      ! Output:
-!      !   - sun angle chi
-!      REAL(dp) :: Chi
-!      !-----------------------------------------------------------------------!
-!      ! Temporary variables:
-!      !INTEGER :: IDAT
-!      REAL(dp) :: LBGMT, LZGMT
-!      REAL(dp) :: ML
-!      ! 
-!      REAL(dp) :: GMT
-!      REAL(dp) :: RLT, RPHI
-!      !    
-!      INTEGER  :: IIYEAR, IYEAR, IMTH, IDAY, IIY, NYEARS, LEAP, NOLEAP
-!      REAL(dp) :: YREF,YR
-!      !   
-!      INTEGER  :: I, IJ, JD, IJD, IN
-!      REAL(dp) :: D, RML, W, WR, EC, EPSI, PEPSI, YT, CW, SW, SSW  & 
-!      &         , EYT, FEQT1, FEQT2, FEQT3, FEQT4, FEQT5, FEQT6 &
-!      &         , FEQT7, FEQT, EQT
-!      !         
-!      REAL(dp) :: REQT, RA, RRA, TAB, RDECL, DECL, ZPT, CSZ, ZR    &
-!      &         , CAZ, RAZ, AZIMUTH
-!      !           
-!      INTEGER :: IMN(12)
-!      DATA IMN/31,28,31,30,31,30,31,31,30,31,30,31/
-!      !
-!      !----------------------------------------------------------------------!
-!      !
-!      ! set GMT
-!      GMT = Time / HOUR
-!      !
-!      !  convert to radians
-!      RLT = LAT*DR
-!      RPHI = LONG*DR
-!      !
-!      !  parse date
-!      IIYEAR = IDAT/10000
-!      IYEAR = 19*100 + IIYEAR
-!      IF (IIYEAR <= 50) IYEAR = IYEAR + 100 
-!      IMTH = (IDAT - IIYEAR*10000)/100
-!      IDAY = IDAT - IIYEAR*10000 - IMTH*100
-!      !
-!      !  identify and correct leap years
-!      IIY = (IIYEAR/4)*4
-!      IF(IIY.EQ.IIYEAR) IMN(2) = 29
-!      !
-!      !  count days from Dec.31,1973 to Jan 1, YEAR, then add to 2,442,047.5
-!      YREF =  2442047.5_dp
-!      NYEARS = IYEAR - 1974
-!      LEAP = (NYEARS+1)/4
-!      IF(NYEARS.LE.-1) LEAP = (NYEARS-2)/4
-!      NOLEAP = NYEARS - LEAP
-!      YR = YREF + 365.0_dp*NOLEAP + 366.0_dp*LEAP
-!      !
-!      IJD = 0
-!      IN = IMTH - 1
-!      IF(IN.EQ.0) GO TO 40
-!      DO 30 I=1,IN
-!      IJD = IJD + IMN(I)
-!    30   CONTINUE
-!      IJD = IJD + IDAY
-!      GO TO 50
-!    40   IJD = IDAY
-!    50   IJ = IYEAR - 1973
-!      !
-!      !      print julian days current "ijd"
-!      JD = IJD + (YR - YREF)
-!      D = JD + GMT/24.0_dp
-!      !
-!      !      calc geom mean longitude
-!      ML = 279.2801988_dp + .9856473354_dp*D + 2.267e-13_dp*D*D
-!      RML = ML*DR
-!      !
-!      !      calc equation of time in sec
-!      !      w = mean long of perigee
-!      !      e = eccentricity
-!      !      epsi = mean obliquity of ecliptic
-!      W = 282.4932328_dp + 4.70684e-5_dp*D + 3.39e-13_dp*D*D
-!      WR = W*DR
-!      EC = 1.6720041e-2_dp - 1.1444e-9_dp*D - 9.4e-17_dp*D*D
-!      EPSI = 23.44266511_dp - 3.5626e-7_dp*D - 1.23e-15_dp*D*D
-!      PEPSI = EPSI*DR
-!      YT = (TAN(PEPSI*rTWO))**2
-!      CW = COS(WR)
-!      SW = SIN(WR)
-!      SSW = SIN(TWO*WR)
-!      EYT = TWO*EC*YT
-!      FEQT1 = SIN(RML)*(-EYT*CW - TWO*EC*CW)
-!      FEQT2 = COS(RML)*(TWO*EC*SW - EYT*SW)
-!      FEQT3 = SIN(TWO*RML)*(YT - (FIVE*EC*EC*rFOUR)*(CW*CW-SW*SW))
-!      FEQT4 = COS(TWO*RML)*(FIVE*EC**2*SSW*rFOUR)
-!      FEQT5 = SIN(THREE*RML)*(EYT*CW)
-!      FEQT6 = COS(THREE*RML)*(-EYT*SW)
-!      FEQT7 = -SIN(FOUR*RML)*(rTWO*YT*YT)
-!      FEQT = FEQT1 + FEQT2 + FEQT3 + FEQT4 + FEQT5 + FEQT6 + FEQT7
-!      EQT = FEQT*13751.0_dp
-!      !
-!      !   convert eq of time from sec to deg
-!      REQT = EQT/240.0_dp
-!      !
-!      !   calc right ascension in rads
-!      RA = ML - REQT
-!      RRA = RA*DR
-!      !
-!      !   calc declination in rads, deg
-!      TAB = 0.43360_dp*SIN(RRA)
-!      RDECL = ATAN(TAB)
-!      DECL = RDECL/DR
-!      !
-!      !   calc local hour angle
-!      LBGMT = 12.0_dp - EQT/HOUR + LONG*24.0_dp/360.0_dp
-!      LZGMT = 15.0_dp*(GMT - LBGMT)
-!      ZPT = LZGMT*DR
-!      CSZ = SIN(RLT)*SIN(RDECL) + COS(RLT)*COS(RDECL)*COS(ZPT)
-!      ZR = ACOS(CSZ)
-!      ! 
-!      !   calc local solar azimuth
-!      CAZ = (SIN(RDECL) - SIN(RLT)*COS(ZR))/(COS(RLT)*SIN(ZR))
-!      RAZ = ACOS(CAZ)
-!      AZIMUTH = RAZ/DR
-!      !
-!      !--- set Zenith Angle
-!      Chi =  1.745329252e-02_dp * ZR/DR
-!    END FUNCTION Zenith
 
     FUNCTION UpdateSun(Time) RESULT(Sun)
       !--------------------------------------------------------------------
@@ -861,9 +732,9 @@
     !   ***************************************************************
     !   ** Species nondimensional gibbs potentials                   **
     !   ***************************************************************
-    SUBROUTINE GibbsFreeEnergie(Gibbs,T)
-      REAL(dp) :: Gibbs(:)
-      REAL(dp) :: T(:)
+    PURE SUBROUTINE GibbsFreeEnergie(Gibbs,T)
+      REAL(dp), INTENT(INOUT) :: Gibbs(:)
+      REAL(dp), INTENT(IN)    :: T(:)
       !
       Gibbs(:)=ZERO
       ! WHERE wird bald abgeschaft, -> vektorisieren
@@ -877,9 +748,9 @@
     END SUBROUTINE GibbsFreeEnergie
     !
     !
-    SUBROUTINE CalcDiffGibbsFreeEnergie(DGibbsdT,T)
-      REAL(dp) :: DGibbsdT(:)
-      REAL(dp) :: T(:)
+    PURE SUBROUTINE CalcDiffGibbsFreeEnergie(DGibbsdT,T)
+      REAL(dp), INTENT(INOUT) :: DGibbsdT(:)
+      REAL(dp), INTENT(IN)    :: T(:)
       !
       DGibbsdT(:)=ZERO
       ! WHERE wird bald abgeschaft, -> vektorisieren
@@ -893,8 +764,8 @@
     END SUBROUTINE CalcDiffGibbsFreeEnergie
     !
     !
-    SUBROUTINE CalcDeltaGibbs(DelGibbs)
-      REAL(dp) :: DelGibbs(:)
+    PURE SUBROUTINE CalcDeltaGibbs(DelGibbs)
+      REAL(dp), INTENT(INOUT) :: DelGibbs(:)
       !
       INTEGER :: iR
       INTEGER :: from, to
@@ -908,9 +779,10 @@
       END DO
 
     END SUBROUTINE CalcDeltaGibbs
-    !
-    SUBROUTINE CalcDiffDeltaGibbs(DiffDelGibbs)
-      REAL(dp) :: DiffDelGibbs(:)
+    
+
+    PURE SUBROUTINE CalcDiffDeltaGibbs(DiffDelGibbs)
+      REAL(dp), INTENT(INOUT) :: DiffDelGibbs(:)
       !
       INTEGER :: iR, jS, jj
       !
@@ -922,8 +794,8 @@
         END DO
       END DO
     END SUBROUTINE CalcDiffDeltaGibbs
-    !
-    !
+    
+    
     SUBROUTINE scTHERMO(C,H,S,T)
       !
       ! IN
@@ -1004,11 +876,11 @@
     
     END FUNCTION TroeFactorVec
 
-    FUNCTION DTroeFactorVec(Dk0dT,DkinfdT,dFTL_dT,T)
-      REAL(dp) :: DTroeFactorVec(RTind%nTroe)
+    PURE FUNCTION DTroeFactorVec(Dk0dT,DkinfdT,dFTL_dT,T) RESULT(vDTroeFactor)
+      REAL(dp) :: vDTroeFactor(RTind%nTroe)
       !IN
-      REAL(dp) :: Dk0dT(:), DkinfdT(:), dFTL_dT(:)
-      REAL(dp) :: T(:)
+      REAL(dp), INTENT(IN) :: Dk0dT(:), DkinfdT(:), dFTL_dT(:)
+      REAL(dp), INTENT(IN) :: T(:)
       !TEMP
       REAL(dp), DIMENSION(RTind%nTroe) :: dlog10_PrdT, log10_Prc, tmplog10
       REAL(dp), DIMENSION(RTind%nTroe) :: DlogF_Troedlog_Pr, Dlog_F_TroedT
@@ -1029,13 +901,13 @@
       tmplog10       = log10_Prc   / (n1Troe - dTroe*log10_Prc)
       log10_FTroe    = vlog10_Fcent / (ONE   + (tmplog10*tmplog10))
 
-      DTroeFactorVec = TEN**log10_FTroe * ( dFTL_dT(RTind%iTroe) &
+      vDTroeFactor = TEN**log10_FTroe * ( dFTL_dT(RTind%iTroe) &
       &              + vPr(RTind%iTroe) * ln10*Dlog_F_TroedT )
 
     END FUNCTION DTroeFactorVec
 
-    FUNCTION UpdateTempArray(Temperature) RESULT(TempArr)
-      REAL(dp) :: Temperature 
+    PURE FUNCTION UpdateTempArray(Temperature) RESULT(TempArr)
+      REAL(dp), INTENT(IN) :: Temperature 
       REAL(dp) :: TempArr(10)
       !
       INTEGER :: i
@@ -1050,16 +922,14 @@
       TempArr(9)  = SQRT(Temperature)          ! sqrt(T)
       TempArr(10) = ONE / TempArr(9)           ! 1/sqrt(T)
     END FUNCTION UpdateTempArray
-    !
-    !
+    
+    
     !-------------------------------------------------------------------------
     !---  Species internal energies in moles [J/mol]  
     !-------------------------------------------------------------------------
-    SUBROUTINE InternalEnergy(U,T)
-      !OUT
-      REAL(dp) :: U(nspc)   
-      !IN
-      REAL(dp) :: T(:)
+    PURE SUBROUTINE InternalEnergy(U,T)
+      REAL(dp), INTENT(INOUT) :: U(nspc)   
+      REAL(dp), INTENT(IN)    :: T(:)
       
       WHERE (SwitchTemp>T(1))
         U  = (  (lowA-ONE)*T(1) + rTWO*lowB*T(2)  + rTHREE*lowC*T(3)    & 
@@ -1074,11 +944,9 @@
     !-------------------------------------------------------------------------------
     !--- Nondimensionl Derivatives of specific heats at constant volume in moles [-]
     !-------------------------------------------------------------------------------
-    SUBROUTINE DiffInternalEnergy(dUdT,T)
-      !OUT
-      REAL(dp) :: dUdT(nspc)   
-      !IN
-      REAL(dp) :: T(:)                      
+    PURE SUBROUTINE DiffInternalEnergy(dUdT,T)
+      REAL(dp), INTENT(INOUT) :: dUdT(nspc)   
+      REAL(dp), INTENT(IN)    :: T(:)                      
       !
       WHERE (SwitchTemp>T(1))
         dUdT  = (lowA + lowB*T(1) + lowC*T(2)     & 
@@ -1089,11 +957,11 @@
       END WHERE
       dUdT = (dUdT - ONE)        ! speedchem SCmodule.f ~2618
     END SUBROUTINE DiffInternalEnergy
-    !
-    !
-    SUBROUTINE Diff2InternalEnergy(d2UdT2,T)
-      REAL(dp) :: d2UdT2(nspc)     !Constant volume specific heat’s derivative [J/mol/K2] 
-      REAL(dp) :: T(:)                      
+    
+    
+    PURE SUBROUTINE Diff2InternalEnergy(d2UdT2,T)
+      REAL(dp), INTENT(INOUT) :: d2UdT2(nspc)     !Constant volume specific heat’s derivative [J/mol/K2] 
+      REAL(dp), INTENT(IN)    :: T(:)                      
       !
       WHERE (SwitchTemp>T(1))
         d2UdT2 = lowB + TWO*lowC*T(1) + THREE*lowD*T(2) + FOUR*lowE*T(3) 
@@ -1102,102 +970,5 @@
       END WHERE
       d2UdT2 = d2UdT2 * R
     END SUBROUTINE Diff2InternalEnergy
-    
-    !--------------------------------------------------------------------------!
-    
-    FUNCTION vPhotokppCompute(Time,Sun) RESULT(kPHOTO)
-      REAL(dp) :: kPHOTO(nr_PHOTOkpp)
-      REAL(dp) :: Time, Sun
-      !
-      kPHOTO = iR%PHOTOkpp(:) * Sun
-    END FUNCTION vPhotokppCompute
-    
-    FUNCTION vPhoto2kppCompute(Time,Sun) RESULT(kPHOTO2)
-      REAL(dp) :: kPHOTO2(nr_PHOTO2kpp)
-      REAL(dp) :: Time, Sun
-      !
-      kPHOTO2 = iR%PHOTO2kpp(:) * Sun*Sun
-    END FUNCTION vPhoto2kppCompute
-    
-    FUNCTION vPhoto3kppCompute(Time,Sun) RESULT(kPHOTO3)
-      REAL(dp) :: kPHOTO3(nr_PHOTO3kpp)
-      REAL(dp) :: Time, Sun
-      !
-      kPHOTO3 = iR%PHOTO3kpp(:) * Sun*Sun*Sun
-    END FUNCTION vPhoto3kppCompute
-    !======================================================================!
-    !                          AQUEOUS REACTIONS                           !
-    !                          -----------------                           !
-    !======================================================================!
-    ! ===  Photolysis reactions 
-    !======================================================================!
-    ! Input:
-    !   - Contants
-    !   - Time
-    !----------------------------------------------------------------------!
-    ! Output:
-    !   - Reaction Constant
-    !----------------------------------------------------------------------!
-    
-    FUNCTION vDConstCompute() RESULT(k)
-      REAL(dp)  :: k(nr_DCONST,2)
-      !
-      k(:,2) = iR%DCONST(:,2)
-      k(:,1) = iR%DCONST(:,1) * k(:,2)
-    END FUNCTION vDConstCompute
-    
-    FUNCTION vDTempCompute(Temp) RESULT(k)
-      REAL(dp)  :: k(nr_DTEMP,2)
-      REAL(dp), INTENT(IN) :: Temp(:)
-      !
-      k(:,2) = iR%DTEMP(:,3)
-      k(:,1) = iR%DTEMP(:,1)*EXP(iR%DTEMP(:,2)*(Temp(6)-InvRefTemp)) * k(:,2)
-    END FUNCTION vDTempCompute
-    
-    FUNCTION vDTemp2Compute(Temp)   RESULT(k)
-      REAL(dp)  :: k(nr_DTEMP2,2)
-      REAL(dp), INTENT(IN) :: Temp(:)
-      !
-      k(:,2) = iR%DTEMP2(:,3)*EXP(iR%DTEMP2(:,4)*(Temp(6)-InvRefTemp))
-      k(:,1) = iR%DTEMP2(:,1)*EXP(iR%DTEMP2(:,2)*(Temp(6)-InvRefTemp)) * k(:,2)
-    END FUNCTION vDTemp2Compute
-    
-    FUNCTION vDTemp3Compute(Temp) RESULT(k)
-      REAL(dp)  :: k(nr_DTEMP3,2)
-      REAL(dp), INTENT(IN)  :: Temp(:)
-      ! 
-      k(:,2) = iR%DTEMP3(:,4)
-      k(:,1) = iR%DTEMP3(:,1) * EXP(iR%DTEMP3(:,2)*(RefTemp*Temp(6)-ONE)         &
-      &      + iR%DTEMP3(:,3)*(One-RefTemp*Temp(6) + LOG10(RefTemp*Temp(6)))) * k(:,2)
-    END FUNCTION vDTemp3Compute
-    
-    FUNCTION vDTemp4Compute(Temp) RESULT(k)
-      REAL(dp)  :: k(nr_DTEMP4,2)
-      REAL(dp), INTENT(IN)  :: Temp(:)
-      !
-      k(:,2) = ONE  ! OSSI
-      k(:,1) = iR%DTEMP4(:,1)*EXP(iR%DTEMP4(:,2)                &
-      &      * (Temp(1)*InvRefTemp-One) + iR%DTEMP4(:,3)            &
-      &      * (ONE+LOG(Temp(1)*InvRefTemp)-Temp(1)*InvRefTemp)) * k(:,2)
-    END FUNCTION vDTemp4Compute
-    
-    FUNCTION vDTemp5Compute(Temp) RESULT(k)
-      REAL(dp)  :: k(nr_DTEMP5,2)
-      REAL(dp), INTENT(IN)  :: Temp(:)
-      !
-      k(:,2) = ONE  ! OSSI
-      k(:,1) = iR%DTEMP5(:,1)*(Temp*InvRefTemp)**iR%DTEMP4(:,2)  &
-      &      * EXP(iR%DTEMP5(:,3)*(Temp(6)-InvRefTemp)) * k(:,2)
-    END FUNCTION vDTemp5Compute      
-    
-    FUNCTION vMeskhidzeCompute(Temp) RESULT(k)
-      REAL(dp)  :: k(nr_Meskhidze,2)
-      REAL(dp), INTENT(IN)  :: Temp(:)
-      !
-      k(:,2) = iR%Meskhidze(:,4) * EXP(iR%Meskhidze(:,5)  &
-      &      * (Temp(6)-InvRefTemp)) * iR%Meskhidze(:,7)!*(ActivityHp)**m
-      k(:,1) = iR%Meskhidze(:,1) * (Temp*InvRefTemp)**iR%Meskhidze(:,2)  &
-      &      * EXP(iR%Meskhidze(:,3)*(Temp(6)-InvRefTemp)) * k(:,2)
-    END FUNCTION vMeskhidzeCompute
     
   END MODULE Rates_Mod

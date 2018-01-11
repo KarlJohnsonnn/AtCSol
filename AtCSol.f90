@@ -6,7 +6,7 @@
 !=======================================
 !
 !
-PROGRAM tool
+PROGRAM AtCSol
   !
   USE Kind_Mod
   USE Rates_Mod
@@ -62,7 +62,7 @@ PROGRAM tool
   INTEGER, ALLOCATABLE :: PivOrder(:)
 
   ! format string
-  CHARACTER(14) :: fmt0=''
+  CHARACTER(14) :: fmt0 = '  [molec/cm3] '
 
   ! new testing stuff 
   TYPE(CSR_Matrix_T) :: A_T, B_T, P_HG, S_HG, R_HG, S_HG_transp
@@ -101,7 +101,7 @@ PROGRAM tool
   !----------------------------------------------------------------
   ! --- Read run-file
   CALL InitRun
-  IF ( MPI_ID == 0 ) WRITE(*,777) 'Initialize run-file .......... done'
+  IF ( MPI_master ) WRITE(*,777) 'Initialize run-file .......... done'
  
   !----------------------------------------------------------------
   ! --- set cloud intervall
@@ -111,16 +111,15 @@ PROGRAM tool
   !  --- read the .sys data, save coefs in sparse matrix
   Time_Read = MPI_WTIME()
 
-  IF ( MPI_ID == 0 ) WRITE(*,777,ADVANCE='NO') 'Reading sys-file .............'
+  IF ( MPI_master ) WRITE(*,777,ADVANCE='NO') 'Reading sys-file .............'
 
   IF ( Teq.AND.ChemKin ) THEN
 
     CALL Read_Elements    ( SysFile    , SysUnit )
     CALL Read_Species     ( SysFile    , SysUnit )
     CALL Read_Reaction    ( SysFile    , SysUnit )
-    hasGasSpc = .TRUE.
 
-    IF ( MPI_ID == 0 ) WRITE(*,*) 'done   ---->  Solve Gas Energy Equation '
+    IF ( MPI_master ) WRITE(*,*) 'done   ---->  Solve Gas Energy Equation '
 
    !-----------------------------------------------------------------------
    ! --- print reactions and build A, B and (B-A) structure
@@ -134,9 +133,9 @@ PROGRAM tool
     bGs(1) = 1
     bGs(2) = ns_GAS
     iGs = [(i, i=bGs(1),bGs(2))]
+    hasGasSpc = .TRUE.
 
-
-    !--- richtigen index holen, da TB unsortiert eingelesen wurde
+    !--- gather correct indices cause ChemKin mechanisms read in unsorted
     CALL Setup_ThirdBodyIndex
     CALL Setup_ReactionIndex
    
@@ -144,8 +143,8 @@ PROGRAM tool
     ALLOCATE( InitValAct(ns_GAS) , InitValKat(ns_KAT) , y_emi(ns_GAS) )
 
 		!--- malloc gibbs energy, derivates
-		ALLOCATE( GFE(nspc)   , DGFEdT(nspc)   )
-		ALLOCATE( DelGFE(neq) , DDelGFEdT(neq) )
+    ALLOCATE( GFE(nspc)   , DGFEdT(nspc)   &
+    &       , DelGFE(neq) , DDelGFEdT(neq) )
 		GFE      = ZERO; 	DGFEdT    = ZERO
 		DelGFE   = ZERO; 	DDelGFEdT = ZERO
 
@@ -168,7 +167,7 @@ PROGRAM tool
       &                            , Press = Press_in_dyncm2 &
       &                            , Temp  = Temperature0    )
     ELSE
-      IF (MPI_ID == 0 ) THEN
+      IF (MPI_master ) THEN
         WRITE(*,*)
         WRITE(*,777) '    No molecular weights are given.  '
         WRITE(*,777) '    Make sure the initial values are given in [mole/cm3] !'
@@ -218,13 +217,8 @@ PROGRAM tool
   END IF
 
   IF (MPI_ID==0) THEN
-    !WRITE(*,*) ' TESTAUSGABE::::::'
-    !DO i=1,nr
-    !  WRITE(*,'(A,I0,A,*(Es12.2,2X))') ' Constants(',i,') = ',ReactionSystem(i)%Constants
-    !END DO
-    
-    WRITE(*,777) 'Read ini-file ................ done'
-    WRITE(*,777) 'Print chem-file .............. done'
+    WRITE(*,777) 'Reading ini-file ............. done'
+    WRITE(*,777) 'Printing chem-file ........... done'
     WRITE(*,*)
     WRITE(*,'(10X,A,I6)') '    Number of Reactions = ', neq
     WRITE(*,'(10X,A,I6)') '    Number of Species   = ', nspc
@@ -235,7 +229,6 @@ PROGRAM tool
   ! --- Read species for diagnose (print species concs to NetCDF file)
   CALL Read_Diag( NetCDF%spc_Pos , NetCDF%spc_Phase , InitFile )
   !-----------------------------------------------------------------------
-
 
   !-----------------------------------------------------------------------
   ! --- Timers
@@ -265,11 +258,10 @@ PROGRAM tool
   ! true if mechanism contains photolytic reactions
   PHOTO = (nr_G_photo+nr_A_photo) > 0
 
-  !---------------------------------------------------------------------------
-  ! --- If more than one argument is passed set new tolerance and ROS methode
-  !---------------------------------------------------------------------------
-
-  ! if you want to change the calc of the linear systems without opening the run-file
+  !----------------------------------------------------------------------------
+  !--- If one wants to change the calculation of the linear systems without 
+  !    opening the run-file, start the simulation with a second parameter
+  !----------------------------------------------------------------------------
   CALL getarg ( 2 , newLinAlg )
   IF ( newLinAlg /= '' ) THEN
     SELECT CASE (newLinAlg)
@@ -292,14 +284,14 @@ PROGRAM tool
   END DO
   
   !-----------------------------------------------------------------------
-  !--- print input parameter, method, tols, etc.
-  CALL Print_Run_Param()
-  !
-  !--- Print Init parameters, concs, temp, pressure,....
+  !--- print input parameter, method, tols, concs, temp, pressure,....
+  !-----------------------------------------------------------------------
+  CALL Print_Run_Param
+  
   IF (MPI_ID==0) THEN
     WRITE(*,777) 'Initial values:   '
     WRITE(*,*)
-    fmt0 = '  [molec/cm3] '
+    
     IF ( Teq ) fmt0 = '  [mol/cm3]'
     IF ( hasGasSpc )   WRITE(*,798) 'gaseous', SUM(InitValAct( bGs(1):bGs(2) )) , fmt0
     IF ( hasAquaSpc )  WRITE(*,798) 'aqueous', SUM(InitValAct( bAs(1):bAs(2) )) , fmt0
@@ -340,23 +332,16 @@ PROGRAM tool
 	ELSE
 		Atol = [AtolGas , AtolAqua]		! abs. tolerance for Tropos scenario
   END IF
-  
-  !DO i=1,SIZE(InitValAct); WRITE(*,'(A,I0,A,Es14.4)') ' Val(',i,') = ',InitValAct(i); END DO
 
   !-----------------------------------------------------------------------
   ! --- Initialize NetCDF output file
   !-----------------------------------------------------------------------
-
   IF ( NetCdfPrint ) THEN 
-    StartTimer  = MPI_WTIME()
-
-    !--  Netcdf Output File
+    StartTimer = MPI_WTIME()
     errind = 0
-
     CALL InitNetcdf
     CALL SetOutputNCDF( NetCDF, Tspan(1) , ZERO , errind , ZERO , InitValAct , Temperature0 )
     CALL StepNetCDF( NetCDF )
-
     TimeNetCDF = MPI_WTIME() - StartTimer
   END IF
 
@@ -481,9 +466,9 @@ PROGRAM tool
     ! ---- Calculate first reaction rates
     RateCnt = 0
     IF (Teq) THEN
-      CALL ReactionRatesAndDerivative_ChemKin( Tspan(1) , [InitValAct,Temperature0] , Rate , DRatedT )
+      CALL ReactionRates( Tspan(1) , [InitValAct,Temperature0] , Rate , DRatedT )
     ELSE
-      CALL ReactionRates_Tropos( Tspan(1) , InitValAct , Rate )
+      CALL ReactionRates( Tspan(1) , InitValAct , Rate )
     END IF
     Y = MAX( ABS(InitValAct) , eps ) * SIGN( ONE , InitValAct )    ! |y| >= eps
     
@@ -495,41 +480,32 @@ PROGRAM tool
   END IF
 
   ! open file to save the fluxes 
-  IF ( MPI_ID == 0 .AND. FluxAna ) THEN
+  IF ( MPI_master .AND. FluxAna ) THEN
     StpFlux  = StpNetCDF
     iStpFlux = 0
     CALL OpenFile_wStream(FluxUnit,FluxFile);       CLOSE(FluxUnit)
     CALL OpenFile_wSeq(FluxMetaUnit,FluxMetaFile);  CLOSE(FluxMetaUnit)
-    !CALL OpenFile_wSeq(flux_nr,flux_name)
-    !WRITE(flux_nr,*) neq, nspc
-    !CLOSE(flux_nr)
   END IF
   
   !-----------------------------------------------------------------------
   ! --- Start the integration routine 
   !-----------------------------------------------------------------------
-  CALL Integrate (  InitValAct     &  ! initial concentrations activ species
-  &               , Rate           &  ! reaction rates at time=t0
-  &               , Tspan          &  ! integration invervall
-  &               , Atol           &  ! abs. tolerance of species
-  &               , RtolROW        &  ! rel. tolerance Rosenbrock method
-  &               , ODEsolver      )  ! methode for solving the ode system
-  !---------------------------------------------------------------
+  CALL Integrate ( InitValAct &  ! initial concentrations activ species
+  &              , Rate       &  ! reaction rates at time=t0
+  &              , Tspan      &  ! integration invervall
+  &              , Atol       &  ! abs. tolerance of species
+  &              , RtolROW    &  ! rel. tolerance Rosenbrock method
+  &              , ODEsolver  )  ! methode for solving the ode system
+  
   ! --- stop timer and print output statistics
   Timer_Finish = MPI_WTIME() - Timer_Start + Time_Read
-  !
-  ! Print statistics
-  CALL Output_Statistics( Time_Read       , TimeSymbolic  , TimeFac       &
-  &                     , TimeSolve       , TimeRates     , TimeJac       &
-  &                     , TimeIntegrationE, Timer_Finish  , TimeRateSend  &
-  &                     , TimeNetCDF      , TimeErrCalc   , TimeRhsCalc   )
-  !---------------------------------------------------------------
-!WRITE(*,*)  '            NO SIMULATION '
+  
+  CALL Output_Statistics
 
 
   !************************************************************************************************
   !************************************************************************************************
-  IF ( MPI_ID == 0 .AND. FluxAna ) THEN
+  IF ( MPI_master .AND. FluxAna ) THEN
     WRITE(*,*)
     WRITE(*,'(10X,A)') '*****************************************************'
     WRITE(*,'(10X,A)') '**                                                 **'
@@ -575,19 +551,9 @@ PROGRAM tool
       WRITE(*,*)
     END IF
   END IF
-  !************************************************************************************************
-  !************************************************************************************************
-
-
-  IF ( Lehmann ) THEN
-    ! writing data for pahtway analysis
-    mixing_ratios_spc(:,:) = (mixing_ratios_spc / (6.02e20_dp)) * 1.e09_dp ! in ppb
-    integrated_rates = (integrated_rates / (6.02e20_dp)) * 1.e09_dp ! in ppb
-    CALL WriteAnalysisFile(ReactionSystem,y_name,mixing_ratios_spc,integrated_rates)
-  END IF
 
   ! --- Close MPI 
-  IF (MPI_id == 0) THEN
+  IF ( MPI_master ) THEN
     WRITE(*,*); WRITE(*,*)
     WRITE(*,777) '************ ********** *********** ********** ************'
     WRITE(*,777) '************ **********     DONE    ********** ************'
@@ -606,4 +572,4 @@ PROGRAM tool
   801  FORMAT(10X,'    Temperature                =  ', Es8.2,'  [K]') 
   802  FORMAT(10X,'    Pressure                   =  ', Es8.2,'  [Pa]')
   803  FORMAT(10X,'    Reactor denstiy            =  ', Es8.2,'  [kg/cm3]')
-END PROGRAM tool
+END PROGRAM AtCSol

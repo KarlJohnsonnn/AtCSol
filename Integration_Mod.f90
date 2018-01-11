@@ -60,7 +60,7 @@ MODULE Integration_Mod
     !
     REAL(dp) :: t             ! current time
     REAL(dp) :: timepart
-    REAL(dp) :: StartTimer
+    REAL(dp) :: time_int = 0.0d0
 
     REAL(dp) :: h, hmin, tnew, tmp, hOld
     REAL(dp) :: error, errorOld
@@ -97,8 +97,8 @@ MODULE Integration_Mod
       Y0(nDIM) = Temperature0     ! = 750 [K] aus speedchem debug
       Y(nDIM)  = Temperature0     ! = 750 [K]
 
-      Y = MAX( ABS(Y) , eps ) * SIGN( ONE , Y )    ! |y| >= eps
       Y0 = MAX( ABS(Y0) , eps ) * SIGN( ONE , Y0 )    ! |y| >= eps
+      Y  = MAX( ABS(Y)  , eps ) * SIGN( ONE , Y  )    ! |y| >= eps
     END IF
 
     t = Tspan(1)
@@ -114,10 +114,10 @@ MODULE Integration_Mod
 
     
         !---- Calculate a first stepsize based on 2nd deriv.
-        h = InitialStepSize( Jac_CC, R0, t, Y, ROS%pow )
+        h = InitialStepSize( Jac_CC, R0, t, Y0, ROS%pow )
 
         IF (MPI_master) WRITE(*,'(10X,A)',ADVANCE='NO') 'Start Integration.............      '
-        TimeIntegrationA = MPI_WTIME()
+        time_int = MPI_WTIME()
        
             
         MAIN_LOOP_ROSENBROCK_METHOD: DO 
@@ -221,7 +221,7 @@ MODULE Integration_Mod
     
       CASE('LSODE')
 
-        TimeIntegrationA=MPI_WTIME()
+        time_int=MPI_WTIME()
 
         LIW    = 20 + nDIM
         LRW    = 22 + 9*nDIM + nDIM**2
@@ -293,7 +293,7 @@ MODULE Integration_Mod
 
       CASE('LSODES')
 
-        TimeIntegrationA=MPI_WTIME()
+        time_int=MPI_WTIME()
 
         LIW    = 30
         LRW    = 20 + 21 * nDIM + 4*(BAT%nnz+A%nnz+2*nDIM)
@@ -425,7 +425,7 @@ MODULE Integration_Mod
         WRITE(*,*) ' No other methods implemented jet. Use Rosenbrock, LSODE[S] or backward Euler'
 
     END SELECT
-    TimeIntegrationE  = MPI_WTIME() - TimeIntegrationA
+    TimeIntegration = MPI_WTIME() - time_int
 
     !
     ! DEALLOCATE Mumps instance
@@ -493,7 +493,7 @@ MODULE Integration_Mod
     
     IF (Teq) THEN         ! OUT:   IN:
       ! MASS CONSERVATION
-      CALL ReactionRatesAndDerivative_ChemKin( T , Y , Rate , DRate)
+      CALL ReactionRates( T , Y , Rate , DRate)
       dCdt = BAT * Rate + y_emi   ! [mol/cm3/s]
     
       YDOT(1:nspc) = dCdt
@@ -509,7 +509,7 @@ MODULE Integration_Mod
       YDOT(NEQ1) = - SUM( U * dCdt ) * rRho / c_v   ! rRho=mega/rho 
     ELSE
       ! MASS CONSERVATION
-      CALL ReactionRates_Tropos( T , Y , Rate )
+      CALL ReactionRates( T , Y , Rate )
       dCdt = BAT * Rate + y_emi   ! [mol/cm3/s]
       
       YDOT(1:nspc) = dCdt

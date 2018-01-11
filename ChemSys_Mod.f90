@@ -2151,7 +2151,9 @@ MODULE Chemsys_Mod
     Reaction%Line3 = TRIM(Line(3))
     PosEqual = Index(Reaction%Line1,' = ')
     IF (PosEqual==0) THEN
-      WRITE(*,*) '  Missing seperator " = " in reaction: ',fNumber
+      WRITE(*,*); WRITE(*,*)
+      WRITE(*,'(10X,A,I0,A)') 'ERROR: Missing seperator " = " in reaction ',fNumber,':  '//TRIM(Line(2)) 
+      WRITE(*,*); WRITE(*,*)
       STOP 
     ELSE
       fNumber = fNumber + 1
@@ -2475,13 +2477,14 @@ MODULE Chemsys_Mod
       
       ! check syntax for missing white space 
       !e.g.:  NO2 = O3PX +NO -->  missing white space between + and NO
-      IF (INDEX(TRIM(Species),' +')>0.OR.INDEX(TRIM(Species),' -')>0) THEN
-        WRITE(*,*) 'Missing blank space in reaction: ',String
-        WRITE(*,*) 'Species = ', TRIM(Species)
-        WRITE(*,*) 'Check syntax in .sys!'
+      IF ( INDEX(TRIM(Species),' +') > 0 .OR. INDEX(TRIM(Species),' -') > 0        ) THEN
+        WRITE(*,777) 'ERROR: Missing blank space in reaction: '//String
+        WRITE(*,777) 'Species = '//TRIM(Species)
+        WRITE(*,777) 'Check syntax in .sys!'
         CALL FinishMPI()
         STOP 
       END IF
+      777 FORMAT(10X,A)
 
       PosSpecies = SCAN(Species,SetSpecies)
       NumSpec = NumSpec + 1
@@ -2525,6 +2528,14 @@ MODULE Chemsys_Mod
       END IF
 
       ! if no dummy species was found then add new species to hash table
+      !IF ( INDEX(TRIM(ADJUSTL(Duct(NumSpec)%Species)),'+',.TRUE.) == LEN_TRIM(Duct(NumSpec)%Species) .OR. &
+      !&    INDEX(TRIM(ADJUSTL(Duct(NumSpec)%Species)),'-',.TRUE.) == LEN_TRIM(Duct(NumSpec)%Species) ) THEN
+      !  WRITE(*,777) 'ERROR: Missing blank space in reaction: '//String
+      !  WRITE(*,777) 'Species = '//TRIM(Species)
+      !  WRITE(*,777) 'Check syntax in .sys!'
+      !  CALL FinishMPI()
+      !  STOP
+      !END IF
       CALL InsertSpecies( Duct(NumSpec)%Species, Duct(NumSpec)%Type )
 
       ! if there are no further species exit the loop

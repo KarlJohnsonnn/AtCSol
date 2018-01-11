@@ -102,7 +102,6 @@ MODULE mo_MPI
     ! collect the parts of Rate on all processes
     ! -- IN_PLACE --> no need for sendcount and sendtype
     ! -- ":" = proc0,..,procN-1
-    TimeRateSendA=MPI_WTIME()
     CALL MPI_AllGatherV( MPI_IN_PLACE        &  ! sendbuffer 
     &                  , 0                   &  ! sendcount 
     &                  , MPI_DATATYPE_NULL   &  ! sendtype
@@ -113,7 +112,6 @@ MODULE mo_MPI
     &                  , MPI_COMM_WORLD      &  ! communicator
     &                  , MPIErr              )  ! error code-\
     CALL CheckMPIErr() ! <------------------check------------/
-    TimeRateSend=TimeRateSend+(MPI_WTIME()-TimeRateSendA)
   END SUBROUTINE GatherAllPartitions
   !
   !

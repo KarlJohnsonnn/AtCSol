@@ -235,9 +235,9 @@ MODULE Rosenbrock_Mod
     tdel  = t + MIN( SQRT(eps) * MAX( ABS(t) , ABS(t+h) ) , absh )
 
     IF (Teq) THEN
-      CALL ReactionRatesAndDerivative_ChemKin( t+tdel , Y , Rate , dRdT )
+      CALL ReactionRates( t+tdel , Y , Rate , dRdT )
     ELSE
-      CALL ReactionRates_Tropos( t+tdel , Y , Rate)
+      CALL ReactionRates( t+tdel , Y , Rate)
     END IF
     Out%nRateEvals = Out%nRateEvals + 1
 
@@ -344,22 +344,21 @@ MODULE Rosenbrock_Mod
     !********************************************************************************
    
     ! HIER UNBEDINGT RATE MIT Y0 ALS INPUT
-    IF ( .NOT.Teq ) THEN
+    IF ( Teq ) THEN
+      Yrh = Y0(1:nspc) / h
+      CALL ReactionRates( t, Y0, Rate, DRatedT )     
+    ELSE
       Y   = MAX( ABS(Y0)  , eps ) * SIGN( ONE , Y0 )  ! concentrations =/= 0
       Yrh = Y(1:nspc) / h
-      CALL ReactionRates_Tropos( t, Y, Rate )
+      CALL ReactionRates( t, Y, Rate )
       Rate  = MAX( ABS(Rate) , eps ) * SIGN( ONE , Rate )    ! |r| >= eps
       rRate = ONE / Rate
-    ELSE
-      Yrh = Y0(1:nspc) / h
-      CALL ReactionRatesAndDerivative_ChemKin( t, Y0, Rate, DRatedT )     
     END IF
     Rate_t = Rate
 
     IF ( Teq ) THEN
       Tarr = UpdateTempArray   ( Y0(nDIM) )       
 
-      !                          OUT:      IN:
       CALL InternalEnergy      ( U       , Tarr)             
       CALL DiffInternalEnergy  ( dUdT    , Tarr)              
       CALL Diff2InternalEnergy ( d2UdT2  , Tarr)
@@ -420,6 +419,10 @@ MODULE Rosenbrock_Mod
 
       IF ( useSparseLU ) THEN
         CALL SetLUvaluesCL( LU_Miter , Miter , LU_Perm )
+        !DO i=1,nDIM
+        !  WRITE(*,'(2(A,I0),A,2Es16.6)') ' Diagonal:  M/LU_M(',i,',',i,') = ',Miter%Val(Miter%DiagPtr(i)),LU_Miter%Val(LU_Miter%DiagPtr(i))
+        !END DO
+        !READ(*,*)
       END IF
       TimeJac = TimeJac + (MPI_WTIME()-TimeJacobianA)
 
@@ -531,9 +534,9 @@ MODULE Rosenbrock_Mod
         
         ! Update Rates at  (t + SumA*h) , and  (Y + A*)k
         IF (Teq) THEN
-          CALL ReactionRatesAndDerivative_ChemKin( tt , Y , Rate , DRatedT )
+          CALL ReactionRates( tt , Y , Rate , DRatedT )
         ELSE
-          CALL ReactionRates_Tropos( tt , Y , Rate )
+          CALL ReactionRates( tt , Y , Rate )
         END IF
 
         IF (dprint) THEN

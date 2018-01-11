@@ -1383,15 +1383,15 @@ MODULE Sparse_Mod
   END SUBROUTINE ConnectivityMethode
   !
   ! SPARSE JACOBIMATRIX CALC
-  SUBROUTINE Jacobian_CC(JacCC,gMat,aMat,rVec,yVec)
+  PURE SUBROUTINE Jacobian_CC(JacCC,gMat,aMat,rVec,yVec)
     !
     ! jMat = gMat*Dr*aMat*invDy;
     !
     TYPE(CSR_Matrix_T), INTENT(INOUT) :: JacCC
-    TYPE(CSR_Matrix_T), INTENT(IN) :: gMat
-    TYPE(CSR_Matrix_T), INTENT(IN) :: aMat
-    REAL(dp), INTENT(IN) :: rVec(aMat%m)
-    REAL(dp), INTENT(IN) :: yVec(aMat%n)
+    TYPE(CSR_Matrix_T), INTENT(IN)    :: gMat
+    TYPE(CSR_Matrix_T), INTENT(IN)    :: aMat
+    REAL(dp),           INTENT(IN)    :: rVec(aMat%m)
+    REAL(dp),           INTENT(IN)    :: yVec(aMat%n)
     !
     INTEGER :: i,j,jj,k,kk
     REAL(dp) :: ajj
@@ -1425,26 +1425,25 @@ MODULE Sparse_Mod
 
  
   ! JacTC = -1/cv/rho [C_v*dTdt + U^T*JacCC]
-  SUBROUTINE Jacobian_TC(JacTC,JacCC,cv,dUdT,dTdt,U,rRho)
+  PURE SUBROUTINE Jacobian_TC(JacTC,JacCC,cv,dUdT,dTdt,U,rRho)
     TYPE(CSR_Matrix_T), INTENT(IN)  :: JacCC
-    REAL(dp),     INTENT(IN)  :: cv , dTdt, rRho
-    REAL(dp),     INTENT(IN)  :: dUdT(:), U(:)
-    REAL(dp),     INTENT(OUT) :: JacTC(JacCC%m)
+    REAL(dp),           INTENT(IN)  :: cv , dTdt, rRho
+    REAL(dp),           INTENT(IN)  :: dUdT(:), U(:)
+    REAL(dp),           INTENT(OUT) :: JacTC(JacCC%m)
     !
     REAL(dp) :: tmpJacVal(JacCC%m)
 
     tmpJacVal = DAX_sparse(JacCC,U)
-
     JacTC = - (dUdT*dTdt + tmpJacVal) / cv * rRho * milli
 
   END SUBROUTINE Jacobian_TC
   
 
   ! JacTC = -1/cv [C_v*dTdt + U^T*JacCC]
-  SUBROUTINE Jacobian_CT(JacCT,gMat,Dr,Kvec)
+  PURE SUBROUTINE Jacobian_CT(JacCT,gMat,Dr,Kvec)
     TYPE(CSR_Matrix_T), INTENT(IN)  :: gMat
-    REAL(dp),     INTENT(IN)  :: Dr(:), Kvec(:)
-    REAL(dp),     INTENT(OUT) :: JacCT(gMat%m)
+    REAL(dp),           INTENT(IN)  :: Dr(:), Kvec(:)
+    REAL(dp),           INTENT(OUT) :: JacCT(gMat%m)
     !
     REAL(dp) :: dRatedT(gMat%n)
 
@@ -1456,11 +1455,11 @@ MODULE Sparse_Mod
  
 
   ! JacTT = -1/cv/rho [dTdT*dcvdT+C_v*dCdt + U^T*JacCC]
-  SUBROUTINE Jacobian_TT(JacTT,JacCT,cv,dcvdT,dTdt,dUdT,dcdt,U,rRho)
-    REAL(dp), INTENT(IN)  :: JacCT(:)
-    REAL(dp), INTENT(IN)  :: cv , dcvdT , dTdt , rRho
-    REAL(dp), INTENT(IN)  :: dUdT(:) , dCdt(:) , U(:)
-    REAL(dp), INTENT(OUT) :: JacTT
+  PURE SUBROUTINE Jacobian_TT(JacTT,JacCT,cv,dcvdT,dTdt,dUdT,dcdt,U,rRho)
+    REAL(dp), INTENT(IN)    :: JacCT(:)
+    REAL(dp), INTENT(IN)    :: cv , dcvdT , dTdt , rRho
+    REAL(dp), INTENT(IN)    :: dUdT(:) , dCdt(:) , U(:)
+    REAL(dp), INTENT(INOUT) :: JacTT
     !
     JacTT = - milli * rRho/cv  *                &
           &   (  dTdT*dcvdT/cv + SUM(dUdT*dCdt) &
@@ -1470,12 +1469,11 @@ MODULE Sparse_Mod
  
 
   ! SPARSE MITER CALCULATION_CLASSIC
-  SUBROUTINE Miter_Classic(Miter,h,g,J1,J2,J3,J4)
-    !
-    TYPE(CSR_Matrix_T),       INTENT(INOUT) :: Miter
+  PURE SUBROUTINE Miter_Classic(Miter,h,g,J1,J2,J3,J4)
     REAL(dp),           INTENT(IN)    :: h, g
-    TYPE(CSR_Matrix_T),       INTENT(IN)    :: J1
+    TYPE(CSR_Matrix_T), INTENT(IN)    :: J1
     REAL(dp), OPTIONAL, INTENT(IN)    :: J2(:), J3(:), J4
+    TYPE(CSR_Matrix_T), INTENT(INOUT) :: Miter
     !
     INTEGER :: i,j,jj,cnt
     REAL(dp) :: hg
@@ -1515,7 +1513,7 @@ MODULE Sparse_Mod
   SUBROUTINE BuildSymbolicClassicMatrix(CL,Jac,RowGamma)
     TYPE(CSR_Matrix_T), INTENT(OUT) :: CL
     TYPE(CSR_Matrix_T), INTENT(IN)  :: Jac
-    REAL(dp),     INTENT(IN)  :: RowGamma
+    REAL(dp),           INTENT(IN)  :: RowGamma
 
     TYPE(CSR_Matrix_T) :: Id
     TYPE(CSR_Matrix_T) :: CL0
@@ -1726,14 +1724,13 @@ MODULE Sparse_Mod
 
  
   
-  SUBROUTINE SetLUvaluesEX(LU,invD_r,D_c,KVec,UVec,X,FixValues)
-
+  PURE SUBROUTINE SetLUvaluesEX(LU,invD_r,D_c,KVec,UVec,X,FixValues)
     ! Set values to block matrix
     TYPE(CSR_Matrix_T), INTENT(INOUT) :: LU  
-    REAL(dp), INTENT(IN) :: invD_r(:), KVec(:)
-    REAL(dp), INTENT(IN) :: D_c(:), UVec(:)
-    REAL(dp), INTENT(IN) :: X
-    REAL(dp), INTENT(IN), OPTIONAL :: FixValues(:)
+    REAL(dp),           INTENT(IN)    :: invD_r(:), KVec(:)
+    REAL(dp),           INTENT(IN)    :: D_c(:), UVec(:)
+    REAL(dp),           INTENT(IN)    :: X
+    REAL(dp), OPTIONAL, INTENT(IN)    :: FixValues(:)
 
     IF (PRESENT(FixValues)) LU%Val = FixValues
     
@@ -1748,7 +1745,7 @@ MODULE Sparse_Mod
   END SUBROUTINE SetLUvaluesEX 
   !
   !
-  SUBROUTINE SetLUvaluesCL(LU,A,Permu)
+  PURE SUBROUTINE SetLUvaluesCL(LU,A,Permu)
     !
     ! Set values to block matrix
     TYPE(CSR_Matrix_T), INTENT(INOUT) :: LU
@@ -1774,7 +1771,6 @@ MODULE Sparse_Mod
     INTEGER :: i,ip,j,jj,jp,jjp,jp1
  
     nnzA=A%RowPtr(A%m+1)-1
-  
    
     IF (.NOT.ALLOCATED(Permutation)) ALLOCATE(Permutation(nnzA))
     Permutation = -14
@@ -2101,12 +2097,10 @@ MODULE Sparse_Mod
   !
   ! Matrix*Vector1+Vector2 (rhs)
   ! sparse matrix * vector + vector
-  FUNCTION DAXPY_sparse(A,X,Y) RESULT(Rhs)
-    !IN
-    TYPE(CSR_Matrix_T) :: A
-    REAL(dp) :: X(:), Y(:)
-    !OUT
-    REAL(dp) :: Rhs(A%m)
+  PURE FUNCTION DAXPY_sparse(A,X,Y) RESULT(Rhs)
+    TYPE(CSR_Matrix_T), INTENT(IN)    :: A
+    REAL(dp),           INTENT(IN)    :: X(:), Y(:)
+    REAL(dp)                          :: Rhs(A%m)
     !TEMP
     INTEGER :: i, rp_i, rp_i1
    
@@ -2119,12 +2113,10 @@ MODULE Sparse_Mod
 
 
   ! sparse matrix * vector
-  FUNCTION DAX_sparse(A,X) RESULT(Rhs)
-    !IN
+  PURE FUNCTION DAX_sparse(A,X) RESULT(Rhs)
     TYPE(CSR_Matrix_T), INTENT(IN) :: A
     REAL(dp),           INTENT(IN) :: X(:)
-    !OUT
-    REAL(dp) :: Rhs(A%m)
+    REAL(dp)                       :: Rhs(A%m)
     !TEMP
     INTEGER :: i, rp_i, rp_i1  ! RowPtr(i), RowPtr(i+1)-1
    
@@ -2226,8 +2218,8 @@ MODULE Sparse_Mod
   !
   !
   !
-  SUBROUTINE SparseLU(A)
-    TYPE(CSR_Matrix_T) :: A
+  PURE SUBROUTINE SparseLU(A)
+    TYPE(CSR_Matrix_T), INTENT(INOUT) :: A
     !
     REAL(dp) :: w(A%n)
     REAL(dp) :: alpha
@@ -2259,9 +2251,9 @@ MODULE Sparse_Mod
   END SUBROUTINE SparseLU
   !
   !
-  SUBROUTINE SolveSparse(LU,rhs)
+  PURE SUBROUTINE SolveSparse(LU,rhs)
     TYPE(CSR_Matrix_T), INTENT(INOUT) :: LU
-    REAL(dp) :: Rhs(:)
+    REAL(dp),           INTENT(INOUT) :: Rhs(:)
     !
     INTEGER :: i,jj
     REAL(dp) :: b(LU%n)
@@ -2285,8 +2277,6 @@ MODULE Sparse_Mod
     
     !--  Back-Permutation of solution
     Rhs( LU%InvPer ) = b
-
-
   END SUBROUTINE SolveSparse
 
 

@@ -4,7 +4,7 @@ MODULE mo_IO
   CONTAINS
   SUBROUTINE Logo()
     USE mo_MPI
-    IF (MPI_ID==0) THEN
+    IF (MPI_master) THEN
       WRITE(*,777) 
       WRITE(*,777) '************ ********** ************ ********** ************'
       WRITE(*,777) "*                                                          *"
@@ -39,7 +39,7 @@ MODULE mo_IO
 
     IF ( INDEX(SysFile,'.sys')==0)  SysFile = TRIM(SysFile)//'.sys'
 
-    IF (MPI_ID==0) THEN
+    IF (MPI_master) THEN
       WRITE(*,*)
       WRITE(*,777)   'Run - Paramter:'
       WRITE(*,*)
@@ -83,29 +83,27 @@ MODULE mo_IO
   END SUBROUTINE Print_Run_Param
   !
   !
-  SUBROUTINE Output_Statistics(TRead,TSymb,TFac,TSolve,TRates,TJac,TInte,TAll,TSend,TNcdf, TErr, TRhs)
+  SUBROUTINE Output_Statistics
     USE Kind_Mod
     USE mo_MPI
     USE mo_control
     !
-    REAL(dp) :: TRead,TSymb,TFac,TSolve,TRates,TJac,TInte,TAll,TSend, TNcdf, TErr, TRhs
     REAL(dp) :: maxTRead,maxTSymb,maxTFac,maxTSolve,maxTRates,maxTJac &
     &               , maxTInte,maxTAll,maxTSend,maxtNcdf,maxTErr,maxTRhs
     !
-    CALL GetMaxTimes(maxTRead,TRead)
-    CALL GetMaxTimes(maxTRates,TRates)
-    CALL GetMaxTimes(maxTSymb,TSymb)
-    CALL GetMaxTimes(maxTInte,TInte)
-    CALL GetMaxTimes(maxTFac,TFac)
-    CALL GetMaxTimes(maxTSolve,TSolve)
-    CALL GetMaxTimes(maxTSend,TSend)
-    CALL GetMaxTimes(maxTJac,TJac)
-    CALL GetMaxTimes(maxTAll,TAll)
-    CALL GetMaxTimes(maxTNcdf,TNcdf)
-    CALL GetMaxTimes(maxTErr,TErr)
-    CALL GetMaxTimes(maxTRhs,TRhs)
+    CALL GetMaxTimes(maxTRead,Time_Read)
+    CALL GetMaxTimes(maxTRates,TimeRates)
+    CALL GetMaxTimes(maxTSymb,TimeSymbolic)
+    CALL GetMaxTimes(maxTInte,TimeIntegration)
+    CALL GetMaxTimes(maxTFac,TimeFac)
+    CALL GetMaxTimes(maxTSolve,TimeSolve)
+    CALL GetMaxTimes(maxTJac,TimeJac)
+    CALL GetMaxTimes(maxTAll,Timer_Finish)
+    CALL GetMaxTimes(maxTNcdf,TimeNetCDF)
+    CALL GetMaxTimes(maxTErr,TimeErrCalc)
+    CALL GetMaxTimes(maxTRhs,TimeRhsCalc)
     !
-    IF (MPI_ID==0) THEN
+    IF (MPI_master) THEN
       ! print the statistics
       299 format(10X,A,3X,F13.6,A)
       298 format(10X,A,3X,I10)
@@ -153,7 +151,7 @@ MODULE mo_IO
     CHARACTER(50)        :: mName
     !
     !
-    IF (MPI_ID==0) THEN
+    IF (MPI_master) THEN
       ! only if MatrixPrint=True
       CALL WriteSparseMatrix(aMat,TRIM('matrixOut/alpha'//fName))
       CALL WriteSparseMatrix(bMat,TRIM('matrixOut/beta'//fName))
