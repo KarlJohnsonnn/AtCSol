@@ -244,12 +244,18 @@
           ! CHECK ob file überhaupt existiert
 				SUBROUTINE FileNameCheck(Name,miss)
           CHARACTER(*) :: Name
-					CHARACTER(*) :: miss
-					IF ( TRIM(Name) == '' ) THEN
-						WRITE(*,*) '   ERROR :: Missing File: ',TRIM(miss)
-						!CALL FinishMPI(); STOP
+          CHARACTER(*) :: miss
+          LOGICAL      :: ex
+          INQUIRE(FILE=TRIM(Name), EXIST=ex)
+          
+          IF ( TRIM(Name) == '' .OR. .NOT.ex ) THEN
+            WRITE(*,*); WRITE(*,*)
+						WRITE(*,'(10X,A)') 'ERROR    Missing:  '//TRIM(miss)
+						WRITE(*,'(10X,A)') '         FileName: '//TRIM(Name)
+            WRITE(*,*); WRITE(*,*)
+						CALL FinishMPI(); STOP
 					ELSE
-  		      Name = ADJUSTL(Name)
+            Name = ADJUSTL(Name)
 					END IF
         END SUBROUTINE FileNameCheck
 
