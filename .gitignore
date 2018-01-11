@@ -8,7 +8,6 @@ TAR/*
 *.chem
 fort.*
 list*
-*.m
 *.SparseMat
 *.o
 *.mod

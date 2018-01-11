@@ -47,7 +47,7 @@ MODULE Cycles_Mod
   !
   SUBROUTINE Find_Elem_Circuits(A,FAMS)
   !SUBROUTINE Find_Elem_Circuits(A,SpcList)
-    USE mo_control,   ONLY: Families_T
+    USE mo_control,   ONLY: Families_T, BSP
 
     ! IN:
     TYPE(CSR_Matrix_T)   :: A, sub_Ak
@@ -159,7 +159,7 @@ MODULE Cycles_Mod
 
 
     ! write paths to file and save it in a allcatable array
-    OPEN(UNIT=99,FILE='reaction_paths.txt',STATUS='UNKNOWN')
+    OPEN(UNIT=99,FILE='reaction_paths_'//BSP//'.txt',STATUS='UNKNOWN')
     WRITE(99,*)
     WRITE(99,'(A,*(I0))') '   Anzahl Zyklen:   ',nCycles
     WRITE(99,'(A)') '   Cycle Length:       species: '
@@ -221,7 +221,7 @@ MODULE Cycles_Mod
 
     nCycles_red = cntSCC
     ALLOCATE(Cyclic_Set_red(nCycles_red))
-    OPEN(UNIT=98,FILE='reaction_path_short.txt',STATUS='UNKNOWN')
+    OPEN(UNIT=98,FILE='reaction_path_short_'//BSP//'.txt',STATUS='UNKNOWN')
     WRITE(98,*)
     WRITE(98,'(A)') '   Cycle Length:       species: '
     WRITE(98,'(A,*(I0))') '   Anzahl Zyklen nach kuerzen:   ',nCycles_red
