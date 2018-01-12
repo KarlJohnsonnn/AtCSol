@@ -111,12 +111,9 @@ MODULE Integration_Mod
     SELECT CASE (TRIM(method(1:7)))
 
       CASE('METHODS')
-
     
-WRITE(*,*) '      VOR'
         !---- Calculate a first stepsize based on 2nd deriv.
         h = InitialStepSize( Jac_CC, R0, t, Y0, ROS%pow )
-WRITE(*,*) '      `NACH'
 
         IF (MPI_master) WRITE(*,'(10X,A)',ADVANCE='NO') 'Start Integration.............      '
         time_int = MPI_WTIME()
@@ -206,14 +203,14 @@ WRITE(*,*) '      `NACH'
           !-- If there were no failures compute a new h.
           tmp = 1.25_dp * error**ROS%pow
           IF ( TWO * tmp > ONE ) THEN
-            h  = h / tmp
+            h = h / tmp
           ELSE
-            h  = h * TWO
+            h = h * TWO
           END IF
           
           !-- Advance the integration one step.
-          t   = tnew
-          Y0  = Y
+          t  = tnew
+          Y0 = Y
           
           !-- for PI stepsize control
           errorOld  = error

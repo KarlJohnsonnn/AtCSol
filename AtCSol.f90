@@ -389,20 +389,7 @@ PROGRAM AtCSol
     END IF
 
     ! Choose ordering/factorisation strategie and do symb LU fact
-    IF ( useMUMPS ) THEN 
-      ! Use MUMPS to factorise and solve     
-      ! Convert compressed row format to row index format for MUMPS
-      MiterFact = CSR_to_SpRowIndColInd( Miter )
-      CALL InitMumps( MiterFact ) 
-
-      IF ( MatrixPrint ) THEN
-        temp_LU_Dec = CSR_to_SpRowColD(Miter)
-        CALL PermuToInvPer   ( InvPermu   , Mumps_Par%SYM_PERM )
-        CALL SymbLU_SpRowColD( temp_LU_Dec , InvPermu )        
-        LU_Miter = RowColD_to_CSR( temp_LU_Dec , nspc , neq ) 
-      END IF
-
-    ELSE IF ( useSparseLU ) THEN
+    IF ( useSparseLU ) THEN
       ! Permutation given by Markowitz Ordering strategie
       temp_LU_Dec = CSR_to_SpRowColD(Miter) 
 
