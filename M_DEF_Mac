@@ -1,8 +1,7 @@
-#OPTFREE =  -ffree-form -ffixed-line-length-none -ffree-line-length-none -fcoarray=lib
+
 OPTFREE =  -ffree-form -ffixed-line-length-none -ffree-line-length-none
 OPTFIX =  -ffixed-line-length-none -ffree-line-length-none
 
-#COMP1=EigeneProgramme
 LINK = mpif90 
 F90  = mpif90 $(OPTFREE) $(CPPFLAGS) $(LDFLAGS)
 F90_F  = mpif90 $(OPTFIX) $(CPPFLAGS) $(LDFLAGS) 
@@ -15,28 +14,13 @@ OPT_D =  -g -O0 -Warray-bounds -Wextra -fbacktrace -ffpe-trap=zero -fimplicit-no
 OP=
 CL=
 
-#KINCL_O = -I./LIB -I/Users/schimmel/Documents/SparseLinearSolver/MUMPS_5.0.0/include -I/usr/local/include
-#KINCL_D = -I./LIB_D -I/Users/schimmel/Documents/SparseLinearSolver/MUMPS_5.0.0/include -I/usr/local/include
 KINCL_O = -I./LIB   -I/usr/local/include
 KINCL_D = -I./LIB_D -I/usr/local/include
 LIB_O   = ./LIB
 LIB_D   = ./LIB_D
-
-#MUMPS=-L/Users/schimmel/Documents/SparseLinearSolver/MUMPS_5.0.0/lib -ldmumps  -lmumps_common  -lpord
-
-#SCALAP  = /Users/schimmel/Documents/SparseLinearSolver/scalapack-2.0.2/libscalapack.a 
-#           /Users/schimmel/Documents/SparseLinearSolver/BLACS/LIB/blacs_MPI-LINUX-0.a \
-#           /Users/schimmel/Documents/SparseLinearSolver/BLACS/LIB/blacsF77init_MPI-LINUX-0.a \
-#           /Users/schimmel/Documents/SparseLinearSolver/BLACS/LIB/blacs_MPI-LINUX-0.a
-
-#METIS=   -L/Users/schimmel/Documents/SparseLinearSolver/metis-4.0.3/ -lmetis
-#PARMETIS=-L/Users/schimmel/Documents/SparseLinearSolver/ParMetis-3.2.0/ -lparmetis
-
-#SCOTCH=-L/Users/schimmel/Documents/SparseLinearSolver/scotch_6.0.4/lib -lesmumps  -lptesmumps  -lptscotch -lptscotcherr  -lptscotcherrexit  -lptscotchparmetis  -lscotch  -lscotcherr  -lscotcherrexit  -lscotchmetis
 
 NETCDF=-lcurl -L/usr/local/lib -lnetcdf -L/usr/local/lib -lnetcdff -L/usr/local/lib -lhdf5_hl \
 -L/usr/local/lib -lhdf5 
 
 LAPACK=-llapack -lblas
 
-#COARRAY = -L/usr/local/Cellar/opencoarrays/1.8.10/lib/ -lcaf_mpi

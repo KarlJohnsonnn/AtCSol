@@ -18,7 +18,6 @@ OBJ = mo_unirnk.f90\
       ChemSys_Mod.f90\
       mo_IO.f90\
       mo_ckinput.f90\
-      Mumps_Mod.f90\
       fp_parameters.f90\
       fparser.f90\
       Rates_Mod.f90\

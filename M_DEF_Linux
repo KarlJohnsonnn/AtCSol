@@ -1,50 +1,24 @@
+
 OPTFREE =  -ffree-form -ffixed-line-length-none -ffree-line-length-none
 OPTFIX =  -ffixed-line-length-none -ffree-line-length-none 
-COMP1=EigeneProgramme
+
 LINK = mpif90
 F90  = mpif90 $(OPTFREE) $(CPPFLAGS) $(LDFLAGS)
 F90_F  = mpif90 $(OPTFIX) $(CPPFLAGS) $(LDFLAGS) 
 
 CC   = mpicc
 
-#OPT_O =  -O3  -Wunused 
-#OPT_D =  -Warray-bounds -fbacktrace -fbounds-check
-#OPTL = -O3 -Wunused  
-
-#OPT_O =  -O3 -fdefault-real-8 -fdefault-double-8 -Wunused 
-#OPT_D =  -g -O0 -Warray-bounds -Wextra -fbacktrace -ffpe-trap=zero -fimplicit-none  -fcheck=all
-
 OPT_O =  -O3 
-OPT_D =  -g -O0 -Warray-bounds -Wextra -fbacktrace -ffpe-trap=zero -fimplicit-none  -fcheck=all
+OPT_D =  -g -O0 -Warray-bounds -Wextra -fbacktrace -ffpe-trap=zero -fimplicit-none  -fcheck=all -Wall
 
 OP=-Wl,--start-group
 CL=-Wl,--end-group
 
-#INCL  = -I. -I $(INCL) -I/data/schimmel/SparseLinearSolver/MUMPS_5.0.0/include 
-
-KINCL_O =   -I./LIB -I/data/schimmel/SparseLinearSolver/MUMPS_5.0.0/include 
-KINCL_D =   -I./LIB_D -I/data/schimmel/SparseLinearSolver/MUMPS_5.0.0/include
+KINCL_O = -I./LIB
+KINCL_D = -I./LIB_D
 LIB_O = ./LIB
 LIB_D = ./LIB_D
-MUMPS=-L/data/schimmel/SparseLinearSolver/MUMPS_5.0.0/lib -ldmumps  -lmumps_common  -lpord
 
-SCALAP  = /data/schimmel/SparseLinearSolver/scalapack-2.0.2/libscalapack.a \
-           /data/schimmel/SparseLinearSolver/BLACS/LIB/blacs_MPI-LINUX-0.a \
-           /data/schimmel/SparseLinearSolver/BLACS/LIB/blacsF77init_MPI-LINUX-0.a \
-           /data/schimmel/SparseLinearSolver/BLACS/LIB/blacs_MPI-LINUX-0.a
-
-METIS=   -L/data/schimmel/SparseLinearSolver/metis-4.0.3/ -lmetis
-PARMETIS=-L/data/schimmel/SparseLinearSolver/ParMetis-3.2.0/ -lparmetis
-
-SCOTCH=-L/data/schimmel/SparseLinearSolver/scotch_6.0.4/lib -lesmumps  -lptesmumps  -lptscotch -lptscotcherr  -lptscotcherrexit  -lptscotchparmetis  -lscotch  -lscotcherr  -lscotcherrexit  -lscotchmetis
-
-#NETCDF=-lcurl -L/usr/local/lib -lnetcdf -L/usr/local/lib -lnetcdff -L/usr/local/lib -lhdf5_hl \
-#-L/usr/local/lib -lhdf5 
-
-#NETCDF= -lnetcdf -lhdf5_hl -lhdf5 -lz -lsz
-#NETCDF = -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lz
-NETCDF =-L/store/menge/tools/packages/netcdf/4.3.2-gcc-4.9.0/lib -lnetcdf  -L/store/menge/tools/packages/netcdf/4.3.2-gcc-4.9.0/lib -lnetcdff
+NETCDF =-L/store/menge/tools/packages/netcdf/4.3.2-gcc-4.9.0/lib -lnetcdf -lnetcdff
 
 LAPACK=-llapack
-
-ModSuf=mod

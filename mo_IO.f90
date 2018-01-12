@@ -62,11 +62,7 @@ MODULE mo_IO
         ELSE
           WRITE(*,777)   '    Error Estimation:      Maximum Norm'
         END IF
-        IF (Ordering==8) THEN
-          WRITE(*,777)   '    Solve Linear Systems:  Sparse LU, Markowitz Ordering Algorithm'
-        ELSE 
-          WRITE(*,777)   '    Solve Linear Systems:  MUMPS, Ordering Stragegie:  ',Ordering
-        END IF
+        WRITE(*,777)   '    Solve Linear Systems:  Sparse LU, Markowitz Ordering Algorithm'
       END IF
       WRITE(*,777)
       WRITE(*,777)   'Tolerance:   '
@@ -157,40 +153,12 @@ MODULE mo_IO
       CALL WriteSparseMatrix(bMat,TRIM('matrixOut/beta'//fName))
       CALL WriteSparseMatrix(cMat,TRIM('matrixOut/_beta-alpha_T'//fName))
       CALL WriteSparseMatrix(dMat,TRIM('matrixOut/Miter0'//fName))
+      
+      ! ordering>=8 --> Markowitz count (early minimum degree)
+      ! Print structure of LU matrix and Permutation vector
       !
-      IF (Ordering<8) THEN
-        !
-        ! ordering<8 --> MUMPS auto choice ordering
-        ! Print structure of LU matrix and Permutation vector
-        !
-        CALL WriteSparseMatrix(eMat,TRIM('matrixOut/LUmiterStructure'//fName))
-        ALLOCATE(InvPermu(eMat%m))
-        CALL PermuToInvPer(InvPermu,Mumps_Par%SYM_PERM)
-        CALL PrintPerm(Mumps_Par%SYM_PERM,InvPermu,TRIM('matrixOut/Permu'//fName))
-        !
-        ! Print a Mapping supported by MUMPS
-        !
-        IF (Mumps_Par%ICNTL(18)==1) THEN
-          mUnit=55+MPI_ID
-          !
-          WRITE(mName,'(I1)') mUnit-55  ! convert integer to char to get a uniq filename
-          mName=ADJUSTL('matrixOut/'//fName//'Mapping_'//mName//'.SparseMat')
-          OPEN(UNIT=mUnit,FILE=TRIM(mName),STATUS='UNKNOWN')
-          DO i=1,Mumps_Par%NZ_loc
-            WRITE(mUnit,'(1X,I5,1X,I5,10X,E23.14)')     Mumps_Par%IRN_loc(i)     &
-            &                                         , Mumps_Par%JCN_loc(i)     &
-            &                                         , 1.0d0
-          END DO
-          CLOSE(mUnit)
-        END IF
-      ELSE
-        !
-        ! ordering>=8 --> Markowitz count (early minimum degree)
-        ! Print structure of LU matrix and Permutation vector
-        !
-        CALL WriteSparseMatrix(eMat,TRIM('matrixOut/LUmiterStructure'//fName))
-        CALL PrintPerm(eMat%Permu,eMat%InvPer,TRIM('matrixOut/Permu'//fName))
-      END IF
+      CALL WriteSparseMatrix(eMat,TRIM('matrixOut/LUmiterStructure'//fName))
+      CALL PrintPerm(eMat%Permu,eMat%InvPer,TRIM('matrixOut/Permu'//fName))
       !
       CALL FinishMPI()
       STOP 'MatrixPrint=True --> stop nach print in Integration_Mod'

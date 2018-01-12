@@ -208,8 +208,10 @@
 			END IF
 
 
-      IF ( Ordering <  8 .OR. ParOrdering >= 0 ) useMUMPS = .TRUE.
-      IF ( Ordering >= 8 ) useSparseLU = .TRUE.
+      ! setting up the factorization strategy
+      !IF ( Ordering <  8 .OR. ParOrdering >= 0 ) useMUMPS = .TRUE.
+      !IF ( Ordering >= 8 ) useSparseLU = .TRUE.
+      useSparseLU = .TRUE.
 
 
 !-----------------------------------------------------------------

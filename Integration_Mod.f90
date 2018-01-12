@@ -426,12 +426,6 @@ MODULE Integration_Mod
     END SELECT
     TimeIntegration = MPI_WTIME() - time_int
 
-    !
-    ! DEALLOCATE Mumps instance
-    IF ( useMUMPS ) THEN
-      mumps_par%JOB = -2
-      CALL DMUMPS( mumps_par )
-    END IF
   END SUBROUTINE Integrate
   
  

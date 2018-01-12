@@ -11,7 +11,6 @@ MODULE Rosenbrock_Mod
   USE Kind_Mod
   USE Sparse_Mod
   USE Chemsys_Mod
-  USE Mumps_Mod
   USE Rates_Mod
   USE mo_control
   USE mo_reac
@@ -417,13 +416,7 @@ MODULE Rosenbrock_Mod
       END IF
       Out%npds = Out%npds + 1
 
-      IF ( useSparseLU ) THEN
-        CALL SetLUvaluesCL( LU_Miter , Miter , LU_Perm )
-        !DO i=1,nDIM
-        !  WRITE(*,'(2(A,I0),A,2Es16.6)') ' Diagonal:  M/LU_M(',i,',',i,') = ',Miter%Val(Miter%DiagPtr(i)),LU_Miter%Val(LU_Miter%DiagPtr(i))
-        !END DO
-        !READ(*,*)
-      END IF
+      CALL SetLUvaluesCL( LU_Miter , Miter , LU_Perm )
       TimeJac = TimeJac + (MPI_WTIME()-TimeJacobianA)
 
     ELSE !IF ( EXTENDED )
@@ -444,11 +437,7 @@ MODULE Rosenbrock_Mod
       !
       !
       rRate  = ONE / Rate
-      IF ( useSparseLU ) THEN
-        CALL SetLUvaluesEX ( LU_Miter, rRate , Yrh, DRatedT , UMat , X , LUvalsFix)
-      ELSE
-        CALL SetLUvaluesEX ( Miter, rRate , Yrh, DRatedT , UMat , X )
-      END IF
+      CALL SetLUvaluesEX ( LU_Miter, rRate , Yrh, DRatedT , UMat , X , LUvalsFix)
     END IF
     !
     !                                  _      
@@ -464,18 +453,9 @@ MODULE Rosenbrock_Mod
     !                                   |_|                                   
     ! --- LU - Decomposition ---
     timerStart = MPI_WTIME()
-    IF ( useSparseLU ) THEN
-      CALL SparseLU( LU_Miter )
+    CALL SparseLU( LU_Miter )
 
-      !WRITE(888,*) ' Step = ',Out%nSteps
-      !DO i=1,LU_Miter%nnz
-      !  WRITE(888,'(A,I0,A,Es16.6)') ' Val(',i,') = ',LU_Miter%Val(i)
-      !END DO
-      !WRITE(888,*) 
      
-    ELSE
-      CALL MumpsLU( Miter%Val )
-    END IF
     TimeFac = TimeFac + (MPI_WTIME()-timerStart)
 
     IF (dprint) THEN
@@ -556,22 +536,11 @@ MODULE Rosenbrock_Mod
       !--- Calculate the right hand side of the linear System
       IF ( CLASSIC ) THEN
 
-        !DO i=1,BAT%nnz; WRITE(*,'(A,I0,A,Es18.10)') ' BAT val(',i,') = ', BAT%Val(i); END DO
-
         dCdt = BAT * Rate + y_emi
         fRhs(1:nspc) =  h * dCdt
         IF (Teq) fRhs( nDIM ) = - h * SUM(U*dCdt) * rRho / cv
 
-
-        !write(*,*) ' rhs vor schritt  = ',Out%nSteps,iStg
-        !write(*,'("     ",Es16.8)') fRhs
-        !write(*,*)
-
         DO jStg=1,iStg-1; fRhs = fRhs + ROS%C(iStg,jStg)*k(:,jStg); END DO
-
-        !write(*,*) ' rhs nach schritt = ',Out%nSteps,iStg
-        !write(*,'("     ",Es16.8)') fRhs
-        !write(*,*); write(*,*)
 
         IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',fRhs( 1:iprnt)
 
@@ -601,31 +570,17 @@ MODULE Rosenbrock_Mod
       TimeRhsCalc = TimeRhsCalc + MPI_WTIME() - TimeRhsCalc0
       
       timerStart  = MPI_WTIME()
-      SOLVE_LINEAR_SYSTEM: IF ( useSparseLU ) THEN  
 
-        IF ( CLASSIC ) THEN
-          CALL SolveSparse( LU_Miter , fRhs )
-          k( 1:nDIM , iStg ) = fRhs
-        ELSE !IF ( EXTENDED ) THEN
-          CALL SolveSparse( LU_Miter , bb)
-          k( 1:nspc , iStg ) = Y0(1:nspc) * bb(neq+1:nsr)
-          IF ( Teq ) &
-          k(  nDIM  , iStg ) = bb(nDIMex)
-        END IF
+      IF ( CLASSIC ) THEN
+        CALL SolveSparse( LU_Miter , fRhs )
+        k( 1:nDIM , iStg ) = fRhs
+      ELSE !IF ( EXTENDED ) THEN
+        CALL SolveSparse( LU_Miter , bb)
+        k( 1:nspc , iStg ) = Y0(1:nspc) * bb(neq+1:nsr)
+        IF ( Teq ) &
+        k(  nDIM  , iStg ) = bb(nDIMex)
+      END IF
 
-      ELSE
-
-        IF ( CLASSIC ) THEN
-          CALL MumpsSolve( fRhs )
-          k( 1:nDIM , iStg ) = Mumps_Par%RHS(1:nDIM)    
-        ELSE !IF ( EXTENDED ) THEN
-          CALL MumpsSolve( bb )
-          k( 1:nspc , iStg ) = Y0(1:nspc) * Mumps_Par%RHS(neq+1:nsr)
-          IF ( Teq ) &
-          k(  nDIM  , iStg ) = Mumps_Par%RHS(nDIMex)
-        END IF
-
-      END IF SOLVE_LINEAR_SYSTEM
       TimeSolve   = TimeSolve + (MPI_WTIME()-timerStart)
 
     END DO  LOOP_n_STAGES
@@ -680,19 +635,12 @@ MODULE Rosenbrock_Mod
       TimeErrCalc = TimeErrCalc + MPI_WTIME() - timerStart
 
       ! for analysis and reduction
-      IF ( MPI_ID == 0 .AND. err < ONE ) THEN
-        IF ( Lehmann ) integrated_rates = integrated_rates + Rate*h
-        !CALL ISSA_iter( Rate_t , YNew , t , h )
-
-        IF ( FluxAna ) THEN
-          IF ( t - Tspan(1) >= StpFlux*REAL(iStpFlux,dp) ) THEN
-            timerStart = MPI_WTIME()
-            CALL StreamWriteFluxes(Rate_t,t,h)
-            !CALL SequentialWriteFluxes(Rate_t,t,h)
-            TimeFluxWrite = TimeFluxWrite + MPI_WTIME() - timerStart
-          END IF
+      IF ( FluxAna .AND. MPI_master .AND. err < ONE ) THEN
+        IF ( t - Tspan(1) >= StpFlux*REAL(iStpFlux,dp) ) THEN
+          timerStart = MPI_WTIME()
+          CALL StreamWriteFluxes(Rate_t,t,h)
+          TimeFluxWrite = TimeFluxWrite + MPI_WTIME() - timerStart
         END IF
-
       END IF
       
       IF (dprint) THEN
@@ -701,15 +649,9 @@ MODULE Rosenbrock_Mod
         print*, ''
         print*, ' Press ENTER to calculate next step '
         read(*,*) 
-        !IF (Out%nSteps==100) STOP ' nach 100 steps'
       END IF
 
     END IF
-
-
-   
-    
-
    
   END SUBROUTINE Rosenbrock
 

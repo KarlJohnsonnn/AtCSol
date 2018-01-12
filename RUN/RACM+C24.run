@@ -6,8 +6,7 @@
   Lehmann    = .F.
 /END
 &FILES
-  SysFile    = 'CHEM/RACM+C24_copy.sys'      ! .sys Datei (ohne .sys angeben!)
-  !SysFile    = 'CHEM/RACM+C24.sys'      ! .sys Datei (ohne .sys angeben!)
+  SysFile    = 'CHEM/RACM+C24.sys'      ! .sys Datei (ohne .sys angeben!)
   DataFile   = 'DAT/Urban.dat'          ! .dat Datei (für RO2, RO2aqua Summen)
   InitFile   = 'INI/Urban.ini'          ! .ini Datei (Anfangswerte gas/flüssig), Diagnose spc
   MetFile    = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)
@@ -15,9 +14,7 @@
 /END
 &TIMES
   tBegin      = 0.0d0          ! Startzeit Integration   (in [sec])
-  !tEnd        = 172800.0d0      ! Endzeit   Integration   (in [sec])
   tEnd        = 86400.0d0      ! Endzeit   Integration   (in [sec])
-  !tEnd        = 259200.0d0      ! Endzeit   Integration   (in [sec])
 /END
 &METEO
   pHSet       = .T.          ! Berechne pH Wert zu Beginn
@@ -39,7 +36,6 @@
   maxStp      = 50.0d0       ! maximale Schrittweite für Integration
   LinAlg      = 'cl'         ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
   ODEsolver   = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
-  Ordering    = 8            ! 8=Markowitz(SparseLU) , 1,..,7=Mumps Orderings  
 /END
 &OUTPUT
   NetCdfFile  = 'NetCDF/RACM+C24_full.nc' ! location and name of NetCDF output file

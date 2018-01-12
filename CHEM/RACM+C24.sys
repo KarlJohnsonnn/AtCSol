@@ -1201,7 +1201,7 @@ COMMENT  Kh = A exp(B (1/T -  1/298))
 COMMENT  B = dH/R [K] 
 COMMENT  Further uptake parameters according to Schwartz's approach (alpha, Dg)   
 COMMENT  are read elsewhere in the program 
- 
+
 CLASS: HENRY  
 CO2 = aCO2         
 TEMP3:   A: 3.1e-2  B: 2423.0  
@@ -1337,8 +1337,6 @@ TEMP3:  A: 0.94  B: 0.0
 CLASS: HENRY  
 NO = aNO 
 TEMP3:  A: 1.9e-3 B: 0.0     
-
-COMMENT   ====================== AQUA PHASE =========================
   
 COMMENT  CLASS: AQUA, TYPE: PHOTABC photolysis reactions according to  
 COMMENT  j = A * exp (B *(1 -  1 /(cos (C * chi)); A = jmax; chi = zenith angle 
@@ -2316,7 +2314,7 @@ TEMP3:  A: 1e4  B: 0.0
 CLASS: AQUA  
 C2O4m + aO2 = aCO2 + O2m + aCO2 
 TEMP3:   A: 2e9   B: 0.0 
-
+ 
 CLASS: AQUA  
 aHO + aCHOH2CHOH2 = [aH2O] + aCOH2CHOH2 
 TEMP3:  A:  1.1e9 B: -1516.0 
@@ -2644,8 +2642,6 @@ TEMP3:  A: 1e5  B: 0.0
 CLASS: AQUA  
 aHO + aO3 = aO2 + aHO2 
 TEMP3:  A: 1e8 B: 0.0 
-
-COMMENT   =================== DISSOCIATION PHASE ======================
  
 COMMENT  CLASS: DISS, TYPE: DCONST 
 COMMENT  Temperature dependent dissociation 
@@ -2894,4 +2890,3 @@ DCONST:  A: 0.3  B: 1.1e5
 CLASS: DISS  
 aACO3 = Hp + O2CH2COOm 
 DTEMP:  A: 1.75e-5  B: 46.0  C: 5e10 
-
