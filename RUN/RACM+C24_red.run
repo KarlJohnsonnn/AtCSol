@@ -15,8 +15,6 @@
 &TIMES
   tBegin      = 0.0d0          ! Startzeit Integration   (in [sec])
   tEnd        = 86400.0d0      ! Endzeit   Integration   (in [sec])
-  !tEnd        = 172800.0d0      ! Endzeit   Integration   (in [sec])
-  !tEnd        = 259200.0d0      ! Endzeit   Integration   (in [sec])
 /END
 &METEO
   pHSet       = .T.          ! Berechne pH Wert zu Beginn
@@ -38,7 +36,6 @@
   maxStp      = 50.0d0       ! maximale Schrittweite für Integration
   LinAlg      = 'cl'         ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
   ODEsolver   = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
-  Ordering    = 8            ! 8=Markowitz(SparseLU) , 1,..,7=Mumps Orderings  
 /END
 &OUTPUT
   NetCdfFile  = 'NetCDF/RACM+C24_red.nc' ! location and name of NetCDF output file

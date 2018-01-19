@@ -36,7 +36,7 @@ MODULE issa
     INTEGER       :: iPos, j
     CHARACTER(LenLine) :: Line
      
-    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName)),STATUS='UNKNOWN')
+    OPEN(UNIT=99,FILE=TRIM(ADJUSTL(FileName)),STATUS='UNKNOWN')
     REWIND(99)
 
     ALLOCATE(Idx(0))
@@ -77,7 +77,7 @@ MODULE issa
     CHARACTER(LenLine) :: Line, locLine
     INTEGER            :: i, j, locSp, nFam
      
-    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName)),STATUS='UNKNOWN')
+    OPEN(UNIT=99,FILE=TRIM(ADJUSTL(FileName)),STATUS='UNKNOWN')
     REWIND(99)
 
     ! count number of superspecies
@@ -262,7 +262,6 @@ MODULE issa
     USE mo_control, ONLY: List, Families_T
     USE Sparse_Mod, ONLY: B, A, WriteSparseMatrix, CSR_Matrix_T, TransposeSparse, SymbolicMult
     USE Cycles_Mod
-    USE mo_unirnk
 
     TYPE(List), ALLOCATABLE, INTENT(OUT) :: R_k(:)
     INTEGER,    ALLOCATABLE, INTENT(OUT) :: Target_Spc(:)
@@ -274,7 +273,7 @@ MODULE issa
     TYPE(Families_T), ALLOCATABLE :: Families(:)
 
     INTEGER, ALLOCATABLE :: ReacSet(:), Perm(:)
-    INTEGER, ALLOCATABLE :: ReacSet0(:), LeftOver(:)
+    INTEGER, ALLOCATABLE :: ReacSet0(:), nonCyclicRemainder(:)
     INTEGER :: n
     INTEGER :: newLen
     INTEGER :: jj, iC, iS, iSpcE, iSpcP, iR_a, iS_b
@@ -316,41 +315,34 @@ MODULE issa
 
       END DO
 
-      ALLOCATE(Perm(SIZE(R_k(iC)%List)))
-      CALL unirnk( R_k(iC)%List , Perm , newLen )
-      R_k(iC)%len   = newLen
-      R_k(iC)%List = [ R_k(iC)%List(Perm(1:newLen)) ]
-      DEALLOCATE(Perm)
+      CALL Sort_And_Remove_Duplicates(R_k(iC)%List,newLen)
+      R_k(iC)%len = newLen
 
       ReacSet0 = [ReacSet0 , R_k(iC)%List]
 
       !WRITE(*,'(A,I0,A,*(I0,3X))') ' R_k(',iC,')%List = ', R_k(iC)%List
     END DO
 
-
-    ALLOCATE(Perm(SIZE(ReacSet0)))
-    CALL unirnk( ReacSet0 , Perm , newLen )
-    ReacSet0 = [ ReacSet0(1:newLen) ]
-    DEALLOCATE(Perm)
+    CALL Sort_And_Remove_Duplicates(ReacSet0,newLen)
 
     n = 1
 
-    ALLOCATE(LeftOver(0))
+    ALLOCATE(nonCyclicRemainder(0))
     DO jj = 1 , nr
       IF ( jj == ReacSet0(n) ) THEN
         n = n + 1
       ELSE
-        LeftOver = [LeftOver , jj]
+        nonCyclicRemainder = [nonCyclicRemainder , jj]
       END IF
     END DO
 
     n = SIZE(cycles)
     
-    R_k(n+1)%len  = SIZE(LeftOver)
-    R_k(n+1)%List = [ LeftOver ]
+    R_k(n+1)%len  = SIZE(nonCyclicRemainder)
+    R_k(n+1)%List = [ nonCyclicRemainder ]
     
     !WRITE(*,*) ' DBG-Output ::  number of reactions within cycles = ', SIZE(ReacSet0), iC
-    !WRITE(*,*) ' DBG-Output ::  number of non-cyclic reactions = ', SIZE(LeftOver)
+    !WRITE(*,*) ' DBG-Output ::  number of non-cyclic reactions = ', SIZE(nonCyclicRemainder)
 
    !stop 'issa_MOD'
 
@@ -440,6 +432,19 @@ MODULE issa
     WRITE(*,'(A1,A,I0,A,I0,A,$)') char(13),'    Cycle :: (',j,'/',k,')  processed.'
   END SUBROUTINE Progress3
 
+
+  SUBROUTINE Sort_And_Remove_Duplicates(Array,n)
+    USE mo_unirnk
+    INTEGER, ALLOCATABLE, INTENT(INOUT) :: Array(:)
+    INTEGER, ALLOCATABLE                :: Perm(:)
+    INTEGER                             :: n
+
+    ALLOCATE(Perm(SIZE(Array)))
+    CALL unirnk( Array , Perm , n )
+    Array = [Array(Perm(1:n))]
+    DEALLOCATE(Perm)
+  END SUBROUTINE Sort_And_Remove_Duplicates
+
   
 
 !******************************************************************************************************************
@@ -461,7 +466,6 @@ MODULE issa
     USE mo_control
     USE mo_reac
     USE mo_IO
-    USE mo_unirnk
     USE ChemSys_Mod
     USE Sparse_Mod
 
@@ -481,7 +485,7 @@ MODULE issa
 
     INTEGER, ALLOCATABLE  :: S_imp(:), R_imp(:)    ! Sets of importent Species/Reactions
     INTEGER, ALLOCATABLE  :: S_imp_new(:)
-    INTEGER               :: nS_imp=0, nR_k=0, nIter=0
+    INTEGER               :: nS_imp=0, nR_imp=0, nR_k=0, nIter=0
     INTEGER               :: iS=0, iSpc=0, iReac=0
 
     TYPE(CSR_Matrix_T)    :: pos_BAT, neg_BAT, neg_BA
@@ -499,7 +503,7 @@ MODULE issa
     INTEGER,  ALLOCATABLE :: f_p(:),  g_p(:)    ! permuation vector of reaction set
     INTEGER,  ALLOCATABLE :: f_iR(:), g_iR(:)    ! permuation vector of reaction set
 
-    REAL(dp), PARAMETER   :: eps_red = 0.11
+    REAL(dp), PARAMETER   :: eps_red = 0.11_dp
     INTEGER,  PARAMETER   :: maxIter = 42
 
 
@@ -535,12 +539,13 @@ MODULE issa
     ! calculate time-averaged rate of reactions
     avgRate = 0_dp
     DO i = 1,iStpFlux
-      !avgRate = avgRate + ABS(Rates(:,i))*dt(i)
+      avgRate = avgRate + ABS(Rates(:,i))*dt(i)
       !avgRate = avgRate + ABS(Rates(:,i))/dt(i)
       !avgRate = avgRate + ABS(Rates(:,i))
-      avgRate = avgRate + Rates(:,i)
+      !avgRate = avgRate + Rates(:,i)
     END DO
-    avgRate = avgRate/(Tspan(2)-Tspan(1))
+    !avgRate = avgRate/(Tspan(2)-Tspan(1))
+    avgRate = avgRate/iStpFlux
 
 
     OPEN(unit=199, file='Rates_'//TRIM(BSP)//'.txt', action='write')
@@ -568,7 +573,7 @@ MODULE issa
 
     ITERATIVE_PROCEDURE: DO !WHILE (nIter <= maxIter)
       
-      CALL Progress_Step(nIter,nS_imp)
+      CALL Progress_Step(nIter,nS_imp,nR_imp)
 
       !******************************************************************
       ! (a) For the actual group of important species (index set S_imp) 
@@ -582,7 +587,11 @@ MODULE issa
         rp_iSpc(1) = pos_BAT%RowPtr(iSpc);  rp_iSpcP1(1) = pos_BAT%RowPtr(iSpc+1)-1
         rp_iSpc(2) = neg_BAT%RowPtr(iSpc);  rp_iSpcP1(2) = neg_BAT%RowPtr(iSpc+1)-1
       
+        !WRITE(*,*)
+        !WRITE(*,*) '  Important species:  ', TRIM(y_name(iSpc))
         DO k = 1, nR_k
+
+          !WRITE(*,*) '  Reaction Cycle nr.:  ', k
 
           ! --- SOURCE terms
           ALLOCATE(source_reacs(0)); any_sources = .FALSE.
@@ -602,7 +611,13 @@ MODULE issa
             CALL SortVecAsc_R( f_iJk , f_p , inR_f )
             f_iR = f_iR(f_p)
             DEALLOCATE(f_p)
-            !DO j=1,inR_f;  WRITE(*,'(A,Es16.8)') ' f_iJk = ',f_iJk(j);  END DO
+
+            !WRITE(*,*) '  Number of source reactions in cycle: ', inR_f
+            !DO j=1,inR_f
+              !WRITE(*,'(A,I0,A,Es16.8,2X,L)') '   Reaction = ',f_iR(j), '  f_iJk = ',f_iJk(j), f_iJk(j)>eps_red
+            !END DO
+            !WRITE(*,*)
+
           ELSE
             inR_f = 0
           END IF
@@ -626,8 +641,14 @@ MODULE issa
             CALL SortVecAsc_R( g_iJk , g_p , inR_g )
             g_iR = g_iR(g_p)
             DEALLOCATE(g_p)
-            !DO j=1,inR_g;  WRITE(*,'(A,Es16.8)') ' g_iJk = ',g_iJk(j);  END DO
-          ELSE
+
+            !WRITE(*,*) '  Number of sink reactions in cycle: ', inR_g
+            !DO j=1,inR_g
+              !WRITE(*,'(A,I0,A,Es16.8,2X,L)') '   Reaction = ',g_iR(j), ' g_iJk = ',g_iJk(j),g_iJk(j)>eps_red
+            !END DO
+            !WRITE(*,*)
+          
+            ELSE
             inR_g = 0
           END IF
 
@@ -644,23 +665,26 @@ MODULE issa
           ALLOCATE(CF_ik(0),CG_ik(0))
           sum_f_ijk = 0.0_dp
           DO j = 1,inR_f
-            IF ( sum_f_iJk < eps_red ) THEN
-              sum_f_ijk = sum_f_ijk + f_iJk(j)
-            ELSE
-              CF_ik = [(f_iR(l) , l=j-1,inR_f)]
+            sum_f_ijk = sum_f_ijk + f_iJk(j)
+            IF ( sum_f_iJk >= eps_red ) THEN
+              CF_ik = [ f_iR( j : inR_f) ]
               EXIT
             END IF
           END DO
 
+          !WRITE(*,'(A,*(I0,2X))') ' New source reacs :: ',CF_ik
+
           sum_g_ijk = 0.0_dp
           DO j = 1,inR_g
-            IF ( sum_g_ijk < eps_red ) THEN
-              sum_g_ijk = sum_g_ijk + g_iJk(j)
-            ELSE
-              CG_ik = [(g_iR(l) , l=j-1,inR_g)]
+            sum_g_ijk = sum_g_ijk + g_iJk(j)
+            IF ( sum_g_ijk >= eps_red ) THEN
+              CG_ik = [ g_iR( j : inR_g) ]
               EXIT
             END IF
           END DO
+
+          
+          !WRITE(*,'(A,*(I0,2X))') ' New sink reacs :: ',CF_ik
 
           !*******************************************************************
           ! (c) The important reactions (index set R_imp) of important species 
@@ -683,14 +707,15 @@ MODULE issa
       !     in step (a). In the other case the iteration is finished; S_imp and R_imp
       !     contain the important species and reactions of the reduced mechanism.
       !*******************************************************************************
+
+      CALL Sort_And_Remove_Duplicates(R_imp,nR_imp)
+
       ALLOCATE(S_imp_new(0))
-      DO j = 1,SIZE(R_imp)
+      DO j = 1,nR_imp
         jj = R_imp(j)
-        S_imp_new = [S_imp_new ,                                          &
-        &           neg_BA%ColInd(neg_BA%RowPtr(jj):neg_BA%RowPtr(jj+1)-1)]
+        S_imp_new = [S_imp_new , A%ColInd(A%RowPtr(jj):A%RowPtr(jj+1)-1)]
       END DO
       
-
       ! --- set addition -> sort -> remove duplicates
       S_imp_new = [S_imp , S_imp_new]
       CALL Sort_And_Remove_Duplicates(S_imp_new,nS_imp)
@@ -705,7 +730,6 @@ MODULE issa
 
     END DO ITERATIVE_PROCEDURE
 
-    CALL Sort_And_Remove_Duplicates(R_imp,newLen)
 
     !DO j=1,SIZE(R_imp); WRITE(*,'(A,I0,A,I0)') ' R_imp(',j,') = ',R_imp(j); END DO
     !DO j=1,SIZE(S_imp); WRITE(*,'(A,I0,A,I0)') ' S_imp(',j,') = ',S_imp(j); END DO
@@ -716,7 +740,7 @@ MODULE issa
     write(*,*); write(*,*) 
     write(*,777) '    Printing reduced system  ::  CHEM/'//TRIM(BSP)//'_red.sys'
     WRITE(*,*)
-    write(*,'(10X,A,I6)') '    Reduced system :: Number of Reactions = ',newLen
+    write(*,'(10X,A,I6)') '    Reduced system :: Number of Reactions = ',nR_imp
     write(*,'(10X,A,I6)') '                      Number of Species   = ',nS_imp
     !stop
     777 FORMAT(10X,A)
@@ -726,11 +750,9 @@ MODULE issa
 
     CONTAINS
 
-      SUBROUTINE Progress_Step(j,k)
-        INTEGER :: j,k
-        ! print the progress bar.
-        WRITE(*,'(14X,2(A,I0,4X))') 'Iteration ::  ',j,'nSpecies = ',k
-        !WRITE(*,'(A1,14X,2(A,I0,4X),$)') char(13),'Iteration ::  ',j,'nSpecies = ',k
+      SUBROUTINE Progress_Step(j,k,l)
+        INTEGER :: j,k,l
+        WRITE(*,'(14X,3(A,I6,4X))') 'Iteration ::  ',j,'nSpecies = ',k, 'nReactions = ',l
       END SUBROUTINE Progress_Step
       
       FUNCTION Is_ImpSpc_In_Cycle(iSpc,List,n) RESULT(iRow)
@@ -742,21 +764,12 @@ MODULE issa
         iRow=0
         DO i=1,n
           IF ( List(i)==iSpc ) THEN
-            iRow=i;  RETURN
+            iRow=i
+            RETURN
           END IF
         END DO
       END FUNCTION Is_ImpSpc_In_Cycle
 
-      SUBROUTINE Sort_And_Remove_Duplicates(Array,n)
-        INTEGER, ALLOCATABLE, INTENT(INOUT) :: Array(:)
-        INTEGER, ALLOCATABLE                :: Perm(:)
-        INTEGER                             :: n
-
-        ALLOCATE(Perm(SIZE(Array)))
-        CALL unirnk( Array , Perm , n )
-        Array = [Array(Perm(1:n))]
-        DEALLOCATE(Perm)
-      END SUBROUTINE Sort_And_Remove_Duplicates
 
   END SUBROUTINE ISSA_screening
 

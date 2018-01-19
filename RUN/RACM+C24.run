@@ -8,7 +8,7 @@
 &FILES
   SysFile    = 'CHEM/RACM+C24.sys'      ! .sys Datei (ohne .sys angeben!)
   DataFile   = 'DAT/Urban.dat'          ! .dat Datei (für RO2, RO2aqua Summen)
-  InitFile   = 'INI/Urban_Emis.ini'          ! .ini Datei (Anfangswerte gas/flüssig), Diagnose spc
+  InitFile   = 'INI/Urban.ini'          ! .ini Datei (Anfangswerte gas/flüssig), Diagnose spc
   MetFile    = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)
   TargetFile = 'TAR/RACM+C24.ctrl'     ! .ctrl Datei (Zielspezies,Spezies Familen,gelumpte Species)
 /END
@@ -40,7 +40,6 @@
 &OUTPUT
   NetCdfFile  = 'NetCDF/RACM+C24_full.nc' ! location and name of NetCDF output file
   StpNetCDF   = -1.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep 
-  !StpNetCDF   = 600.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep 
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock 
   MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
