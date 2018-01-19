@@ -8,7 +8,7 @@ MODULE Cycles_Mod
                       & PrintSparseMatrix
   !USE mo_unirnk
   USE mo_reac,    ONLY: y_name
-  USE mo_control, ONLY: Cyclic_Set, Cyclic_Set_red, nCycles, nCycles_red, List
+  USE mo_control, ONLY: List
 
   IMPLICIT NONE
 
@@ -45,10 +45,11 @@ MODULE Cycles_Mod
   ! INPUT: (IA,JA) if there is a edge from vertex I to vertex J
   !        length(IA) = length(JA) = nnz(A)
   !
-  SUBROUTINE Find_Elem_Circuits(A,FAMS)
+  FUNCTION Find_Elem_Circuits(A,FAMS) RESULT(Cyclic_Set_Out)
   !SUBROUTINE Find_Elem_Circuits(A,SpcList)
     USE mo_control,   ONLY: Families_T, BSP
 
+    TYPE(List), ALLOCATABLE :: Cyclic_Set_Out(:) 
     ! IN:
     TYPE(CSR_Matrix_T)   :: A, sub_Ak
     TYPE(Families_T)     :: FAMS(:)
@@ -63,6 +64,9 @@ MODULE Cycles_Mod
     INTEGER, ALLOCATABLE :: iCyc_red(:)
     LOGICAL :: dummy
     TYPE(Node_T), POINTER :: printCYC
+
+    TYPE(List), ALLOCATABLE :: Cyclic_Set(:)
+    INTEGER                 :: nCycles=0, nCycles_red=0
 
      777 FORMAT(10X,A)
 
@@ -220,20 +224,20 @@ MODULE Cycles_Mod
     WRITE(*,*); WRITE(*,*) 
 
     nCycles_red = cntSCC
-    ALLOCATE(Cyclic_Set_red(nCycles_red))
+    ALLOCATE(Cyclic_Set_Out(nCycles_red))
     OPEN(UNIT=98,FILE='reaction_path_short_'//TRIM(BSP)//'.txt',STATUS='UNKNOWN')
     WRITE(98,*)
     WRITE(98,'(A)') '   Cycle Length:       species: '
     WRITE(98,'(A,*(I0))') '   Anzahl Zyklen nach kuerzen:   ',nCycles_red
     DO i = 1, nCycles_red
       iC = iCyc_red(i)
-      Cyclic_Set_red(i)%len = Cyclic_Set(iC)%len
-      Cyclic_Set_red(i)%List = [Cyclic_Set(iC)%List]
-      WRITE(98,'(10X,I2,8X,*(A))') Cyclic_Set_red(i)%len,                      &
-      & (TRIM(y_name(Cyclic_Set_red(i)%List(k)))//' -> ' ,k=1,Cyclic_Set_red(i)%len-1), &
-      &  TRIM(y_name(Cyclic_Set_red(i)%List(Cyclic_Set_red(i)%len)))
+      Cyclic_Set_Out(i)%len = Cyclic_Set(iC)%len
+      Cyclic_Set_Out(i)%List = [Cyclic_Set(iC)%List]
+      WRITE(98,'(10X,I2,8X,*(A))') Cyclic_Set_Out(i)%len,                      &
+      & (TRIM(y_name(Cyclic_Set_Out(i)%List(k)))//' -> ' ,k=1,Cyclic_Set_Out(i)%len-1), &
+      &  TRIM(y_name(Cyclic_Set_Out(i)%List(Cyclic_Set_Out(i)%len)))
       ! matlab output
-      !WRITE(97,'(*(I0,2X))') (Cyclic_Set_red(i)%List(j) , j=1,Cyclic_Set_red(i)%len)
+      !WRITE(97,'(*(I0,2X))') (Cyclic_Set_Out(i)%List(j) , j=1,Cyclic_Set_Out(i)%len)
     END DO
 
     CLOSE(98)
@@ -264,10 +268,15 @@ MODULE Cycles_Mod
       INTEGER :: i
 
       iRow=0
-      DO i=1,n; IF ( List(i)==iSpc ) iRow=i;  RETURN;  END DO
+      DO i=1,n
+        IF ( List(i)==iSpc ) THEN
+          iRow=i  
+          RETURN
+        END IF
+      END DO
     END FUNCTION Is_Spc_In_Cycle
 
-  END SUBROUTINE Find_Elem_Circuits
+  END FUNCTION Find_Elem_Circuits
 
   
   RECURSIVE SUBROUTINE Unblock(u)

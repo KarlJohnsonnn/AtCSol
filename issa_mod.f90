@@ -212,6 +212,36 @@ MODULE issa
 
   END SUBROUTINE WriteReaction
 
+  SUBROUTINE PrintReactionCycles(ReacCycles,RS)
+    USE mo_control,  ONLY: List, BSP
+    USE ChemSys_Mod, ONLY: ReactionStruct_T
+
+    TYPE(List),             INTENT(IN) :: ReacCycles(:)
+    TYPE(ReactionStruct_T), INTENT(IN) :: RS(:)
+
+    INTEGER            :: iReac, iCycle, nLen
+    INTEGER, PARAMETER :: Reac_Unit = 113
+
+    OPEN(unit=Reac_Unit, file='ReactionCycles_'//TRIM(BSP)//'.txt', action='write')
+
+    !WRITE(*,*) ' DBG-Output ::  number of reaction cycles = ', SIZE(ReacCycles)
+
+    nLen = 0
+    DO iCycle = 1 , SIZE(ReacCycles)
+      nLen = nLen + ReacCycles(iCycle)%len
+      WRITE(Reac_Unit,'("iCycle = ",I0,"  length = ",I0)') iCycle, ReacCycles(iCycle)%len
+      DO iReac = 1 , ReacCycles(iCycle)%len
+        WRITE(Reac_Unit,'(5X,A)')  'Reaction ::  '//TRIM(RS(ReacCycles(iCycle)%List(iReac))%Line1)
+      END DO
+      WRITE(Reac_Unit,*) 
+    END DO
+
+    !WRITE(*,*) ' DBG-Output ::  number of reacs = ', nLen
+
+    CLOSE(Reac_Unit)
+
+  END SUBROUTINE PrintReactionCycles
+
 
 !******************************************************************************************************************
 !
@@ -226,28 +256,50 @@ MODULE issa
 !
 !******************************************************************************************************************
 
-  SUBROUTINE Get_Rk(R_k,A_T)
-    USE mo_control, ONLY: List, nCycles_red, Cyclic_Set_red
-    USE Sparse_Mod, ONLY: B, WriteSparseMatrix
+  
+  SUBROUTINE ISSA_structure(R_k,Target_Spc,TargetFile)
+    USE mo_reac,    ONLY: nr
+    USE mo_control, ONLY: List, Families_T
+    USE Sparse_Mod, ONLY: B, A, WriteSparseMatrix, CSR_Matrix_T, TransposeSparse, SymbolicMult
+    USE Cycles_Mod
     USE mo_unirnk
 
-    TYPE(List), ALLOCATABLE :: R_k(:)
-    TYPE(CSR_Matrix_T) :: A_T
+    TYPE(List), ALLOCATABLE, INTENT(OUT) :: R_k(:)
+    INTEGER,    ALLOCATABLE, INTENT(OUT) :: Target_Spc(:)
+    CHARACTER(*),            INTENT(IN)  :: TargetFile
+
+    TYPE(List), ALLOCATABLE :: cycles(:)
+    TYPE(CSR_Matrix_T)      :: A_T, B_T, Spc_Graph
+
+    TYPE(Families_T), ALLOCATABLE :: Families(:)
 
     INTEGER, ALLOCATABLE :: ReacSet(:), Perm(:)
-    INTEGER :: iSpc
+    INTEGER, ALLOCATABLE :: ReacSet0(:), LeftOver(:)
+    INTEGER :: n
     INTEGER :: newLen
-    INTEGER :: i, jj, j , iC, iR, iS, iSpcE, iSpcP, iR_a, iS_b
+    INTEGER :: jj, iC, iS, iSpcE, iSpcP, iR_a, iS_b
 
-    ALLOCATE(R_k(nCycles_red+1))
- 
-    DO iC = 1,nCycles_red
+    Target_Spc = Read_Target_Spc(TargetFile)
+    Families   = Read_Spc_Families(TargetFile)
+
+    CALL TransposeSparse( A_T , A )
+    CALL SymbolicMult( A_T , B , Spc_Graph )
+    Spc_Graph%Val = 1.0_dp
+
+    Cycles = Find_Elem_Circuits(Spc_Graph,Families)
+
+    n = SIZE(cycles)
+
+    ALLOCATE(R_k(n+1))
+    ALLOCATE(ReacSet0(0))
+    
+    DO iC = 1,n
 
       ALLOCATE(R_k(iC)%List(0))
 
-      DO iS = 1 , Cyclic_Set_red(iC)%len-1
-        iSpcE = Cyclic_Set_red(iC)%List(iS)
-        iSpcP = Cyclic_Set_red(iC)%List(iS+1)
+      DO iS = 1 , cycles(iC)%len-1
+        iSpcE = cycles(iC)%List(iS)
+        iSpcP = cycles(iC)%List(iS+1)
 
         ALLOCATE(ReacSet(0))
         DO jj = A_T%RowPtr(iSpcE),A_T%RowPtr(iSpcE+1)-1
@@ -270,156 +322,41 @@ MODULE issa
       R_k(iC)%List = [ R_k(iC)%List(Perm(1:newLen)) ]
       DEALLOCATE(Perm)
 
+      ReacSet0 = [ReacSet0 , R_k(iC)%List]
+
       !WRITE(*,'(A,I0,A,*(I0,3X))') ' R_k(',iC,')%List = ', R_k(iC)%List
     END DO
+
+
+    ALLOCATE(Perm(SIZE(ReacSet0)))
+    CALL unirnk( ReacSet0 , Perm , newLen )
+    ReacSet0 = [ ReacSet0(1:newLen) ]
+    DEALLOCATE(Perm)
+
+    n = 1
+
+    ALLOCATE(LeftOver(0))
+    DO jj = 1 , nr
+      IF ( jj == ReacSet0(n) ) THEN
+        n = n + 1
+      ELSE
+        LeftOver = [LeftOver , jj]
+      END IF
+    END DO
+
+    n = SIZE(cycles)
+    
+    R_k(n+1)%len  = SIZE(LeftOver)
+    R_k(n+1)%List = [ LeftOver ]
+    
+    !WRITE(*,*) ' DBG-Output ::  number of reactions within cycles = ', SIZE(ReacSet0), iC
+    !WRITE(*,*) ' DBG-Output ::  number of non-cyclic reactions = ', SIZE(LeftOver)
+
    !stop 'issa_MOD'
 
 
-  END SUBROUTINE Get_Rk
-
-
-  SUBROUTINE ISSA_structure(R_k,nue,A_T,cycles,RS)
-    USE mo_reac,    ONLY: nr, nspc, y_name
-    USE mo_control, ONLY: List, nCycles_red
-    USE ChemSys_Mod,ONLY: ReactionStruct_T
-    USE Sparse_Mod
-
-    TYPE(List), ALLOCATABLE, INTENT(OUT) :: R_k(:)
-    TYPE(CSR_Matrix_T)     , INTENT(IN) :: nue, A_T
-    TYPE(List)             :: cycles(:)
-    TYPE(ReactionStruct_T) :: RS(:)
-
-    INTEGER,    ALLOCATABLE :: tnue_pos(:),tnue_neg(:)
-    INTEGER,    ALLOCATABLE :: tnue_pos0(:),tnue_neg0(:), Perm(:)
-    INTEGER,    ALLOCATABLE :: NonCyclicRemainder(:)
-    INTEGER                 :: nNonCycRem=0
-
-
-    INTEGER :: i, jj, j , k, kk, iR, iS, iSpc
-    INTEGER :: cnt_pos, cnt_neg, nS, N_pos0, N_neg0
-
-    nCycles_red = SIZE(cycles)
-    
-    CALL Get_Rk(R_k,A_T)
-
-    ! this routine generates the nue_plus and nue_minus matricies 
-    ! decribed by Mauersberger [2005] in section 2.2 
-
-    ALLOCATE(tnue_pos0(0) , tnue_neg0(0) )
-
-    DO k = 1, nCycles_red
-
-      ALLOCATE( tnue_pos(0) , tnue_neg(0) )
-      DO iS = 1, cycles(k)%len-1
-        iSpc = cycles(k)%List(iS)
-        cnt_pos = 0
-        cnt_neg = 0
-        DO jj = nue%RowPtr(iSpc), nue%RowPtr(iSpc+1) - 1
-          j = nue%ColInd(jj)
-          DO kk = 1,R_k(k)%len
-            iR = R_k(k)%List(kk)
-            IF ( j == iR ) THEN
-              IF ( nue%Val(jj) > 0.0_dp ) THEN
-                cnt_pos  = cnt_pos + 1
-                tnue_pos = [tnue_pos , jj]
-              ELSE
-                cnt_neg  = cnt_neg + 1
-                tnue_neg = [tnue_neg , jj]
-              END IF
-            END IF
-          END DO
-        END DO
-      END DO
-
-      tnue_pos0 = [tnue_pos0,nue%ColInd(tnue_pos)]
-      tnue_neg0 = [tnue_neg0,nue%ColInd(tnue_neg)]
-
-      DEALLOCATE( tnue_pos, tnue_neg )
-
-    END DO
-
-    ! last matricies nue_pos(0) and nue_neg(0) (NON-CYCLIC REMAINDER)
-    ALLOCATE(Perm(SIZE(tnue_pos0)))
-    CALL unirnk( tnue_pos0 , Perm , N_pos0 )
-    tnue_pos0 = [ tnue_pos0(Perm(1:N_pos0)) ] 
-    DEALLOCATE(Perm)
-
-    ALLOCATE(Perm(SIZE(tnue_neg0)))
-    CALL unirnk( tnue_neg0 , Perm , N_neg0 )
-    tnue_neg0 = [ tnue_neg0(1:N_neg0) ] 
-    DEALLOCATE(Perm)
-
-    ALLOCATE(tnue_pos(0),tnue_neg(0))
-    cnt_pos = 1
-    cnt_neg = 1
-    DO iR = 1, nr
-      IF ( iR == tnue_pos0(cnt_pos) ) THEN
-        IF ( cnt_pos < N_pos0 ) cnt_pos = cnt_pos + 1
-      ELSE
-        tnue_pos = [tnue_pos , iR]
-      END IF
-      IF ( iR == tnue_neg0(cnt_neg) ) THEN
-        IF ( cnt_neg < N_neg0 ) cnt_neg = cnt_neg + 1
-      ELSE
-        tnue_neg = [tnue_neg , iR]
-      END IF
-    END DO
-    DEALLOCATE(tnue_pos0, tnue_neg0)
-    cnt_pos = SIZE(tnue_pos)
-    cnt_neg = SIZE(tnue_neg)
-
-    ! get species indices out of residual reactions set
-    ALLOCATE(tnue_pos0(0))
-    nS = 0
-    DO i = 1, cnt_pos
-      iR = tnue_pos(i)
-      DO jj = BA%RowPtr(iR),BA%RowPtr(iR+1)-1
-        IF ( BA%Val(jj) > 0.0_dp ) THEN
-          nS  = nS + 1
-          tnue_pos0 = [tnue_pos0 , BA%ColInd(jj)]
-        END IF
-      END DO
-    END DO
-
-    ALLOCATE(Perm(SIZE(tnue_pos0)))
-    CALL unirnk( tnue_pos0 , Perm , nS )
-    tnue_pos0 = [ tnue_pos0(Perm(1:nS)) ] 
-    DEALLOCATE(Perm)
-
-    NonCyclicRemainder = [tnue_pos0]
-
-    ALLOCATE(tnue_neg0(0))
-    nS = 0
-    DO i = 1, cnt_neg
-      iR = tnue_neg(i)
-      DO jj = BA%RowPtr(iR),BA%RowPtr(iR+1)-1
-        IF ( BA%Val(jj) < 0.0_dp ) THEN
-          nS  = nS + 1
-          tnue_neg0 = [tnue_neg0 , BA%ColInd(jj)]
-        END IF
-      END DO
-    END DO
-    ALLOCATE(Perm(SIZE(tnue_neg0)))
-    CALL unirnk( tnue_neg0 , Perm , nS )
-    tnue_neg0 = [ tnue_neg0(Perm(1:nS)) ] 
-    DEALLOCATE(Perm)
-    NonCyclicRemainder = [NonCyclicRemainder,tnue_neg0]
-
-
-    ALLOCATE(Perm(SIZE(NonCyclicRemainder)))
-    CALL unirnk( NonCyclicRemainder , Perm , cnt_pos )
-    NonCyclicRemainder = [ NonCyclicRemainder(Perm(1:cnt_pos)) ] 
-    DEALLOCATE(Perm)
-    nNonCycRem = cnt_pos
-
-    R_k(nCycles_red+1)%len  = nNonCycRem
-    R_k(nCycles_red+1)%List = [NonCyclicRemainder]
-
-    !write(*,*) ' noncyclic remainder = ', NonCyclicRemainder
-    !stop
-
-
   END SUBROUTINE ISSA_structure
+ 
 
   SUBROUTINE SortVecAsc_R(v,q,m)
     USE mo_control, ONLY: big
@@ -535,7 +472,7 @@ MODULE issa
     ! TEMP:
     INTEGER        :: Positions(iStpFlux)
     REAL(dp)       :: Rates(nr,iStpFlux)
-    REAL(dp)       :: Rate(nr)
+    REAL(dp)       :: avgRate(nr)
     REAL(dp)       :: time(iStpFlux), dt(iStpFlux)
     INTEGER        :: i, j, jj, k, kk, l, dummy, cnt
     
@@ -596,16 +533,19 @@ MODULE issa
    
 
     ! calculate time-averaged rate of reactions
-    Rate = 0_dp
+    avgRate = 0_dp
     DO i = 1,iStpFlux
-      Rate = Rate + ABS(Rates(:,i))*dt(i)
+      !avgRate = avgRate + ABS(Rates(:,i))*dt(i)
+      !avgRate = avgRate + ABS(Rates(:,i))/dt(i)
+      !avgRate = avgRate + ABS(Rates(:,i))
+      avgRate = avgRate + Rates(:,i)
     END DO
-    Rate = Rate/REAL(iStpFlux)
+    avgRate = avgRate/(Tspan(2)-Tspan(1))
 
 
     OPEN(unit=199, file='Rates_'//TRIM(BSP)//'.txt', action='write')
-    DO j=1,SIZE(Rate) 
-      WRITE(199,'(A,I0,A,Es16.8,A)') ' integr. rate(',j,') = ',rate(j), '    '//TRIM(RS(j)%Type)//'    '//TRIM(RS(j)%Line1)
+    DO j=1,SIZE(avgRate) 
+      WRITE(199,'(A,I0,A,Es16.8,A)') ' time-avgeraged Rate(',j,') = ',avgRate(j), '    '//TRIM(RS(j)%Type)//'    '//TRIM(RS(j)%Line1)
     END DO
     CLOSE(199)
 
@@ -620,6 +560,8 @@ MODULE issa
     ALLOCATE( R_imp(0) )
 
     nR_k = SIZE(R_k)
+
+    CALL PrintReactionCycles(R_k,RS)
 
     ! ITERATIVE LOOP
     nIter = 1
@@ -654,7 +596,7 @@ MODULE issa
           IF (any_sources) THEN
             f_iR  = [ pos_BAT%ColInd(source_reacs) ]
             inR_f = SIZE(f_iR)
-            f_iJk = [ pos_BAT%Val(source_reacs) * Rate(f_iR) ]
+            f_iJk = [ pos_BAT%Val(source_reacs) * avgRate(f_iR) ]
             f_iJk = f_iJk / SUM(f_iJk)
 
             CALL SortVecAsc_R( f_iJk , f_p , inR_f )
@@ -678,7 +620,7 @@ MODULE issa
           IF (any_sinks) THEN
             g_iR = [ neg_BAT%ColInd(sink_reacs) ]
             inR_g = SIZE(g_iR)
-            g_iJk = [ pos_BAT%Val(sink_reacs) * Rate(g_iR) ]
+            g_iJk = [ pos_BAT%Val(sink_reacs) * avgRate(g_iR) ]
             g_iJk = g_iJk / SUM(g_iJk)
 
             CALL SortVecAsc_R( g_iJk , g_p , inR_g )

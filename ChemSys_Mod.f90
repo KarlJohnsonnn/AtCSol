@@ -334,6 +334,8 @@ MODULE Chemsys_Mod
             CASE ('SPECIAL')
               nr_SPECIAL = nr_SPECIAL + 1
               nr_G_special = nr_G_special + 1
+            CASE ('HOM1')
+              nr_HOM1 = nr_HOM1 + 1
             CASE DEFAULT
               WRITE(*,*) '  Unknown gaseous reaction: ', TypeR
           END SELECT
@@ -3464,6 +3466,9 @@ MODULE Chemsys_Mod
       CASE ('SPECIAL')
         !IF ( SIZE(C)<2 ) CALL ErrorMSG(iReac,Line1)
         icnt(44)=icnt(44)+1; iR%iSPECIAL(icnt(44))=iReac
+      CASE ('HOM1')
+        IF ( SIZE(C)<3 ) CALL ErrorMSG(iReac,Line1)
+        icnt(45)=icnt(45)+1; iR%iHOM1(icnt(45))=iReac; iR%HOM1(icnt(45),:)=C 
       CASE DEFAULT
         WRITE(*,*) ''
         WRITE(*,*) ' Reaction Type unknown:  ',TRIM(TypeR),'  --> check input file'
@@ -3482,8 +3487,8 @@ MODULE Chemsys_Mod
       END SUBROUTINE ErrorMSG
 
   END SUBROUTINE Setup_ReacParameter
-  !
-  !
+  
+  
   SUBROUTINE CheckConstants(RS)
     TYPE(ReactionStruct_T) :: RS(:)     ! reaction system
     CHARACTER(15) :: Const_T            ! constant type for reaction i
@@ -3567,6 +3572,8 @@ MODULE Chemsys_Mod
             & iR%PHOTO2kpp(nr_PHOTO2kpp),  iR%PHOTO3kpp(nr_PHOTO3kpp) )
 
     ALLOCATE( iR%iSpecial(nr_special) ) 
+
+    ALLOCATE( iR%iHOM1(nr_HOM1) , iR%HOM1(nr_HOM1,3) ) 
   END SUBROUTINE AllocateRTarrays
 
 

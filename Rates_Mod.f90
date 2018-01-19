@@ -480,7 +480,7 @@
       IF (nr_PHOTMCM>0) THEN
         IF ( chi(1) < PiHalf ) THEN
           ChiZmcm  = EXP( -iR%PHOTmcm(:,3) * chi(2) )
-          yChiZmcm = chi(2) ** iR%PHOTmcm(:,2)
+          yChiZmcm = chi(1) ** iR%PHOTmcm(:,2)
           k(iR%iPHOTmcm) = Dust * iR%PHOTmcm(:,1) * yChiZmcm * ChiZmcm
         END IF
       END IF
@@ -665,6 +665,10 @@
         k2smcm8 = iR%SPEC8mcm(:,3)*mAir*F*EXP(iR%SPEC8mcm(:,4)*T(6))
         k(iR%iSPEC8mcm) = k1smcm8/(One+k2smcm8)*T(6)
       END IF
+      IF (nr_HOM1>0) THEN
+        k(iR%iHOM1) = iR%HOM1(:,1) * EXP(iR%HOM1(:,2)/T(1)) * EXP(iR%HOM1(:,3)/(T(3)))
+      END IF
+
       ! ************************************************************************
 
       IF (nr_T1H2O>0) k(iR%iT1H2O) = iR%T1H2O(:,1)*EXP(-iR%T1H2O(:,2)*T(6))

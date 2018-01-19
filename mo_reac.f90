@@ -166,6 +166,7 @@
     INTEGER :: nr_FAC_H2O = 0, nr_FAC_RO2 = 0, nr_FAC_O2O2 = 0, nr_FAC_aH2O = 0, nr_FAC_RO2aq = 0
     INTEGER :: nr_HOaqua = 0      ! higher order aqueous reactions
     INTEGER :: nr_PHOTOkpp = 0, nr_PHOTO2kpp = 0, nr_PHOTO3kpp = 0
+    INTEGER :: nr_HOM1 = 0
 
     LOGICAL :: PHOTO=.FALSE.
 
@@ -337,7 +338,7 @@
       &                     , iS4H2O(:),    iT1H2O(:),    iASPEC1(:),   iASPEC2(:)    &
       &                     , iASPEC3(:),   iASPEC4(:),   iDCONST(:,:),   iDTEMP(:,:) &
       &                     , iDTEMP2(:,:), iDTEMP3(:,:), iDTEMP4(:,:), iDTEMP5(:,:), iMeskhidze(:,:)&
-      &                     , iHENRY(:,:) &
+      &                     , iHENRY(:,:) , iHOM1(:) &
       ! nFACTOR x 2, with [H2,O2N2,M,O2,N2,H2O,RO2,O2O2,aH2O,RO2aq,+M/(+M)]
       &                     , iFAC_H2(:),  iFAC_O2N2(:), iFAC_M(:),    iFAC_O2(:),   iFAC_N2(:) &
       &                     , iFAC_H2O(:), iFAC_RO2(:),  iFAC_O2O2(:), iFAC_aH2O(:), iFAC_RO2aq(:) &
@@ -372,7 +373,8 @@
       &                     ,  DCONST(:,:)    &    ! nDCONST x 2
       &                     ,  HENRY(:,:)     &    ! nHENRY x 2
       &                     ,  HOaqua(:)      &
-      &                     ,  PHOTOkpp(:), PHOTO2kpp(:), PHOTO3kpp(:) ! nPHOTOi x 1
+      &                     ,  PHOTOkpp(:), PHOTO2kpp(:), PHOTO3kpp(:) &! nPHOTOi x 1
+      &                     ,  HOM1(:,:)
     END TYPE ReacTypeIndex_TR
 
     TYPE(ReacTypeIndex_TR) :: iR
@@ -389,42 +391,6 @@
     END TYPE ReacTypeParameter_CK
 
     TYPE(ReacTypeParameter_CK) :: RTpar
-
-    TYPE ReacTypeParameter_TR
-      ! different kinds of arrhenius parameter
-      REAL(dp), ALLOCATABLE :: PHOTabc(:,:)     ! nPHOTabc x 3
-      REAL(dp), ALLOCATABLE :: PHOTab(:,:)      ! nPHOTab x 2
-      REAL(dp), ALLOCATABLE :: PHOTmcm(:,:)     ! nPHOTmcm x 3
-      REAL(dp), ALLOCATABLE :: CONST(:)         ! nCONST x 1
-      REAL(dp), ALLOCATABLE :: TEMP1(:,:), TEMP2(:,:), TEMP3(:,:), TEMP4(:,:) ! nTEMPi x 2
-      REAL(dp), ALLOCATABLE :: TROE(:,:)        ! nTROE x 4
-      REAL(dp), ALLOCATABLE :: TROEf(:,:)       ! nTROEf x 5
-      REAL(dp), ALLOCATABLE :: TROEq(:,:)       ! nTROEq x 6
-      REAL(dp), ALLOCATABLE :: TROEqf(:,:)      ! nTROEqf x 7
-      REAL(dp), ALLOCATABLE :: TROExp(:,:)      ! nTROExp x 5
-      REAL(dp), ALLOCATABLE :: TROEmcm(:,:)     ! nTROExp x 10
-      REAL(dp), ALLOCATABLE :: SPEC1(:,:), SPEC2(:,:)  ! nSPEC1,2 x 2
-      REAL(dp), ALLOCATABLE :: SPEC3(:,:)       ! nSPEC3 x 6
-      REAL(dp), ALLOCATABLE :: SPEC4(:,:)       ! nSPEC4 x 4
-      REAL(dp), ALLOCATABLE :: SPEC1mcm(:,:), SPEC2mcm(:,:)  ! nSPEC1mcm,2 x 3
-      REAL(dp), ALLOCATABLE :: SPEC3mcm(:,:)    ! nSPEC3mcm x 2
-      REAL(dp), ALLOCATABLE :: SPEC4mcm(:,:), SPEC5mcm(:,:), SPEC6mcm(:,:), SPEC8mcm(:,:)  ! nSPEC4,5,6mcm x 4
-      REAL(dp), ALLOCATABLE :: SPEC7mcm(:,:)    ! nSPEC7mcm x 6
-      REAL(dp), ALLOCATABLE :: S4H2O(:,:)       ! nS4H2o x 4
-      REAL(dp), ALLOCATABLE :: T1H2O(:,:)       ! nT1H2o x 2
-      REAL(dp), ALLOCATABLE :: Meskhidze(:,:)   ! nMeskhidze x 7
-      REAL(dp), ALLOCATABLE :: ASPEC1(:,:), ASPEC3(:,:) ! nASPEC1,3 x 2
-      REAL(dp), ALLOCATABLE :: ASPEC2(:,:), ASPEC4(:,:) ! nAPSEC2,4 x 3
-      REAL(dp), ALLOCATABLE :: DTEMP(:,:), DTEMP5(:,:)  ! nDTEMP,5 x 3
-      REAL(dp), ALLOCATABLE :: DTEMP2(:,:), DTEMP3(:,:), DTEMP4(:,:)  ! nDTEMP2,3,4 x 4
-      REAL(dp), ALLOCATABLE :: DCONST(:,:)        ! nDCONST x 2
-      REAL(dp), ALLOCATABLE :: HENRY(:,:)         ! nHENRY x 2
-      REAL(dp), ALLOCATABLE :: HOaqua(:)
-      REAL(dp), ALLOCATABLE :: PHOTOkpp(:), PHOTO2kpp(:), PHOTO3kpp(:) ! nPHOTOi x 1
-      !CHARACTER(400), ALLOCATABLE :: SPECIAL(:)
-    END TYPE ReacTypeParameter_TR
-
-    TYPE(ReacTypeParameter_TR) :: Rparam
 
     INTEGER, ALLOCATABLE  :: AtomicMatrix(:,:)  ! dim = (nspc, natoms), where natoms = number of different elements in the system
 

@@ -8,7 +8,7 @@
 &FILES
   SysFile    = 'CHEM/RACM+C24.sys'      ! .sys Datei (ohne .sys angeben!)
   DataFile   = 'DAT/Urban.dat'          ! .dat Datei (für RO2, RO2aqua Summen)
-  InitFile   = 'INI/Urban.ini'          ! .ini Datei (Anfangswerte gas/flüssig), Diagnose spc
+  InitFile   = 'INI/Urban_Emis.ini'          ! .ini Datei (Anfangswerte gas/flüssig), Diagnose spc
   MetFile    = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)
   TargetFile = 'TAR/RACM+C24.ctrl'     ! .ctrl Datei (Zielspezies,Spezies Familen,gelumpte Species)
 /END

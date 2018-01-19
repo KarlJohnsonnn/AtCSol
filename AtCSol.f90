@@ -28,12 +28,10 @@ PROGRAM AtCSol
   CHARACTER(80)   :: Filename0 = ''        ! *.run file
   !
   REAL(dp), ALLOCATABLE :: Atol(:)
-  INTEGER  :: i,j,jj,nSchwefel
-  INTEGER  :: io_err,  STAT
+  INTEGER  :: i,nSchwefel
 
   ! NetCDF stuff
   REAL(dp) :: StartTimer
-  REAL(dp) :: LWC, zen
   INTEGER  :: errind(1,1)
   REAL(dp), ALLOCATABLE :: ErrVals(:), Y(:)
   ! reaction rate array + part. derv. rate over temperatur vector
@@ -45,10 +43,6 @@ PROGRAM AtCSol
   CHARACTER(80) :: neuROW   = ''
   CHARACTER(2)  :: newLinAlg  = ''
 
-  ! temp variables for molecular weights
-  CHARACTER(16) :: tmpchar0 = '-'
-  REAL(dp)  :: tmpMW0
-  INTEGER   :: tmpPos, tmpCnt
 
   ! convertion from mole to mass to conc
   REAL(dp), ALLOCATABLE   :: MoleFrac(:), MassFrac(:), MoleConc(:)
@@ -65,10 +59,10 @@ PROGRAM AtCSol
   CHARACTER(14) :: fmt0 = '  [molec/cm3] '
 
   ! new testing stuff 
-  TYPE(CSR_Matrix_T) :: A_T, B_T, P_HG, S_HG, R_HG, S_HG_transp
+  TYPE(CSR_Matrix_T) :: A_T, P_HG, S_HG, R_HG
   CHARACTER(1) :: inpt=''
-  INTEGER,    ALLOCATABLE :: Target_Spc(:)
   TYPE(List), ALLOCATABLE :: ReacCyc(:)
+  INTEGER,    ALLOCATABLE :: Target_Spc(:) 
   
   ! timer
   REAL(dp) :: t_1,t_2
@@ -514,29 +508,12 @@ PROGRAM AtCSol
     !-----------------------------------------------------------------------
     ! --- Read species groups in order to combine them (Species Lumping)
     IF( TargetFile/='' ) THEN
-      Target_Spc = Read_Target_Spc(TargetFile)
-      Families   = Read_Spc_Families(TargetFile)
-
-      P_HG = Copy_CSR(B)
-      CALL TransposeSparse( A_T , Copy_CSR(A) )
-
-      CALL SymbolicMult( A_T , P_HG , S_HG )
-      S_HG%Val = ONE
-
-      !CALL Find_Elem_Circuits(S_HG,Target_Spc)
-      CALL Find_Elem_Circuits(S_HG,Families)
-      CALL ISSA_structure( ReacCyc, BAT, A_T, Cyclic_Set_red, ReactionSystem )
-
-      !-----------------------------------------------------------------------
-      ! --- Analyse reation rate fluxes and print a reduced mechanism
-      !WRITE(*,'(A40,3X,F13.6,A6)') '    Timer flux writing        = ', TimeFluxWrite, ' [sec]'
-      CALL ISSA_screening(ReactionSystem,ReacCyc,Target_Spc)
-      WRITE(*,*); WRITE(*,*)
+      CALL ISSA_structure( ReacCyc , Target_Spc , TargetFile )
+      CALL ISSA_screening( ReactionSystem, ReacCyc, Target_Spc )
     ELSE
       WRITE(*,777) '    ** NO IMPORTANT SPECIES ARE DECLARED **'
-      WRITE(*,*)
-      WRITE(*,*)
     END IF
+      WRITE(*,*); WRITE(*,*)
   END IF
 
   ! --- Close MPI 

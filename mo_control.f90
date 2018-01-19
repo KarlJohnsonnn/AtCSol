@@ -300,14 +300,5 @@
       INTEGER,            ALLOCATABLE :: Index(:)
     END TYPE Families_T
    
-    TYPE(Families_T), ALLOCATABLE :: Families(:)
-
-    TYPE(List), ALLOCATABLE :: Cyclic_Set(:)
-    TYPE(List), ALLOCATABLE :: Cyclic_Set_red(:)
-    INTEGER                 :: nCycles=0, nCycles_red=0
-
-
-
-
  END MODULE mo_control
 

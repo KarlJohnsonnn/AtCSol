@@ -633,6 +633,7 @@ MODULE Rosenbrock_Mod
 
       CALL ERROR( err , ierr , YNew , YHat , ATolAll , RTolROW , t )
       TimeErrCalc = TimeErrCalc + MPI_WTIME() - timerStart
+      !WRITE(*,*) ' SUM Y  = ',SUM(YNew), err, Out%nSteps, TRIM(y_name(ierr(1,1)))
 
       ! for analysis and reduction
       IF ( FluxAna .AND. MPI_master .AND. err < ONE ) THEN
