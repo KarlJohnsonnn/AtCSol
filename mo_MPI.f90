@@ -2,13 +2,15 @@ MODULE mo_MPI
   !
   USE MPI
   USE Kind_Mod
+  USE mo_control
   USE mo_reac, ONLY: LowerRateLim, UpperRateLim
   IMPLICIT NONE
-  INTEGER :: MPI_RealKind
+  INTEGER :: MPI_dp
   !
   INTEGER :: MPI_ID
   INTEGER :: MPI_np
   INTEGER :: MPIErr
+  LOGICAL :: MPI_master
   !
   INTEGER, ALLOCATABLE :: MyParties(:,:)
   !
@@ -23,7 +25,12 @@ MODULE mo_MPI
     CALL CheckMPIErr() 
     CALL MPI_COMM_SIZE( MPI_COMM_WORLD, MPI_np, MPIErr )
     CALL CheckMPIErr() 
-    MPI_RealKind=MPI_Double_Precision
+    MPI_dp=MPI_Double_Precision
+    IF ( MPI_id == 0 ) THEN
+      MPI_master = .TRUE.
+    ELSE
+      MPI_master = .FALSE.
+    END IF
   END SUBROUTINE StartMPI
   !
   !
@@ -89,13 +96,12 @@ MODULE mo_MPI
   !
   !
   SUBROUTINE GatherAllPartitions(Vec,Partitions)
-    REAL(RealKind) :: Vec(:)
+    REAL(dp) :: Vec(:)
     INTEGER :: Partitions(:,:)
     !
     ! collect the parts of Rate on all processes
     ! -- IN_PLACE --> no need for sendcount and sendtype
     ! -- ":" = proc0,..,procN-1
-    TimeRateSendA=MPI_WTIME()
     CALL MPI_AllGatherV( MPI_IN_PLACE        &  ! sendbuffer 
     &                  , 0                   &  ! sendcount 
     &                  , MPI_DATATYPE_NULL   &  ! sendtype
@@ -106,14 +112,13 @@ MODULE mo_MPI
     &                  , MPI_COMM_WORLD      &  ! communicator
     &                  , MPIErr              )  ! error code-\
     CALL CheckMPIErr() ! <------------------check------------/
-    TimeRateSend=TimeRateSend+(MPI_WTIME()-TimeRateSendA)
   END SUBROUTINE GatherAllPartitions
   !
   !
   ! This routine will gather the maximum time value of all processes
   SUBROUTINE GetMaxTimes(maxTime,inTime)
-    REAL(RealKind) :: inTime
-    REAL(RealKind) :: maxTime
+    REAL(dp) :: inTime
+    REAL(dp) :: maxTime
     !
     !
     CALL MPI_Reduce( inTime          &    ! sendbuffer
@@ -147,8 +152,8 @@ MODULE mo_MPI
   !
   ! Send array of real values from i  to process 0
   SUBROUTINE SendReal(SendV,ResV,i)
-    REAL(RealKind) :: SendV(:)
-    REAL(RealKind) :: ResV(SIZE(SendV))
+    REAL(dp) :: SendV(:)
+    REAL(dp) :: ResV(SIZE(SendV))
     INTEGER :: i,nSendV
      
     nSendV=SIZE(SendV)
@@ -160,5 +165,23 @@ MODULE mo_MPI
     CALL CheckMPIErr()
   END SUBROUTINE SendReal
 
+  FUNCTION GatherAquaFractions(sbuf) RESULT(rbuf)
+    USE mo_reac,    ONLY: nFrac
+    USE mo_control, ONLY: nNcdfAqua
+    REAL(dp), INTENT(IN) :: sbuf(nNcdfAqua)    
+    REAL(dp)             :: rbuf(nFrac*nNcdfAqua)
+
+    CALL MPI_GATHER( sbuf            &  ! sendbuffer 
+    &              , nNcdfAqua       &  ! sendcount 
+    &              , MPI_DOUBLE      &  ! sendtype
+    &              , rbuf            &  ! recvbuffer
+    &              , nNcdfAqua       &  ! receivecount 
+    &              , MPI_DOUBLE      &  ! recvtype
+    &              , 0               &  ! send to root
+    &              , MPI_COMM_WORLD  &  ! communicator
+    &              , MPIErr          )  ! error code-
+    CALL CheckMPIErr
+
+  END FUNCTION GatherAquaFractions
 
 END MODULE mo_MPI

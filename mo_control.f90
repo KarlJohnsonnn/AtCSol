@@ -9,254 +9,296 @@
 !-----------------------------------------------------------------
 !
 !--- Identifier for scenario
-      CHARACTER(20) :: Bsp           ! Identifier for scenario
+      CHARACTER(20) :: Bsp        = ''      ! Identifier for scenario
 
 !--- Files
-      CHARACTER(80) :: MetFile           & ! Meteorology file
-&                     ,ChemFile          & ! Chemical mechanism
-&                     ,InitFile          & ! Initial concentrations
-&                     ,DataFile          & ! Gas and Aqueous DATA
-&                     ,AVSFile           & ! AVS   output file
-&                     ,NetcdfFileName    & ! NetCDF output file
-&                     ,OutFile           & ! ASCII output file
-&                     ,DiagFile          & ! Diagnose file
-&                     ,StatFile          & ! Statistics file
-&                     ,JacFile           & ! Jacobian structure file
-&                     ,QtListFile        & ! File with listed species for Qt-Output 
-&                     ,ErrFile           & ! Output error file
-&                     ,RosenbrockMethod    ! Method for Rosenbrock Integration
+      CHARACTER(80) :: RunFile    = ''    & ! Simulation data file
+&                    , MetFile    = ''    & ! Meteorology file
+&                    , SysFile    = ''    & ! Chemical mechanism
+&                    , ChemFile   = ''    & ! Chemical mechenism (spaccim input)
+&                    , InitFile   = ''    & ! Initial concentrations
+&                    , DataFile   = ''    & ! Gas and Aqueous DATA
+&                    , MWFile     = ''    & ! molecular weights of species 
+&                    , NetcdfFile = ''    & ! NetCDF output file
+&                    , ODEsolver  = ''    & ! Method for Rosenbrock Integration
+&                    , TargetFile = ''      ! file for reductions analysis (target species)
+
+      CHARACTER(80) :: FluxMetaFile = 'fluxmeta.dat' ! meta data for unformatted flux data
+      CHARACTER(80) :: FluxFile     = 'fluxes.dat'   ! flux data (unformatted)
 !
 !--- Unit Numbers
-      INTEGER :: MetUnit           & ! Meteorology file
-&               ,ChemUnit          & ! Chemical mechanism
-&               ,InitUnit          & ! Initial concentrations
-&               ,DataUnit          & ! Gas and Aqueous DATA
-&               ,AVSUnit           & ! AVS   output file
-&               ,OutUnit           & ! ASCII output file
-&               ,DiagUnit          & ! Diagnose file
-&               ,StatUnit          & ! Statistics file
-&               ,JacUnit           & ! Jacobian structure file
-&               ,ErrUnit             ! Output error file
+      INTEGER, PARAMETER :: RunUnit      = 101  & 
+&                         , MetUnit      = 102  & 
+&                         , SysUnit      = 103  & 
+&                         , ChemUnit     = 104  & 
+&                         , MWUnit       = 105  & 
+&                         , InitUnit     = 106  & 
+&                         , DataUnit     = 107  & 
+&                         , FluxMetaUnit = 109  &
+&                         , FluxUnit     = 110   
 !
 !-- Set Levels and Parameters for Processes
-      REAL(RealKind) :: &
-&                LwcLevelmin       & ! Lower level for LWC
-&               ,LwcLevelmax       & ! Upper level for LWC
-&               ,DryLevel          & ! Lower level for DryMass
-&               ,MinScav           & ! Minimum radius for gas uptake
-&               ,MinChem           & ! Minimum radius for chemistry
-&               ,LwcAll            & ! Liqid Water Content
-&               ,MeanRad             ! Mean Droplet Radius
+      REAL(dp) :: LWCLevelmin    & ! Lower level for LWC
+&               , LWCLevelmax    & ! Upper level for LWC
+&               , Temperature0   & ! Initial temperature
+&               , Pressure0        ! Initial pressure for combustion mechanisms
 
 
 !-- print matrices of the system (alpha, beta, miter, lu_miter, permutvector,..)
-      LOGICAL :: MatrixPrint   
-      LOGICAL :: NetCdfPrint   
+      LOGICAL :: MatrixPrint     & ! print certain matrices to file
+&              , DebugPrint      & ! debugging rosenbrock steps
+&              , NetCdfPrint     & ! print out concs and other stuff to netcdf file
+&              , constLWC        & ! true if lwc value is fixed
+&              , Lehmann         & ! prints out pathway analysis file 
+&              , Teq             & ! prints out pathway analysis file 
+&              , pHSet           & ! Initial pH by charge balance (1=on, 0=off)
+&              , WaitBar         & ! ladebalken im terminal bei simulation (=1, default=0)
+&              , FluxAna           ! writing flux data and analyse after simulaiton -> print new reaction file
 
-!--- Dimensions and Resolution
-      INTEGER :: ntfrac            & ! Number of fractions
-&               ,ResFrac           & ! Resolution of chemistry spectrum
-&               ,FirstChem         & ! First fraction for chemistry
-&               ,LastChem          & ! Last  fraction for chemistry
-&               ,MaxFrac           & ! Maximum fraction for chemistry
-&               ,nReso             & ! Resolution for smoothing   
-&               ,nSmooth           & ! Number of fine fractions for smoothing
-&               ,nCell               ! Number of grid cells
+      INTEGER :: Error_Est         ! error estimation 1 = inf norm  , 2 = euklid norm
+    
+!--- Output of reaction fluxes
+      REAL(dp)                    :: StpFlux
+      INTEGER                     :: iStpFlux
 
-!--- Control Parameter
-      INTEGER :: nCouple           & ! Coupling flag
-&               ,nDep              & ! Flag for deposition gas phase
-&               ,nDepAqua          & ! Flag for deposition aqueous phase
-&               ,nIO               & ! Restart  flag
-&               ,mJacIO            & ! Flag for setting sparse Jacobian structure
-&               ,MinLwcSet         & ! Set LWC allways to LWCLevel  (1=on, 0=off)
-&               ,pHSet             & ! Initial pH by charge balance (1=on, 0=off)
-                ,constLWC          & ! with cloud constLWC>=1
-&               ,mAcoeff           & ! model for mixed activity coefficients 
-&               ,mPitz             & ! determination Pitzer activity coefficients
-&               ,mLR               & ! determination Long Range activity coefficients(AIMOFAC)
-&               ,mAMR              & ! determination middle range activity coefficients (MR in AIOMFAC)
-&               ,mMR               & ! determination middle range activity coefficients (MR in LIFAC)
-&               ,mUni              & ! determination UNIFAC activity coefficients
-&               ,IowMode           & ! consideration of Ion-Organics-Water interactions
-&               ,rqMode            & ! UNIFAC: Setting of RK and QK for ions
-&               ,LRMode            & ! LongRange : Setting to take Input
-&               ,mofac             & ! output of activity coefficients for mol fractions
-&               ,Ladebalken        & ! ladebalken im terminal bei simulation (=1, default=0)
-&               ,Error_Est         & ! error estimation 1 = inf norm  , 2 = euklid norm
-&               ,ErrorLog            ! if = 0 do not print error log 
+      INTEGER,          PARAMETER :: newReac_nr    = 1977
+      CHARACTER(LEN=*), PARAMETER :: newReac_name  = 'BigRates.dat'
+      INTEGER, ALLOCATABLE        :: newReac_List(:)
 !-----------------------------------------------------------------
 !---  Times
 !-----------------------------------------------------------------
 !-----------------------------------------------------------------
 !--- Times:  < 0 in seconds, > 0 in hours, = 0  meteorology
-REAL(RealKind) :: &
-&                DtCoupl           & ! Coupling time step
-&               ,tAnf              & ! Model start time
-&               ,tEnd              & ! Model end time
-&               ,tSimul            & ! Real start time
-&               ,dStart            & ! Period of start phase
-&               ,dPostRun          & ! Period for postrun
-&               ,ErrTime           & ! Restart time for error treating
-&               ,StpAVS            & ! Time step for AVS output
-&               ,StpNetcdf         & ! Time step for Netcdf output
-&               ,StpDiagNcdf       & ! Time step for diagnose Netcdf output
-&               ,StpOut            & ! Time step for ASCII output
-&               ,StpDiag             ! Time step for diagnose
-!--- Checkpoints
-     INTEGER :: PtrCp               ! Current checkpoint position 
-     INTEGER :: nCheck
-     INTEGER, ALLOCATABLE :: iCheck(:)
-     REAL(RealKind), ALLOCATABLE :: tCheck(:)
+      REAL(dp) :: tBegin              & ! Model start time
+&               , tEnd              & ! Model end time
+&               , StpNetcdf           ! Time step for Netcdf output
+      INTEGER  :: nOutP
 
-!--- Current day for several days runs 
-      INTEGER :: ntag
+!--- NetCDF globals      
+      INTEGER, ALLOCATABLE :: iNcdfGas(:), iNcdfAqua(:), iNcdfSolid(:), iNcdfParti(:)
+      INTEGER, ALLOCATABLE :: iNCout_G(:), iNCout_A_l(:), iNCout_A_m3(:), iNCout_S(:), iNCout_P(:)
+      INTEGER  :: nNcdfGas=0, nNcdfAqua=0, nNcdfSolid=0, nNcdfParti=0 ! number of output spc for each phase
+!
 
 !---  Photolysis
       INTEGER :: iDate               ! Current date
-      REAL(RealKind) :: rlat, rlon          ! Latitude, Longitude
+      REAL(dp) :: rlat, rlon          ! Latitude, Longitude
 
 
 !--  dust factor for damping of photolysis rates, measured JNO2
-      REAL(RealKind) :: Dust = 1.0d0
-      REAL(RealKind) :: JNO2          
-      REAL(RealKind) :: minStp = 1.0d-25
-      REAL(RealKind) :: maxStp = 500.0d0
+      REAL(dp) :: Dust = 1.0d0
+      REAL(dp) :: minStp = 1.0d-25
+      REAL(dp) :: maxStp = 100.0d0
 
-!-----------------------------------------------------------------
-!---  Meteorology
-!-----------------------------------------------------------------
-!
-!--- Control Parameter
-      INTEGER :: mpMod             & ! Microphysical model
-&               ,mCase             & ! Microphysical scenario
-&               ,mMicPhys          & ! Microphysic on/off
-&               ,ItemEnd           & ! Last trajectory section
-&               ,nfRaoult          & ! Flag for feedback in Raoult term
-&               ,nfChem            & ! Flag for chemistry for surfacetension 
-&               ,nfMass            & ! Flag for aerosol mass feedback
-&               ,stModel             ! Flag for the Surface tension parameterization
+!-- initialize timers
+      REAL(dp) :: Timer_Start=0.0d0, Timer_Finish=0.d0
+      REAL(dp) :: Tspan(2)
+  
 
-!--- Microphysical control parameters
-      REAL(RealKind) :: StartWind,        & ! Wind speed in Goldlauter
-                 VdepDrop,         & ! Deposition velocity of drops
-                 FixedEpsi           ! Fixed solutable aerosol part
-                                     ! EPSILON 
+      REAL(dp) :: Time_Read=0.0d0
+      REAL(dp) :: TimeRates=0.0d0
+      REAL(dp) :: TimeSymbolic=0.0d0
+      REAL(dp) :: TimeFac=0.0d0
+      REAL(dp) :: TimeSolve=0.0d0
+      REAL(dp) :: TimeJac=0.0d0
+      REAL(dp) :: TimeNetCDF=0.0d0
+      REAL(dp) :: TimeErrCalc=0.0d0
+      REAL(dp) :: TimeFluxWrite=0.0d0
+      REAL(dp) :: TimeRhsCalc=0.0d0
+  
+      REAL(dp) :: TimeIntegration=0.0d0
+      REAL(dp) :: TimeRateA=0.0d0
+      REAL(dp) :: TimeRateE=0.0d0
+      REAL(dp) :: TimeJacobianA=0.0d0
+      REAL(dp) :: TimeJacobianE=0.0d0
+      REAL(dp) :: TimeNetCDFA=0.0d0
 !
+
+!--- type for some statistics
+      TYPE Output_T
+        REAL(dp), ALLOCATABLE :: y(:)    ! y-vector at Tend
+        INTEGER :: nsteps     = 0              ! # succ. steps
+        INTEGER :: nfailed    = 0              ! # failed steps
+        INTEGER :: nRateEvals = 0              ! # Rate evaluation
+        INTEGER :: npds       = 0              ! # Jacobian evaluation
+        INTEGER :: ndecomps   = 0              ! # LU factorisation
+        INTEGER :: nsolves    = 0              ! # solved lin algebra
+        REAL(dp) :: Ttimestep = 0.0d0  ! mean Time for one ROW step
+      END TYPE Output_T
+    
+      TYPE(Output_T) :: Out
 !-----------------------------------------------------------------
 !---  Numerics
 !-----------------------------------------------------------------
 !
-!--- Control Parameter
-      INTEGER :: ITolMod        & ! Setting of BDF tolerances
-&               ,MaxOrdROW      & ! Maximum order of ROW scheme
-&               ,LinSolv        & ! Flag for linear algebra approach
-&               ,ImpEuler
 !
 !--- Tolerances for ROW Scheme
-      REAL(RealKind) :: &
-&                RtolROW        & ! Relative tolerance for ROW method
-&               ,AtolGas        & ! Absolute tolerance for gas phase
-&               ,AtolAqua         ! Absolute tolerance for liquid phase
+      REAL(dp) :: RtolROW        & ! Relative tolerance for ROW method
+&               , AtolGas        & ! Absolute tolerance for gas phase
+&               , AtolAqua       & ! Absolute tolerance for liquid phase
+&               , AtolTemp         ! Absolute tolerance for Temperatur
+
+      INTEGER  :: Ordering     ! default = 8
+      INTEGER  :: ParOrdering  ! < 0 serial ordering , 0,1,2 parallel
+
+      
+      REAL(dp), ALLOCATABLE :: ATolAll(:)
 
 !--- Logical variable for PI setsize controler
       LOGICAL :: PI_StepSize
       
 !--- Control Parameter for solving linear algebra  
-      CHARACTER(2) :: solveLA  ! method of solving the linear system
       ! 'cl' for classic jacobian calc or
       ! 'ex' for extended matrix without calc of jac
-      
-      INTEGER :: ROWcoef       ! chose ROW method
-!
-!-----------------------------------------------------------------
-!---  Linear Algebra
-!-----------------------------------------------------------------
-!
-!--- Control Parameter
-      INTEGER :: OrderingStrategie = 7  ! default = automatic choice
-      INTEGER :: ParOrdering = -1       ! < 0 serial ordering , 0,1,2 parallel
-      INTEGER :: FactorisationStrategie = 0  ! 
-      INTEGER :: SolLinSystemStrategie = 0  ! 
-      
-!-----------------------------------------------------------------
-!---  Entrainment Control 
-!-----------------------------------------------------------------
-!
-!---   Flags to control entrainment
-    INTEGER ::  ExMet  = 0      & ! temperature           (0=off, 1=read)
-&              ,ExLwc  = 0      & ! total humitity        (0=off, 1=read)
-&              ,ExGas  = 0      & ! gas phase             (0=off, 1=read, 2=activation, 3=initial)
-&              ,ExPart = 0      & ! particle distribution (0=off, 1=read, 2=activation, 3=initial)
-&              ,ExComp = 0        ! particle composition  (0=off, 1=read, 2=activation, 3=initial)
+      CHARACTER(2) :: LinAlg = '??'
 
-!---   Entrainment parameter 
-    REAL(RealKind) :: &
-&              MuFac   = 1.0d0    & ! Factor for modification of all entrainment parameters
-&             ,MuMet0  = 1.0d-4   & ! temperature
-&             ,MuLwc0  = 1.0d-3   & ! total humitity
-&             ,MuGas0  = 1.0d-4   & ! gas phase
-&             ,MuPart0 = 1.0d-5     ! particle distribution
-
-    CHARACTER(80) :: ExFile
-
+!
 !-----------------------------------------------------------------
 !---  Set Constants and Unit Conversion
 !-----------------------------------------------------------------
 !
 !---  constants
-    REAL(RealKind), PARAMETER :: mol2part  = 6.02295d17     &
-&                        ,GasConst_R = 0.082056d0    &   ! [in l*atm/mol/K]
-&                        ,hour       = 3600.d0       &
-&                        ,secday     = 4.32d04      &
-&                        ,ZERO       = 0.d0          &
-&                        ,ONE        = 1.d0          &
-&                        ,Pi         = 4.0d0*ATAN(1.0d0) &
-&                        ,DR         = Pi / 180.d0  &
-&                        ,PiHalf     = 2.0d0*ATAN(1.0d0) &
-&                        ,eps        = EPSILON(1.0d0) &
-&                        ,epsY       = 1.0d-7
+    REAL(dp), PARAMETER :: HOUR       = 3600.0             &
+&                        , hourday    = 86400.0            &
+&                        , secday     = 4.32d04            &
+&                        , mONE       = -1.d0              &
+&                        , Pi         = 4.0d0*ATAN(1.0d0)  &
+&                        , DR         = Pi / 180.d0        &  
+&                        , PiHalf     = 2.0d0*ATAN(1.0d0)  & 
+&                        , Pi34       = 3.0d0/4.0d0/Pi     & 
+&                        , eps        = EPSILON(1.0d0)     &  ! such that 1+eps>1 with working precision
+&                        , small      = TINY(1.0d0)        &  ! smallest pos. real value
+&                        , big        = HUGE(1.0d0)        &  ! largest pos. real value
+&                        , epsY       = 1.0d-7             &
+&                        , SI_am      = 1.66053892173d-27  &  ! Atomic mass unit  [kg]  
+&                        , SI_na      = 6.0221412927d+23   &  ! Avogadro's number [1/mol]
+&                        , SI_kB      = 1.380648813d-23    &  ! Bolzmann constant [J/K]
+&                        , SI_Gas     = SI_na * SI_kB         ! Gas constant      [J/mol/K]
+!
+!--- Real number constants
+  REAL(dp), PARAMETER ::   ZERO    =     0.0d0   & 
+&                      ,  ONE     =     1.0d0   & 
+&                      ,  TWO     =     2.0d0  ,   rTWO     =   ONE/tWO     &
+&                      ,  THREE   =     3.0d0  ,   rTHREE   =   ONE/THREE   &
+&                      ,  FOUR    =     4.0d0  ,   rFOUR    =   ONE/FOUR    &
+&                      ,  FIVE    =     5.0d0  ,   rFIVE    =   ONE/FIVE    &
+&                      ,  SIX     =     6.0d0  ,   rSIX     =   ONE/SIX     &
+&                      ,  SEVEN   =     7.0d0  ,   rSEVEN   =   ONE/SEVEN   &
+&                      ,  EIGHT   =     8.0d0  ,   rEIGHT   =   ONE/EIGHT   &
+&                      ,  NINE    =     9.0d0  ,   rNINE    =   ONE/NINE    &
+&                      ,  TEN     =    10.0d0  ,   rTEN     =   ONE/TEN     &
+&                      ,  ELEVN   =    11.0d0  ,   rELEVN   =   ONE/ELEVN   &
+&                      ,  TWELV   =    12.0d0  ,   rTWELV   =   ONE/TWELV   &
+&                      , TWENTY   =    20.0d0  ,   rTWENTY  =   ONE/TWENTY  &
+&                      , mTHIRTY  =   -30.0d0  &
+&                      , rm300    = mONE/300.d0,   r300     =   ONE/300.d0
+!
+!--- Orders of magnitude
+  REAL(dp), PARAMETER ::  nano    =     1.0d-09    &
+&                      , micro    =     1.0d-06    &
+&                      , milli    =     1.0d-03    &
+&                      , kilo     =     1.0d+03    &
+&                      , mega     =     1.0d+06    &
+&                      , tera     =     1.0d+09
+!
+!--- Natural logarithms
+  REAL(dp), PARAMETER ::   ln10   =     LOG(TEN)    &
+&                      ,  rln10   = ONE/LOG(TEN)
+!
+!--- minimum values if there is no sun
+  REAL(dp), PARAMETER ::    EyChiZmin  =  9.357d-14
+!
+!
+!--- Unit Conversion constants
+!
+!     Pressure
+  REAL(dp), PARAMETER :: bar_to_dyncm2 = 1.0d06
+  REAL(dp), PARAMETER :: dyncm2_to_Pa  = 1.0d-01
+  REAL(dp), PARAMETER :: Pa_to_dyncm2  = 1.0d+01
+  REAL(dp), PARAMETER :: bar_to_Pa     = 1.0d05
+  REAL(dp), PARAMETER :: atm_to_Pa     = 101325.0d0
+!
+!     Energy
+  REAL(dp), PARAMETER :: cal_to_joule  = 4.184d0
+  REAL(dp), PARAMETER :: joule_to_cal  = ONE / cal_to_joule
+  REAL(dp), PARAMETER :: joule_to_kcal = milli * joule_to_cal
+  REAL(dp), PARAMETER :: kcal_to_joule = kilo * cal_to_joule
+  REAL(dp), PARAMETER :: joule_to_erg  = TEN * mega
+  REAL(dp), PARAMETER :: erg_to_joule  = rTEN * micro
+!
+!--- Physical constants ********************************************
+
+!     Universal gas constant [J / mol / K]
+  REAL(dp), PARAMETER :: R         = 8.31446210000000D0     
+  REAL(dp), PARAMETER :: rR        = ONE/R
+
+!
+!     Universal gas constant, calorie units [cal / mol / K]
+  REAL(dp), PARAMETER :: Rcal      = R * joule_to_cal
+  REAL(dp), PARAMETER :: rRcal     = ONE/Rcal
+!
+!     Universal gas constant, CGS units [erg / mol / K]
+  REAL(dp), PARAMETER :: Rerg      = R * joule_to_erg
+  REAL(dp), PARAMETER :: rRerg      = ONE/Rerg
+!
+!     Standard pressure [Pa]
+  REAL(dp), PARAMETER :: Patm      = atm_to_Pa
+  REAL(dp), PARAMETER :: rPatm     = ONE/Patm
+
 
 !--- Unit Conversion
     INTEGER :: GasUnit, AquaUnit, GasRateUnit
-    REAL(RealKind) :: GasFac
+    REAL(dp) :: GasFac
 
-    REAL(RealKind) :: ConvGas, ConvAir
-
-!--- Activation control
-    INTEGER :: nact, nact_Old
-    REAL(RealKind) :: ActLevel
 
 !-----------------------------------------------------------------
 !---  Output control 
 !-----------------------------------------------------------------
 
-!--- Checkpoint control
-    REAL(RealKind), PARAMETER :: tEps = 5.0d-04  & ! Time tolerance for output control
-&                        ,tBig = 1.0d30     ! Infinity time
-
-!-- number of Qt-Output variable
-    INTEGER :: nQtGas  = 0      & ! number of gas phase species
-&             ,nQtAqua = 0        ! number of aqueous phase species
-
-    INTEGER, PARAMETER :: nphys = 9     & ! microphysical output values
-&                        ,nmet  = 12       ! meteorological output values
-
-!--  Qt-Output species
-    INTEGER, ALLOCATABLE :: IndQtGas(:), IndQtAqua(:)    ! Flags for Qt-Output of each species
 !
-!-- control of output for different impactor stages (in measurements)
-    INTEGER ::  nOutImp = 0                     ! number of output impactor stages
-    INTEGER, ALLOCATABLE ::  IndOutImp(:,:)     ! start and end fraction indices
-    REAL(RealKind), ALLOCATABLE ::  OutImp(:,:)        ! boundary radii of impactor stages
+!-- input chemical reaction mechnism
+    INTEGER, PARAMETER :: LenLine=400
+    INTEGER, PARAMETER :: LenName=100
+    INTEGER, PARAMETER :: LenType=20
 
-!---  Flags for diagnose and ASCII-Output
-    INTEGER, ALLOCATABLE :: FracDiag(:,:)
-    INTEGER, ALLOCATABLE :: FracOut(:,:)
+!-- logicals for classic or extended matrix case
+    LOGICAL :: CLASSIC  = .FALSE.
+    LOGICAL :: EXTENDED = .FALSE.
 
-    !
-    ! 
-    REAL(RealKind) :: sqrtNSPC
+    LOGICAL :: useMUMPS = .FALSE.
+    LOGICAL :: useSparseLU = .FALSE.
 
+    LOGICAL :: ChemKin = .FALSE.
+
+    REAL(dp), ALLOCATABLE :: integrated_rates(:)
+    REAL(dp), ALLOCATABLE :: mixing_ratios_spc(:,:)
+
+!-- Type declaration 
+    TYPE List
+      INTEGER,   ALLOCATABLE  :: List(:)
+      Real(dp),  ALLOCATABLE  :: ListE(:)
+      Real(dp),  ALLOCATABLE  :: ListP(:)
+      INTEGER                :: len
+    END TYPE List
+
+    TYPE Chain
+      CHARACTER(100), ALLOCATABLE :: sName(:,:)
+      INTEGER,        ALLOCATABLE :: sIdx(:,:)
+      Type(List),     ALLOCATABLE :: rIdx(:)
+    END TYPE Chain
+
+    TYPE LUMP_SPC
+      CHARACTER(LenName)              :: SuperSpc
+      CHARACTER(LenName), ALLOCATABLE :: cSingleSpc(:)
+      INTEGER,            ALLOCATABLE :: iSingleSpc(:)
+    END TYPE LUMP_SPC
+
+    TYPE(LUMP_SPC), ALLOCATABLE :: LUMP(:)
+
+    TYPE Families_T
+      CHARACTER(LenName), ALLOCATABLE :: Name(:)
+      INTEGER,            ALLOCATABLE :: Index(:)
+    END TYPE Families_T
+   
  END MODULE mo_control
 

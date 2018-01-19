@@ -1,0 +1,23 @@
+# This file contains the control parameter for the reduction procedures
+
+TARGET_SPC
+ ch4
+ co
+ co2
+ h
+ h2
+ h2o
+ h2o2
+ ho2
+ nc7h16
+ o
+ o2
+ oh
+END_TARGET_SPC
+
+
+# One species family per line, seperated by blankspace
+# lumped species are put toghter by Name={Name1 Name2 ...}
+SPC_FAMILIES
+END_SPC_FAMILIES
+

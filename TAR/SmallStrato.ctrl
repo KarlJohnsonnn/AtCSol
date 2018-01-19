@@ -1,0 +1,16 @@
+# This file contains the control parameter for the reduction procedures
+
+TARGET_SPC
+  NO
+  NO2
+  O
+  O1D
+  O2
+  O3
+END_TARGET_SPC
+
+
+SPC_FAMILIES
+  NO NO2
+  O O1D O2 O3
+END_SPC_FAMILIES

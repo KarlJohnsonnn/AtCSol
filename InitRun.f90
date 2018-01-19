@@ -1,635 +1,263 @@
-   SUBROUTINE InitRun(RunFile)
+   SUBROUTINE InitRun()
 !==================================================
 !===  Reading and Setting of Run Control Parameters
 !==================================================
-!
-      !USE mo_bdf
-      USE Kind_Mod
-      USE mo_micfys
-      USE mo_control,  ONLY:      &
-!
-!-----------------------------------------------------------------
-!---  Scenario
-!-----------------------------------------------------------------
-!
-!--- CHARACTER(RealKind) : Identifier for scenario
-                 Bsp               &
-!
-!--- CHARACTER(80) : Files
-&               ,MetFile           & ! Meteorology file
-&               ,ChemFile          & ! Chemical mechanism
-&               ,InitFile          & ! Initial concentrations
-&               ,DataFile          & ! Gas and Aqeous DATA
-&               ,QtListFile        & ! File with listed species for Qt-Output 
-&               ,AVSFile           & ! AVS   output file
-&               ,OutFile           & ! ASCII output file
-&               ,DiagFile          & ! Diagnose file
-&               ,StatFile          & ! Statistics file
-&               ,JacFile           & ! Sparse Jacobian File
-&               ,ErrFile           & ! Output error file
-&               ,NetcdfFileName    & ! Output NetCdfFile
-!
-!--- INTEGER : Unit Numbers
-&               ,MetUnit           & ! Meteorology file
-&               ,ChemUnit          & ! Chemical mechanism
-&               ,InitUnit          & ! Initial concentrations
-&               ,DataUnit          & ! Initial concentrations
-&               ,AVSUnit           & ! AVS   output file
-&               ,OutUnit           & ! ASCII output file
-&               ,DiagUnit          & ! Diagnose file
-&               ,StatUnit          & ! Statistics file
-&               ,JacUnit           & ! File for sparse Jacobian
-&               ,ErrUnit           & ! Output error file
-!
-!-- REAL(RealKind) : Set Levels and Parameters for Processes
-&               ,LwcLevelmin       & ! lower Level for LWC      {l/m3]
-&               ,LwcLevelmax       & ! upper Level for LWC      {l/m3]
-&               ,constLWC          & ! wähle konstanten lwc wert (=0) oder lineare funktion (/=0)
-&               ,DryLevel          & ! Level for dry mass [g/m3]
-&               ,MinScav           & ! Minimum drop radius for scavening [µm]
-&               ,MinChem           & ! Minimum drop radius for chemistry [µm]
-&               ,LwcAll            & ! Liqid Water Content
-&               ,MeanRad           & ! Mean Droplet Radius
+      USE mo_control
+			USE mo_MPI
 
-!-- LOGICAL :: Print system matrices
-&               ,MatrixPrint       &
-&               ,NetCdfPrint       &
-
-!--- INTEGER : Dimensions and Resolution
-&               ,ntfrac            & ! Number of fractions
-&               ,ResFrac           & ! Resolution of chemistry spectrum
-&               ,FirstChem         & ! First fraction for chemistry
-&               ,LastChem          & ! Last  fraction for chemistry
-&               ,MaxFrac           & ! Maximum fraction for chemistry
-&               ,nReso             & ! Resolution for smoothing
-&               ,nSmooth           & ! Number of fine fractions for smoothing
-&               ,nCell             & ! Number of grid cells
-
-!--- INTEGER : Control Parameter
-&               ,nCouple           & ! Coupling flag
-&               ,nDep              & ! Flag for deposition gas phase
-&               ,nDepAqua          & ! Flag for deposition aqueous phase
-&               ,nIO               & ! Restart  flag
-&               ,mJacIO            & ! Flag for setting sparse Jacobian
-&               ,MinLwcSet         & ! Set all LWC to LWCLevel      (1=on, 0=off)
-&               ,pHSet             & ! Initial pH by charge balance (1=on, 0=off)
-&               ,mAcoeff           & ! model for mixed activity coefficients
-&               ,mPitz             & ! determination Pitzer activity coefficients
-&               ,IowMode           & ! consideration of Ion-Organics-Water interactions
-&               ,mUni              & ! determination UNIFAC activity coefficients
-&               ,mLR               & ! determination Long Range activity coefficients (LR in LIFAC & AIOMFAC)
-&               ,mMR               & ! determination Middle Range activity coefficients (MR in LIFAC)
-&               ,mAMR              & ! determination middle range activity coefficients (MR in AIOMFAC)
-&               ,rqMode            & ! UNIFAC: Setting of RK and QK for ions
-&               ,mofac             & ! output of activity coefficients for mol fraction
-&               ,Ladebalken        &
-&               ,Error_Est         &
-&               ,ErrorLog          &
-
-!-----------------------------------------------------------------
-!---  Times
-!-----------------------------------------------------------------
-!
-!--- REAL(8): Times ( < 0 in seconds, > 0 in hours, = 0  meteorology)
-&               ,DtCoupl           & ! Coupling time step
-&               ,tAnf              & ! Model start time
-&               ,tEnd              & ! model end time
-&               ,tSimul            & ! Real start time
-&               ,dStart            & ! Period of start phase
-&               ,dPostRun          & ! Period of postrun
-&               ,ErrTime           & ! Restart time for error treating
-&               ,StpAVS            & ! Time step for AVS output
-&               ,StpOut            & ! Time step for ASCII output
-&               ,StpNetcdf         & ! Time step for Netcdf output 
-&               ,StpDiagNcdf       & ! Time step for diagnose Netcdf output 
-&               ,StpDiag           & ! Time step for diagnose 
-&               ,StpDiag           & ! Time step for diagnose 
-!
-!--- INTEGER : nCheck, iCheck
-!--- REAL(RealKind) : tCheck
-&               ,nCheck            & ! Number of checkpoints  
-&               ,iCheck            & ! Meaning of checkpoints        
-&               ,tCheck            & ! Time of checkpoints
-
-!---  Photolysis
-&               ,idate             & ! Date: yymmdd
-&               ,rlat              & ! latitude  [rad]
-&               ,rlon              & ! longitude [rad]
-&               ,dust              & ! dust factor (damping of photolysis)
-&               ,JNO2              & ! measured NO2 photolysis rate [1/s]
-&               ,minStp            & ! minimal time step size
-&               ,maxStp            & ! maximal time step size
-!
-!-----------------------------------------------------------------
-!---  Meteorology
-!-----------------------------------------------------------------
-!
-!--- INTEGER : Control Parameter
-&               ,mpMod             & ! microphysical model
-&               ,mCase             & ! microphysical scenario
-&               ,mMicPhys          & ! Microphysic on/off
-&               ,nfRaoult          & ! Flag for feedback in Raoult term
-&               ,nfMass            & ! Flag for aerosol mass feedback
-&               ,stModel           & ! Surface tension model 
-&               ,nfChem            & ! Flag for chemistry for surface tension calculations
-&               ,ItemEnd           & ! trajectory stop section
-
-!--- REAL(RealKind) : Microphysical control parameters
-&               ,StartWind         & ! wind speed in Goldlauter
-&               ,VdepDrop          & ! Deposition velocity of drops
-&               ,FixedEpsi         & ! Fixed solutable aerosol part
-                                     ! EPSILON
-!
-!-----------------------------------------------------------------
-!---  Numerics
-!-----------------------------------------------------------------
-!
-!--- INTEGER : Control Parameter
-&               ,ITolMod           & ! Setting of BDF tolerances 
-&               ,MaxOrdROW         & ! Maximum order of BDF scheme
-&               ,LinSolv           & ! Flag for linear algebra approach
-&               ,ImpEuler          & ! implicit euler 
-
-!--- REAL(RealKind) : Tolerances for ROW Scheme
-&               ,RtolROW           & ! Relative tolerance For ROW
-&               ,AtolGas           & ! Absolute tolerance for gas phase
-&               ,AtolAqua          & ! Absolute tolerance for liquid phase
-&               ,PI_StepSize       & ! logical for pi stepsize control
-
-!--- CHARACTER(2) : Control Parameter
-&               ,solveLA           & ! how to solve linear algebra 'cl' or 'ex'
-&               ,RosenbrockMethod  & ! choose ROW scheme  (integer 1,...,15)
-!
-!-----------------------------------------------------------------
-!---  Linear Algebra
-!-----------------------------------------------------------------
-!
-!--- Control Parameter
-&               ,OrderingStrategie      & ! MUMPS ordering strategie
-&               ,ParOrdering            & ! MUMPS ordering type for parallel symbolic phase
-&               ,FactorisationStrategie & ! MUMPS factorisation / own factorisation
-&               ,SolLinSystemStrategie    &
-   
-                    
-!-----------------------------------------------------------------
-!---  Entrainment Control
-!-----------------------------------------------------------------
-!                
-!--- INTEGER :: Flags to control entrainment
-&               ,ExMet         & ! temperature           (0=off, 1=read)
-&               ,ExLwc         & ! total humitity        (0=off, 1=read)
-&               ,ExGas         & ! gas phase             (0=off, 1=read, 2=activation, 3=initial)
-&               ,ExPart        & ! particle distribution (0=off, 1=read, 2=activation, 3=initial)
-&               ,ExComp        & ! particle composition  (0=off, 1=read, 2=activation, 3=initial)
-!
-!--- REAL(RealKind) :: Entrainment parameter 
-&               ,MuFac         & ! Factor for modification of all entrainment parameters
-&               ,MuMet0        & ! temperature
-&               ,MuLwc0        & ! total humitity
-&               ,MuGas0        & ! gas phase
-&               ,MuPart0       & ! particle distribution
-!
-!--- CHARACTER(80) :: Entrainment file
-                ,ExFile        
-!
-!-----------------------------------------------------------------
       IMPLICIT NONE
-      
-      CHARACTER(80) :: RunFile
 
-!--- Internal parameters
-      INTEGER :: i
-      INTEGER :: iHelp(11)
-      INTEGER :: Ipoint1, Ipoint2, Ipoint3, Ipoint4, Ipoint5
+      INTEGER        :: io_stat
+      CHARACTER(400) :: io_msg = ''
       
-      INTEGER :: maxord
-!
-      REAL(RealKind) :: tHelp(11)
-      REAL(RealKind) :: Cpoint1, Cpoint2, Cpoint3, Cpoint4, Cpoint5
-      CHARACTER(2) :: iFrac_String 
-!
 !-----------------------------------------------------------------
 !--- NAMELISTS
-      NAMELIST /SCENARIO/  Bsp,                                          &
-&               LwcLevelmin, LwcLevelmax, DryLevel, MinScav, MinChem, LwcAll, MeanRad,   &
-&               ntfrac, nCouple, ResFrac, nDep, nDepAqua, Ladebalken,    &  
-&               FirstChem, MaxFrac, nIO, mJacIO, MinLwcSet, pHSet,       &
-&               mAcoeff, mUni, mPitz, nReso, nSmooth, mMR, constLWC,     &
-&               IowMode, rqMode, mofac, mAMR, mLR, ErrorLog, MatrixPrint, NetCdfPrint
-!
-      NAMELIST /FILES/  MetFile, ChemFile, InitFile, DataFile, AVSFile,  &
-&               OutFile, DiagFile, StatFile, ErrFile, JacFile,           &
-&               QtListFile,NetcdfFileName,                               &
-&               MetUnit, ChemUnit, InitUnit, DataUnit, AVSUnit, OutUnit, &
-&               DiagUnit,StatUnit, ErrUnit, JacUnit
-!
-      NAMELIST /METEO/ mpMod, mCase, mMicPhys, nfRaoult, nfMass, nfChem, &
-&               stModel, ItemEnd, StartWind, VdepDrop, FixedEpsi
+      NAMELIST /SCENARIO/  Bsp ,     &
+      &                    WaitBar , &
+      &                    ChemKin , &
+      &                    FluxAna , &
+      &                    Lehmann
 
-      NAMELIST /TIMES/ DtCoupl, tAnf, tEnd, tSimul, dStart, StpAVS,      &
-&               StpOut, StpDiag, ErrTime, idate, rlat, rlon, Dust, JNO2, &
-&               StpNetcdf, StpDiagNcdf,                                  &
-&               dPostRun, Cpoint1, Cpoint2, Cpoint3, Cpoint4, Cpoint5,   &
-&               Ipoint1, Ipoint2, Ipoint3, Ipoint4, Ipoint5, minStp, maxStp
-!
-      NAMELIST /NUMERICS/  RtolROW, AtolGas, AtolAqua, PI_StepSize, solveLA,          &
-&               ITolMod, MaxOrdROW, LinSolv, RosenbrockMethod, ImpEuler,Error_Est
-!
-      NAMELIST /ORDERING/  OrderingStrategie, ParOrdering,               &
-&              FactorisationStrategie, SolLinSystemStrategie
-!      
-      NAMELIST /ENTRAIN/  ExFile,                                        &
-&               MuFac, MuMet0, MuLwc0, MuGas0, MuPart0,                  &
-&               ExMet, ExLwc, ExGas, ExPart, ExComp
+      NAMELIST /FILES/  SysFile ,    &
+      &                 DataFile ,   &
+      &                 InitFile ,   &
+      &                 MetFile ,    &
+      &                 TargetFile , &
+      &                 MWFile
 
+      NAMELIST /TIMES/  tBegin , tEnd
+
+      NAMELIST /METEO/  LWCLevelmin , &
+      &                 LWCLevelmax , &
+      &                 pHSet ,       &
+      &                 iDate ,       &
+      &                 rlat ,        &
+      &                 rlon ,        &
+      &                 dust ,        &
+      &                 Temperature0 ,&
+      &                 Pressure0
+      
+      NAMELIST /NUMERICS/  RtolROW ,     &
+      &                    AtolGas ,     &
+      &                    AtolAqua ,    & 
+      &                    AtolTemp,     &
+      &                    PI_StepSize , &
+      &                    minStp ,      &
+      &                    maxStp ,      &
+      &                    LinAlg ,      &  
+      &                    ODEsolver ,   &
+      &                    Error_Est ,   &
+      &                    Ordering ,    &
+      &                    ParOrdering
+
+      NAMELIST /OUTPUT/  NetCdfFile , &
+      &                  StpNetcdf ,  &
+      &                  nOutP ,      &
+      &                  DebugPrint , &
+      &                  MatrixPrint 
 
 !
 !===================================================================
-!===  Set and Read Default Values
-!==================================================
+!===  Set and Read Simulation Values
+!===================================================================
 !
-!--- ROpen run control file
-      OPEN(UNIT=15,FILE=RunFile)
+!--- Open run control file
+      OPEN(UNIT=RunUnit,FILE=RunFile,IOSTAT=io_stat,IOMSG=io_msg)
+      CALL ErrorCheck(io_stat,io_msg,'opening run-file')
 
 !-----------------------------------------------------------------
 !---  Scenario
 !-----------------------------------------------------------------
 !
-!--- CHARACTER(20) : Suffix
-      Bsp = ''                                     ! Identifier of scenario
-!
-!-- REAL(8) : Set Levels and Parameters for Processes
-      LwcLevelmin = 1.0d-12       ! Lower level for LWC      {l/m3]
-      LwcLevelmin = 3.0d-10       ! Lower level for LWC      {l/m3]
-      constLWC = 0             ! 1 = konstanter LWC wert für ges. Simulation
-      DryLevel = 1.0d-30       ! Lower level for dry mass [g/m3]
-      MinScav  = 0.1d0        ! Minimum drop radius for scavening [µm]
-      MinChem  = 0.1d0        ! Minimum drop radius for chemistry [µm]
-      LwcAll   = -1.0d0        ! Liqid Water Content (Dummy)
-      MeanRad  = 10.0d0        ! Mean Droplet Radius [µm]
+!--- Set Default Values for SCENARIO Namelist
 
-!--- INTEGER : Dimensions and Resolution
-      ntfrac    = JMAX       ! Number of fractions
-      ResFrac   = 1          ! Resolution of chemistry spectrum
-      FirstChem = 1          ! First fraction for chemistry
-      LastChem  = JMAX       ! Last  fraction for chemistry
-      MaxFrac   = JMAX       ! Maximum fraction for chemistry
-      nSmooth   = 1          ! Number of fine fractions for smoothing
-      nReso     = 2          ! Resolution for smoothing   
-      nCell     = 1          ! Number of grid cells
+      WaitBar  = .TRUE.
+      ChemKin  = .FALSE.
+      FluxAna  = .FALSE.
+      Lehmann  = .FALSE.
 
-!--- INTEGER : Control Parameter
-      nCouple   = 2          ! Coupling flag
-      nDep      = 0          ! Flag for deposition gas phase
-      nDepAqua  = 1          ! Flag for deposition aqueous phase
-      nIO       = 0          ! Restart  flag
-      mJacIO    = 0          ! Setting of sparse Jacobian   (0=calculate, 1=store, 2=read)
-      MinLwcSet = 0          ! Set all LWC to LWCLevel      (1=on, 0=off)
-      pHSet     = 1          ! Initial pH by charge balance (1=on, 0=off)
-      mAcoeff   = 0          ! model for mixed activity coefficients
-      mPitz     = 0          ! Approach for activity coefficients (0=off,1=Harvie,2=Pitzer)
-      mUni      = 0          ! determination UNIFAC activity coefficients
-      mLR       = 0          ! determination  Long Range activity coefficients
-      mMR       = 0          ! determination LIFAC Middle Range activity coefficients
-      mAMR      = 0          ! determination AIOMFAC Middle Range activity coefficients
-      IowMode   = 1          ! consideration of Ion-Organics-Water interactions
-      rqMode    = 0          ! UNIFAC: Setting of RK and QK for ions
-      mofac     = 1          ! output of activity coefficients for mol fraction
-      Error_Est = 2          ! default for error estimation is euklid norm
-      ErrorLog  = 0 
-      MatrixPrint = .FALSE.       ! 0 = Print no matrix, 0 /= Print all matrices -> no simulation
-      NetCdfPrint = .FALSE.
 !--- Read SCENARIO namelist
-      READ(15,SCENARIO)
-
-!--- Reset wrong values
-      nCouple = MIN(ntFrac,nCouple)
-      ntFrac  = 1 + (MaxFrac-1)/ResFrac
+      READ(RunUnit,SCENARIO,IOSTAT=io_stat,IOMSG=io_msg)
+      CALL ErrorCheck(io_stat,io_msg,'reading SCENARIO list')
+      
+      IF (ChemKin) Teq = .TRUE.
 
 !-----------------------------------------------------------------
 !---  Files
 !-----------------------------------------------------------------
-!
-!--- CHARACTER(80) : Files
-      MetFile    = 'MET/initial'             ! Meteorology file
-      ChemFile   = 'CHEM/'//TRIM(RunFile)//'.sys'    ! Chemical mechanism
-      DataFile   = 'CHEM/'//TRIM(RunFile)//'.dat'    ! Gas and aqueous phase data
-      JacFile    = 'CHEM'//TRIM(RunFile)//'.str'     ! Sparse Jacobian File
-      InitFile   = 'INI/'//TRIM(RunFile)//'.ini'     ! Initial concentrations
-      QtListFile = 'WITHOUT'                         ! File with listed species for Qt-Output 
-
-      AVSFile  = 'AVS/'//TRIM(Bsp)                 ! AVS   output file
-      NetcdfFileName = TRIM(Bsp)//'.nc'            ! Netcdf output file
-      OutFile  = 'OUT_'//TRIM(Bsp)                 ! ASCII output file
-      DiagFile = 'Diag_'//TRIM(Bsp)                ! Diagnose file
-      StatFile = 'Stat_'//TRIM(Bsp)                ! Statistics file
-      ErrFile  = 'INPUT/'//TRIM(Bsp)//'.err'       ! Input/Output error file
-
-      !CALL SYSTEM('mkdir DIAG/'//TRIM(Bsp))
-      !CALL SYSTEM('mkdir DIAG/!'//TRIM(Bsp))
-!
-!--- INTEGER : Unit Numbers
-      MetUnit  = 15           ! Meteorology file
-      ChemUnit = 10           ! Chemical mechanism
-      InitUnit = 12           ! Initial concentrations
-      DataUnit = 13           ! Gas and aqueous phase data
-      AVSUnit  = 21           ! AVS   output file
-      OutUnit  = 39           ! ASCII output file
-      DiagUnit = 41           ! Diagnose file
-      StatUnit = 38           ! Statistics file
-      JacUnit  = 31           ! Sparse Jacobian File
-      ErrUnit  = 32           ! Output error file
-      
-!--- Read FILES namelist
-      READ(15,FILES)
+      READ(RunUnit,FILES,IOSTAT=io_stat,IOMSG=io_msg)
+      CALL ErrorCheck(io_stat,io_msg,'reading FILES list')
       
 !--- Adjust Filenames
-      Bsp  = ADJUSTL(Bsp)
+      IF (.NOT.ChemKin) CALL FileNameCheck(MetFile,'MetFile')
+      CALL FileNameCheck(SysFile,'SysFile')
+      CALL FileNameCheck(DataFile,'DataFile')
+      CALL FileNameCheck(InitFile,'InitFile')
+      ChemFile   = ADJUSTL(SysFile(:INDEX(SysFile,'.sys')-1)//'.chem')
+      MWFile     = ADJUSTL(MWFile)
+      TargetFile = ADJUSTL(TargetFile)
 
-      MetFile  = ADJUSTL(MetFile)
-      ChemFile = ADJUSTL(ChemFile)
-      DataFile = ADJUSTL(DataFile)
-      InitFile = ADJUSTL(InitFile)
-      ErrFile  = ADJUSTL(ErrFile)
-
-      AVSFile  = ADJUSTL(AVSFile)
-      NetcdfFileName=ADJUSTL(NetcdfFileName)
-      OutFile  = ADJUSTL(OutFile)
-      DiagFile = ADJUSTL(DiagFile)
-      StatFile = ADJUSTL(StatFile)
-      JacFile  = ADJUSTL(JacFile)
+      IF ( TRIM(BSP) == '' ) THEN
+			  Bsp = ADJUSTL(SysFile(INDEX(SysFile,'/')+1:INDEX(SysFile,'.sys')-1))
+			ELSE
+        Bsp = ADJUSTL(Bsp)
+			END IF
 
 !-----------------------------------------------------------------
 !---  Times
 !-----------------------------------------------------------------
 !
-!--- REAL(8): Times ( < 0 in seconds, > 0 in hours, = 0  meteorology)
-      tAnf    =  0.d0        ! Model start time    [in h}
-      tEnd    =  0.d0        ! model end time      [in h}
-      tSimul  =  0.d0        ! Real start time     [in h]  
+!--- Set Default Values for TIMES Namelist
 
-!--- REAL(8): Times in seconds.
-      DtCoupl  = 10.d0        ! Coupling time step            [in sec]
-      dStart   =  0.d0        ! Period of start phase         [in sec]
-      dPostRun =  0.d0        ! Period of post run            [in sec]
-      StpAVS   = 10.d0        ! Time step for AVS output      [in sec]
-      StpNetcdf   = 0.d0      ! Time step for Netcdf output      [in sec]
-      StpDiagNcdf = 0.d0      ! Time step for diagnose Netcdf output [in sec]
-      StpOut   =  0.d0        ! Time step for ASCII output    [in sec]
-      StpDiag  =  0.d0        ! Time step for diagnose        [in sec]
-      ErrTime  =  1.d30       ! Input time for error treating [in sec]
-
-!--- INTEGER: Checkpoint meaning
-      Ipoint1 = 0             ! Control check points
-      Ipoint2 = 0         
-      Ipoint3 = 0         
-      Ipoint4 = 0         
-      Ipoint5 = 0         
-
-!--- REAL(8): Checkpoint times
-      Cpoint1 = 0.d0          ! Control check points
-      Cpoint2 = 0.d0 
-      Cpoint3 = 0.d0 
-      Cpoint4 = 0.d0 
-      Cpoint5 = 0.d0 
-
-!---  Photolysis (Here: FEBUKO chemistry-case I)
-      idate = 011027          ! Date: yymmdd  (21.June 2001)
-      rlat  = 5.065d+01       ! latitude  [grad] (Schmuecke)
-      rlon  = 1.077d+01       ! longitude [grad] (Schmuecke)
-      Dust  = 1.0d0           ! dust factor (damping of photolysis)
-      JNO2  = -1.0d0           ! measured NO2 photolysis rate [1/s]
+      tBegin = 0.0_dp
+      tEnd   = 0.0_dp
 
 !--- Read TIMES namelist
-      READ(15,TIMES)
+      READ(RunUnit,TIMES,IOSTAT=io_stat,IOMSG=io_msg)
+      CALL ErrorCheck(io_stat,io_msg,'reading TIMES list')
 
-      IF (StpDiagNcdf>0.d0) THEN
-         DO i=1,MaxFrac
-            WRITE(iFrac_String,'(I2)') i 
-            CALL SYSTEM('mkdir DIAG/'//TRIM(Bsp)//'/Frac_'//TRIM(ADJUSTL(iFrac_String)))
-         END DO
-      END IF
+			IF ( tBegin >= tEnd ) THEN
+    	  WRITE(*,*) '  tBegin >= tEnd  '
+    	  CALL FinishMPI(); STOP 
+			ELSE
+				Tspan = [tBegin , tEnd]
+    	END IF
 !
-!--- Reset wrong walues
-      IF (StpAVS>0.0e0) StpAVS  = MAX(StpAVS,DtCoupl)
-      IF (StpNetcdf>0.0e0) StpNetcdf = MAX(StpNetcdf,DtCoupl)
-      IF (StpOut>0.0e0) StpOut  = MAX(StpOut,DtCoupl)
-      IF (StpDiag>0.0e0) StpDiag = MAX(StpDiag,DtCoupl)
-      IF (StpDiagNcdf>0.0e0) StpDiagNcdf = MAX(StpDiagNcdf,DtCoupl)
-
-!-----------------------------------------------------------------
-!--- Set Checkpoints
-      nCheck = 0
-      IF (dStart > 0.0d0)  THEN   
-         nCheck = nCheck + 1                ! Initialization phase
-         iHelp(ncheck) = 1
-         tHelp(ncheck) = 0.d0
-      END IF
-!
-      IF (Cpoint1 > 0.0d0)  THEN             ! Control check points
-         nCheck = nCheck + 1  
-         iHelp(ncheck) = Ipoint1
-         tHelp(ncheck) = Cpoint1
-      ELSE IF (Ipoint1 > 0)  THEN      
-         nCheck = nCheck + 1  
-         iHelp(ncheck) = - Ipoint1 
-         tHelp(ncheck) = 1.d20
-      END IF
-      IF (Cpoint2 > 0.0d0)  THEN             ! Control check points
-         nCheck = nCheck + 1  
-         iHelp(ncheck) = Ipoint2
-         tHelp(ncheck) = Cpoint2
-      ELSE IF (Ipoint2 > 0)  THEN      
-         nCheck = nCheck + 1  
-         iHelp(ncheck) = - Ipoint2 
-         tHelp(ncheck) = 1.d20
-      END IF
-      IF (Cpoint3 > 0.0d0)  THEN             ! Control check points
-         nCheck = nCheck + 1  
-         iHelp(ncheck) = Ipoint3 
-         tHelp(ncheck) = Cpoint3
-      ELSE IF (Ipoint3 > 0)  THEN      
-         nCheck = nCheck + 1  
-         iHelp(ncheck) = - Ipoint3 
-         tHelp(ncheck) = 1.0d20
-      END IF
-      IF (Cpoint4 > 0.0d0)  THEN             ! Control check points
-         nCheck = nCheck + 1  
-         iHelp(ncheck) = Ipoint4 
-         tHelp(ncheck) = Cpoint4
-      ELSE IF (Ipoint4 > 0)  THEN      
-         nCheck = nCheck + 1  
-         iHelp(ncheck) = - Ipoint4 
-         tHelp(ncheck) = 1.d20
-      END IF
-      IF (Cpoint5 > 0.0d0)  THEN             ! Control check points
-         nCheck = nCheck + 1  
-         tHelp(ncheck) = Ipoint5 
-         tHelp(ncheck) = Cpoint5
-      ELSE IF (Ipoint5 > 0)  THEN      
-         nCheck = nCheck + 1  
-         iHelp(ncheck) = - Ipoint5 
-         tHelp(ncheck) = 1.0d20
-      END IF
-!
-      IF (dPostRun > 0.0d0)  THEN   
-         nCheck = nCheck + 1                ! Postrun phase
-         iHelp(ncheck) = 10
-         tHelp(ncheck) = 1.0d20
-      END IF
-!
-      nCheck = nCheck + 1                   ! for Infinity
-      iHelp(nCheck) =  9
-      tHelp(nCheck) = 1.0d20
-!
-!---  Allocation and copying of checkpoint arrays
-      ALLOCATE (iCheck(nCheck))
-      ALLOCATE (tCheck(nCheck))
-!
-!---  Store checkpoints
-      iCheck(:) = iHelp(1:nCheck)
-      tCheck(:) = tHelp(1:nCheck)
-      
 !-----------------------------------------------------------------
 !---  Meteorology
 !-----------------------------------------------------------------
 !
-!--- INTEGER : Control Parameter
-      mpMod    = 1            ! 1D, Fixed grid
-      mCase    = 0            ! FEBUKO scenario
-      nfRaoult = 0            ! Feedback in Raoult term (off)
-      nfChem   = 0            ! Chemistry for surfacetension (off)
-      nfMass   = 0            ! Feedback for aerosol mass (off)
-      ItemEnd  = 0            ! trajectory stop section
-      stModel  = 1            ! Surface tension model: Set to water surface tension
+!--- Set Default Values for METEO Namelist
+      pHSet       = .TRUE.
+      LwcLevelmin = 2.0e-08_dp 
+      LwcLevelmax = 3.0e-04_dp 
+      constLWC    = .FALSE. 
 
-!--- REAL(RealKind) : Microphysical control parameters
-      FixedEpsi =  0.d0      ! Fixed soluble aerosol part
-      VdepDrop  =  0.d0      ! Drop deposition velocity
-      StartWind = -1.d0      ! wind speed in Goldlauter
-!                             (take measured value)
+      idate  = 011027
+      rlat   = 50.65_dp
+      rlon   = 10.77_dp
+      Dust   = 1.0_dp
 
-!--- Read METEO namelist
-      !READ(15,METEO)
-                            
-!--- Set default values for moving run
-      IF (mpMod == 2)  THEN
-         nCouple = MIN(1,nCouple)
-      END IF
+      Temperature0 = 280.0_dp
+      Pressure0    = 200000.0_dp
+
+      REWIND(RunUnit)
+      READ(RunUnit,METEO,IOSTAT=io_stat,IOMSG=io_msg)
+      CALL ErrorCheck(io_stat,io_msg,'reading METEO list')
+
+      IF ( LWCLevelmin ==  LWCLevelmax ) constLWC = .TRUE.
+
 !
-!---  Check feedback values
-      IF (mpMod == 1 .AND. nfMass == 1) THEN
-         WRITE(*,*)  'PT1 ', 'Mass Feedback not implemented in Fixed Mode:'  &
-&                          , ' mfMass = 0  is used!'
-         nfMass = 0
-      END IF
-
-!--- Set default trajectory stop section
-      IF (ItemEnd == 0)  THEN
-         IF (mCase == 0)  THEN
-            ItemEnd = 22
-         ELSE IF (mCase == 1)  THEN
-            ItemEnd = 4
-         ELSE 
-            ItemEnd = 1.d5
-         END IF
-      END IF
-
 !-----------------------------------------------------------------
 !---  Numerics
 !-----------------------------------------------------------------
 !
-!--- INTEGER : Control Parameter
-      ITolMod   = 1          ! Setting of BDF tolerances 
-      MaxOrdROW = 3          ! Maximum order of ROW scheme
-      LinSolv   = 3          ! Flag for linear algebra approach
-
-!--- REAL(RealKind) : Tolerances for ROW Scheme
-      RtolROW  = 1.0d-5               ! Relative tolerance For ROW
-      AtolGas  = 1.0d-7               ! Absolute tolerance for gas phase
-      AtolAqua = 1.0d-7               ! Absolute tolerance for liquid phase
+!--- Set Default Values for NUMERICS Namelist
+      RtolROW     = 1.0e-5_dp   ! Relative tolerance For ROW
+      AtolGas     = 1.0e-7_dp   ! Absolute tolerance for gas phase
+      AtolAqua    = 1.0e-7_dp   ! Absolute tolerance for liquid phase
+      AtolTemp    = 1.0e-7_dp   ! Absolute tolerance for temperature
+      Error_Est   = 2           ! error estimation default 2-norm
       PI_StepSize = .FALSE.
-      solveLA  = 'ex'                 ! method of solving linear algebra
-      RosenbrockMethod  = 'ROS34PW3'  ! ROW scheme
-      ImpEuler = 0                    ! 1 for implicit euler integration
+      minStp      = 1.0e-20_dp  ! minimum timestep of ROW method in [sec]
+      maxStp      = 250.0_dp     ! maximum timestep of ROW method in [sec]
+      LinAlg      = 'cl'        ! method of solving linear algebra (classic)
+      ODEsolver   = 'ROS34PW3'  ! ROW scheme
+      Ordering    = 8           ! sparse LU, no numerical pivoting
+      ParOrdering = -1          ! -1 = serial ordering, 0,1,2 = parallel ordering
       
-!
 !--- Read NUMERICS namelist
-      READ(15,NUMERICS)
+      READ(RunUnit,NUMERICS,IOSTAT=io_stat,IOMSG=io_msg)
+      CALL ErrorCheck(io_stat,io_msg,'reading NUMERICS list')
+
+      IF      ( LinAlg == 'cl' ) THEN
+        CLASSIC  = .TRUE.
+      ELSE IF ( LinAlg == 'ex' ) THEN
+        EXTENDED = .TRUE.
+      ELSE
+        WRITE(*,*) '  Check run-file: LinAlg either "cl" or "ex" !'
+				CALL FinishMPI();  STOP
+      END IF
+
+			 ! Test that Rosenbrock tolerance > 0
+	    IF ( RtolROW <= ZERO ) THEN
+	      WRITE(*,*) '  RtolROW must be positiv scalar!'
+	      CALL FinishMPI();  STOP
+	    END IF
+
+			! Test that absolute tolerance for gas and aqua species is > 0
+			IF ( .NOT.(AtolGas*AtolAqua*AtolTemp) >= ZERO ) THEN
+				WRITE(*,*) '  ATols must be positive!'
+				CALL FinishMPI(); STOP
+			END IF
+
+			! Test if maximum stepsize is not to small/big
+			IF ( maxStp <= ZERO ) THEN
+			  WRITE(*,*) '  Maximum stepsize = ',maxStp, ' to low!'
+				CALL FinishMPI(); STOP
+			ELSE IF ( maxStp > tEnd-tBegin ) THEN
+				WRITE(*,*) '  Maximum stepsize = ',maxStp, ' to high!'
+				CALL FinishMPI(); STOP
+			END IF
+			IF ( minStp <= 1.e-50_dp ) THEN
+			  WRITE(*,*) '  Minimums stepsize = ',minStp, ' to low!'
+				CALL FinishMPI(); STOP
+		  ELSE IF ( minStp > maxStp ) THEN
+			  WRITE(*,*) '  Minimums stepsize = ', minStp, ' > ', maxStp
+				CALL FinishMPI(); STOP
+			END IF
+
+
+      ! setting up the factorization strategy
+      !IF ( Ordering <  8 .OR. ParOrdering >= 0 ) useMUMPS = .TRUE.
+      !IF ( Ordering >= 8 ) useSparseLU = .TRUE.
+      useSparseLU = .TRUE.
+
+
+!-----------------------------------------------------------------
+!---  Output of Data
+!-----------------------------------------------------------------
 !
-!--- Set NUMERICS values
-      maxord = MaxOrdROW
+!--- Set Default Values for OUTPUT Namelist
+      StpNetcdf   = -1.0_dp      ! Time step for Netcdf output      [in sec]
+      nOutP       = 100
+      MatrixPrint = .FALSE.
+      DebugPrint  = .FALSE.
+      NetCdfPrint = .TRUE.
+!
+!--- Read OUTPUT namelist
+      READ(RunUnit,OUTPUT,IOSTAT=io_stat,IOMSG=io_msg)
+      CALL ErrorCheck(io_stat,io_msg,'reading OUTPUT list')
+
+      NetCDFFile = ADJUSTL(NetCDFFile)
+      IF ( NetCdfFile == '' ) NetCdfPrint = .FALSE.   ! no output if no filename is declared
+      IF ( nOutP < 2 ) nOutP = 2                          ! minimum output steps are 2
+
+      CLOSE(RunUnit)
       
-!
-!-----------------------------------------------------------------
-!---  Linear Algebra
-!-----------------------------------------------------------------
-!
-!--- Control Parameter
-      READ(15,ORDERING)
+      CONTAINS
 
-      !OrderingStrategie=7
-      !WRITE(*,*) '    ORDERINGSTRATEGIE FIXED TO MUMPS = 7'
-!-----------------------------------------------------------------
-!---  Entrainment Control
-!-----------------------------------------------------------------
-!                
-!--- INTEGER :: Flags to control entrainment
-      ExMet   = 0          ! temperature           (0=off, 1=read)
-      ExLwc   = 0          ! total humitity        (0=off, 1=read)
-      ExGas   = 0          ! gas phase             (0=off, 1=read, 2=activation, 3=initial)
-      ExPart  = 0          ! particle distribution (0=off, 1=read, 2=activation, 3=initial)
-      ExComp  = 0          ! particle composition  (0=off, 1=read, 2=activation, 3=initial)
-!
-!--- REAL(RealKind) :: Entrainment parameter 
-      MuFac   = 1.0d0       ! Factor for modification of all entrainment parameters
-      MuMet0  = 1.0d-4      ! temperature
-      MuLwc0  = 1.0d-3      ! total humitity
-      MuGas0  = 1.0d-4      ! gas phase
-      MuPart0 = 1.0d-5      ! particle distribution
-!
-!--- CHARACTER(80) :: Entrainment file 
-      ExFile = 'MET/entrain.dat'    
-!
-!--- Read ENTRAIN namelist
-      READ(15,ENTRAIN)
-!
-!--- Set entrainment file 
-      ExFile = ADJUSTL(ExFile)
-!
-      CLOSE(15)
+        SUBROUTINE ErrorCheck(io_stat,io_msg,cause)
+          INTEGER      :: io_stat
+          CHARACTER(*) :: io_msg, cause
+          IF ( io_stat>0 ) WRITE(*,*) '   ERROR while '//cause//'  ::  ',io_stat,'  '//TRIM(io_msg)
+        END SUBROUTINE ErrorCheck
 
-!==================================================
-!===  Set Values
-!==================================================
-!
-!---  Transformation of times  (hours ==> seconds)
-    !  IF (tAnf < 0.0d0) THEN
-    !     tAnf = ABS(tAnf) 
-    !  ELSE IF (tAnf > 0.0d0) THEN
-    !     tAnf = 3600.0d0 * tAnf 
-    !  END IF
+				SUBROUTINE FileNameCheck(Name,miss)
+          CHARACTER(*) :: Name
+          CHARACTER(*) :: miss
+          LOGICAL      :: ex
+          INQUIRE(FILE=TRIM(Name), EXIST=ex)
+          
+          IF ( TRIM(Name) == '' .OR. .NOT.ex ) THEN
+            WRITE(*,*); WRITE(*,*)
+						WRITE(*,'(10X,A)') 'ERROR    Missing:  '//TRIM(miss)
+						WRITE(*,'(10X,A)') '         FileName: '//TRIM(Name)
+            WRITE(*,*); WRITE(*,*)
+						CALL FinishMPI(); STOP
+					ELSE
+            Name = ADJUSTL(Name)
+					END IF
+        END SUBROUTINE FileNameCheck
 
-    !  IF (tEnd < 0.0d0) THEN
-    !     tEnd = ABS(tEnd) 
-    !  ELSE IF (tAnf > 0.0d0) THEN
-    !     tEnd = 3600.0d0 * tEnd 
-    !  END IF
-
-    !  IF (tSimul < 0.0d0) THEN
-    !     tSimul = ABS(tSimul) 
-    !  ELSE IF (tSimul > 0.0d0) THEN
-    !     tSimul = 3600.e0 * tSimul 
-    !  END IF
-!
-!==================================================
-!===  Write control values
-!==================================================
-      !
-      !---  File names
-
-      
-
-
-!----------------------------------------------------------------------------------------
    END SUBROUTINE InitRun

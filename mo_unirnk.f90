@@ -533,7 +533,7 @@ SUBROUTINE I_unirnk (XVALT, IRNGT, NUNI)
 !
       NVAL = Min (SIZE(XVALT), SIZE(IRNGT))
       NUNI = NVAL
-!
+
       SELECT CASE (NVAL)
       CASE (:0)
          RETURN

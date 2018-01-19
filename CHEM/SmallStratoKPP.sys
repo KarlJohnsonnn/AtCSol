@@ -1,4 +1,4 @@
-COMMENT  robertson problem
+COMMENT  small strato kpp mechanism
 COMMENT  last update 23-07-2009 (pb)
 COMMENT   ===================   Unit options   ======================
 
@@ -10,7 +10,7 @@ COMMENT   ===========================================================
 
 CLASS: GAS
 O2 = 2.0 O
-PHOTO: A: 2.643e-10
+PHOTO3: A: 2.643e-10
 
 CLASS: GAS
 O + O2 = O3
@@ -47,3 +47,4 @@ CONST: A: 1.069E-11
 CLASS: GAS
 NO2 = NO + O
 PHOTO: A: 1.289E-02
+ 

@@ -1,0 +1,41 @@
+ &SCENARIO
+  BSP         = 'SmallStratoKPP'
+  Ladebalken  = 1
+  ErrorLog    = 0
+  MatrixPrint = .true.
+  DebugPrint  = .false.
+  NetCdfPrint = .true. 
+  ChemKin     = .false.        ! input mechanism in ChemKin notation
+ /END
+ &FILES
+  SysFile  = 'CHEM/SmallStratoKPP.sys'
+  DataFile = 'DAT/RACM.dat'
+  InitFile = 'INI/SmallStratoKPP.ini'
+  MetFile  = 'MET/1day_wocloud.met'
+  TargetFile  = 'TAR/SmallStrato.ctrl'
+ /END
+ &TIMES
+  tAnf    = 0.0d0
+  !tEnd    = 2592000.0d0
+  tEnd    = 86400.0d0
+  Dust    = 0.5d0
+  idate   = 010619     
+  rlat    = 45.d0     
+  rlon    =  0.d0
+  minStp  = 1.0d-25
+  maxStp  = 200.d0
+/END
+ &NUMERICS
+  RtolROW   = 1.0d-2
+  AtolGas   = 1.0d-5
+  AtolAqua  = 1.0d-5
+  Error_Est = 2
+  solveLA   = 'ex'  
+  ImpEuler  = 0
+  ODEsolver = 'METHODS/TSRosWRodas3.fort'
+  !ODEsolver = 'LSODE'
+ /END
+ &ORDERING
+  OrderingStrategie  = 8
+  ParOrdering        = -1
+ /END

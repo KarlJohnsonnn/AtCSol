@@ -32,20 +32,27 @@ MODULE Sparse_Mod
   !
   !
   TYPE CSR_Matrix_T            !Compressed Rowindex, standart columnindex
-    INTEGER :: m=0,n=0
-    INTEGER, ALLOCATABLE :: RowPtr(:)
-    INTEGER, ALLOCATABLE :: ColInd(:)
-    INTEGER, ALLOCATABLE :: DiagPtr(:)
-    INTEGER, POINTER :: Permu(:)=>NULL()
-    INTEGER, POINTER :: InvPer(:)=>NULL()
-    REAL(RealKind), ALLOCATABLE :: Val(:)
+    INTEGER               :: m=0, n=0, nnz=0
+    INTEGER, ALLOCATABLE  :: RowPtr(:)
+    INTEGER, ALLOCATABLE  :: ColInd(:)
+    INTEGER, ALLOCATABLE  :: DiagPtr(:)         ! position of diag entries
+    INTEGER, ALLOCATABLE  :: DiagPtr_P(:)       ! permuted pos of diag entries
+    INTEGER, ALLOCATABLE  :: DiagPtr_R(:)       ! permuted pos of rate entries
+    INTEGER, ALLOCATABLE  :: DiagPtr_C(:)       ! permuted pos of conenctations
+    INTEGER, ALLOCATABLE  :: RowVectorPtr(:)    ! for Teq matrix ( -U^T*D_c )
+    INTEGER, ALLOCATABLE  :: ColVectorPtr(:)    ! for Teq matrix ( ~K )
+    INTEGER               :: XPtr=-42           ! for Teq matrix ( X )
+    INTEGER, ALLOCATABLE  :: Permu(:)           ! permutation vector (markowitz)
+    INTEGER, ALLOCATABLE  :: InvPer(:)          ! invers permutation (inv markowitz)
+    INTEGER, ALLOCATABLE  :: LUperm(:)          ! 
+    REAL(dp), ALLOCATABLE :: Val(:)
   END TYPE CSR_Matrix_T
   !
   TYPE SpRowIndColInd_T     !standart Rowindex, standart columnindex
-    INTEGER :: m=0,n=0
-    INTEGER, POINTER :: RowInd(:)
-    INTEGER, POINTER :: ColInd(:)
-    REAL(RealKind), POINTER :: Val(:)
+    INTEGER :: m=0,n=0,nnz=0
+    INTEGER, ALLOCATABLE :: RowInd(:)
+    INTEGER, ALLOCATABLE :: ColInd(:)
+    REAL(dp), ALLOCATABLE :: Val(:)
   END TYPE SpRowIndColInd_T
   !
   TYPE SpRowColD_T
@@ -57,183 +64,386 @@ MODULE Sparse_Mod
     INTEGER :: ep=1
     INTEGER :: last=0
     INTEGER :: len=0
+    INTEGER :: nnz=0
   END TYPE SpRowColD_T
   !
   ! (/mincounts , anzahl gleicher mincounts/)
   INTEGER, ALLOCATABLE :: MarkowitzCounts(:,:)   
+  !  
+  ! global matrices containing chemical reaktion data (stoech.coefs)
+  TYPE(CSR_Matrix_T) ::  A                & ! coef matrix of educts
+  &                    , B                & ! coef matrix of products
+  &                    , BA               & ! B-A
+  &                    , BAT                ! Transpose(B-A)
+  
+  TYPE(CSR_Matrix_T) :: TB_sparse ! sparse matrix containing thirdbody 
+  !
+  TYPE(CSR_Matrix_T) :: Jac_CC
+
+  TYPE(CSR_Matrix_T) :: Miter                       ! 
+  TYPE(CSR_Matrix_T) :: LU_Miter                    
+  TYPE(CSR_Matrix_T) :: ID_1
+ 
+  TYPE(SpRowIndColInd_T) :: MiterFact
+  !
+  ! analysis matrix  (connectivity method)
+  TYPE(CSR_Matrix_T) :: CM_1, CM_1T
+
+  INTERFACE OPERATOR(*)
+    MODULE PROCEDURE DAX_sparse
+    !MODULE PROCEDURE DAX_sparse_n3
+  END INTERFACE
+
   !
   CONTAINS
   !
   !
   !
-  SUBROUTINE New_CSR(newA,m,n,nnz)
-    INTEGER, INTENT(IN) :: m, n
-    INTEGER, INTENT(IN), OPTIONAL :: nnz
-    !
+  FUNCTION New_CSR(m,n,nnz,ri,ci,val) RESULT(newA)
+    INTEGER :: m, n
+    INTEGER, OPTIONAL :: nnz
+    INTEGER, OPTIONAL :: ri(:), ci(:)
+    REAL(dp), OPTIONAL :: val(:)
     TYPE(CSR_Matrix_T) :: newA
     !
-    newA%m=m
-    newA%n=n
+    INTEGER :: i, j, sameRow, cCnt
+
+    newA%m = m
+    newA%n = n
     !
     ALLOCATE(newA%RowPtr(m+1))
-    newA%RowPtr=0
-    newA%RowPtr(1)=1
+    newA%RowPtr = 0
+    newA%RowPtr(1) = 1
     !
     IF (PRESENT(nnz)) THEN
       ALLOCATE(newA%ColInd(nnz))
-      newA%ColInd=0
+      newA%ColInd = -1
       ALLOCATE(newA%Val(nnz))
-      newA%Val=0.0d0
+      newA%Val = ZERO
+      newA%nnz = nnz
     END IF
-  END SUBROUTINE New_CSR
+    
+    ! if row and column indices are given
+    IF (PRESENT(ri).AND.PRESENT(ci)) THEN
+      IF (SIZE(ri) /= SIZE(ci)) STOP ' SIZE(ri) /= SIZE(ci) '
+      cCnt = 0
+      DO i = 1,m
+        sameRow = COUNT(ri==i)
+        newA%RowPtr(i+1) = newA%RowPtr(i) + sameRow
+      END DO
+      newA%ColInd = ci
+      IF (PRESENT(val)) newA%val = val
+    END IF
+  END FUNCTION New_CSR
   !
   !
-  SUBROUTINE Kill_Matrix_CSR(A)
+  SUBROUTINE Free_Matrix_CSR(A)
     TYPE(CSR_Matrix_T) :: A
     !
-    IF (ALLOCATED(A%RowPtr))   DEALLOCATE(A%RowPtr)
-    IF (ALLOCATED(A%ColInd))   DEALLOCATE(A%ColInd)
-    IF (ALLOCATED(A%DiagPtr))  DEALLOCATE(A%DiagPtr)
-    IF (ASSOCIATED(A%Permu))   NULLIFY(A%Permu)
-    IF (ASSOCIATED(A%InvPer))  NULLIFY(A%InvPer)  
-    IF (ALLOCATED(A%Val))      DEALLOCATE(A%Val)
-  END SUBROUTINE Kill_Matrix_CSR
+    IF (ALLOCATED(A%RowPtr))    DEALLOCATE(A%RowPtr)
+    IF (ALLOCATED(A%ColInd))    DEALLOCATE(A%ColInd)
+    IF (ALLOCATED(A%DiagPtr))   DEALLOCATE(A%DiagPtr)
+    IF (ALLOCATED(A%DiagPtr_R)) DEALLOCATE(A%DiagPtr_R)
+    IF (ALLOCATED(A%DiagPtr_C)) DEALLOCATE(A%DiagPtr_C)
+    IF (ALLOCATED(A%Permu))     DEALLOCATE(A%Permu)
+    IF (ALLOCATED(A%InvPer))    DEALLOCATE(A%InvPer)  
+    IF (ALLOCATED(A%Val))       DEALLOCATE(A%Val)
+  END SUBROUTINE Free_Matrix_CSR
   !
   !
-  SUBROUTINE Kill_Matrix_SpRowColD(A)
+  SUBROUTINE Free_SpRowColD(A)
     TYPE(SpRowColD_T) :: A
     !
-    IF (ASSOCIATED(A%RowPtr))   NULLIFY(A%RowPtr)
-    IF (ASSOCIATED(A%ColInd))   NULLIFY(A%ColInd)
-    IF (ASSOCIATED(A%Permu ))   NULLIFY(A%Permu)
-    IF (ASSOCIATED(A%InvPer))   NULLIFY(A%InvPer)
-  END SUBROUTINE Kill_Matrix_SpRowColD
+    IF (ASSOCIATED(A%RowPtr)) NULLIFY(A%RowPtr)
+    IF (ASSOCIATED(A%ColInd)) NULLIFY(A%ColInd)
+    IF (ASSOCIATED(A%Permu )) NULLIFY(A%Permu)
+    IF (ASSOCIATED(A%InvPer)) NULLIFY(A%InvPer)
+  END SUBROUTINE Free_SpRowColD
   !
   !
-  SUBROUTINE Kill_Matrix_SpRowIndColInd(A)
+  SUBROUTINE Free_SpRowIndColInd(A)
     TYPE(SpRowIndColInd_T) :: A
     !
-    IF (ASSOCIATED(A%RowInd))   NULLIFY(A%RowInd)
-    IF (ASSOCIATED(A%ColInd))   NULLIFY(A%ColInd)
-    IF (ASSOCIATED(A%Val))      NULLIFY(A%Val)
-  END SUBROUTINE Kill_Matrix_SpRowIndColInd   
+    IF (ALLOCATED(A%RowInd)) DEALLOCATE(A%RowInd)
+    IF (ALLOCATED(A%ColInd)) DEALLOCATE(A%ColInd)
+    IF (ALLOCATED(A%Val))    DEALLOCATE(A%Val)
+  END SUBROUTINE Free_SpRowIndColInd   
   !
   !
-  SUBROUTINE SparseID(Mat,dim)
-    TYPE(CSR_Matrix_T), INTENT(OUT) :: Mat
-    INTEGER, INTENT(IN) :: dim
+  FUNCTION SparseID(dim) RESULT(Mat)
+    TYPE(CSR_Matrix_T) :: Mat
+    INTEGER :: dim
     INTEGER :: i
     !
-    CALL New_CSR(Mat,dim,dim,dim)
+    Mat = New_CSR(dim,dim,dim)
     DO i=1,dim
       Mat%RowPtr(i+1)=Mat%RowPtr(i)+1
       Mat%ColInd(i)=i
     END DO
-  END SUBROUTINE SparseID
+    Mat%Val = ONE
+  END FUNCTION SparseID
   !
+
+  FUNCTION CSR_to_FULL(CSR) RESULT(Full)
+    TYPE(CSR_Matrix_T) :: CSR
+    REAL(dp) :: Full(CSR%m,CSR%n)
+
+    INTEGER :: i,j,jj 
+    
+    Full = ZERO
+    DO i=1,CSR%m
+      DO jj=CSR%RowPtr(i),CSR%RowPtr(i+1)-1
+        j = CSR%ColInd(jj)
+        Full(i,j) = CSR%Val(jj)
+      END DO
+    END DO
+  END FUNCTION CSR_to_FULL
+
+
+
+  SUBROUTINE CompressIntegerArray(Array)
+    INTEGER, ALLOCATABLE, INTENT(INOUT) :: Array(:)
+    INTEGER, ALLOCATABLE :: tmpArray(:)
+    
+    INTEGER :: i, N, cnt, M
+    
+    N = COUNT(Array/=0)
+    ALLOCATE(tmpArray(N))
+
+    cnt = 0
+    DO i=1,SIZE(Array)
+      IF (Array(i)/=0) THEN
+        cnt = cnt + 1
+        tmpArray(cnt) = Array(i)
+      END IF
+    END DO
+    Array = [tmpArray]
+  END SUBROUTINE CompressIntegerArray
+
+
+
+
+  SUBROUTINE CompressDoubleArray(Array)
+    REAL(dp), ALLOCATABLE, INTENT(INOUT) :: Array(:)
+    REAL(dp), ALLOCATABLE :: tmpArray(:)
+    
+    INTEGER :: i, N, cnt
+    REAL(dp), PARAMETER :: big = -99999999999999.d0
+    
+    N = COUNT( Array /= big )
+    ALLOCATE(tmpArray(N))
+
+    cnt = 0
+    DO i=1,SIZE(Array)
+      IF ( Array(i) /= big ) THEN
+        cnt = cnt + 1
+        tmpArray(cnt) = Array(i)
+      END IF
+    END DO
+    Array = [tmpArray]
+  END SUBROUTINE CompressDoubleArray
+
+
+  FUNCTION FULL_to_CSR(Full) RESULT(CSR)
+    REAL(dp) :: Full(:,:)
+    TYPE(CSR_Matrix_T) :: CSR
+
+    INTEGER :: i,j,jj 
+    INTEGER :: m,n,nnz 
+
+    m = SIZE(Full,1)
+    n = SIZE(Full,2)
+    nnz = COUNT(Full /= ZERO)
+
+    CSR = New_CSR(m,n,nnz)
+    
+    jj = 0
+    DO i = 1 , m
+      CSR%RowPtr(i+1) = CSR%RowPtr(i) + COUNT(Full(i,:)/=ZERO)
+      DO j = 1 , n
+        IF ( Full(i,j) /= ZERO) THEN
+          jj = jj + 1
+          CSR%ColInd(jj) = j
+          CSR%Val(jj)    = Full(i,j)
+        END IF
+      END DO
+    END DO
+    CSR%nnz = jj
+  END FUNCTION FULL_to_CSR
+
+
+  FUNCTION Copy_SpRowIndColInd(orig) RESULT(copy)
+    TYPE(SpRowIndColInd_T) :: orig
+    TYPE(SpRowIndColInd_T) :: copy
+
+    copy%m = orig%m
+    copy%n = orig%n
+    copy%nnz = orig%nnz
+    copy%RowInd = orig%RowInd
+    copy%ColInd = orig%ColInd
+    copy%Val    = orig%Val
+  END FUNCTION Copy_SpRowIndColInd
+
+
+  FUNCTION Copy_CSR(orig) RESULT(copy)
+    TYPE(CSR_Matrix_T) :: orig
+    TYPE(CSR_Matrix_T) :: copy
+
+    copy = New_CSR(orig%m,orig%n,orig%nnz)
+    copy%RowPtr = orig%RowPtr
+    copy%ColInd = orig%ColInd
+    copy%Val    = orig%Val
+    Copy%nnz    = orig%nnz
+    IF (orig%XPtr/=-42) copy%XPtr = orig%XPtr
+    IF (ALLOCATED(orig%DiagPtr))   copy%DiagPtr   = orig%DiagPtr
+    IF (ALLOCATED(orig%DiagPtr_P)) copy%DiagPtr_P = orig%DiagPtr_P
+    IF (ALLOCATED(orig%DiagPtr_R)) copy%DiagPtr_R = orig%DiagPtr_R
+    IF (ALLOCATED(orig%DiagPtr_C)) copy%DiagPtr_C = orig%DiagPtr_C
+    IF (ALLOCATED(orig%RowVectorPtr)) copy%RowVectorPtr = orig%RowVectorPtr
+    IF (ALLOCATED(orig%ColVectorPtr)) copy%ColVectorPtr = orig%ColVectorPtr
+    IF (ALLOCATED(orig%Permu))  copy%Permu  = orig%Permu
+    IF (ALLOCATED(orig%InvPer)) copy%InvPer = orig%InvPer
+    IF (ALLOCATED(orig%LUperm)) copy%LUperm = orig%LUperm
+  END FUNCTION Copy_CSR
+
   !
-  SUBROUTINE RowColD_To_CRF_Matrix(A,B)
-    TYPE(CSR_Matrix_T), INTENT(INOUT) :: A
-    TYPE(SpRowColD_T), INTENT(IN) :: B
+  FUNCTION RowColD_to_CSR(SpRow,m,n) RESULT(CSR)
+    TYPE(CSR_Matrix_T) :: CSR
+    TYPE(SpRowColD_T)  :: SpRow
+    INTEGER :: m, n
+    !
     INTEGER :: i,j,jj,nzrA
     ! 
-    A%n=B%n
-    A%m=B%m
-    !
-    IF (.NOT.ALLOCATED(A%RowPtr)) THEN
-      ALLOCATE(A%RowPtr(A%m+1))
-      A%RowPtr=0
+
+    CSR = New_CSR(SpRow%n,SpRow%m,SpRow%nnz)
+    
+   
+    IF ( EXTENDED ) THEN
+      IF ( Teq ) THEN
+        ALLOCATE(CSR%DiagPtr(n+m+1))
+        ALLOCATE(CSR%DiagPtr_P(n+m+1))
+      ELSE
+        ALLOCATE(CSR%DiagPtr(n+m))
+        ALLOCATE(CSR%DiagPtr_P(n+m))
+      END IF
+      ALLOCATE(CSR%DiagPtr_R(n))
+      ALLOCATE(CSR%DiagPtr_C(m))
+      CSR%DiagPtr_R = -11
+      CSR%DiagPtr_C = -11
+    ELSE
+      IF ( Teq ) THEN
+        ALLOCATE(CSR%DiagPtr(m+1))
+        ALLOCATE(CSR%DiagPtr_P(m+1))
+      ELSE
+        ALLOCATE(CSR%DiagPtr(m))
+        ALLOCATE(CSR%DiagPtr_P(m))
+      END IF
     END IF
-    IF (.NOT.ALLOCATED(A%DiagPtr)) THEN
-      ALLOCATE(A%DiagPtr(A%n+1))
-      A%DiagPtr=0
-    END IF
-    A%RowPtr(1)=1
+    CSR%DiagPtr   = -11
+    CSR%DiagPtr_P = -11
+    
     NzrA=0
-    DO i=1,A%m
-      A%RowPtr(i+1)=A%RowPtr(i)
-      DO jj=B%RowPtr(1,i),B%RowPtr(2,i)
-        j=B%ColInd(jj) 
+    DO i=1,CSR%m
+      CSR%RowPtr(i+1)=CSR%RowPtr(i)
+      DO jj=SpRow%RowPtr(1,i),SpRow%RowPtr(2,i)
+        j=SpRow%ColInd(jj) 
+        NzrA=NzrA+1
+        CSR%ColInd(NzrA)=j
         IF (i==j) THEN
-          A%DiagPtr(i)=A%RowPtr(i+1)
+          CSR%DiagPtr(i)=CSR%RowPtr(i+1)
         END IF
-        A%RowPtr(i+1)=A%RowPtr(i+1)+1
-        NzrA=NzrA+1
+        CSR%RowPtr(i+1)=CSR%RowPtr(i+1)+1
       END DO
     END DO
-    IF (.NOT.ALLOCATED(A%ColInd)) THEN
-      ALLOCATE(A%ColInd(NzrA))
-      A%ColInd=0
-    END IF 
-    NzrA=0
-    DO i=1,A%m
-      DO jj=B%RowPtr(1,i),B%RowPtr(2,i)
-        j=B%ColInd(jj)
-        NzrA=NzrA+1
-        A%ColInd(NzrA)=j
+    
+    IF (ASSOCIATED(SpRow%Permu)) THEN
+      IF (.NOT.ALLOCATED(CSR%Permu)) THEN
+        ALLOCATE(CSR%Permu(CSR%n))
+        CSR%Permu(:)=-16
+      END IF
+      CSR%Permu(:)=SpRow%Permu(:)
+    END IF
+    IF (ASSOCIATED(SpRow%InvPer)) THEN
+      IF (.NOT.ALLOCATED(CSR%InvPer)) THEN
+        ALLOCATE(CSR%InvPer(CSR%n))
+        CSR%InvPer(:)=-16
+      END IF
+      CSR%InvPer(:)=SpRow%InvPer(:)
+    END IF
+
+    ! permutate pointer to diagonal, rate and conc entries
+    CSR%DiagPtr_P = CSR%DiagPtr( CSR%Permu )
+    IF ( EXTENDED ) THEN
+      CSR%DiagPtr_R = CSR%DiagPtr_P(   1:n   )
+      CSR%DiagPtr_C = CSR%DiagPtr_P( n+1:n+m )
+    END IF
+    CSR%nnz = SpRow%nnz
+  END FUNCTION RowColD_to_CSR
+
+  FUNCTION SpRowIndColInd_to_CSR(SpRiCi) RESULT(CSR)
+    ! IN:
+    TYPE(SpRowIndColInd_T) :: SpRiCi
+    ! OUT:
+    TYPE(CSR_Matrix_T)     :: CSR
+    ! TEMP:
+    INTEGER :: i, ii, jj, n, m, nnz
+
+    m = SpRiCi%m
+    n = SpRiCi%n
+    nnz = SpRiCi%nnz
+
+    CSR = New_CSR(m,n,nnz)
+    
+    ii = 0
+    DO i = 1 , m
+      CSR%RowPtr(i+1) = CSR%RowPtr(i) + COUNT(SpRiCi%RowInd==i)
+      DO jj = CSR%RowPtr(i) , CSR%RowPtr(i+1)-1
+        ii = ii + 1
+        CSR%ColInd(jj) = SpRiCi%ColInd(ii)
+        CSR%Val(jj)    = SpRiCi%Val(ii)
       END DO
     END DO
-    IF (ASSOCIATED(B%Permu)) THEN
-      IF (.NOT.ASSOCIATED(A%Permu)) THEN
-        ALLOCATE(A%Permu(A%n))
-        A%Permu=0
-      END IF
-      A%Permu=B%Permu
-    END IF
-    IF (ASSOCIATED(B%InvPer)) THEN
-      IF (.NOT.ASSOCIATED(A%InvPer)) THEN
-        ALLOCATE(A%InvPer(A%n))
-        A%InvPer=0
-      END IF
-      A%InvPer=B%InvPer
-    END IF
-    IF (.NOT.ALLOCATED(A%Val)) THEN
-      ALLOCATE(A%Val(NzrA))
-      A%Val=ZERO
-    END IF 
-    !call printsparse(A,'*')
-    !print*, 'debug:: dptr=',A%DiagPtr
-    !stop
-  END SUBROUTINE RowColD_To_CRF_Matrix
+    CSR%nnz = ii
+  END FUNCTION SpRowIndColInd_to_CSR
   !
   !
-  SUBROUTINE CSR_Matrix_To_SpRowColD(A,B)
-    TYPE(SpRowColD_T) :: A
-    TYPE(CSR_Matrix_T) :: B
+  FUNCTION CSR_to_SpRowColD(CSR) RESULT(SpRowCol)
+    TYPE(SpRowColD_T) :: SpRowCol
+    TYPE(CSR_Matrix_T) :: CSR
     !
-    INTEGER :: nzrB
+    INTEGER :: nzrCSR
     INTEGER :: AddLen
     INTEGER :: Start,End
     INTEGER :: i,j,jj
     !
     AddLen=10
-    A%m=B%m
-    A%n=B%n
-    ALLOCATE(A%RowPtr(2,A%n))
-    nzrB=SIZE(B%ColInd)
-    A%len=10*nzrB+AddLen*A%n
-    ALLOCATE(A%ColInd(A%len))
-    A%ColInd=0
-    ALLOCATE(A%Permu(A%n))
-    A%Permu=0
-    ALLOCATE(A%InvPer(A%n))
-    A%InvPer=0
+    SpRowCol%m=CSR%m
+    SpRowCol%n=CSR%n
+    ALLOCATE(SpRowCol%RowPtr(2,SpRowCol%n))
+    nzrCSR=SIZE(CSR%ColInd)
+    SpRowCol%len=10*nzrCSR+AddLen*SpRowCol%n
+    ALLOCATE(SpRowCol%ColInd(SpRowCol%len))
+    SpRowCol%ColInd=0
+    ALLOCATE(SpRowCol%Permu(SpRowCol%n))
+    SpRowCol%Permu=0
+    ALLOCATE(SpRowCol%InvPer(SpRowCol%n))
+    SpRowCol%InvPer=0
     !
     Start=1
-    DO i=1,B%n
-      A%RowPtr(1,i)=Start
-      End=Start+(B%RowPtr(i+1)-B%RowPtr(i)-1)
-      A%RowPtr(2,i)=End
-      DO jj=B%RowPtr(i),B%RowPtr(i+1)-1
-        j=B%ColInd(jj)
-        A%ColInd(Start)=j
+    DO i=1,CSR%n
+      SpRowCol%RowPtr(1,i)=Start
+      End=Start+(CSR%RowPtr(i+1)-CSR%RowPtr(i)-1)
+      SpRowCol%RowPtr(2,i)=End
+      DO jj=CSR%RowPtr(i),CSR%RowPtr(i+1)-1
+        j=CSR%ColInd(jj)
+        SpRowCol%ColInd(Start)=j
         Start=Start+1
       END DO  
       Start=Start+AddLen-1
     END DO  
-    A%ep=A%RowPtr(2,A%n)+1
-    A%last=A%n  
-  END SUBROUTINE CSR_Matrix_To_SpRowColD
+    SpRowCol%ep=SpRowCol%RowPtr(2,SpRowCol%n)+1
+    SpRowCol%last=SpRowCol%n  
+  END FUNCTION CSR_to_SpRowColD
   !
   !
   SUBROUTINE Sort_SpRowColD(A)
@@ -300,118 +510,106 @@ MODULE Sparse_Mod
         A%ColInd(jj)=A%Permu(A%ColInd(jj))
       END DO
       CALL SortVec(A%ColInd(A%RowPtr(1,i):A%RowPtr(2,i)))
+      A%nnz=A%nnz+SIZE(A%ColInd(A%RowPtr(1,i):A%RowPtr(2,i)))
     END DO
   END SUBROUTINE SymbLU_SpRowColD
   !
   !
-  SUBROUTINE SymbLUMarko_SpRowColD(A)
+  SUBROUTINE SymbLU_SpRowColD_M(A)
     TYPE(SpRowColD_T) :: A
     !
     INTEGER :: r(A%n),c(A%n),RowPiv(A%n)
     INTEGER :: i,j,l,jj,ip,ip1(1),iPiv
-    REAL(RealKind) :: md 
+    REAL(dp) :: md 
     LOGICAL :: ins
-    !
-    ! für testzwecke
-    ALLOCATE(MarkowitzCounts(A%n,2))
-    MarkowitzCounts=0
-    !
-    c=0
-    DO i=1,A%n
-      A%InvPer(i)=i
-      A%Permu(i)=i
+  
+    c = 0
+    DO i = 1 , A%n
+      A%InvPer(i) = i
+      A%Permu(i)  = i
       ! Compute initial Markowitz count
-      r(i)=A%RowPtr(2,i)-A%RowPtr(1,i)+1
-      DO jj=A%RowPtr(1,i),A%RowPtr(2,i)
-        c(A%ColInd(jj))=c(A%ColInd(jj))+1
+      r(i) = A%RowPtr(2,i) - A%RowPtr(1,i) + 1
+      DO jj = A%RowPtr(1,i) , A%RowPtr(2,i)
+        c(A%ColInd(jj)) = c(A%ColInd(jj)) + 1
       END DO
     END DO
-    !
-    ! MAIN LOOP
-    DO i=1,A%n
-      ip=0
-      md=1.d99
-      DO j=i,A%n
-        IF (((r(j)-1)*(c(j)-1)<=md)) THEN
-          md=(r(j)-1)*(c(j)-1)
-          ip=j
-          !
-          ! neu test
-          MarkowitzCounts(i,1)=md
-          IF ( (r(j)-1)*(c(j)-1) == md )  MarkowitzCounts(i,2)=MarkowitzCounts(i,2)+1
-          !
+    
+    MAIN_LOOP: DO i = 1 , A%n
+      ip = 0
+      md = 1.d99
+      DO j = i , A%n
+        IF ( (r(j)-1)*(c(j)-1) <= md ) THEN
+          md = (r(j)-1)*(c(j)-1)
+          ip = j
         END IF
       END DO
-      !print*, 'markocnts :::   ',i, MarkowitzCounts(i,1), MarkowitzCounts(i,2)
-      ! 
+      
       ! wird nie erreicht?
       IF (ip==0) THEN
-        ip1(:)=MINLOC((r(i:A%n)-1)*(c(i:A%n)-1))+(i-1)
-        ip=ip1(1)
-        MarkowitzCounts(i,1)=ip1(1)
-        MarkowitzCounts(i,2)=SIZE(ip1)
-        print*, 'ip1(1)=',ip1(1), SIZE(ip1)
+        ip1(:) = MINLOC((r(i:A%n)-1)*(c(i:A%n)-1))+(i-1)
+        ip = ip1(1)
+        MarkowitzCounts(i,1) = ip1(1)
+        MarkowitzCounts(i,2) = SIZE(ip1)
       END IF
       !
-      CALL Swap(A%InvPer(i),A%InvPer(ip))
-      CALL Swap(r(i),r(ip))
-      CALL Swap(c(i),c(ip))
-      CALL Swap(A%RowPtr(1,i),A%RowPtr(1,ip))
-      CALL Swap(A%RowPtr(2,i),A%RowPtr(2,ip))
-      A%Permu(A%InvPer(i))=i
-      A%Permu(A%InvPer(ip))=ip
-      IF (A%last==i) THEN
-        A%last=ip
-      ELSE IF (A%last==ip) THEN
-        A%last=i
+      CALL Swap( r(i) , r(ip) )
+      CALL Swap( c(i) , c(ip) )
+      CALL Swap( A%InvPer(i)   , A%InvPer(ip) )
+      CALL Swap( A%RowPtr(1,i) , A%RowPtr(1,ip) )
+      CALL Swap( A%RowPtr(2,i) , A%RowPtr(2,ip) )
+      
+      A%Permu(A%InvPer(i))  = i
+      A%Permu(A%InvPer(ip)) = ip
+
+      IF ( A%last == i ) THEN
+        A%last = ip
+      ELSE IF ( A%last == ip ) THEN
+        A%last = i
       END IF
       !
       ! Update
-      iPiv=0
-      DO jj=A%RowPtr(1,i),A%RowPtr(2,i)
-        IF (A%Permu(A%ColInd(jj))>i) THEN
-          iPiv=iPiv+1 
-          RowPiv(iPiv)=A%ColInd(jj)
-          c(A%Permu(A%ColInd(jj)))=c(A%Permu(A%ColInd(jj)))-1 
+      iPiv = 0
+      DO jj = A%RowPtr(1,i) , A%RowPtr(2,i)
+        IF ( A%Permu(A%ColInd(jj)) > i ) THEN
+          iPiv = iPiv + 1 
+          RowPiv(iPiv) = A%ColInd(jj)
+          c(A%Permu(A%ColInd(jj))) = c(A%Permu(A%ColInd(jj))) - 1
         END IF
       END DO
-      IF (iPiv>0) THEN
-        DO j=i+1,A%n
-          DO jj=A%RowPtr(1,j),A%RowPtr(2,j)
-            IF (A%Permu(A%ColInd(jj))==i) THEN
-              r(j)=r(j)-1 
-              c(i)=c(i)-1
-              DO l=1,iPiv
-                CALL Insert_SpRowColD(A,j,RowPiv(l),ins)
+      IF ( iPiv > 0 ) THEN
+        DO j = i+1 , A%n
+          DO jj = A%RowPtr(1,j) , A%RowPtr(2,j)
+            IF ( A%Permu(A%ColInd(jj)) == i ) THEN
+              r(j) = r(j) - 1 
+              c(i) = c(i) - 1
+              DO l = 1 , iPiv
+                CALL Insert_SpRowColD( A, j, RowPiv(l), ins)
                 IF (ins) THEN
-                  c(A%Permu(RowPiv(l)))=c(A%Permu(RowPiv(l)))+1
-                  r(j)=r(j)+1
+                  c(A%Permu(RowPiv(l))) = c(A%Permu(RowPiv(l))) + 1
+                  r(j) = r(j) + 1
                 END IF
               END DO
               EXIT
             END IF
           END DO
-          IF (c(i)==1) EXIT
+          IF ( c(i) == 1 ) EXIT
         END DO
       END IF
-    END DO
-    DO i=1,A%n
-      DO jj=A%RowPtr(1,i),A%RowPtr(2,i)
-        A%ColInd(jj)=A%Permu(A%ColInd(jj))
+    END DO MAIN_LOOP
+
+    DO i = 1 , A%n
+      DO jj = A%RowPtr(1,i) , A%RowPtr(2,i)
+        A%ColInd(jj) = A%Permu(A%ColInd(jj))
       END DO
-      CALL SortVec(A%ColInd(A%RowPtr(1,i):A%RowPtr(2,i)))
+      CALL SortVec( A%ColInd(A%RowPtr(1,i):A%RowPtr(2,i)) )
+      A%nnz = A%nnz + SIZE(A%ColInd(A%RowPtr(1,i):A%RowPtr(2,i)))
     END DO
-  END SUBROUTINE SymbLUMarko_SpRowColD
+  END SUBROUTINE SymbLU_SpRowColD_M
   !
   !
   SUBROUTINE Swap(i,j)
-    INTEGER :: i,j
-    !
-    INTEGER :: iTemp
-    !  
-    iTemp=i
-    i=j
-    j=iTemp
+    INTEGER :: i, j, iTemp
+    iTemp=i;    i=j;    j=iTemp
   END SUBROUTINE Swap
   !
   !
@@ -430,6 +628,90 @@ MODULE Sparse_Mod
       END DO
     END DO
   END SUBROUTINE SortVec
+  !
+  !
+  SUBROUTINE SortVecDesc(vec)
+    INTEGER :: vec(:)
+    !
+    INTEGER :: i,itemp,j,n
+   
+    n = SIZE(Vec)
+   
+    
+    DO i = 1 , n
+      DO j = 1 , n-i
+        IF ( vec(j) < vec(j+1) ) THEN
+          itemp    = vec(j)
+          vec(j)   = vec(j+1)
+          vec(j+1) = itemp
+        END IF
+      END DO
+    END DO
+  END SUBROUTINE SortVecDesc
+  !
+
+  SUBROUTINE SortVecDesc2(vec,q)
+    INTEGER, INTENT(INOUT) :: vec(:)
+    INTEGER, ALLOCATABLE, OPTIONAL :: q(:)
+    !
+    INTEGER :: i,n,iMax(1)
+    INTEGER, ALLOCATABLE :: tmpVec(:)
+   
+    n = SIZE(Vec)
+    ALLOCATE(tmpVec(n));  tmpVec = 0
+   
+    IF (PRESENT(q).AND..NOT.ALLOCATED(q)) ALLOCATE(q(n))
+    
+    DO i = 1 , n
+      iMax = MAXLOC(vec)
+      tmpVec(i) = vec(iMax(1))
+      vec(iMax(1)) = -1
+      IF (PRESENT(q)) q(i) = iMax(1)
+    END DO
+    vec = tmpVec
+  END SUBROUTINE SortVecDesc2
+
+
+
+  SUBROUTINE SeperatePosNegValues(p_out,n_out,m_in)
+    TYPE(CSR_Matrix_T), INTENT(OUT) :: p_out, n_out
+    TYPE(CSR_Matrix_T), INTENT(IN)  :: m_in
+
+    INTEGER :: i , jj, cnt_pos, cnt_neg
+    INTEGER, ALLOCATABLE :: tc_pos(:), tc_neg(:)
+    
+
+    ALLOCATE(tc_pos(0),tc_neg(0))
+
+    p_out = New_CSR( m_in%m, m_in%n )
+    n_out = New_CSR( m_in%m, m_in%n )
+
+    DO i = 1, m_in%m
+      cnt_pos = 0
+      cnt_neg = 0
+      DO jj = m_in%RowPtr(i), m_in%RowPtr(i+1)-1
+        IF ( m_in%Val(jj) > 0.0d0 ) THEN
+          tc_pos = [tc_pos , jj]
+          cnt_pos = cnt_pos + 1
+        ELSE
+          tc_neg = [tc_neg , jj]
+          cnt_neg = cnt_neg + 1
+        END IF
+      END DO
+      p_out%RowPtr(i+1) = p_out%RowPtr(i) + cnt_pos
+      n_out%RowPtr(i+1) = n_out%RowPtr(i) + cnt_neg
+    END DO
+    p_out%nnz    = SIZE(tc_pos)
+    p_out%ColInd = m_in%ColInd(tc_pos)
+    p_out%Val    = m_in%val(tc_pos)
+
+    n_out%nnz    = SIZE(tc_neg)
+    n_out%ColInd = m_in%ColInd(tc_neg)
+    n_out%Val    = m_in%val(tc_neg)
+
+  END SUBROUTINE SeperatePosNegValues
+
+  !
   !
   !
   SUBROUTINE Insert_SpRowColD(A,iA,jA,ins)
@@ -649,53 +931,51 @@ MODULE Sparse_Mod
       B%RowPtr(i+1)=B%RowPtr(i)
     END DO
     B%RowPtr(1)=1
+    B%nnz=B%RowPtr(B%m+1)-1
   END SUBROUTINE SymbTransposeSparse
   !
   !
   ! Transpose Matrix
-  SUBROUTINE TransposeSparse(A,B)
-    TYPE(CSR_Matrix_T), INTENT(IN) :: A
-    TYPE(CSR_Matrix_T), INTENT(OUT) :: B
+  SUBROUTINE TransposeSparse(MatAT,MatA)
+    TYPE(CSR_Matrix_T), INTENT(OUT) :: MatAT
+    TYPE(CSR_Matrix_T), INTENT(IN)  :: MatA
     !
     INTEGER :: i,j                                 ! zählvariabl schleIFen
     INTEGER :: indx
     !
-    B%m=A%n
-    B%n=A%m
     !
-    ALLOCATE(B%RowPtr(B%m+1))
-    B%RowPtr=0
-    B%RowPtr(1)=1
+    MatAT = New_CSR(MatA%n,MatA%m)
     !
     !
-    DO i=1,A%m
-      DO j=A%RowPtr(i),A%RowPtr(i+1)-1
-        B%RowPtr(A%ColInd(j)+1)=B%RowPtr(A%ColInd(j)+1)+1
+    DO i=1,MatA%m
+      DO j=MatA%RowPtr(i),MatA%RowPtr(i+1)-1
+        MatAT%RowPtr(MatA%ColInd(j)+1)=MatAT%RowPtr(MatA%ColInd(j)+1)+1
       END DO
     END DO
     !
-    DO i=1,B%m
-      !print*, 'RowPtr=',B%RowPtr(i)
-      B%RowPtr(i+1)=B%RowPtr(i)+B%RowPtr(i+1)
+    DO i=1,MatAT%m
+      !print*, 'RowPtr=',MatAT%RowPtr(i)
+      MatAT%RowPtr(i+1)=MatAT%RowPtr(i)+MatAT%RowPtr(i+1)
     END DO
-      !print*, 'RowPtr=',B%RowPtr(B%m+1)
+      !print*, 'RowPtr=',MatAT%RowPtr(MatAT%m+1)
     !
-    ALLOCATE(B%ColInd(SIZE(A%ColInd)))
-    ALLOCATE(B%Val(SIZE(A%Val)))
-    B%ColInd=0
-    B%Val=ZERO
-    DO i=1,A%m
-      DO j=A%RowPtr(i),A%RowPtr(i+1)-1
-        indx=A%ColInd(j)
-        B%ColInd(B%RowPtr(indx))=i
-        B%Val(B%RowPtr(indx))=A%Val(j)
-        B%RowPtr(indx)=B%RowPtr(indx)+1
+    ALLOCATE(MatAT%ColInd(SIZE(MatA%ColInd)))
+    ALLOCATE(MatAT%Val(SIZE(MatA%Val)))
+    MatAT%ColInd=0
+    MatAT%Val=ZERO
+    DO i=1,MatA%m
+      DO j=MatA%RowPtr(i),MatA%RowPtr(i+1)-1
+        indx=MatA%ColInd(j)
+        MatAT%ColInd(MatAT%RowPtr(indx))=i
+        MatAT%Val(MatAT%RowPtr(indx))=MatA%Val(j)
+        MatAT%RowPtr(indx)=MatAT%RowPtr(indx)+1
       END DO
     END DO
-    DO i=B%m,1,-1
-      B%RowPtr(i+1)=B%RowPtr(i)
+    DO i=MatAT%m,1,-1
+      MatAT%RowPtr(i+1)=MatAT%RowPtr(i)
     END DO
-    B%RowPtr(1)=1
+    MatAT%RowPtr(1)=1
+    MatAT%nnz=MatA%RowPtr(MatA%m+1)-1
   END SUBROUTINE TransposeSparse
   !
   !
@@ -711,7 +991,7 @@ MODULE Sparse_Mod
     INTEGER :: istart, length, iTemp
     !
       !symbolic matrix multiply c=a*b
-    CALL New_CSR(C,A%m,B%n)
+    C = New_CSR(A%m,B%n)
     !
     !main loop
     indx=0
@@ -767,7 +1047,8 @@ MODULE Sparse_Mod
       CALL Sort(C%Colind(C%RowPtr(i):C%RowPtr(i+1)-1))
     END DO
     ALLOCATE(C%Val(C%RowPtr(C%m+1)-1))
-    C%Val=0.0d0
+    C%Val=ZERO
+    C%nnz=C%RowPtr(C%m+1)-1
   END SUBROUTINE SymbolicMult
   !
   !
@@ -779,8 +1060,8 @@ MODULE Sparse_Mod
     TYPE(CSR_Matrix_T), INTENT(INOUT) :: C
     !
     INTEGER :: i,j,jj,k,kk
-    REAL(RealKind) :: ajj
-    REAL(RealKind) :: temp(MAX(A%m,A%n,B%n))
+    REAL(dp) :: ajj
+    REAL(dp) :: temp(MAX(A%m,A%n,B%n))
     temp=ZERO
     !
     DO i=1,A%m
@@ -799,11 +1080,11 @@ MODULE Sparse_Mod
     END DO
   END SUBROUTINE SparseMult
   !
-  ! SYMBOLIC MATRIX + MATRIX
-  SUBROUTINE SymbolicAdd(A,B,C)
-    TYPE(CSR_Matrix_T), INTENT(INOUT) :: A
-    TYPE(CSR_Matrix_T), INTENT(IN) :: B
-    TYPE(CSR_Matrix_T), INTENT(OUT) :: C
+  ! SYMBOLIC MATRIX + MATRIX  -->  MatC = MatA + MatB
+  SUBROUTINE SymbolicAdd(MatC,MatA,MatB)
+    TYPE(CSR_Matrix_T), INTENT(IN)  :: MatA
+    TYPE(CSR_Matrix_T), INTENT(IN)  :: MatB
+    TYPE(CSR_Matrix_T), INTENT(OUT) :: MatC
     !
     INTEGER :: i,ii,j,jj,k,kk
     INTEGER, ALLOCATABLE :: TmpCol(:)
@@ -813,45 +1094,45 @@ MODULE Sparse_Mod
     INTEGER :: currentlength
     INTEGER :: sameCnt
     !
-    IF (.NOT.((A%m==B%m).AND.(A%n==B%n))) THEN
+    IF (.NOT.((MatA%m==MatB%m).AND.(MatA%n==MatB%n))) THEN
       WRITE(*,*) 'Wrong Matrix Dim'
-      WRITE(*,*) 'A: ',A%m,A%n
-      WRITE(*,*) 'B: ',B%m,B%n
+      WRITE(*,*) 'A: ',MatA%m,MatA%n
+      WRITE(*,*) 'B: ',MatB%m,MatB%n
       CALL FinishMPI()
       STOP 'STOP'
     END IF
     !
-    CALL New_CSR(C,A%m,A%n)
+    MatC = New_CSR(MatA%m,MatA%n)
     !
-    DO i=1,C%m
-      currentlength=(A%RowPtr(i+1)-A%RowPtr(i))+(B%RowPtr(i+1)-B%RowPtr(i))
+    DO i=1,MatC%m
+      currentlength=(MatA%RowPtr(i+1)-MatA%RowPtr(i))+(MatB%RowPtr(i+1)-MatB%RowPtr(i))
       ALLOCATE(Indizes(currentlength))
       Indizes=0
       sameCnt=0
-      DO ii=A%RowPtr(i),A%RowPtr(i+1)-1
-        DO j=B%RowPtr(i),B%RowPtr(i+1)-1
-          IF (A%ColInd(ii)==B%ColInd(j)) THEN
+      DO ii=MatA%RowPtr(i),MatA%RowPtr(i+1)-1
+        DO j=MatB%RowPtr(i),MatB%RowPtr(i+1)-1
+          IF (MatA%ColInd(ii)==MatB%ColInd(j)) THEN
             sameCnt=sameCnt+1
             Indizes(sameCnt)=j
           END IF
         END DO
       END DO
-      C%RowPtr(i+1)=C%RowPtr(i)+currentlength-sameCnt
+      MatC%RowPtr(i+1)=MatC%RowPtr(i)+currentlength-sameCnt
       DEALLOCATE(Indizes)
     END DO
     !
     ! Allocate ColInd
-    ALLOCATE(C%ColInd(C%RowPtr(C%m+1)-1))
-    C%ColInd=0
+    ALLOCATE(MatC%ColInd(MatC%RowPtr(MatC%m+1)-1))
+    MatC%ColInd=0
     !
     kk=1
-    DO i=1,C%m
+    DO i=1,MatC%m
       k=1
-      currentlength=C%RowPtr(i+1)-C%RowPtr(i)
+      currentlength=MatC%RowPtr(i+1)-MatC%RowPtr(i)
       sameCnt=0
-      DO ii=A%RowPtr(i),A%RowPtr(i+1)-1
-        DO j=B%RowPtr(i),B%RowPtr(i+1)-1
-          IF (A%ColInd(ii)==B%ColInd(j)) THEN
+      DO ii=MatA%RowPtr(i),MatA%RowPtr(i+1)-1
+        DO j=MatB%RowPtr(i),MatB%RowPtr(i+1)-1
+          IF (MatA%ColInd(ii)==MatB%ColInd(j)) THEN
             sameCnt=sameCnt+1
           END IF
         END DO
@@ -862,18 +1143,18 @@ MODULE Sparse_Mod
       ALLOCATE(PermVec(currentlength+sameCnt))
       PermVec=0
       !
-      DO jj=A%RowPtr(i),A%RowPtr(i+1)-1
-        TmpCol(k)=A%ColInd(jj)
+      DO jj=MatA%RowPtr(i),MatA%RowPtr(i+1)-1
+        TmpCol(k)=MatA%ColInd(jj)
         k=k+1
       END DO
-      DO jj=B%RowPtr(i),B%RowPtr(i+1)-1
-        TmpCol(k)=B%ColInd(jj)
+      DO jj=MatB%RowPtr(i),MatB%RowPtr(i+1)-1
+        TmpCol(k)=MatB%ColInd(jj)
         k=k+1
       END DO
       !
       CALL unirnk(TmpCol,PermVec,ColLen)
       DO j=1,ColLen
-        C%ColInd(kk)=TmpCol(PermVec(j))
+        MatC%ColInd(kk)=TmpCol(PermVec(j))
         kk=kk+1
       END DO
       !
@@ -881,13 +1162,51 @@ MODULE Sparse_Mod
       DEALLOCATE(PermVec)
     END DO
     !
-    ALLOCATE(C%Val(C%RowPtr(C%m+1)-1))
-    C%Val=ZERO
+    ALLOCATE(MatC%Val(MatC%RowPtr(MatC%m+1)-1))
+    MatC%Val=ZERO
+    MatC%nnz=MatC%RowPtr(MatC%m+1)-1
   END SUBROUTINE SymbolicAdd
   !
   !
-  ! SPARSE  MATRIX + MATRIX
-  SUBROUTINE SparseAdd(MatA,MatB,MatC,Sub_Add)
+  ! SPARSE  MATRIX + MATRIX  -->  MatC = MatA (Sub_Add) MatB 
+  SUBROUTINE SparseAdd(MatC,MatA,MatB,Sub)
+    TYPE(CSR_Matrix_T), INTENT(IN)    :: MatA, MatB
+    TYPE(CSR_Matrix_T), INTENT(INOUT) :: MatC
+    CHARACTER, OPTIONAL,  INTENT(IN)    :: Sub
+    !
+    ! Temp variables
+    INTEGER, ALLOCATABLE :: tmpCol(:)
+    INTEGER, ALLOCATABLE :: perm(:)
+    REAL(dp), ALLOCATABLE :: tmpBVal(:)
+    REAL(dp), ALLOCATABLE :: tmpVal(:)
+    INTEGER :: lenColIndA, lenColIndB
+    INTEGER :: i, ii, j, jj, k ,kk
+    !
+    ALLOCATE(tmpBVal(MatB%RowPtr(MatB%m+1)-1))
+    IF (Sub=='-') THEN
+      tmpBVal = -MatB%Val
+    ELSE
+      tmpBVal = MatB%Val
+    END IF
+    !
+    DO i=1,MatC%m
+      DO ii=MatC%RowPtr(i),MatC%RowPtr(i+1)-1
+        DO jj=MatA%RowPtr(i),MatA%RowPtr(i+1)-1
+          IF (MatA%ColInd(jj)==MatC%ColInd(ii)) THEN
+            MatC%Val(ii) = MatC%Val(ii)+MatA%Val(jj)
+          END IF
+        END DO
+        DO kk=MatB%RowPtr(i),MatB%RowPtr(i+1)-1
+          IF (MatB%ColInd(kk)==MatC%ColInd(ii)) THEN
+            MatC%Val(ii) = MatC%Val(ii)+tmpBVal(kk)
+          END IF
+        END DO
+      END DO
+    END DO
+    DEALLOCATE(tmpBVal)
+  END SUBROUTINE SparseAdd
+  !
+  SUBROUTINE SparseAdd_alt(MatA,MatB,MatC,Sub_Add)
     ! A + B = C
     TYPE(CSR_Matrix_T) :: MatA, MatB
     TYPE(CSR_Matrix_T), INTENT(INOUT) :: MatC
@@ -895,8 +1214,8 @@ MODULE Sparse_Mod
     !
     INTEGER, ALLOCATABLE :: tmpCol(:)
     INTEGER, ALLOCATABLE :: perm(:)
-    REAL(RealKind), ALLOCATABLE :: tmpBVal(:)
-    REAL(RealKind), ALLOCATABLE :: tmpVal(:)
+    REAL(dp), ALLOCATABLE :: tmpBVal(:)
+    REAL(dp), ALLOCATABLE :: tmpVal(:)
     INTEGER :: lenColIndA, lenColIndB
     INTEGER :: i
     !
@@ -937,8 +1256,7 @@ MODULE Sparse_Mod
       DEALLOCATE(Perm)
     END DO
     DEALLOCATE(tmpBVal)
-  END SUBROUTINE SparseAdd
-  !
+  END SUBROUTINE SparseAdd_alt
   !
   ! SORT ALGORITHM FOR SYMBOLIC MATRIX*MATRIX CALC
   SUBROUTINE Sort(v)
@@ -986,12 +1304,12 @@ MODULE Sparse_Mod
   !
   SUBROUTINE CompressList(ColInd,Val)
     INTEGER, ALLOCATABLE :: ColInd(:)
-    REAL(RealKind), ALLOCATABLE, OPTIONAL :: Val(:)
+    REAL(dp), ALLOCATABLE, OPTIONAL :: Val(:)
     !
     INTEGER :: i,j,iList,MemberCol
     INTEGER :: TempListCol(SIZE(ColInd))
-    REAL(RealKind) :: MemberVal
-    REAL(RealKind) :: TempListVal(SIZE(ColInd))
+    REAL(dp) :: MemberVal
+    REAL(dp) :: TempListVal(SIZE(ColInd))
     LOGICAL :: Insert
     !
     TempListVal=ZERO
@@ -1022,425 +1340,473 @@ MODULE Sparse_Mod
     IF (PRESENT(Val)) Val=TempListVal(1:iList)
   END SUBROUTINE CompressList
   !
-  !
   ! SPARSE JACOBIMATRIX CALC
-  SUBROUTINE JacobiMatrix(gMat,aMat,rVec,yVec,jMat)
+  SUBROUTINE ConnectivityMethode(JacCC,gMat,aMat,r,y,doty)
     !
     ! jMat = gMat*Dr*aMat*invDy;
     !
+    TYPE(CSR_Matrix_T), INTENT(INOUT) :: JacCC
     TYPE(CSR_Matrix_T), INTENT(IN) :: gMat
     TYPE(CSR_Matrix_T), INTENT(IN) :: aMat
-    TYPE(CSR_Matrix_T), INTENT(INOUT) :: jMat
-    REAL(RealKind), INTENT(IN) :: rVec(aMat%m)
-    REAL(RealKind), INTENT(IN) :: yVec(aMat%n)
+    REAL(dp), INTENT(IN) :: r(aMat%m)
+    REAL(dp), INTENT(IN) :: y(aMat%n)
+    REAL(dp), INTENT(IN) :: doty(aMat%n)
     !
     INTEGER :: i,j,jj,k,kk
-    REAL(RealKind) :: ajj
-    REAL(RealKind) :: temp(MAX(gMat%m,gMat%n,aMat%n))
+    REAL(dp) :: ajj
+    REAL(dp) :: temp(MAX(gMat%m,gMat%n,aMat%n))
     !
     temp=ZERO
-    !jMat%m=aMat%n
-    !jMat%n=jMat%m
     !
-    jMat%Val=ZERO
-    !print*, 'nID=', MPI_ID, 'SumJacColInd=',SUM(jMat%ColInd), 'sumf0=', sum(abs(rVec)),&
-    !&           'sumY=',SUM(ABS(yVec)), 'sumAvals=', SUM(ABS(aMat%val)), 'sumBATvals=',SUM(ABS(gMat%val))
+    JacCC%Val=ZERO
     !
     DO i=1,gMat%m
+
       DO jj=gMat%RowPtr(i),gMat%RowPtr(i+1)-1
-        j=gMat%ColInd(jj)
-        ajj=gMat%Val(jj)*rVec(j)
+        j   = gMat%ColInd(jj)
+        ajj = gMat%Val(jj)*r(j)
+
         DO kk=aMat%RowPtr(j),aMat%RowPtr(j+1)-1
-          k=aMat%ColInd(kk)
-          temp(k)=temp(k)+ajj*aMat%Val(kk)/yVec(k)
+          k = aMat%ColInd(kk)
+          temp(k) = temp(k) + (ajj*aMat%Val(kk)/doty(k))**2
         END DO
+
       END DO
-      DO j=jMat%RowPtr(i),jMat%RowPtr(i+1)-1
-        jMat%Val(j)=temp(jMat%ColInd(j))
-        temp(jMat%ColInd(j))=ZERO
+
+      DO jj=JacCC%RowPtr(i),JacCC%RowPtr(i+1)-1
+        j = JacCC%ColInd(jj)
+        JacCC%Val(jj) = temp(j)
+        temp(j) = ZERO
       END DO
+
     END DO
-  END SUBROUTINE JacobiMatrix
+  END SUBROUTINE ConnectivityMethode
   !
-  !
+  ! SPARSE JACOBIMATRIX CALC
+  PURE SUBROUTINE Jacobian_CC(JacCC,gMat,aMat,rVec,yVec)
+    !
+    ! jMat = gMat*Dr*aMat*invDy;
+    !
+    TYPE(CSR_Matrix_T), INTENT(INOUT) :: JacCC
+    TYPE(CSR_Matrix_T), INTENT(IN)    :: gMat
+    TYPE(CSR_Matrix_T), INTENT(IN)    :: aMat
+    REAL(dp),           INTENT(IN)    :: rVec(aMat%m)
+    REAL(dp),           INTENT(IN)    :: yVec(aMat%n)
+    !
+    INTEGER :: i,j,jj,k,kk
+    REAL(dp) :: ajj
+    REAL(dp) :: temp(MAX(gMat%m,gMat%n,aMat%n))
+    !
+    temp=ZERO
+    !
+    JacCC%Val=ZERO
+    !
+    DO i=1,gMat%m
+
+      DO jj=gMat%RowPtr(i),gMat%RowPtr(i+1)-1
+        j   = gMat%ColInd(jj)
+        ajj = gMat%Val(jj)*rVec(j)
+
+        DO kk=aMat%RowPtr(j),aMat%RowPtr(j+1)-1
+          k = aMat%ColInd(kk)
+          temp(k) = temp(k) + ajj*aMat%Val(kk)/yVec(k)
+        END DO
+
+      END DO
+
+      DO jj=JacCC%RowPtr(i),JacCC%RowPtr(i+1)-1
+        j = JacCC%ColInd(jj)
+        JacCC%Val(jj) = temp(j)
+        temp(j) = ZERO
+      END DO
+
+    END DO
+  END SUBROUTINE Jacobian_CC
+
+ 
+  ! JacTC = -1/cv/rho [C_v*dTdt + U^T*JacCC]
+  PURE SUBROUTINE Jacobian_TC(JacTC,JacCC,cv,dUdT,dTdt,U,rRho)
+    TYPE(CSR_Matrix_T), INTENT(IN)  :: JacCC
+    REAL(dp),           INTENT(IN)  :: cv , dTdt, rRho
+    REAL(dp),           INTENT(IN)  :: dUdT(:), U(:)
+    REAL(dp),           INTENT(OUT) :: JacTC(JacCC%m)
+    !
+    REAL(dp) :: tmpJacVal(JacCC%m)
+
+    tmpJacVal = DAX_sparse(JacCC,U)
+    JacTC = - (dUdT*dTdt + tmpJacVal) / cv * rRho * milli
+
+  END SUBROUTINE Jacobian_TC
+  
+
+  ! JacTC = -1/cv [C_v*dTdt + U^T*JacCC]
+  PURE SUBROUTINE Jacobian_CT(JacCT,gMat,Dr,Kvec)
+    TYPE(CSR_Matrix_T), INTENT(IN)  :: gMat
+    REAL(dp),           INTENT(IN)  :: Dr(:), Kvec(:)
+    REAL(dp),           INTENT(OUT) :: JacCT(gMat%m)
+    !
+    REAL(dp) :: dRatedT(gMat%n)
+
+    ! deriv. of reaction rate with resp. to temperature
+    dRatedT = Dr * Kvec 
+    JacCT   = DAX_sparse(gMat,dRatedT)
+
+  END SUBROUTINE Jacobian_CT
+ 
+
+  ! JacTT = -1/cv/rho [dTdT*dcvdT+C_v*dCdt + U^T*JacCC]
+  PURE SUBROUTINE Jacobian_TT(JacTT,JacCT,cv,dcvdT,dTdt,dUdT,dcdt,U,rRho)
+    REAL(dp), INTENT(IN)    :: JacCT(:)
+    REAL(dp), INTENT(IN)    :: cv , dcvdT , dTdt , rRho
+    REAL(dp), INTENT(IN)    :: dUdT(:) , dCdt(:) , U(:)
+    REAL(dp), INTENT(INOUT) :: JacTT
+    !
+    JacTT = - milli * rRho/cv  *                &
+          &   (  dTdT*dcvdT/cv + SUM(dUdT*dCdt) &
+          &                    + SUM(U*JacCT)   ) 
+    
+  END SUBROUTINE Jacobian_TT
+ 
+
   ! SPARSE MITER CALCULATION_CLASSIC
-  SUBROUTINE Miter_Classic(gMat,aMat,rVec,yVec,h,g,miter)
+  PURE SUBROUTINE Miter_Classic(Miter,h,g,J1,J2,J3,J4)
+    REAL(dp),           INTENT(IN)    :: h, g
+    TYPE(CSR_Matrix_T), INTENT(IN)    :: J1
+    REAL(dp), OPTIONAL, INTENT(IN)    :: J2(:), J3(:), J4
+    TYPE(CSR_Matrix_T), INTENT(INOUT) :: Miter
     !
-    ! miter = Id - h*g*gMat*Dr*aMat*invDy;
-    !
-    TYPE(CSR_Matrix_T), INTENT(IN) :: gMat
-    TYPE(CSR_Matrix_T), INTENT(IN) :: aMat
-    TYPE(CSR_Matrix_T), INTENT(INOUT) :: miter
-    REAL(RealKind), INTENT(IN) :: rVec(:)
-    REAL(RealKind), INTENT(IN) :: yVec(:)
-    REAL(RealKind), INTENT(IN) :: h, g
-    !
-    INTEGER :: i,ii,j,jj,k,kk
-    REAL(RealKind) :: ajj
-    REAL(RealKind) :: hg
-    REAL(RealKind) :: temp(MAX(gMat%m,gMat%n,aMat%n))
-    !
-    temp=ZERO
-    hg=h*g
-    Miter%Val=ZERO
-    !
-    DO i=1,gMat%m
-      DO jj=gMat%RowPtr(i),gMat%RowPtr(i+1)-1
-        j=gMat%ColInd(jj)
-        ajj=gMat%Val(jj)*rVec(j) 
-        !
-        DO kk=aMat%RowPtr(j),aMat%RowPtr(j+1)-1
-          k=aMat%ColInd(kk)
-          temp(k)=temp(k)+ajj*aMat%Val(kk)/yVec(k)
-        END DO
-      END DO
-      ii=1
-      DO jj=miter%RowPtr(i),miter%RowPtr(i+1)-1
-        j=miter%ColInd(jj)
-        IF (i==j) THEN
-          miter%Val(jj)=ONE-(hg)*temp(j)
+    INTEGER :: i,j,jj,cnt
+    REAL(dp) :: hg
+   
+    Miter%Val = ZERO
+    hg  = h*g
+    cnt = 0
+
+    DO i = 1,J1%m
+      DO jj = Miter%RowPtr(i) , Miter%RowPtr(i+1)-1
+        j = Miter%ColInd(jj)
+        IF      ( j==i ) THEN
+          ! diagonal d(dCdt)/dC
+          Miter%Val(jj) = ONE - hg*J1%Val(jj-cnt)
+        ELSE IF ( j==Miter%m.AND.Teq) THEN
+          cnt = cnt + 1
         ELSE
-          miter%Val(jj)=-(hg)*temp(j)
+          ! none diagonal  d(dCdt)/dC
+          Miter%Val(jj) = - hg*J1%Val(jj-cnt)
         END IF
-        ii=ii+1
-        temp(j)=ZERO
       END DO
     END DO
+
+    IF (Teq) THEN
+      ! bottom row d(dTdt)/dC
+      Miter%Val(Miter%RowVectorPtr) = - hg*J2
+      ! right hand column d(dCdt)/dT
+      Miter%Val(Miter%ColVectorPtr) = - hg*J3
+      ! lower right hand corner d(dTdt)/dT
+      Miter%Val(Miter%XPtr) = ONE - hg*J4
+    END IF
+   
   END SUBROUTINE Miter_Classic
-  !
-  !
-  SUBROUTINE SymbolicExtendedMatrix(A,BAT,MiterOut)
-    TYPE(CSR_Matrix_T), INTENT(IN) :: A, BAT
-    TYPE(CSR_Matrix_T), INTENT(OUT) :: MiterOut
-    TYPE(CSR_Matrix_T) :: Miter
+
+
+
+  SUBROUTINE BuildSymbolicClassicMatrix(CL,Jac,RowGamma)
+    TYPE(CSR_Matrix_T), INTENT(OUT) :: CL
+    TYPE(CSR_Matrix_T), INTENT(IN)  :: Jac
+    REAL(dp),           INTENT(IN)  :: RowGamma
+
     TYPE(CSR_Matrix_T) :: Id
-    INTEGER :: LenColInd
-    INTEGER, ALLOCATABLE :: tmpColInd(:)
+    TYPE(CSR_Matrix_T) :: CL0
     !
-    INTEGER :: i,j
+    INTEGER :: i, j, jj, ndim, nnz
     !
-    CALL New_CSR(Miter,A%m+BAT%m,A%n+BAT%n)
+    !------------------------------------------------------------------------------
+    ! --- Set Matrix dimensions and nonzeros 
+    !------------------------------------------------------------------------------
     !
-    DO i=1,A%m
-      Miter%RowPtr(i+1)=Miter%RowPtr(i)+(A%RowPtr(i+1)-A%RowPtr(i))
+    !
+    IF ( Teq ) THEN
+      ndim = Jac%n + 1                  ! number of rows/coloumns
+      nnz  = Jac%RowPtr(Jac%m+1)-1   &  ! nonzeros of Jacobian
+      &       + Jac%m + Jac%n + 1       ! Dc,U^T and Dr,~K and X (down right)
+    ELSE
+      ndim = Jac%n                      ! number of rows/coloumns
+      nnz  = Jac%RowPtr(Jac%m+1)-1      ! nonzeros of Jacobian
+    END IF
+
+    CL0 = New_CSR ( ndim , ndim , nnz )
+    ID = SparseID( ndim )
+    ALLOCATE(CL0%DiagPtr(ndim))
+    CL0%DiagPtr  = -12
+
+    IF ( Teq ) THEN
+      !
+      DO i = 1 , ndim - 1
+        CL0%RowPtr(i+1) = CL0%RowPtr(i) + (Jac%RowPtr(i+1)-Jac%RowPtr(i)) + 1
+
+        CL0%ColInd( CL0%RowPtr(i):CL0%RowPtr(i+1)-1 ) =                           & 
+        &    [ Jac%ColInd(Jac%RowPtr(i):(Jac%RowPtr(i+1)-1)) , ndim ]
+      END DO
+      
+      ! set last row (full row)
+      CL0%RowPtr(ndim+1) = CL0%RowPtr(ndim) + ndim
+      CL0%ColInd(CL0%RowPtr(ndim):CL0%RowPtr(ndim+1)-1) = [( i , i = 1 , ndim )]
+
+      CALL SymbolicAdd(CL,Id,CL0)
+      ALLOCATE(CL%RowVectorPtr(ndim-1))
+      ALLOCATE(CL%ColVectorPtr(ndim-1))
+      CL%RowVectorPtr = -1
+      CL%ColVectorPtr = -1
+      CL%Val          = ONE
+    ELSE
+      CALL SymbolicAdd(CL,Id,Jac)
+    END IF
+    !
+    ALLOCATE(CL%DiagPtr(ndim))
+    CL%DiagPtr  = -12
+    ! get diagonal pointer
+    DO i = 1 , ndim
+      IF ( Teq .AND. i < ndim ) CL%ColVectorPtr(i)  = CL%RowPtr(i+1) - 1
+      DO jj = CL%RowPtr(i) , CL%RowPtr(i+1)-1 
+        j = CL%ColInd(jj)
+        IF ( i == j ) CL%DiagPtr(i) = jj
+      END DO
     END DO
-    DO i=1,BAT%m
-      Miter%RowPtr(A%m+i+1)=Miter%RowPtr(A%m+i)+(BAT%RowPtr(i+1)-BAT%RowPtr(i))
-    END DO
-    !
-    ALLOCATE(Miter%ColInd(Miter%RowPtr(Miter%m+1)-1))
-    Miter%ColInd=0
-    j=1
-    !
-    DO i=1,A%m
-      LenColInd=A%RowPtr(i+1)-A%RowPtr(i)
-      ALLOCATE(tmpColInd(LenColInd))
-      tmpColInd=(/A%m+(A%ColInd(A%RowPtr(i):(A%RowPtr(i+1)-1)))/)
-      CALL sort(tmpColInd)
-      Miter%ColInd(Miter%RowPtr(i):Miter%RowPtr(i+1)-1)=tmpColInd
-      DEALLOCATE(tmpColInd)
-    END DO
-    !
-    DO i=1,BAT%m
-      LenColInd=BAT%RowPtr(i+1)-BAT%RowPtr(i)
-      ALLOCATE(tmpColInd(LenColInd))
-      tmpColInd=(/BAT%ColInd(BAT%RowPtr(i):(BAT%RowPtr(i+1)-1))/)
-      CALL sort(tmpColInd)
-      Miter%ColInd(Miter%RowPtr(A%m+i):Miter%RowPtr(A%m+i+1)-1)=tmpColInd
-      DEALLOCATE(tmpColInd)
-    END DO
-    !
-    ALLOCATE(Miter%Val(Miter%RowPtr(Miter%m+1)-1))
-    Miter%Val=ZERO
-    !
-    ! build sparse unit matrix
-    CALL SparseID(Id,A%m+BAT%m)
-    !
-    DO i=1,Id%m
-      Id%RowPtr(i+1)=Id%RowPtr(i)+1
-      Id%ColInd(i)=i
-    END DO
-    CALL SymbolicAdd(Id,Miter,MiterOut)
-  END SUBROUTINE SymbolicExtendedMatrix
+    IF ( Teq ) THEN
+      CL%RowVectorPtr = [( i , i = CL%RowPtr(nDim),CL%RowPtr(nDim+1)-2 )]
+      CL%XPtr = CL%DiagPtr(ndim)
+    END IF
+  END SUBROUTINE BuildSymbolicClassicMatrix
   !
   !
-  SUBROUTINE SymbolicExtendedMatrixTemp(A,BAT,MiterOut)
+  SUBROUTINE BuildSymbolicExtendedMatrix(EX,A,BAT,g)
+    TYPE(CSR_Matrix_T), INTENT(OUT) :: EX
     TYPE(CSR_Matrix_T), INTENT(IN) :: A, BAT
-    TYPE(CSR_Matrix_T), INTENT(OUT) :: MiterOut
-    TYPE(CSR_Matrix_T) :: Miter
-    TYPE(CSR_Matrix_T) :: Id
-    INTEGER :: LenColInd
-    INTEGER, ALLOCATABLE :: tmpColInd(:)
+    REAL(dp),     INTENT(IN) :: g
+
     !
-    INTEGER :: i,j
+    INTEGER :: i, ndim, nnzBig
+    INTEGER :: from, to
     !
-    CALL New_CSR(Miter,A%m+BAT%m+1,A%n+BAT%n+1)
+    !------------------------------------------------------------------------------
+    ! --- Set big Matrix dimensions and nonzeros 
+    !------------------------------------------------------------------------------
     !
-    DO i=1,A%m 
-      !                    FIRST PART
-      !          _                                  _ 
-      !         |              |   g*A_Mat    | g*~K |
-      !         |--------------+--------------+------|
-      ! miter = |              |              |      |
-      !         !--------------+--------------+------|
-      !         |_             |              |     _|
-      !
-      Miter%RowPtr(i+1)=Miter%RowPtr(i)+(A%RowPtr(i+1)-A%RowPtr(i))+1
-    END DO
+    IF ( Teq ) THEN
+      ndim   = A%m   + BAT%m+1          ! nummber of rows
+      nnzBig = A%nnz + BAT%nnz     &    ! nonzeros of alpha and (beta-alpha)^T
+      &        + 2*A%n + 2*BAT%n + 1    ! Dc,U^T and Dr,~K and X (down right)
+    ELSE
+      ndim   = A%m   + BAT%m            ! nummber of rows
+      nnzBig = A%nnz + BAT%nnz     &    ! nonzeros of alpha and (beta-alpha)^T
+      &        + A%n   + BAT%n          ! Dr, Dc
+    END IF
+    
+    EX = New_CSR( ndim , ndim , nnzBig )
+    
+    ALLOCATE(EX%DiagPtr(ndim))          ! entire diagonal
+    ALLOCATE(EX%DiagPtr_R(A%m))         ! reaction rates
+    ALLOCATE(EX%DiagPtr_C(BAT%m))       ! species concentrations
+    EX%DiagPtr        = -13
+    EX%DiagPtr_R      = -13
+    EX%DiagPtr_C      = -13
+
+    ! Allocate a full row vector and a full column vector
+    IF ( Teq ) THEN
+      ALLOCATE(EX%ColVectorPtr(A%m))    ! | Vector
+      ALLOCATE(EX%RowVectorPtr(BAT%m))  ! _ Vector
+      EX%ColVectorPtr = -13
+      EX%RowVectorPtr = -13
+    END IF
+    !
+    !---------------------------------------------------------------------------------
+    ! --- Set Row Pointer, Coloum Index and 'Values'(=1.0d0 for Dr, Dc, ~K, U^T and X)
+    !---------------------------------------------------------------------------------
+    !
+    !                    FIRST PART
+    !          _                                  _ 
+    !         |    Diag_1    |   g*alpha    | g*~K |
+    !         |--------------+--------------+------|
+    ! miter = |              |              |      |
+    !         !--------------+--------------+------|
+    !         |_             |              |     _|
+    !
+    IF ( Teq ) THEN
+
+      DO i = 1 , A%m 
+
+        EX%RowPtr(i+1)  = EX%RowPtr(i) + A%RowPtr(i+1) - A%RowPtr(i) + 2
+
+        from  = A%RowPtr(i);    to  = A%RowPtr(i+1)-1
+
+        EX%ColInd(EX%RowPtr(i):EX%RowPtr(i+1)-1) =                                 & 
+        &       [  i  , A%m + A%ColInd(from:to)    , ndim  ]
+
+        EX%Val(EX%RowPtr(i):EX%RowPtr(i+1)-1)    =                                 & 
+        &       [ ONE , g*A%Val(A%ColInd(from:to)) ,  ONE ]
+     
+        ! set pointers for better access 
+        EX%DiagPtr(i)       = EX%RowPtr(i)
+        EX%DiagPtr_R(i)     = EX%RowPtr(i)
+        EX%ColVectorPtr(i)  = EX%RowPtr(i+1) - 1
+
+      END DO
+
+    ELSE
+
+      DO i = 1 , A%m 
+
+        EX%RowPtr(i+1)  = EX%RowPtr(i) + A%RowPtr(i+1) - A%RowPtr(i) + 1
+
+        from  = A%RowPtr(i);    to  = A%RowPtr(i+1)-1
+
+        EX%ColInd(EX%RowPtr(i):EX%RowPtr(i+1)-1) = & 
+        &       [ i  , A%m + A%ColInd(from:to)     ]
+
+        EX%Val(EX%RowPtr(i):EX%RowPtr(i+1)-1)    = & 
+        &       [ ONE , g*A%Val(A%ColInd(from:to)) ]
+
+        ! set pointers for better access 
+        EX%DiagPtr(i)   = EX%RowPtr(i)
+        EX%DiagPtr_R(i) = EX%RowPtr(i)
+
+      END DO
+
+    END IF
+    !
+    !                    Second PART
+    !          _                                  _ 
+    !         |   Diag_1_nR  |   g*alpha    | g*~K |
+    !         |--------------+--------------+------|
+    ! miter = |   BAT_Mat    |  Diag_1_nS   |      |
+    !         !--------------+--------------+------|
+    !         |_             |              |     _|
+    ! same for Teq and atmopheric stuff
     DO i=1,BAT%m
-      !                    Second PART
-      !          _                                  _ 
-      !         |              |   g*A_Mat    | g*~K |
-      !         |--------------+--------------+------|
-      ! miter = |   BAT_Mat    |              |      |
-      !         !--------------+--------------+------|
-      !         |_             |              |     _|
-      !
-      Miter%RowPtr(A%m+i+1)=Miter%RowPtr(A%m+i)+(BAT%RowPtr(i+1)-BAT%RowPtr(i))
+
+      EX%RowPtr(A%m+i+1)  = EX%RowPtr(A%m+i) + BAT%RowPtr(i+1) - BAT%RowPtr(i) + 1
+
+      from  = BAT%RowPtr(i);  to  = BAT%RowPtr(i+1)-1
+      EX%ColInd(EX%RowPtr(A%m+i):EX%RowPtr(A%m+i+1)-1)  = &
+      &                     [ BAT%ColInd(from:to) , A%m+i ]
+
+      EX%Val(EX%RowPtr(A%m+i):EX%RowPtr(A%m+i+1)-1)     = &
+      &                     [ BAT%Val(from:to)    ,  ONE  ]
+     
+      EX%DiagPtr(i+A%m)   = EX%RowPtr(A%m+i+1)-1
+      EX%DiagPtr_C(i)     = EX%RowPtr(A%m+i+1)-1
+
     END DO
-      !                    Third PART
-      !          _                                  _ 
-      !         |              |   g*A_Mat    | g*~K |
-      !         |--------------+--------------+------|
-      ! miter = |   BAT_Mat    |              |      |
-      !         !--------------+--------------+------|
-      !         |_             |    -U^TD_c   |     _|
-      !
-      Miter%RowPtr(Miter%m+1)=Miter%RowPtr(Miter%m)+A%n
+    !                    Third PART
+    !          _                                  _ 
+    !         |   Diag_1_nR  |   g*alpha    | g*~K |
+    !         |--------------+--------------+------|
+    ! miter = |   BAT_Mat    |  Diag_1_nS   |      |
+    !         !--------------+--------------+------|
+    !         |_             |     U^TD_c   |   1 _|
     !
-    ALLOCATE(Miter%ColInd(Miter%RowPtr(Miter%m+1)-1))
-    Miter%ColInd=-1
-    j=1
-    !
-    DO i=1,A%m
-      LenColInd=A%RowPtr(i+1)-A%RowPtr(i)+1
-      ALLOCATE(tmpColInd(LenColInd))
-      tmpColInd=(/A%m+(A%ColInd(A%RowPtr(i):(A%RowPtr(i+1)-1)))/)
-      CALL sort(tmpColInd)
-      Miter%ColInd(Miter%RowPtr(i):Miter%RowPtr(i+1)-2)=tmpColInd
-      Miter%ColInd(Miter%RowPtr(i+1)-1)=Miter%n
-      DEALLOCATE(tmpColInd)
-    END DO
-    !
-    DO i=1,BAT%m
-      LenColInd=BAT%RowPtr(i+1)-BAT%RowPtr(i)
-      ALLOCATE(tmpColInd(LenColInd))
-      tmpColInd=(/BAT%ColInd(BAT%RowPtr(i):(BAT%RowPtr(i+1)-1))/)
-      CALL sort(tmpColInd)
-      Miter%ColInd(Miter%RowPtr(A%m+i):Miter%RowPtr(A%m+i+1)-1)=tmpColInd
-      DEALLOCATE(tmpColInd)
-    END DO
-    !
-    DO i=1,A%n
-      Miter%ColInd(Miter%RowPtr(Miter%m)+i)=BAT%n+i    ! hoffentlich geht das so
-    END DO
-    !Miter%ColInd(Miter%RowPtr(A%m+BAT%m+1):Miter%RowPtr(A%m+BAT%m+2))=(/(BAT%n+1):(BAT%n+A%n)/)    ! hoffentlich geht das so
-    !
-    ALLOCATE(Miter%Val(Miter%RowPtr(Miter%m+1)-1))
-    Miter%Val=ZERO
-    !
-    ! build sparse unit matrix
-    CALL SparseID(Id,A%m+BAT%m+1)
-    !
-    DO i=1,Id%m
-      Id%RowPtr(i+1)=Id%RowPtr(i)+1
-      Id%ColInd(i)=i
-    END DO
-    CALL SymbolicAdd(Id,Miter,MiterOut)
-  END SUBROUTINE SymbolicExtendedMatrixTemp
+    IF ( Teq ) THEN
+
+      EX%RowPtr(ndim+1) = EX%RowPtr(ndim) + A%n+1
+      
+      from  = EX%RowPtr(ndim);  to  = EX%RowPtr(ndim+1)-1
+
+      EX%ColInd(from:to) = [( i , i = BAT%n+1,BAT%n+A%n+1 )]
+      EX%Val   (from:to) = ONE
+      EX%RowVectorPtr    = [( i , i = from,to-1 )]
+      EX%DiagPtr(ndim)   = EX%RowPtr(ndim+1)-1
+      EX%XPtr            = EX%DiagPtr(ndim)
+
+    END IF
+    !call printsparse(EX , '*')
   !
-  !
-  SUBROUTINE Miter0_Extended(BAT_Mat,A_Mat,g,Miter)
-    ! Set values to block matrix (called only once)
-    ! miter = | invDiagrVec    g*A_Mat |
-    !         |  h*BAT_Mat    DiagyVec |
-    !
-    TYPE(CSR_Matrix_T), INTENT(IN) :: BAT_Mat
-    TYPE(CSR_Matrix_T), INTENT(IN) :: A_Mat
-    REAL(RealKind), INTENT(IN)     :: g
-    TYPE(CSR_Matrix_T), INTENT(INOUT) :: Miter
-    !
-    INTEGER :: tempM(3),tempA(2)
-    INTEGER :: i
-    !
-    !
-    ALLOCATE(Miter%DiagPtr(Miter%m))
-    Miter%DiagPtr=0
-    !
-    DO i=1,A_Mat%m
-      tempA=(/A_Mat%RowPtr(i), &
-              A_Mat%RowPtr(i+1)-1/)
-      tempM=(/Miter%RowPtr(i), &
-              Miter%RowPtr(i)+1, &
-              Miter%RowPtr(i+1)-1/)
-      Miter%Val(tempM(1))=1.0d0
-      Miter%DiagPtr(i)=Miter%RowPtr(i)
-      Miter%Val(tempM(2):tempM(3))=A_Mat%Val(tempA(1):tempA(2))*g
-    END DO
-    DO i=1,BAT_Mat%m
-      tempA=(/BAT_Mat%RowPtr(i), &
-              BAT_Mat%RowPtr(i+1)-1/)
-      tempM=(/Miter%RowPtr(A_Mat%m+i+1)-1, &
-              Miter%RowPtr(A_Mat%m+i), &
-              Miter%RowPtr(A_Mat%m+i+1)-2/)
-      Miter%Val(tempM(1))=1.0d0
-      Miter%DiagPtr(A_Mat%m+i)=tempM(1)
-      Miter%Val(tempM(2):tempM(3))=BAT_Mat%Val(tempA(1):tempA(2))
-    END DO
-  END SUBROUTINE Miter0_Extended
-  !
-  !
-  SUBROUTINE Miter0_ExtendedTemp(BAT_Mat,A_Mat,g,Miter)
-    ! Set values to block matrix (called only once)
-    ! miter = | invDiagrVec    g*A_Mat     g*~K |
-    !         |  BAT_Mat     DiagyVec/h      0  |
-    !         |     0       U^T*DiagyVec     X  | 
-    !
-    TYPE(CSR_Matrix_T), INTENT(IN) :: BAT_Mat
-    TYPE(CSR_Matrix_T), INTENT(IN) :: A_Mat
-    REAL(RealKind), INTENT(IN) :: g
-    TYPE(CSR_Matrix_T), INTENT(INOUT) :: Miter
-    !
-    INTEGER :: tempM(3),tempA(2)
-    INTEGER :: i
-    !
-    !
-    ALLOCATE(Miter%DiagPtr(Miter%m))
-    Miter%DiagPtr=0
-    !
-    DO i=1,A_Mat%m
-      tempA=(/A_Mat%RowPtr(i), A_Mat%RowPtr(i+1)-1/)
-      tempM=(/Miter%RowPtr(i), Miter%RowPtr(i)+1, Miter%RowPtr(i+1)-1/)
-      Miter%Val(tempM(1))=1.0d0
-      Miter%DiagPtr(i)=Miter%RowPtr(i)
-      Miter%Val(tempM(2):tempM(3))=A_Mat%Val(tempA(1):tempA(2))*g
-      Miter%Val(tempM(3)+1)=1.0d0 ! full column right side of the matrix
-    END DO
-    DO i=1,BAT_Mat%m
-      tempA=(/BAT_Mat%RowPtr(i), BAT_Mat%RowPtr(i+1)-1/)
-      tempM=(/Miter%RowPtr(A_Mat%m+i+1)-1, Miter%RowPtr(A_Mat%m+i), Miter%RowPtr(A_Mat%m+i+1)-2/)
-      Miter%Val(tempM(1))=1.0d0
-      Miter%DiagPtr(A_Mat%m+i)=tempM(1)
-      Miter%Val(tempM(2):tempM(3))=BAT_Mat%Val(tempA(1):tempA(2))
-    END DO
-    ! wahrscheinlich noch fehlerhaft
-    Miter%Val(Miter%RowPtr(Miter%m):Miter%RowPtr(Miter%m+1)-2)=1.0d0
-    Miter%Val(Miter%RowPtr(Miter%m+1)-1)=1.0d0
-  END SUBROUTINE Miter0_ExtendedTemp
-  !
-  !
-  SUBROUTINE Miter_ExtendedTemp(Miter,ns,nr,invRate,hy,DUmoldT,Umol,c_v,DcDt)
-    ! Set values to block matrix (called only once)
-    ! miter = | invDiagrVec    g*A_Mat     g*~K |
-    !         |  BAT_Mat     DiagyVec/h      0  |
-    !         |     0       U^T*DiagyVec     X  | 
-    !
-    !TYPE(CSR_Matrix_T), INTENT(IN) :: BAT_Mat
-    !TYPE(CSR_Matrix_T), INTENT(IN) :: A_Mat
-    REAL(RealKind), INTENT(IN) ::  c_v
-    INTEGER, INTENT(IN)        :: ns, nr
-    TYPE(CSR_Matrix_T), INTENT(INOUT) :: Miter
-    REAL(RealKind), INTENT(IN) :: invRate(nr), DUmoldT(nr)
-    REAL(RealKind), INTENT(IN) :: hy(ns), Umol(ns), DcDt(ns)
-    !
-    INTEGER :: tempM(3),tempA(2)
-    INTEGER :: i
-    !
-  END SUBROUTINE Miter_ExtendedTemp
-  !
-  !
-  SUBROUTINE GetDiag_MatrixExPerm(Miter,BAT_Mat)
+  END SUBROUTINE BuildSymbolicExtendedMatrix
+
+ 
+  
+  PURE SUBROUTINE SetLUvaluesEX(LU,invD_r,D_c,KVec,UVec,X,FixValues)
     ! Set values to block matrix
-    ! miter = | invDiagrVec     ~~~~   |
-    !         |   ~~~~~~    DiagyVec/h |
-    TYPE(CSR_Matrix_T), INTENT(IN) :: BAT_Mat
-    TYPE(CSR_Matrix_T), INTENT(INOUT) :: Miter
-    !
-    INTEGER :: i
-    !
-    DO i=1,BAT_Mat%n
-      Miter%DiagPtr(i)=Miter%RowPtr(i)
-    END DO
-    DO i=1,BAT_Mat%m
-      Miter%DiagPtr(BAT_Mat%m+i)=Miter%RowPtr(BAT_Mat%n+i+1)-1
-    END DO
-  END SUBROUTINE GetDiag_MatrixExPerm
-  !
-  !
-  SUBROUTINE Miter_Extended(Miter,m,n,invrVec,hyVec)
-    ! Set values to block matrix
-    ! miter = | invDiagrVec     ~~~~   |
-    !         |   ~~~~~~    DiagyVec/h |
-    !
-    INTEGER :: m, n
-    REAL(RealKind), INTENT(IN) :: invrVec(:)
-    REAL(RealKind), INTENT(IN) :: hyVec(:)
-    TYPE(CSR_Matrix_T), INTENT(INOUT) :: Miter
-    !
-    INTEGER :: temp
-    INTEGER :: i
-    !
-    DO i=1,n
-      temp=Miter%RowPtr(i)
-      Miter%Val(temp)=invrVec(i)
-    END DO
-    DO i=1,m
-      temp=Miter%RowPtr(n+i+1)-1
-      Miter%Val(temp)=hyVec(i)
-    END DO
-  END SUBROUTINE Miter_Extended
-  !
-  !
-  SUBROUTINE SetLUvaluesEX(Miter,m,n,invrVec,hyVec,contvals)
-    !
-    ! Set values to block matrix
-    TYPE(CSR_Matrix_T), INTENT(INOUT) :: Miter
-    !          _                            _
-    ! miter = | invDiagrVec  |   contvals    |
-    !         |--------------+---------------|
-    !         |_  contvals   |  DiagyVec/h  _|
-    !
-    INTEGER :: m, n
-    REAL(RealKind), INTENT(IN) :: invrVec(:)
-    REAL(RealKind), INTENT(IN) :: hyVec(:)
-    REAL(RealKind), INTENT(IN) :: contvals(:)
-    !
-    INTEGER :: i, ip
-    !
-    Miter%Val=contvals
-    DO i=1,n
-      ip=Miter%Permu(i)     
-      Miter%Val(Miter%DiagPtr(ip))=invrVec(i)
-    END DO
-    !
-    DO i=1,m
-      ip=Miter%Permu(n+i)
-      Miter%Val(Miter%DiagPtr(ip))=hyVec(i)
-    END DO
+    TYPE(CSR_Matrix_T), INTENT(INOUT) :: LU  
+    REAL(dp),           INTENT(IN)    :: invD_r(:), KVec(:)
+    REAL(dp),           INTENT(IN)    :: D_c(:), UVec(:)
+    REAL(dp),           INTENT(IN)    :: X
+    REAL(dp), OPTIONAL, INTENT(IN)    :: FixValues(:)
+
+    IF (PRESENT(FixValues)) LU%Val = FixValues
+    
+    LU%Val( LU%DiagPtr_R )  = invD_r
+    LU%Val( LU%DiagPtr_C )  = D_c
+      
+    IF ( Teq ) THEN
+      LU%Val( LU%ColVectorPtr ) = KVec
+      LU%Val( LU%RowVectorPtr ) = UVec
+      LU%Val( LU%XPtr )         = X
+    END IF
   END SUBROUTINE SetLUvaluesEX 
   !
   !
-  SUBROUTINE SetLUvaluesCL(LU,A,Permu)
+  PURE SUBROUTINE SetLUvaluesCL(LU,A,Permu)
     !
     ! Set values to block matrix
     TYPE(CSR_Matrix_T), INTENT(INOUT) :: LU
-    TYPE(CSR_Matrix_T), INTENT(IN) :: A
-    INTEGER, INTENT(IN) :: Permu(:)
-    !          _ 
-    INTEGER :: i
+    TYPE(CSR_Matrix_T), INTENT(IN)    :: A
+    INTEGER,            INTENT(IN)    :: Permu(:)
     !
-    LU%Val=ZERO
-    DO i=1,A%RowPtr(A%m+1)-1
-      LU%Val(Permu(i))=A%Val(i)
-    END DO
+    LU%Val = ZERO
+    LU%Val( Permu ) = A%Val
     !
   END SUBROUTINE SetLUvaluesCL 
   !
+  ! Permutes the values in Miter and writes it to LU structur of Miter
+  ! Permutation vector is generated in this routine
+  SUBROUTINE Get_LU_Permutaion(Permutation,LU,A,m,n)
+    ! INOUT
+    TYPE(CSR_Matrix_T) :: LU
+    ! IN
+    TYPE(CSR_Matrix_T) :: A
+    INTEGER            :: m, n, nnzA
+    ! OUT
+    INTEGER, ALLOCATABLE :: Permutation(:)
+    ! TEMP
+    INTEGER :: i,ip,j,jj,jp,jjp,jp1
+ 
+    nnzA=A%RowPtr(A%m+1)-1
+   
+    IF (.NOT.ALLOCATED(Permutation)) ALLOCATE(Permutation(nnzA))
+    Permutation = -14
+
+    LU%Val = ZERO
+
+    DO i = 1 , A%n  
+      ip = LU%Permu(i)
+      DO jj = A%RowPtr(i) , A%RowPtr(i+1)-1
+        j  = A%ColInd(jj)
+        jp = LU%Permu(A%ColInd(jj))
+        DO jjp = LU%RowPtr(ip) , LU%RowPtr(ip+1)-1
+          jp1 = LU%ColInd(jjP)
+          IF ( jp1 == jp ) THEN
+            LU%Val(jjP) = A%Val(jj)
+            Permutation(jj) = jjP
+          END IF  
+        END DO  
+      END DO  
+    END DO
+    ALLOCATE(A%LUperm(nnzA),LU%LUperm(nnzA))
+    A%LUperm  = Permutation
+    LU%LUperm = Permutation
+
+    IF ( Teq ) THEN
+      LU%ColVectorPtr = Permutation( A%ColVectorPtr )
+      LU%RowVectorPtr = Permutation( A%RowVectorPtr )
+      LU%XPtr         = Permutation( A%XPtr )
+    END IF
+
+  END SUBROUTINE Get_LU_Permutaion
   !
   !
   ! PRINT SPARSE MATRIX (compressed Row format)
   SUBROUTINE PrintRhs(Rhs,FileName)
-    REAL(RealKind) :: Rhs(:)
+    REAL(dp) :: Rhs(:)
     CHARACTER(*), OPTIONAL :: FileName
     !
     INTEGER :: i
@@ -1453,9 +1819,31 @@ MODULE Sparse_Mod
   END SUBROUTINE PrintRhs
   !
   !
-  !
   ! PRINT SPARSE MATRIX (compressed Row format)
-  SUBROUTINE PrintSparseMatrix(A,FileName)
+  SUBROUTINE PrintSparseMatrix(A,k)
+    TYPE(CSR_Matrix_T), INTENT(IN) :: A
+    !CHARACTER(*),       INTENT(IN) :: name
+    INTEGER,            INTENT(IN) :: k
+    !
+    INTEGER :: i,j,jj
+    !
+    !
+    WRITE(*,*) 'nummber        ',k
+    WRITE(*,*) 'dimension:     ', A%m,A%n
+    WRITE(*,*) 'nonzeros:      ', SIZE(A%ColInd)
+    WRITE(*,*)
+    ! 
+    DO i=1,A%m
+      DO jj=A%RowPtr(i),A%RowPtr(i+1)-1
+        j=A%ColInd(jj)
+        WRITE(*,'(1X,I5,1X,I5,10X,E23.14)') i,j,A%Val(jj)
+      END DO
+    END DO
+    WRITE(*,*)
+  END SUBROUTINE PrintSparseMatrix
+  !
+  !
+  SUBROUTINE PrintSparse1(A,FileName)
     TYPE(CSR_Matrix_T), INTENT(IN) :: A
     CHARACTER(*), OPTIONAL :: FileName
     !
@@ -1473,93 +1861,225 @@ MODULE Sparse_Mod
       END DO
     END DO
     CLOSE(99)
-  END SUBROUTINE PrintSparseMatrix
-  !
-  !
-  !
-  ! PRINT SPARSE MATRIX (compressed Row format)
-  SUBROUTINE PrintSparse(A,FileName)
-    TYPE(CSR_Matrix_T), INTENT(IN) :: A
-    CHARACTER(*), OPTIONAL :: FileName
-    !
-    INTEGER :: i,j,jj
-    !
-    WRITE(*,*) 'Print Matrix: ',FileName
-    WRITE(*,*) 'Dim: ',A%m,' x ',A%n , 'nnz: ',SIZE(A%ColInd)
-    WRITE(*,*)
-    ! 
-    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName))//'.SparseMat',STATUS='UNKNOWN')
-    DO i=1,A%m
-      DO jj=A%RowPtr(i),A%RowPtr(i+1)-1
-        j=A%ColInd(jj)
-        IF (FileName=='*') THEN     !nur Hauptdiagonale ausgeben
-          WRITE(*,'(1X,I5,1X,I5,10X,E23.14)') i,j,A%Val(jj)
-        ELSE
-          WRITE(99,'(1X,I5,1X,I5,10X,E23.14)') i,j,A%Val(jj)
-        END IF
-      END DO
-    END DO
-    CLOSE(99)
-  END SUBROUTINE PrintSparse
-  !
-  !
-  ! PRINT SPARSE MATRIX (compressed Row format)
-  SUBROUTINE PrintSparse2(n,rowind,colind,val,FileName)
-    INTEGER :: rowind(:)
-    INTEGER :: colind(:)
-    REAL(RealKind) :: val(:)
-    INTEGER :: n
+  END SUBROUTINE PrintSparse1
+
+  SUBROUTINE PrintSparse2(m,n,ri,ci,val,FileName)
+    INTEGER :: ri(:), ci(:)
+    REAL(dp) :: val(:)
+    INTEGER :: n,m
     CHARACTER(*), OPTIONAL :: FileName
     !
     INTEGER :: i
     !
-    WRITE(*,*) 'Print Matrix: ',FileName
-    WRITE(*,*) 'Dim: ',n,' x ',n , 'nnz: ',SIZE(ColInd)
-    WRITE(*,*)
     ! 
-    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName))//'.SparseMat',STATUS='UNKNOWN')
-    DO i=1,SIZE(RowInD)
-      IF (FileName=='*') THEN     !nur Hauptdiagonale ausgeben
-        WRITE(*,'(1X,I5,1X,I5,10X,E23.14)') RowInd(i),ColInd(i),val(i)
-      ELSE
-        WRITE(99,'(1X,I5,1X,I5,10X,E23.14)') RowInd(i),ColInd(i),val(i)
-      END IF
-    END DO
-    CLOSE(99)
+    !OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName))//'.SparseMat',STATUS='UNKNOWN')
+    WRITE(*,*)
+    IF (PRESENT(FileName)) THEN     !nur Hauptdiagonale ausgeben
+      WRITE(*,*) 'Print Matrix: ',FileName
+      WRITE(*,*) 'Dim: ',m,' x ',n , 'nnz: ',SIZE(ci)
+      WRITE(*,*)
+      DO i=1,SIZE(ri); WRITE(*,'(2(1X,I5),10X,Es10.2)') ri(i),ci(i),val(i); END DO
+    ELSE
+      WRITE(*,*) 'Dim: ',m,' x ',n , 'nnz: ',SIZE(ci)
+      WRITE(*,*)
+      DO i=1,SIZE(ri); WRITE(*,'(2(1X,I5),10X,Es10.2)') ri(i),ci(i),val(i);  END DO
+    END IF
+    !CLOSE(99)
   END SUBROUTINE PrintSparse2
-  !
-  !
-  !
-  !
-  ! PRINT SPARSE MATRIX (RowInd/ColInd format)
-  SUBROUTINE PrintMatrix(A)
-    TYPE(SpRowIndColInd_T), INTENT(IN) :: A
+  
+  SUBROUTINE PrintSparse3(m,n,rp,ci,val,FileName)
+    INTEGER :: rp(:), ci(:)
+    REAL(dp) :: val(:)
+    INTEGER :: n,m
+    CHARACTER(*), OPTIONAL :: FileName
     !
-    INTEGER :: j
+    INTEGER :: i, jj
     !
-    WRITE(*,*) '    i ','    j   ','           Wert  '
-    WRITE(*,*) '------------------------------------------------'
-    DO j=1,SIZE(A%ColInd)
-      WRITE(*,'(1X,I5,1X,I5,10X,E12.4)') A%RowInd(j),A%ColInd(j),A%Val(j)
-    END DO
-  END SUBROUTINE PrintMatrix
+    ! 
+    !OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName))//'.SparseMat',STATUS='UNKNOWN')
+    WRITE(*,*)
+    IF (PRESENT(FileName)) THEN     !nur Hauptdiagonale ausgeben
+      WRITE(*,*) 'Print Matrix: ',FileName
+      WRITE(*,*) 'Dim: ',m,' x ',n , 'nnz: ',SIZE(ci)
+      WRITE(*,*)
+      DO i=1,m
+        DO jj=rp(i),rp(i+1)-1; WRITE(*,'(2(1X,I5),10X,Es10.2)') i, ci(jj) ,val(jj); END DO
+      END DO
+    ELSE
+      WRITE(*,*) 'Dim: ',m,' x ',n , 'nnz: ',SIZE(ci)
+      WRITE(*,*)
+      DO i=1,m
+        DO jj=rp(i),rp(i+1)-1; WRITE(*,'(2(1X,I5),10X,Es10.2)') i,ci(jj),val(jj); END DO
+      END DO
+    END IF
+    !CLOSE(99)
+  END SUBROUTINE PrintSparse3
+ 
   !
-  !
-  ! convert compressed row format to rowindex column index format
-  SUBROUTINE CompRowToIndRow(MatIn,MatOut)
-    ! only n by n matrices
-    TYPE(CSR_Matrix_T), INTENT(IN) :: MatIn
-    TYPE(SpRowIndColInd_T), INTENT(OUT) :: MatOut
+  SUBROUTINE WriteSparseMatrix(A,FileName,nr,ns)
+    TYPE(CSR_Matrix_T), INTENT(IN) :: A
+    CHARACTER(*), OPTIONAL :: FileName
+    INTEGER, OPTIONAL :: nr,ns
     !
     INTEGER :: i,j,jj
-    MatOut%m=MatIn%m
-    MatOut%n=MatIn%RowPtr(MatIn%m+1)-1
     !
-    ALLOCATE(MatOut%RowInd(MatOut%n))
+
+    ! 
+    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName))//'.SparseMat',STATUS='UNKNOWN')
+
+    WRITE(99,*) '###########################################################'
+    WRITE(99,*) '##############  Sparse Matrix  Matlab input ###############'
+    WRITE(99,*) '###########################################################'
+    WRITE(99,*) 
+    WRITE(99,*) '###########################################################'
+    WRITE(99,*) '#     Name:        ' , ADJUSTL(FileName)
+    WRITE(99,*) '#'  
+    WRITE(99,*) '#     Dimension:   ' , A%m,' x ',A%n
+    WRITE(99,*) '#     Nonzeros:    ' , A%nnz
+    WRITE(99,*) '#     nreac, nspc: ' , nr,' , ',ns
+    WRITE(99,*) '#     Matrix Form: ' , LinAlg
+    WRITE(99,*) '###########################################################'
+    WRITE(99,*)
+
+    WRITE(99,*) '###########################################################'
+    WRITE(99,*) '# Sparse Matrix in row/column - index format'
+    WRITE(99,*) '###########################################################'
+    WRITE(99,*) 'MATRIX'
+    DO i=1,A%m
+      DO jj=A%RowPtr(i),A%RowPtr(i+1)-1
+        j=A%ColInd(jj)
+        WRITE(99,'(1X,I12,10X,I12,10X,E23.14)') i,j,A%Val(jj)
+      END DO
+    END DO
+    WRITE(99,*)
+    WRITE(99,*)
+
+    IF (ALLOCATED(A%DiagPtr)) THEN
+      WRITE(99,*) '###########################################################'
+      WRITE(99,*) '# Array for diagonal entries'
+      WRITE(99,*) '###########################################################'
+      WRITE(99,*) 'DIAG_PTR'
+      DO i=1,SIZE(A%DiagPtr)
+        WRITE(99,'(1X,I6,10X,I6)') i,A%DiagPtr(i)
+      END DO
+      WRITE(99,*)
+      WRITE(99,*)
+    END IF
+
+
+    IF ( EXTENDED ) THEN
+      IF (ALLOCATED(A%DiagPtr_R)) THEN
+        WRITE(99,*) '###########################################################'
+        WRITE(99,*) '# Array for reaction rate diagonal entries  '
+        WRITE(99,*) '#                        (only EXTENDED case) '
+        WRITE(99,*) '###########################################################'
+        WRITE(99,*) 'DIAG_R_PTR'
+        DO i=1,SIZE(A%DiagPtr_R)
+          WRITE(99,'(1X,I6,10X,I6)') i,A%DiagPtr_R(i)
+        END DO
+        WRITE(99,*)
+        WRITE(99,*)
+      END IF
+
+      IF (ALLOCATED(A%DiagPtr_C)) THEN
+        WRITE(99,*) '###########################################################'
+        WRITE(99,*) '# Array for species concentration diagonal  '
+        WRITE(99,*) '#                        (only EXTENDED case) '
+        WRITE(99,*) '###########################################################'
+        WRITE(99,*) 'DIAG_C_PTR'
+        DO i=1,SIZE(A%DiagPtr_C)
+          WRITE(99,'(1X,I6,10X,I6)') i,A%DiagPtr_C(i)
+        END DO
+        WRITE(99,*)
+        WRITE(99,*)
+      END IF
+    END IF
+
+    IF (ALLOCATED(A%Permu)) THEN
+      WRITE(99,*) '##############################################################'
+      WRITE(99,*) '# Array for LU permutation and inverse permutation (symmetric)'
+      WRITE(99,*) '##############################################################'
+      WRITE(99,*) 'DIAG_PERMUTATION'
+      DO i=1,SIZE(A%Permu)
+        WRITE(99,'(1X,I6,10X,I6,10X,I6)') i,A%Permu(i), A%InvPer(i)
+      END DO
+      WRITE(99,*)
+      WRITE(99,*)
+    END IF
+
+    IF (ALLOCATED(A%LUperm)) THEN
+      WRITE(99,*) '###########################################################'
+      WRITE(99,*) '# Array for LU permutation of all nonzeros '
+      WRITE(99,*) '###########################################################'
+      WRITE(99,*) 'LU_PERMUTATION'
+      DO i=1,SIZE(A%LUperm)
+        WRITE(99,'(1X,I6,10X,I6)') i,A%LUperm(i)
+      END DO
+      WRITE(99,*)
+      WRITE(99,*)
+    END IF
+
+    IF (Teq) THEN
+      IF (ALLOCATED(A%RowVectorPtr)) THEN
+        WRITE(99,*) '###########################################################'
+        WRITE(99,*) '# Array for indices pointing to the row vector             '
+        WRITE(99,*) '#                        (only with Teq) '
+        WRITE(99,*) '###########################################################'
+        WRITE(99,*) 'ROW_PTR'
+        DO i=1,SIZE(A%RowVectorPtr)
+          WRITE(99,'(1X,I12,10X,I12)') i,A%RowVectorPtr(i)
+        END DO
+        WRITE(99,*)
+        WRITE(99,*)
+      END IF
+      IF (ALLOCATED(A%ColVectorPtr)) THEN
+        WRITE(99,*) '###########################################################'
+        WRITE(99,*) '# Array for indices pointing to the column vector          '
+        WRITE(99,*) '#                        (only with Teq) '
+        WRITE(99,*) '###########################################################'
+        WRITE(99,*) 'COL_PTR'
+        DO i=1,SIZE(A%ColVectorPtr)
+          WRITE(99,'(1X,I12,10X,I12)') i,A%ColVectorPtr(i)
+        END DO
+        WRITE(99,*)
+        WRITE(99,*)
+      END IF
+      IF (A%XPtr/=-42) THEN
+        WRITE(99,*) '###########################################################'
+        WRITE(99,*) '# Index pointing to the X value           '
+        WRITE(99,*) '#                        (only with Teq) '
+        WRITE(99,*) '###########################################################'
+        WRITE(99,*) 'X_PTR'
+        WRITE(99,'(1X,I12,10X,I12)') i,A%XPtr
+        WRITE(99,*)
+        WRITE(99,*)
+      ELSE
+        WRITE(99,*) 'X_PTR is not definded'
+      END IF
+    END IF
+
+    CLOSE(99)
+    WRITE(*,*) '  Writing matrices to file: ',TRIM(FileName)
+  END SUBROUTINE WriteSparseMatrix
+  !
+  
+  ! convert compressed row format to rowindex column index format
+  FUNCTION CSR_to_SpRowIndColInd(MatIn) RESULT(MatOut)
+    ! only n by n matrices
+    TYPE(CSR_Matrix_T) :: MatIn
+    TYPE(SpRowIndColInd_T) :: MatOut
+    !
+    INTEGER :: i,j,jj,n
+    MatOut%m=MatIn%m
+    MatOut%n=MatIn%n
+    !MatOut%n=MatIn%RowPtr(MatIn%m+1)-1
+
+    n = MatIn%RowPtr(MatIn%m+1)-1
+    ALLOCATE(MatOut%RowInd(n))
     MatOut%RowInd=0
-    ALLOCATE(MatOut%ColInd(MatOut%n))
+    ALLOCATE(MatOut%ColInd(n))
     MatOut%ColInd=0
-    ALLOCATE(MatOut%Val(MatOut%n))
+    ALLOCATE(MatOut%Val(n))
     MatOut%Val=ZERO
     j=1
     DO i=1,MatIn%m
@@ -1570,59 +2090,66 @@ MODULE Sparse_Mod
         j=j+1
       END DO
     END DO
-  END SUBROUTINE CompRowToIndRow
+
+    MatOut%nnz = SIZE(MatOut%RowInd)
+  END FUNCTION CSR_to_SpRowIndColInd
   !
   !
   ! Matrix*Vector1+Vector2 (rhs)
-  SUBROUTINE DiffConcDt(A,Vec1,DcDt)
-    TYPE(CSR_Matrix_T), INTENT(IN) :: A
-    REAL(RealKind), INTENT(IN) :: Vec1(:)
-    REAL(RealKind), DIMENSION(A%n), INTENT(OUT) :: DcDt
-    REAL(RealKind) :: Tmp
-    INTEGER :: i,jj
-    !
+  ! sparse matrix * vector + vector
+  PURE FUNCTION DAXPY_sparse(A,X,Y) RESULT(Rhs)
+    TYPE(CSR_Matrix_T), INTENT(IN)    :: A
+    REAL(dp),           INTENT(IN)    :: X(:), Y(:)
+    REAL(dp)                          :: Rhs(A%m)
+    !TEMP
+    INTEGER :: i, rp_i, rp_i1
+   
+    Rhs = ZERO
     DO i=1,A%m
-      Tmp=ZERO
-      DO jj=A%RowPtr(i),A%RowPtr(i+1)-1
-        Tmp=Tmp+A%Val(jj)*Vec1(A%ColInd(jj))
-      END DO
-      DcDt(i)=Tmp
+      rp_i   = A%RowPtr(i)  ;  rp_i1  = A%RowPtr(i+1)-1
+      Rhs(i) = SUM(A%Val(rp_i:rp_i1)*X(A%ColInd(rp_i:rp_i1)))+Y(i)
     END DO
-  END SUBROUTINE DiffConcDt
-  !
-  !
-  ! Matrix*Vector1+Vector2 (rhs)
-  SUBROUTINE MatVecMult(A,Vec1,Vec2,Rhs)
+  END FUNCTION DAXPY_sparse
+
+
+  ! sparse matrix * vector
+  PURE FUNCTION DAX_sparse(A,X) RESULT(Rhs)
     TYPE(CSR_Matrix_T), INTENT(IN) :: A
-    REAL(RealKind), INTENT(IN) :: Vec1(:), Vec2(:)
-    REAL(RealKind), DIMENSION(A%n), INTENT(OUT) :: Rhs
-    REAL(RealKind) :: Tmp
-    INTEGER :: i,jj
-    !
+    REAL(dp),           INTENT(IN) :: X(:)
+    REAL(dp)                       :: Rhs(A%m)
+    !TEMP
+    INTEGER :: i, rp_i, rp_i1  ! RowPtr(i), RowPtr(i+1)-1
+   
+    Rhs = ZERO
     DO i=1,A%m
-      Tmp=ZERO
-      DO jj=A%RowPtr(i),A%RowPtr(i+1)-1
-        Tmp=Tmp+A%Val(jj)*Vec1(A%ColInd(jj))
-      END DO
-      Rhs(i)=Tmp+Vec2(i)
+      rp_i   = A%RowPtr(i)  ;  rp_i1  = A%RowPtr(i+1)-1
+      Rhs(i) = SUM(A%Val(rp_i:rp_i1)*X(A%ColInd(rp_i:rp_i1)))
     END DO
-  END SUBROUTINE MatVecMult
-  !
-  !
-  ! Print ordinary matrix or vector
-  SUBROUTINE PM(M)
-    REAL(RealKind), INTENT(IN) :: M(:,:)
+  END FUNCTION DAX_sparse
+ 
+  ! Print ordinary real matrix or vector
+  SUBROUTINE PM_real(M)
+    REAL(dp), INTENT(IN) :: M(:,:)
     INTEGER :: i
     !
     DO i=1,SIZE(M,1)
         WRITE(*,*) M(i,:)
     END DO
-  END SUBROUTINE PM
+  END SUBROUTINE PM_real
+  ! Print ordinary integer matrix or vector
+  SUBROUTINE PM_int(M)
+    INTEGER, INTENT(IN) :: M(:,:)
+    INTEGER :: i
+    !
+    DO i=1,SIZE(M,1)
+        WRITE(*,'(*(X,I3))') M(i,:)
+    END DO
+  END SUBROUTINE PM_int
   !
   !
   ! Print ordinary  vector
   SUBROUTINE PV(V)
-    REAL(RealKind), INTENT(IN) :: V(:)
+    REAL(dp), INTENT(IN) :: V(:)
     INTEGER :: i
     !
     DO i=1,SIZE(V)
@@ -1633,7 +2160,7 @@ MODULE Sparse_Mod
   !
   SUBROUTINE WriteSpRowIndColInd_T(Mat,rhs)
     TYPE(sprowindcolind_t) :: Mat
-    REAL(RealKind) :: rhs(:)
+    REAL(dp) :: rhs(:)
     !
     INTEGER :: i
     !
@@ -1690,45 +2217,17 @@ MODULE Sparse_Mod
   END SUBROUTINE PrintPerm
   !
   !
-  ! Permutes the values in Miter and writes it to LU structur of Miter
-  ! Permutation vector is generated in this routine
-  SUBROUTINE SetLU_Val_INI(AE,A,Idx)
-    TYPE(CSR_Matrix_T) :: AE
-    TYPE(CSR_Matrix_T) :: A
-    !
-    INTEGER :: i,ip,j,jj,jp,jjp,jp1
-    INTEGER, ALLOCATABLE :: Idx(:)
-    ! 
-    IF (.NOT.ALLOCATED(Idx)) ALLOCATE(Idx(A%RowPtr(A%m+1)-1))
-    Idx=0
-    AE%Val=ZERO
-    DO i=1,A%n  
-      ip=AE%Permu(i)
-      DO jj=A%RowPtr(i),A%RowPtr(i+1)-1
-        j=A%ColInd(jj)
-        jp=AE%Permu(A%ColInd(jj))
-        DO jjp=AE%RowPtr(ip),AE%RowPtr(ip+1)-1
-          jp1=AE%ColInd(jjP)
-          IF (jp1==jp) THEN
-            AE%Val(jjP)=A%Val(jj)
-            Idx(jj)=jjP
-          END IF  
-        END DO  
-      END DO  
-    END DO
-  END SUBROUTINE SetLU_Val_INI
   !
-  !
-  SUBROUTINE SparseLU(A)
-    TYPE(CSR_Matrix_T) :: A
+  PURE SUBROUTINE SparseLU(A)
+    TYPE(CSR_Matrix_T), INTENT(INOUT) :: A
     !
-    REAL(RealKind) :: w(A%n)
-    REAL(RealKind) :: alpha
+    REAL(dp) :: w(A%n)
+    REAL(dp) :: alpha
     INTEGER :: i,j,jj,kk
-    INTEGER :: OPCOUNT
+    !INTEGER :: OPCOUNT
 
-    OPCOUNT=0
-    !c
+    !OPCOUNT=0
+    !
     DO i=1,A%n
       DO jj=A%RowPtr(i),A%RowPtr(i+1)-1
         w(A%ColInd(jj))=A%Val(jj)
@@ -1736,11 +2235,11 @@ MODULE Sparse_Mod
       DO jj=A%RowPtr(i),A%DiagPtr(i)-1
         j=A%ColInd(jj)
         alpha=w(j)/A%Val(A%DiagPtr(j))
-        OPCOUNT=OPCOUNT+1
+        !OPCOUNT=OPCOUNT+1
         w(j)=alpha
         DO kk=A%DiagPtr(j)+1,A%RowPtr(j+1)-1
           w(A%ColInd(kk))=w(A%ColInd(kk))-alpha*A%Val(kk)
-          OPCOUNT=OPCount+1
+          !OPCOUNT=OPCount+1
         END DO
       END DO
       DO jj=A%RowPtr(i),A%RowPtr(i+1)-1
@@ -1752,25 +2251,22 @@ MODULE Sparse_Mod
   END SUBROUTINE SparseLU
   !
   !
-  SUBROUTINE SolveSparse(LU,rhs)
+  PURE SUBROUTINE SolveSparse(LU,rhs)
     TYPE(CSR_Matrix_T), INTENT(INOUT) :: LU
-    REAL(RealKind) :: Rhs(:)
+    REAL(dp),           INTENT(INOUT) :: Rhs(:)
     !
     INTEGER :: i,jj
-    REAL(RealKind) :: b(LU%n)
-    !
-    !--  Permutation of right hand side
-    DO i=1,LU%n
-      b(LU%Permu(i)) = Rhs(i)      
-    END DO
-    !
+    REAL(dp) :: b(LU%n)
+    
+    b( LU%Permu ) = Rhs      
+    
     !--  L-solve
     DO i=2,LU%n
       DO jj=LU%RowPtr(i),LU%DiagPtr(i)-1
         b(i)=b(i)-LU%Val(jj)*b(LU%ColInd(jj))
       END DO
     END DO
-    !
+  
     !--  U-solve
     DO i=LU%n,1,-1
       DO jj=LU%DiagPtr(i)+1,LU%RowPtr(i+1)-1
@@ -1778,10 +2274,10 @@ MODULE Sparse_Mod
       END DO
       b(i)=b(i)/LU%Val(LU%DiagPtr(i))
     END DO
-    !
+    
     !--  Back-Permutation of solution
-    DO i=1,LU%n
-      Rhs(LU%InvPer(i)) = b(i)       
-    END DO
+    Rhs( LU%InvPer ) = b
   END SUBROUTINE SolveSparse
+
+
 END MODULE Sparse_Mod

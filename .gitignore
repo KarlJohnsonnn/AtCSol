@@ -1,6 +1,15 @@
 LIB/*
 LIB_D/*
+NetCDF/*
+MATRICES/*
 .DS_Store
-CHEMIE
-CHEMIE_g
 *.chem
+fort.*
+list*
+*.SparseMat
+*.o
+*.mod
+REACTION_PATHS/*
+*.txt
+*.dat
+*.exe*

@@ -1,0 +1,23 @@
+*** SpeedCHEM CHEMISTRY SOLUTION INPUT FILE ******************************************* DEFAULT *****
+ speedchem         ! Program name (CHEMKIN or SPEEDCHEM)                                 SPEEDCHEM
+ lsodes            ! Solver name (VODE, VODES, LSODE, LSODES, MEBDF , RADAU5, RODAS, GAM)   LSODES
+ 1                 ! Jacobian    (0 = computed numerically, 1 = provided analitically)           1
+ -1                ! Tabulated data (0 = accurate data, >0 = interpolation order, <0 rtol-based) 4
+ 0                 ! Save temperature-dependent parameters for retrieval in Jacobian matrix      0
+ 1                 ! Simplified formulation for Jacobian sparsity (1=YES, 0=NO)                  1
+ 1                 ! Print jacobian sparsity pattern to file (dat.jacobian)                      0
+ 1                 ! Check element atom conservation in every reaction prior to running          1
+ 0                 ! Separate absolute tolerances for temperature and species (1=YES)            0
+ 1.00e-04          ! Relative tolerance for all the unknowns                               1.0D-04
+ 1.00e-15          ! Absolute tolerance for species mass fractions                         1.0D-13
+ 1.00e-01          ! Absolute tolerance for temperature                                    1.0D-01
+ 10.0e+00          ! Temperature sampling step (Kelvin) for tabulated data                 5.0D+00
+ 200.e+00          ! Tabulation temperature low limit (K)                                    300.0
+ 4500.e00          ! Tabulation temperature high limit (K)                                  3500.0
+ 100               ! Number of output points per case (must be >=2)                              2 
+ 1.e-10            ! Tabulation requested relative tol (ON if Tabulated data switch <0)    1.0D-10
+ 0                 ! Usage of KRYLOV subspace iterative solvers (direct solver if =0)
+ 1.d-10            ! Incomplete LU factorization cutoff tolerance
+ 161               ! Max number of elements per row in the ILU factorization
+
+

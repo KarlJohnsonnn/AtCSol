@@ -1,44 +1,50 @@
  &SCENARIO
-  BSP = 'CAPRAM'
-  pHSet = 1
-  MinScav = 0.05d0
-  MinChem = 0.05d0
-  LWCLevelmin = 2.0d-14
-  LwcLevelmax = 3.0d-10
-  Ladebalken = 1 
-  ErrorLog = 0
+  BSP = 'CAPRAM'         ! Name der NetCDF Output-Datei
+  pHSet = 1              ! Berechne pH Wert zu Beginn
+  LWCLevelmax = 2.0d-8   ! minimaler LWC Wert [l/cm3]
+  LWCLevelmin = 3.0d-4   ! maximaler LWC Wert [l/cm3]
+  constLWC = .false.     ! true = konstanter LWC wert, false /= pseudo LWC funktion wird benutzt
+  Ladebalken = 1         ! 0 = kein ladebalken, 0 /= ladebalken aktiv
+  ErrorLog = 0           ! 0 = no error output, 0 /= error output direkt auf bildschirm
+  MatrixPrint = .true.   ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
+  DebugPrint  = .false.  ! DEBUGGING Rosenbrock 
+  NetCdfPrint = .false.   ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
+  ChemKin     = .false.  ! input mechanism in ChemKin notation
  /END
  &FILES
-  ChemFile = 'CHEM/AE_capram23'
-  DataFile = 'DAT/AE_capram23.dat'
-  InitFile = 'INI/Urban.ini'
-  MetFile  = 'MET/Urban.met'
+  SysFile  = 'CHEM/CAPRAM24_new.sys'
+  DataFile = 'DAT/Urban.dat'          ! .dat Datei (für RO2, RO2aqua Summen)
+  InitFile = 'INI/Urban.ini'          ! .ini Datei (Anfangswerte gas/flüssig), Diagnose spc
+  !InitFile = 'INI/Remote.ini'
+  !InitFile = 'INI/ocean.ini'
+  MetFile  = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)
+  Targets  = 'TAR/CAPRAM.ctrl'   ! .met Datei (Meteorologie Datei)
  /END
  &TIMES
-  tAnf=0.0d0
-  tEnd=86400.0d0
-  Dust    = 0.5d0
-  idate   = 010619     
-  rlat    = 45.d0     
-  rlon    =  0.d0
-  minStp  = 1.0d-25
-  maxStp  = 60.d0
+  tAnf      = 0.0d0          ! Startzeit Integration
+  tEnd      = 86400.0d0      ! Endzeit   Integration
+  Dust      = 0.5d0          ! Zenith Berechnung       (Staub)
+  idate     = 010621         ! ---------''---------    (Datum: YYMMDD)
+  rlat      = 45.0d0         ! ---------''---------    (Breitengrad)
+  rlon      =  0.0d0         ! ---------''---------    (Längengrad)
+  minStp    = 1.0d-30        ! minimale Schrittweite für Integration
+  maxStp    = 25.0d0         ! maximale Schrittweite für Integration
+  StpNetCDF = -1.0d0         ! save after StpNetCDF seconds, if < 0.0d0 save every timestep 
+  nOutP     = 1000
 /END
- &METEO
- /END
  &NUMERICS
-  LinSolv = 3
-  RtolROW  = 1.0d-2
-  AtolGas  = 1.0d-3
-  AtolAqua = 1.0d-3
-  solveLA = 'ex'  
-  RosenbrockMethod = 'METHODS/Ros34PW2.fort'
-  ImpEuler = 0
+  RtolROW     = 1.0d-3       ! rel. Toleranz für Rosenbrock-Wanner Fehlersteuerung
+  AtolGas     = 1.0d-4       ! abs. Toleranzen für gasförmige Stoffe 
+  AtolAqua    = 1.0d-4       ! abs. Toleranzen für aquatische Stoffe
+  Error_Est   = 2            ! Error estimation = 2 -> 2-norm, else maxnorm
+  PI_StepSize = .false.      ! Gustafsson, Söderlind
+  solveLA     = 'cl'         ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
+  ImpEuler    = 0            ! 0=kein impliziter Euler, 1=impliziter Euler (kein ROW!!)
+  ODEsolver   = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
  /END
  &ORDERING
-  OrderingStrategie      = 8
-  FactorisationStrategie = 1
-  SolLinSystemStrategie  = 1
+  OrderingStrategie  = 8     ! 8=Markowitz(SparseLU) , 1,..,7=Mumps Orderings  
+  ParOrdering = -1
  /END
  &ENTRAIN
  /END

@@ -1,46 +1,51 @@
- &SCENARIO
-  BSP = 'MCM+CAPRAM'
-  pHSet = 1
-  LWCLevelmax = 2.0d-8
-  LwcLevelmin = 3.0d-4
-  constLWC = 1
-  Ladebalken = 1
-  ErrorLog = 0
-  MatrixPrint = .false.
-  NetCdfPrint = .false. 
- /END
- &FILES
-  ChemFile = 'CHEM/MCM32_CAPRAM40_full'  
+&SCENARIO
+  BSP      = 'MCM32+CAPRAM40'
+  WaitBar  = .T.
+  FluxAna  = .F.
+  ChemKin  = .F.        ! input mechanism in ChemKin notation
+  Lehmann  = .F.
+/END
+&FILES
+  SysFile  = 'CHEM/MCM32_CAPRAM40_full.sys'  
+  !SysFile  = 'CHEM/MCM32+CAPRAM40_red.sys'  
   DataFile = 'DAT/MCM32_CAPRAM40_full.dat'
   InitFile = 'INI/Urban.ini'
   MetFile  = 'MET/Urban.met'
- /END
- &TIMES
-  tAnf=0.0d0
-  tEnd=86400.0d0
-  Dust    = 0.5d0
-  idate   = 010621     
-  rlat    = 45.d0     
-  rlon    =  0.d0
-  minStp  = 1.0d-30
-  maxStp  = 100.d0
-  StpNetCDF = -1.0d0
+  TargetFile = 'TAR/RACM+C24.ctrl'
 /END
- &METEO
- /END
- &NUMERICS
-  RtolROW  = 1.0d-2
-  AtolGas  = 1.0d-3
-  AtolAqua = 1.0d-3
+&TIMES
+  tBegin      = 0.0d0
+  !tEnd        = 172800.0d0
+  tEnd        = 84600.0d0
+  !tEnd        = 259200.0d0
+/END
+&METEO
+  pHSet       = .T.          ! Berechne pH Wert zu Beginn
+  LWCLevelmax = 2.0d-8       ! minimaler LWC Wert [l/cm3]
+  LWCLevelmin = 3.0d-4       ! maximaler LWC Wert [l/cm3]
+  Dust        = 0.5d0        ! Zenith Berechnung       (Staub)
+  idate       = 010621       ! ---------''---------    (Datum: YYMMDD)
+  rlat        = 45.0d0       ! ---------''---------    (Breitengrad)
+  rlon        = 0.0d0        ! ---------''---------    (Längengrad)
+  Temperature0= 280.0d0
+/END
+&NUMERICS
+  RtolROW  = 1.0d-3
+  AtolGas  = 1.0d-7
+  AtolAqua = 1.0d-7
   Error_Est = 2
-  PI_StepSize = .FALSE.
-  solveLA = 'cl'  
-  RosenbrockMethod =  'METHODS/TSRosWRodas3.fort'
-  ImpEuler = 0
- /END
- &ORDERING
-  OrderingStrategie  = 8
-  ParOrdering        = -1
- /END
- &ENTRAIN
- /END
+  PI_StepSize = .F.
+  LinAlg  = 'cl'
+  minStp  = 1.0d-30
+  maxStp  = 200.d0
+  ODEsolver = 'METHODS/TSRosWRodas3.ros'
+  Ordering  = 8
+/END
+&OUTPUT
+  NetCdfFile  = 'NetCDF/MCM32+C40_full.nc' ! location and name of NetCDF output file
+  !NetCdfFile  = 'NetCDF/MCM32+C40_red.nc' ! location and name of NetCDF output file
+  StpNetCDF   = 600.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep
+  nOutP       = 1000                 ! number of output steps for LSODE case
+  DebugPrint  = .F.                ! DEBUGGING Rosenbrock
+  MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
+/END

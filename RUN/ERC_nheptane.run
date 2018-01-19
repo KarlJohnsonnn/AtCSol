@@ -1,3 +1,4 @@
+<<<<<<< HEAD
  &SCENARIO
   BSP         = 'ERC_nheptane'
   Ladebalken  = 0
@@ -17,13 +18,53 @@
   maxStp  = 1.0d-02
 /END
  &NUMERICS
+=======
+&SCENARIO
+  BSP      = 'ERC_nheptane'
+  WaitBar  = .T.
+  ChemKin  = .T.        ! input mechanism in ChemKin notation
+  FluxAna  = .F.
+  Lehmann  = .F.
+/END
+&FILES
+  SysFile  = 'ckCHEM/ERC_nheptane/ERC_nheptane.sys'
+  DataFile = 'ckCHEM/ERC_nheptane/ERC_nheptane.dat'
+  MWFile   = 'ckCHEM/ERC_nheptane/MolecWeights.mw'
+  InitFile = 'ckCHEM/ERC_nheptane/ERC_nheptane.ini'
+/END
+&TIMES
+  tBegin  = 0.0d0
+  tEnd    = 1.5d-2
+/END
+&METEO
+  Temperature0= 750.0d0       ! in [K]
+  Pressure0   = 2.0d+5        ! in [Pa]
+/END
+&NUMERICS
+>>>>>>> version0.2_alpha
   RtolROW   = 1.0d-4
   AtolGas   = 1.0d-15
   AtolTemp  = 1.0d-1
   Error_Est = 2
+<<<<<<< HEAD
   solveLA   = 'ex'  
   RosenbrockMethod = 'METHODS/TSRosWRodas3.fort'
  /END
  &ORDERING
   OrderingStrategie  = 8
  /END
+=======
+  minStp    = 1.0d-45
+  maxStp    = 0.0001d0
+  LinAlg    = 'ex' 
+  ODEsolver = 'METHODS/TSRosWRA34PW2.fort'
+  Ordering  = 8
+/END
+&OUTPUT
+  NetCdfFile  = 'NetCDF/ERC_nheptane.nc'
+  StpNetCDF   = -1.0d0
+  nOutP       = 1000
+  MatrixPrint = .F.  
+  DebugPrint  = .F.
+/END
+>>>>>>> version0.2_alpha

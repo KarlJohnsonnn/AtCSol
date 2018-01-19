@@ -30,7 +30,7 @@
   AtolGas  = 1.0d-3
   AtolAqua = 1.0d-3
   solveLA = 'ex'  
-  RosenbrockMethod = 'METHODS/Ros34PW2.fort'
+  ODEsolver = 'METHODS/Ros34PW2.fort'
   ImpEuler = 0
  /END
  &ORDERING

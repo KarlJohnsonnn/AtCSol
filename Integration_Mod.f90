@@ -11,22 +11,19 @@ MODULE Integration_Mod
   USE mo_MPI
   USE mo_control
   USE mo_IO
-  USE mo_reac, ONLY: y_total
-  USE Sparse_Mod
-  USE Sparse2_Mod
-  USE Chemsys_Mod
+  USE mo_reac
+  USE mo_ckinput, ONLY: Density
+  USE Sparse_Mod, ONLY: Jac_CC
   USE Rosenbrock_Mod
-  USE Rates_Mod
-  USE Factorisation_Mod
-  USE ErrorROW_Mod
   USE NetCDF_Mod
+  USE Meteo_Mod, ONLY: Temp, cv
   IMPLICIT NONE
   !
   TYPE PI_Param
-    REAL(RealKind) :: Kp
-    REAL(RealKind) :: KI
-    REAL(RealKind) :: ThetaMAX
-    REAL(RealKind) :: rho
+    REAL(dp) :: Kp
+    REAL(dp) :: KI
+    REAL(dp) :: ThetaMAX
+    REAL(dp) :: rho
   END TYPE PI_Param
   !
   TYPE(PI_Param) :: PI_norm, PI_rej
@@ -36,485 +33,437 @@ MODULE Integration_Mod
   !======================================================================= 
   !===================    Time Integration Routine  ======================
   !======================================================================= 
-  SUBROUTINE Integrate(y0,Tspan,Atol,RtolRow,vers,method)
+  SUBROUTINE Integrate(y_iconc, R0, Tspan, Atol, RtolRow, method)
     !--------------------------------------------------------------------
     ! Input:
     !   - y0 ............. Initial vector
+    !   - R0 ............. reaction rates at time=Tspan(1)
     !   - Tspan .......... (/ SimulationTimeStart , SimulationTimeEnd /)
-    !   - Atol ........ abs. tolerance for gas spc
+    !   - Atol ........... abs. tolerance for gas spc
     !   - RtolRow ........ rel. tolerance for Rosenbrock-Wanner-Method
-    !   - vers ........... version of solving the linear system
-    !   - method...........Rosenbrock-Wanner-Method
+    !   - method.......... Rosenbrock-Wanner-Method
     !   - PrintSpc ....... print spc PrintSpc(1:3)
-    REAL(RealKind) :: y0(:)
-    REAL(RealKind) :: Tspan(2)
-    REAL(RealKind) :: Atol(2)
-    REAL(RealKind) :: RtolROW
-    CHARACTER(2) :: vers
+    REAL(dp) :: y_iconc(nspc)
+    REAL(dp) :: R0(neq)
+    REAL(dp) :: Tspan(2)
+    REAL(dp) :: Atol(2)
+    REAL(dp) :: RtolROW
     CHARACTER(*) :: method
     !-------------------------------------------------------------------
     ! Output:
     !   - Output.......... struct Out (above) contains output statistics
     !   - Unit............ .simul data 
-    TYPE(RosenbrockMethod_T) :: RCo  
-    !INTEGER :: Unit=90
     !-------------------------------------------------------------------
     ! Temporary variables:
-    TYPE(CSR_Matrix_T) :: Jac!, Id
-    REAL(RealKind) :: t            ! current time
-    REAL(RealKind) :: y(nspc)        ! current y vector
-    REAL(RealKind) :: hy0(nspc)
-    REAL(RealKind) :: Rate(neq)     ! rate vector
-    REAL(RealKind) :: h, hmin, absh, tnew, temp, hOld
-    REAL(RealKind) :: error, errorOld
-    REAL(RealKind) :: tmp_ta,tmp_tb
-    REAL(RealKind) :: actLWC, zen
-    INTEGER        :: errind(1,1)
-    REAL(RealKind) :: ErrVals(nspc)
+    !
+    REAL(dp) :: Y0(nDIM), Y(nDIM)       ! old, current y vector
+    !
+    REAL(dp) :: t             ! current time
+    REAL(dp) :: timepart
+    REAL(dp) :: time_int = 0.0d0
+
+    REAL(dp) :: h, hmin, tnew, tmp, hOld
+    REAL(dp) :: error, errorOld
+    REAL(dp) :: tmp_tb
+    REAL(dp) :: actLWC, zen, Temperature
+    REAL(dp) :: wetRad(nFrac)
+    INTEGER  :: ierr(1,1)
+    REAL(dp) :: ErrVals(nspc)
     ! 
-    INTEGER :: i=-1
-    !
-    ! for NetCDF
-    INTEGER :: iStpNetCDF 
-    INTEGER :: tncdf_ind
-    REAL(RealKind), ALLOCATABLE :: yNcdf(:)     ! current output vector
-    !
+    INTEGER :: iBar=-1              ! waitbar increment
+    INTEGER :: i, k
+
+    INTEGER, PARAMETER :: maxnsteps = 50000
+    
     LOGICAL :: done=.FALSE.
     LOGICAL :: failed
     !
-    INTEGER :: i_error
+    CHARACTER(10) :: swMethod
     !
-    !do i=1,size(y0)
-    !  print*, y_name(i),y0(i)
-    !end do
+    !-----------------------------
+    ! LSODE Parameter
+    INTEGER :: ITOL , ITASK , ISTATE, IOPT, MF, LIW, LRW
+    INTEGER,  ALLOCATABLE :: IWORK(:)
+    REAL(dp), ALLOCATABLE :: RWORK(:)
     !
-    !
-    tncdf_ind=0
-    !
-    TimeSymbolic=MPI_WTIME()       ! start timer for symb phase
-    !
-    y_total=SUM(y0)
-    IF (MPI_ID==0) THEN
-      WRITE(*,*) '  Initial values:   '
-      WRITE(*,*) 
-      WRITE(*,'(A35,2X,E23.14,A13)')  '      sum initval (gaseous)    = ', SUM(y0(1:ntGas)), '  [molec/cm3] '
-      WRITE(*,'(A35,2X,E23.14,A13)')  '      sum initval (aqueous)    = ', SUM(y0(ntGas+1:)), '  [molec/cm3] '
-      WRITE(*,'(A35,2X,E23.14,A13)')  '      sum emissions (gaseous)  = ', SUM(y_e), '  [molec/cm3] '
-      WRITE(*,*) 
+    REAL(dp) :: RTOL1 , ATOL1(nDIM)
+
+    
+    Y0(1:nspc)  = y_iconc(:)
+    Y(1:nspc)   = y_iconc(:)
+
+    IF ( Teq ) THEN
+      !--- initial temperature
+      Y0(nDIM) = Temperature0     ! = 750 [K] aus speedchem debug
+      Y(nDIM)  = Temperature0     ! = 750 [K]
+
+      Y0 = MAX( ABS(Y0) , eps ) * SIGN( ONE , Y0 )    ! |y| >= eps
+      Y  = MAX( ABS(Y)  , eps ) * SIGN( ONE , Y  )    ! |y| >= eps
     END IF
-    !---- transpose (B-A) matrix from chemsys
-    CALL SymbolicAdd(B,A,BA)
-    CALL SparseAdd(B,A,BA,'-')
-    CALL TransposeSparse(BA,BAT) 
-    !
-    !call printsparse(A,'*')
-    !stop
-    !  
-    method=ADJUSTL(TRIM(method))
-    CALL SetRosenbrockMethod(RCo,method)  
-    !
-    !CALL GetConstReactionRates(ReactionRateConst,y0,Tspan(1),RefTemp)
-    !---- Initialize stuff for Rosenbrock
-    CALL SetRosenbrockArgs(Rate,y0,Tspan,Atol,RtolROW,RCo%pow)
-    t=Tspan(1)
-    y=y0
-    !
-    !---- locate nonzeros in Jacobian matrix
-    CALL SymbolicMult(BAT,A,Jac)
-    !
-    ! ----calc values of Jacobian
 
-    CALL Rates(t,y,Rate)
-    Rate(:)=MAX(ABS(Rate(:)),eps)*SIGN(1.0d0,Rate(:))
-    y(:)=MAX(ABS(y(:)),eps)*SIGN(1.0d0,y(:))
+    t = Tspan(1)
+    tnew = Tspan(1)
 
-    !print*, 'nID=', MPI_ID, 'SumJacColInd=',SUM(Jac%ColInd), 'sumf0=',sum(abs(Rate)),&
-    !  &           'sumY=',SUM(ABS(y)), 'sumAvls=', SUM(ABS(A%val)), 'sumBATvals=',SUM(ABS(BAT%val))
+    ! this is for the waitbar
+    tmp_tb = (Tspan(2)-Tspan(1)) * 0.01_dp
+    
+    
+    SELECT CASE (TRIM(method(1:7)))
 
-    TimeJacobianA=MPI_WTIME()
-    !CALL JacobiMatrix(BAT,A,Args%f0,y,Jac)
-    CALL JacobiMatrix(BAT,A,Rate,y,Jac)
+      CASE('METHODS')
+    
+        !---- Calculate a first stepsize based on 2nd deriv.
+        h = InitialStepSize( Jac_CC, R0, t, Y0, ROS%pow )
 
-    TimeJacobianE=MPI_WTIME()
-    TimeJac=TimeJac+TimeJacobianE-TimeJacobianA
-    Output%npds=Output%npds+1
-    !
-    !---- Set nonzero entries in coef Matrix
-    CALL SetMiterStructure(Miter,vers,A,BAT,Jac,RCo%ga)
-    !
-    !---- Choose ordering/factorisation strategie and do symb LU fact
-    CALL SetLU_MiterStructure(LU_Miter,Miter,vers)
-    !
-    IF (MPI_ID==0) WRITE(*,*) '  Symbolic phase................ done'
-    !---- Save matrix structures for matlab spy
-    IF (MPI_ID==0.AND.MatrixPrint) CALL SaveMatricies(A,B,BAT,Miter,LU_Miter,BSP)
-    !
-    CALL InitialStepSize(h,hmin,absh,Jac,t,y)
-    hy0=y0/h
-    !---- stop timer for symbolic matrix calculations
-    TimeSymbolic=MPI_WTIME()-TimeSymbolic     
-    ! 
-    !print*, 'Start h= ', h
-    !
-    sqrtNSPC=SQRT(REAL(nspc,KIND=RealKind))
-    !-----------------------------------------------------------------------
-    !-- Initialize Netcdf Output File
-    OutNetcdfANZ=COUNT(OutNetcdfPhase(:)=='g')+2*COUNT(OutNetcdfPhase(:)=='a')
-    ! 
-    ALLOCATE(yNcdf(OutNetcdfANZ))                        ! output array
-    yNcdf(:)=0.0d0
-    !
-    actLWC=pseudoLWC(Tspan(1))                  ! in [l/m3]
-    !-----------------------------------------------------------------------
-    !--  Netcdf Output File
-    IF (ErrorLog==1) ErrVals=0.0d0
-    !
-    IF (MPI_ID==0.AND.NetCdfPrint) THEN 
-      iStpNetCDF=1
-      TimeNetCDF=MPI_WTIME()
-      errind(1,1)=0
-      CALL InitNetcdf(tAnf, tEnd)
-      WRITE(*,*) '  Init NetCDF................... done'
-      !--  print initial values to NetCDF file
-      CALL SetOutputNCDF( y, yNcdf, Tspan(1), actLWC )
-      WRITE(*,*) '  Init Values...................     ',yNcdf(1:3)
-      CALL StepNetCDF   ( Tspan(1)                          &
-      &                 , yNcdf                             &
-      &                 , tncdf_ind                         &
-      &                 , (/ actLWC                         &
-      &                    , h                              &
-      &                    , SUM(y(1:ntGas))                &
-      &                    , SUM(y(ntGas+1:ntGas+ntAqua))   &
-      &                    , SPEK(1)%wetRadius              &
-      &                    , 0.0d0                       /) &
-      &                 , errind                            &
-      &                 , SUM(y(iDiag_Schwefel))            &
-      &                 , 0.0d0                           )
-      TimeNetCDF=MPI_WTIME()-TimeNetCDF
-    END IF
-    CALL MPI_BARRIER(MPI_COMM_WORLD,MPIErr)
-    !
-    !--- Print the head of the .simul file 
-    !CALL PrintHeadSimul(ChemFile)
-    !
-    tmp_tb=(Tspan(2)-Tspan(1))*1.0d-2
-    !
-    !
-    ! Set PI Parameter
-    ! set for normal case
-    PI_norm%Kp=0.13d0
-    PI_norm%KI=1.0d0/15.0d0        
-    PI_norm%ThetaMAX=2.0d0         
-    PI_norm%rho=1.2d0 
-    ! set for rejected case
-    PI_rej%Kp=0.0d0
-    PI_rej%KI=1.0d0/5.0d0        
-    PI_rej%ThetaMAX=2.0d0        
-    PI_rej%rho=1.2d0 
-    !===============================================================================
-    !=================================THE MAIN LOOP=================================
-    !===============================================================================
-    TimeIntegrationA=MPI_WTIME()
-    IF (MPI_ID==0) WRITE(*,*) '  Start Integration............. '
-    IF (MPI_ID==0) WRITE(*,*) ' '
-    !
-    tnew=0.0d0
-    !
-    DO 
-      !
-      absh=MIN(Args%hmax,MAX(hmin,absh))
-      h=Args%Tdir*absh
-      !tnew=t+h
-      !print*, 'h=',h,'t=',t
-      !
-      !-- Stretch the step if within 5% of tfinal-t.
-      IF (1.05*absh>=Tspan(2)-t) THEN
-        h=Tspan(2)-t
-        absh=ABS(h)
-        done=.TRUE.
-      END IF
-      DO                                ! Evaluate the formula.
-        !
-        !-- LOOP FOR ADVANCING ONE STEP.
-        failed=.FALSE.                   ! no failed attempts
-        !
-        !print*, 'ID= ', MPI_ID,'h=',h,'t=',t,'tnew=',tnew
-        SELECT CASE (vers)
-          CASE ('cl')
-            CALL ros_classic(y,error,errind,y0,t,h,RCo,errVals)
-            Output%npds=Output%npds+1
-          CASE ('ex')
-            CALL ros_extended(y,error,errind,y0,t,h,RCo,errVals)
-        END SELECT
-        !
-        tnew=t+h
-        !print*, '---------'
-        IF (done) THEN
-          tnew=Tspan(2)         ! Hit end point exactly.
-          h=tnew-t                        ! Purify h.
-        END IF
-        Output%ndecomps=Output%ndecomps+1
-        Output%nRateEvals=Output%nRateEvals+RCo%nStage
-        Output%nSolves=Output%nSolves+RCo%nStage
-        !
-        !
-        IF ( PI_StepSize .AND. Output%nSteps>1 ) THEN
-          failed = (error > h*PI_rej%rho*RtolRow)
-        ELSE
-          failed = (error > 1.0d0)
-        END IF
-        !
-        IF (failed) THEN               !failed step
-          ! Accept the solution only if the weighted error is no more than the
-          ! tolerance rtol.  Estimate an h that will yield an error of rtol on
-          ! the next step or the next try at taking this step, as the case may be,
-          ! and use 0.8 of this value to avoid failures.
-          !
-          Output%nfailed=Output%nfailed+1
-          IF (absh<=hmin) THEN
-            WRITE(*,*) ' Stepsize to small: ', h
-            CALL FinishMPI()
-            STOP '....Integration_Mod '
+        IF (MPI_master) WRITE(*,'(10X,A)',ADVANCE='NO') 'Start Integration.............      '
+        time_int = MPI_WTIME()
+       
+            
+        MAIN_LOOP_ROSENBROCK_METHOD: DO 
+          
+          h = MIN( maxStp, MAX( minStp , h ) )
+          
+          !-- Stretch the step if within 5% of tfinal-t.
+          IF ( 1.05_dp * h >= Tspan(2) - t ) THEN
+            h = ABS(Tspan(2) - t)
+            done = .TRUE.
           END IF
-          !
-          IF (PI_StepSize .AND. Output%nSteps>1) THEN
-            CALL PI_StepsizeControl(absh,RtolRow,error,errorOld,h,hOld,PI_rej,RCo)
+
+          DO    ! Evaluate the formula.
+            
+            !-- LOOP FOR ADVANCING ONE STEP.
+            failed = .FALSE.      ! no failed attempts
+            
+            ! Rosenbrock Timestep 
+            CALL Rosenbrock(  Y             & ! new concentration
+            &               , error         & ! error value
+            &               , ierr          & ! max error component
+            &               , Y0            & ! current concentration 
+            &               , t             & ! current time
+            &               , h             & ! stepsize
+            &               , Euler=.FALSE. ) ! new concentration 
+            
+            tnew  = t + h
+            
+            IF (done) THEN
+              tnew  = Tspan(2)    ! Hit end point exactly.
+              h     = tnew-t      ! Purify h.
+            END IF
+            Out%ndecomps   = Out%ndecomps   + 1
+            Out%nRateEvals = Out%nRateEvals + ROS%nStage
+            Out%nSolves    = Out%nSolves    + ROS%nStage
+            
+            
+            failed = (error > ONE)
+            
+            IF (failed) THEN      ! failed step
+              ! Accept the solution only if the weighted error is no more than the
+              ! tolerance one.  Estimate an h that will yield an error of rtol on
+              ! the next step or the next try at taking this step, as the case may be,
+              ! and use 0.8 of this value to avoid failures.
+              
+              Out%nfailed  = Out%nfailed+1
+              IF ( h <= hmin ) THEN
+                WRITE(*,*) ' Stepsize to small: ', h
+                CALL FinishMPI()
+                STOP '....Integration_Mod '
+              END IF
+              
+              h    = MAX( hmin , h * MAX( rTEN , 0.8_dp * error**(-ROS%pow) ) )
+              done = .FALSE.
+            ELSE                  ! successful step
+              EXIT
+            END IF
+          END DO
+          Out%nsteps = Out%nsteps + 1
+          
+          
+          IF ( NetCdfPrint ) THEN 
+            TimeNetCDFA = MPI_WTIME()
+            ! Time to save a step?
+            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
+              iStpNetCDF  = iStpNetCDF + 1
+              ! Update NetCDF struct and save the new set of values
+              IF ( ChemKin ) Temperature = Y(nDIM)
+              CALL SetOutputNCDF( NetCDF, t , h , ierr , error , Y , Temperature )
+              CALL StepNetCDF( NetCDF )
+            END IF
+            TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
+          END IF
+          
+          !-- Call progress bar.
+          IF ( WaitBar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
+            iBar = iBar + 1         ! iBar runs from 0 to 100
+            CALL Progress(iBar)
+          END IF
+          
+          !-- Termination condition for the main loop.
+          IF ( done ) EXIT
+          
+          !-- If there were no failures compute a new h.
+          tmp = 1.25_dp * error**ROS%pow
+          IF ( TWO * tmp > ONE ) THEN
+            h = h / tmp
           ELSE
-            absh=MAX(hmin,absh*MAX(0.1d0,0.8d0*(1.0d0/error)**RCo%pow))
-            !absh=MIN(Args%hmax,absh)
+            h = h * TWO
           END IF
-          h=Args%Tdir*absh
-          done=.FALSE.
-        ELSE                            !succ. step
-          EXIT
-        END IF
-      END DO
-      Output%nsteps=Output%nsteps+1
-      !
-      tmp_ta=t-Tspan(1)
-      !
-      !SPEK(1)%wetRadius=(3.0d0/4.0d0/PI*actLWC/SPEK(1)%Number)**(1.0d0/3.0d0)
-      !print*, t, y(Positionspeciesall('OH')), SPEK(1)%wetRadius
-      !
-      IF ( (tmp_ta >= StpNetCDF*iStpNetCDF) )  THEN
-        iStpNetCDF=iStpNetCDF+1
-        IF ( (MPI_ID==0) .AND. (NetCdfPrint) ) THEN !.AND.t>10.0d0) THEN
-          actLWC = pseudoLWC(t)
-          zen    = Zenith(t)
-          SPEK(1)%wetRadius=(3.0d0/4.0d0/PI*actLWC/SPEK(1)%Number)**(1.0d0/3.0d0)*1.0d-1
-          ! save data in NetCDF File
-          TimeNetCDFA=MPI_WTIME()
-          CALL SetOutputNCDF(  y,    yNcdf, t ,  actLWC)
-          !
-          CALL StepNetCDF   ( t                                  &
-          &                 , yNcdf                              &
-          &                 , tncdf_ind                          &
-          &                 , (/ actLWC                          &
-          &                    , h                               &
-          &                    , SUM(y(1:ntGas))                 &
-          &                    , SUM(y(ntGas+1:ntGas+ntAqua))    &
-          &                    , SPEK(1)%wetRadius               &
-          &                    , zen                             /) &
-          &                    , errind                          &
-          &                    , SUM(y(iDiag_Schwefel))          &
-          &                    , error                         )
-          !
-          TimeNetCDFA=MPI_WTIME()-TimeNetCDFA
-          TimeNetCDF=TimeNetCDF+TimeNetCDFA
-        END IF
-      END IF
-      !CALL MPI_BARRIER(MPI_COMM_WORLD,MPIErr)
-      !
-      !print*,'ID=',MPI_ID, 'h=', h,'t=',t
-      !-- Call progress bar.
-      IF (MPI_ID==0.AND.Ladebalken==1.AND.tmp_ta>=i*tmp_tb) THEN
-        i=i+1
-        CALL Progress(i)
-      END IF
-      !
-      !-- Termination condition for the main loop.
-      IF (done) EXIT
-      !
-      !-- If there were no failures compute a new h.
-      !IF (failed) THEN
-        IF (PI_StepSize) THEN
-          CALL PI_StepsizeControl(absh,RtolRow,error,errorOld,h,hOld,PI_norm,RCo)
-        ELSE
-          temp=1.25d0*(error)**RCo%pow
-          !IF (5.0d0*temp>1.0d0) THEN
-          IF (2.0d0*temp>1.0d0) THEN
-            absh=absh/temp
-          ELSE
-            !absh=5.0d0*absh
-            absh=2.0d0*absh
-          END IF
-          !absh=MIN(Args%hmax,absh)
-        END IF
-      !END IF
-      !
-      !-- Advance the integration one step.
-      !CALL MPI_BARRIER(MPI_COMM_WORLD,MPIErr)
-      t=tnew
-      y0=y
-      !
-      !-- for PI stepsize control
-      errorOld=error
-      hOld=h
-    END DO  ! MAIN LOOP
-    TimeIntegrationE=MPI_WTIME()
-    !
-    IF (MPI_ID==0) THEN
-      WRITE(*,*) ' '
-      WRITE(*,*) ' '
-      WRITE(*,*) '  Nonzeros in matrices:'
-      WRITE(*,*) ' '
-      WRITE(*,*) '             alpha  = ',SIZE(A%Val)
-      WRITE(*,*) '     + (beta-alpha) = ',SIZE(BA%Val)
-      WRITE(*,*) '     +  L+U factors = ',SIZE(LU_Miter%Val) 
-      WRITE(*,*) '     -------------------------------------'
-      WRITE(*,*) '     =     sum(NNZ) = ',SIZE(A%Val)+SIZE(BA%Val)+SIZE(LU_Miter%Val)
-      WRITE(*,*) ' '
-    END IF
+          
+          !-- Advance the integration one step.
+          t  = tnew
+          Y0 = Y
+          
+          !-- for PI stepsize control
+          errorOld  = error
+          hOld      = h
 
-    !
-    !CALL printsparse(Miter,'Miter_INORGex')
-    !stop
-    call MPI_Barrier( MPI_COMM_WORLD, i_error)
-    IF (OrderingStrategie<8) THEN
-      mumps_par%JOB=-2
-      CALL DMUMPS( mumps_par )
-    END IF
-    !
+        END DO MAIN_LOOP_ROSENBROCK_METHOD  ! MAIN LOOP
+    
+      CASE('LSODE')
+
+        time_int=MPI_WTIME()
+
+        LIW    = 20 + nDIM
+        LRW    = 22 + 9*nDIM + nDIM**2
+        ITOL   = 2              ! 2 if atol is an array
+        RTOL1  = RtolRow        ! relative tolerance parameter
+        ATOL1(1:nspc) = Atol(1)  ! atol dimension nspc+1
+        ATOL1(nDim)   = Atol(2)  ! temperature tolerance
+
+        ITASK  = 1             ! 1 for normal computation of output values of y at t = TOUT
+        ISTATE = 1             ! This is the first call for a problem
+        IOPT   = 1             ! optional inputs are used (see Long Desciption Part 1.)
+        MF     = 22            ! Stiff method, internally generated full Jacobian.
+        
+        ALLOCATE(IWORK(LIW))
+        ALLOCATE(RWORK(LRW))
+        IWORK  = 0
+        RWORK  = ZERO
+
+        !RWORK(5) = 1.0d-6    ! first step size, if commented -> calculate h0
+        RWORK(6) = maxStp
+        RWORK(7) = minStp
+
+        t        = Tspan(1)
+        timepart = (Tspan(2)-Tspan(1)) / REAL(nOutP - 1, dp)
+        tnew     = t + timepart
+
+        MAIN_LOOP_LSODE: DO k = 1 , nOutP-1
+          
+          IWORK(6) = maxnsteps
+           
+          CALL DLSODE ( FRhs  , nDIM  , Y     , t     , tnew           &
+          &           , ITOL  , RTOL1 , ATOL1 , ITASK , ISTATE , IOPT  &
+          &           , RWORK , LRW   , IWORK , LIW   , dummy  , MF    )
+  
+  
+          Out%nsteps     = Out%nsteps     + IWORK(11)
+          Out%nRateEvals = Out%nRateEvals + IWORK(12)
+          Out%npds       = Out%npds       + IWORK(13)
+          Out%ndecomps   = Out%ndecomps   + IWORK(21)
+
+          ! save data
+          IF ( NetCdfPrint ) THEN 
+            TimeNetCDFA = MPI_WTIME()
+            ! Time to save a step?
+            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
+              iStpNetCDF  = iStpNetCDF + 1
+              ! Update NetCDF struct and save a new step
+              IF ( ChemKin ) Temperature = Y(nDIM)
+              CALL SetOutputNCDF( NetCDF, t , h , ierr , error , Y , Temperature )
+              CALL StepNetCDF( NetCDF )
+            END IF
+            TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
+          END IF
+
+
+          !-- Call progress bar.
+          IF ( WaitBar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
+            iBar = iBar + 1         ! iBar runs from 0 to 100
+            CALL Progress(iBar)
+          END IF
+
+          t    = tnew
+          tnew = tnew + timepart
+        
+        END DO MAIN_LOOP_LSODE
+
+        CALL Progress(100) ! last * needs an extra call
+
+
+      CASE('LSODES')
+
+        time_int=MPI_WTIME()
+
+        LIW    = 30
+        LRW    = 20 + 21 * nDIM + 4*(BAT%nnz+A%nnz+2*nDIM)
+        ITOL   = 2              ! 2 if atol is an array
+        RTOL1  = RtolRow        ! relative tolerance parameter
+        ATOL1(1:nspc) = Atol(1)  ! atol dimension nspc+1
+        ATOL1(nDim)   = Atol(2)  ! temperature tolerance
+
+        ITASK  = 1             ! 1 for normal computation of output values of y at t = TOUT
+        ISTATE = 1             ! This is the first call for a problem
+        IOPT   = 1             ! optional inputs are used (see Long Desciption Part 1.)
+        MF     = 222            ! Stiff method, internally generated full Jacobian.
+        
+        ALLOCATE(IWORK(LIW))
+        ALLOCATE(RWORK(LRW))
+        IWORK  = 0
+        RWORK  = ZERO
+
+        !RWORK(5) = 1.0d-6    ! first step size, if commented -> calculate h0
+        RWORK(6) = maxStp
+        RWORK(7) = minStp
+
+        t        = Tspan(1)
+        timepart = (Tspan(2)-Tspan(1)) / REAL(nOutP - 1, dp)
+        tnew     = t + timepart
+
+        MAIN_LOOP_LSODES: DO k = 1 , nOutP-1
+          
+          IWORK(6) = maxnsteps
+           
+          CALL DLSODES( FRhs  , nDIM  , Y     , t     , tnew           &
+          &           , ITOL  , RTOL1 , ATOL1 , ITASK , ISTATE , IOPT  &
+          &           , RWORK , LRW   , IWORK , LIW   , dummy  , MF    )
+  
+  
+          Out%nsteps     = Out%nsteps     + IWORK(11)
+          Out%nRateEvals = Out%nRateEvals + IWORK(12)
+          Out%npds       = Out%npds       + IWORK(13)
+          Out%ndecomps   = Out%ndecomps   + IWORK(21)
+
+          ! save data
+          IF ( NetCdfPrint ) THEN 
+            TimeNetCDFA = MPI_WTIME()
+            ! Time to save a step?
+            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
+              iStpNetCDF  = iStpNetCDF + 1
+              ! Update NetCDF struct and save a new step
+              IF ( ChemKin ) Temperature = Y(nDIM)
+              CALL SetOutputNCDF( NetCDF, t , h , ierr , error , Y , Temperature )
+              CALL StepNetCDF( NetCDF )
+            END IF
+            TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
+          END IF
+
+
+          !-- Call progress bar.
+          IF ( WaitBar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
+            iBar = iBar + 1         ! iBar runs from 0 to 100
+            CALL Progress(iBar)
+          END IF
+
+          t    = tnew
+          tnew = tnew + timepart
+        
+        END DO MAIN_LOOP_LSODES
+
+        CALL Progress(100) ! last * needs an extra call
+
+      CASE ('bwEuler')
+
+        h = maxStp
+
+        BACKWARD_EULER: DO
+          
+          !-- Stretch the step if within 10% of tfinal-t.
+          IF ( 1.05_dp*h >= Tspan(2)-t ) THEN
+            h    = Tspan(2) - t
+            done = .TRUE.
+          END IF
+
+          CALL Rosenbrock(  Y             & ! new concentration
+          &               , error         & ! error value
+          &               , ierr          & ! max error component
+          &               , Y0            & ! current concentration 
+          &               , t             & ! current time
+          &               , h             & ! stepsize
+          &               , Euler=.TRUE. )  ! new concentration 
+
+          tnew = t + h
+          IF (done) THEN
+            tnew = Tspan(2)  ! Hit end point exactly.
+            h    = tnew - t  ! Purify h.
+          END IF
+
+          Out%nRateEvals = Out%nRateEvals + 1
+          Out%nSolves    = Out%nSolves + 1
+          Out%nsteps     = Out%nsteps + 1
+
+          IF ( NetCdfPrint ) THEN 
+            TimeNetCDFA = MPI_WTIME()
+            ! Time to save a step?
+            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
+              iStpNetCDF  = iStpNetCDF + 1
+              ! Update NetCDF struct and save a new step
+              IF ( ChemKin ) Temperature = Y(nDIM)
+              CALL SetOutputNCDF( NetCDF, t , h , ierr , error , Y , Temperature )
+              CALL StepNetCDF( NetCDF )
+            END IF
+            TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
+          END IF
+
+          !-- Call progress bar.
+          IF ( WaitBar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
+            iBar = iBar + 1         ! iBar runs from 0 to 100
+            CALL Progress(iBar)
+          END IF
+
+          !-- Termination condition for the main loop.
+          IF ( done ) EXIT
+            
+          !-- Advance the integration one step.
+          t   = tnew
+          Y0  = Y
+
+        END DO BACKWARD_EULER
+
+      CASE DEFAULT
+        
+        WRITE(*,*) ' No other methods implemented jet. Use Rosenbrock, LSODE[S] or backward Euler'
+
+    END SELECT
+    TimeIntegration = MPI_WTIME() - time_int
+
   END SUBROUTINE Integrate
-  !
-  !
+  
+ 
   ! The Progressbar
   SUBROUTINE Progress(j)
     !
-    INTEGER(4) :: j,k
-    CHARACTER(29) :: bar="  ???% |                    |"
+    INTEGER(4)    :: j,k
+    CHARACTER(69) :: bar="          Start Integration...........    ???% |                    |"
     !
     IF (MPI_ID==0) THEN
-      WRITE(unit=bar(3:5),fmt="(i3)") j
+      WRITE(bar(43:45),'(I3)') j
       !
       DO k=1,j/5
-        bar(8+k:8+k)="*"
+        bar(48+k:48+k)="*"
       END DO
       ! print the progress bar.
-      WRITE(*,fmt="(a1,a29,$)") char(13), bar
+      WRITE(*,'(A1,A69,$)') char(13), bar
     END IF
   END SUBROUTINE Progress
   !
   !
-  !
-  SUBROUTINE SetMiterStructure(Miter,vers,A,BAT,Jac,g)
-    !-----------------------------------------------------------
-    ! Input: 
-    !   - version (extended or classic)
-    CHARACTER(2), INTENT(IN) :: vers
-    REAL(RealKind), INTENT(IN) :: g
-    ! Input (optional):
-    !   - Matrix A (left side of chemical system)
-    !   - Matrix BAT = (B - A)^T 
-    !   - Jacobian 
-    TYPE(CSR_Matrix_T), INTENT(IN) :: A, BAT, Jac
-    !-----------------------------------------------------------
-    ! Output:
-    !   - Miter with nonzero structure 
-    TYPE(CSR_Matrix_T), INTENT(OUT) :: Miter
-    ! Temporary variables:
-    TYPE(CSR_Matrix_T) :: Id
-    !
-    !
-    SELECT CASE (vers)
-      CASE ('cl')
-        CALL SparseID(Id,nspc)
-        CALL SymbolicAdd(Id,Jac,Miter)
-        CALL Kill_Matrix_CSR(Id)
-        !CALL Kill_Matrix_CSR(Jac)
-      CASE ('ex')
-        IF (ckTEMP) THEN
-          CALL SymbolicExtendedMatrixTemp(A,BAT,Miter)
-          CALL Miter0_ExtendedTemp(BAT,A,g,Miter)
-        ELSE
-          CALL SymbolicExtendedMatrix(A,BAT,Miter)
-          CALL Miter0_Extended(BAT,A,g,Miter)
-        END IF
-      CASE DEFAULT
-        STOP 'change solveLA in .run to "ex" or "cl"'
-    END SELECT
-  END SUBROUTINE SetMiterStructure
-  !
-  !
-  SUBROUTINE SetLU_MiterStructure(LU_Miter,Miter,version)
-    TYPE(CSR_Matrix_T), INTENT(OUT) :: LU_Miter
-    TYPE(CSR_Matrix_T), INTENT(INOUT) :: Miter
-    CHARACTER(2) :: version
-    INTEGER, ALLOCATABLE :: InvPermu(:)
-    !
-    TYPE(SpRowIndColInd_T) :: MiterFact
-    TYPE(SpRowColD_T) :: MiterMarko
-    INTEGER :: i
-    !
-    IF (OrderingStrategie<8.OR.ParOrdering>=0) THEN 
-      ! Use MUMPS to factorise and solve     
-      ! Convert compressed row format to row index format for MUMPS
-      CALL CompRowToIndRow(Miter,MiterFact)
-      CALL InitMumps(MiterFact) 
-      CALL CSR_Matrix_To_SpRowColD(MiterMarko,Miter) 
-      CALL PermuToInvPer(InvPermu,Mumps_Par%SYM_PERM)
-      CALL SymbLU_SpRowColD(MiterMarko,InvPermu)        
-      CALL RowColD_To_CRF_Matrix(LU_Miter,MiterMarko)
-      
-      ! set values to LU_Miter and get the LU permutation vector
-      CALL SetLU_Val_INI(LU_Miter,Miter,LU_Perm)
-      CALL Kill_Matrix_SpRowIndColInd(MiterFact)
-    ELSE
-      ! Permutation given by Markowitz Ordering strategie
-      CALL CSR_Matrix_To_SpRowColD(MiterMarko,Miter) 
-      CALL SymbLUMarko_SpRowColD(MiterMarko)        
-      CALL RowColD_To_CRF_Matrix(LU_Miter,MiterMarko)
-      
-      !STOP 'Integration_Mod'
-      ! set values to LU_Miter and get the LU permutation vector
-      CALL SetLU_Val_INI(LU_Miter,Miter,LU_Perm)
-        !call printsparse(LU_Miter,'*')
-        !print*, 'diagptr=', LU_Miter%DiagPtr
-        !stop 'integration'
-      ! 
-    END IF
-    IF (version=='ex') THEN
-      !          _                           _ 
-      !         |              |   g*A_Mat    |
-      !         |--------------+--------------|     ~=~   ValCopy = const.
-      !         |_  BAT_Mat    |             _|
-      !
-      ALLOCATE(ValCopy(LU_Miter%RowPtr(LU_Miter%m+1)-1))
-      ValCopy=LU_Miter%Val
-      ! 
-      CALL Kill_Matrix_SpRowColD(MiterMarko)
-    END IF
-  END SUBROUTINE SetLU_MiterStructure
-  !
-  !
   SUBROUTINE PI_StepsizeControl(hnew,Tol,er,erOld,h,hOld,PI_Par,RCo)
-    REAL(RealKind) :: hnew
+    REAL(dp) :: hnew
     !
     !
-    REAL(RealKind) :: Tol       ! rel tol
-    REAL(RealKind) :: er        ! lokal error step n 
-    REAL(RealKind) :: erOld     ! lokal error step n-1
-    REAL(RealKind) :: h         ! stepsize n
-    REAL(RealKind) :: hOld      ! stepsize n-1
+    REAL(dp) :: Tol       ! rel tol
+    REAL(dp) :: er        ! lokal error step n 
+    REAL(dp) :: erOld     ! lokal error step n-1
+    REAL(dp) :: h         ! stepsize n
+    REAL(dp) :: hOld      ! stepsize n-1
     TYPE(PI_Param) :: PI_Par    ! PI control parameter
     TYPE(RosenbrockMethod_T)  :: RCo
     !
-    REAL(RealKind) :: htmp
+    REAL(dp) :: htmp
     !
     !
-    htmp = ( Tol/er )**(0.7d0*RCo%pow)* ( erOld/Tol )**(0.4d0*RCo%pow) * h
+    htmp = ( Tol/er )**(0.7d0*ROS%pow)* ( erOld/Tol )**(0.4d0*ROS%pow) * h
     !htmp = ( Tol/er )**PI_Par%KI * ( erOld/Tol )**PI_Par%Kp * h
-    print*, 'htemp= ',htmp, h , hold
     !
     ! limitation term
     IF (htmp>PI_Par%ThetaMAX*h) THEN
@@ -523,4 +472,47 @@ MODULE Integration_Mod
       hnew = htmp
     END IF
   END SUBROUTINE PI_StepsizeControl
+
+  SUBROUTINE FRhs(NEQ1, T, Y, YDOT)
+    USE Rates_Mod
+    INTEGER        :: NEQ1
+    REAL(dp) :: T , Y(NEQ1) , YDOT(NEQ1)
+    !
+    REAL(dp) :: dCdt(nspc)
+    REAL(dp) :: Rate(neq) , DRate(neq)
+    REAL(dp) :: Tarr(10)
+    REAL(dp) :: U(nspc) , dUdT(nspc)
+    REAL(dp) :: c_v
+    
+    IF (Teq) THEN         ! OUT:   IN:
+      ! MASS CONSERVATION
+      CALL ReactionRates( T , Y , Rate , DRate)
+      dCdt = BAT * Rate + y_emi   ! [mol/cm3/s]
+    
+      YDOT(1:nspc) = dCdt
+
+      ! ENERGY CONSERVATION
+      Tarr = UpdateTempArray ( Y(NEQ1) )
+      CALL InternalEnergy    (  U   , Tarr )
+      CALL DiffInternalEnergy( dUdT , Tarr) 
+      CALL MassAveMixSpecHeat( c_v  , dUdT               &
+                             &      , MoleConc=Y(1:nspc) &
+                             &      , rho=rho          ) 
+    
+      YDOT(NEQ1) = - SUM( U * dCdt ) * rRho / c_v   ! rRho=mega/rho 
+    ELSE
+      ! MASS CONSERVATION
+      CALL ReactionRates( T , Y , Rate )
+      dCdt = BAT * Rate + y_emi   ! [mol/cm3/s]
+      
+      YDOT(1:nspc) = dCdt
+    END IF
+
+  END SUBROUTINE FRhs
+
+  ! dummy routine for ode solver LSODE
+  SUBROUTINE dummy()
+    IMPLICIT NONE
+  END SUBROUTINE dummy
+
 END MODULE Integration_Mod

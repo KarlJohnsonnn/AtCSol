@@ -1,19 +1,22 @@
  &SCENARIO
   BSP = 'INORG'                    ! Name der NetCDF Output-Datei
   pHSet = 1                        ! berechne pH Wert zu Beginn
-  LWCLevelmin = 2.0d-8            ! minimaler LWC Wert [l/cm3]
-  LWCLevelmax = 3.0d-4            ! maximaler LWC Wert [l/cm3]
-  constLWC = 1                     ! 0 = konstanter LWC wert, 0 /= pseudo LWC funktion wird benutzt
+  LWCLevelmax = 2.0d-8            ! minimaler LWC Wert [l/cm3]
+  LWCLevelmin = 3.0d-4            ! maximaler LWC Wert [l/cm3]
+  constLWC = .false.               ! true = konstanter LWC wert, false /= pseudo LWC funktion wird benutzt
   Ladebalken = 1                   ! 0 = kein ladebalken, 0 /= ladebalken aktiv
   ErrorLog = 0                      ! 0 = no error output, 0 /= error output direkt auf bildschirm
-  MatrixPrint = .false.            ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
-  NetCdfPrint = .true.            ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
+  MatrixPrint = .true.            ! .TRUE. == print matricies,  .FALSE. == do not print any matrix
+  DebugPrint  = .false.            ! DEBUGGING Rosenbrock 
+  NetCdfPrint = .true.            ! write to  NetCDF file, Target Spezies in INI datei angeben (diag)
+  ChemKin     = .false.        ! input mechanism in ChemKin notation
  /END
  &FILES
-  ChemFile = 'CHEM/INORG'             ! .sys Datei (ohne .sys angeben!)
+  SysFile  = 'CHEM/INORG.sys'             ! .sys Datei (ohne .sys angeben!)
   DataFile = 'DAT/Urban.dat'           ! .dat Datei (für RO2, RO2aqua Summen)
   InitFile = 'INI/Urban.ini'          ! .ini Datei (Anfangswerte gas/flüssig), Diagnose spc
   MetFile  = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)
+  Targets  = 'TAR/INORG.ctrl'   ! .met Datei (Meteorologie Datei)
  /END
  &TIMES
   tAnf=0.0d0                          ! Startzeit Integration
@@ -23,21 +26,22 @@
   rlat    = 45.d0                     ! ---------''---------    (Breitengrad)
   rlon    =  0.d0                     ! ---------''---------    (Längengrad)
   minStp  = 1.0d-30                   ! minimale Schrittweite für Integration
-  maxStp  = 50.0d0                    ! maximale Schrittweite für Integration
+  maxStp  = 25.0d0                    ! maximale Schrittweite für Integration
   StpNetCDF = -1.0d0                  ! save after StpNetCDF seconds, if < 0.0d0 save every timestep 
+  nOutP   = 1000
 /END
  &NUMERICS
-  RtolROW  = 1.0d-1                             ! rel. Toleranz für Rosenbrock-Wanner Fehlersteuerung
-  AtolGas  = 1.0d-2                             ! abs. Toleranzen für gasförmige Stoffe 
-  AtolAqua = 1.0d-2                             ! abs. Toleranzen für aquatische Stoffe
-  PI_StepSize = .false.
+  RtolROW  = 1.0d-3                            ! rel. Toleranz für Rosenbrock-Wanner Fehlersteuerung
+  AtolGas  = 1.0d-4                             ! abs. Toleranzen für gasförmige Stoffe 
+  AtolAqua = 1.0d-4                             ! abs. Toleranzen für aquatische Stoffe
+  Error_Est= 2                                  ! Error estimation = 2 -> 2-norm, else maxnorm
+  PI_StepSize = .false.                         ! Gustafsson, Söderlind
   solveLA = 'cl'                                ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
-  RosenbrockMethod = 'METHODS/TSRosW2P.fort'   ! 'METHODS/Ros34PW3.fort'    ! Rosenbrock-Wanner Verfahrenskoeffizienten
   ImpEuler = 0                                  ! 0=kein impliziter Euler, 1=impliziter Euler (kein ROW!!)
+  ODEsolver = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
+  !ODEsolver = 'LSODE'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
  /END
  &ORDERING
-  OrderingStrategie  = 8                   ! 8=Markowitz(SparseLU) , 1,..,7=Mumps Orderings  
+  OrderingStrategie  = 8                  ! 8=Markowitz(SparseLU) , 1,..,7=Mumps Orderings
   ParOrdering = -1
- /END
- &ENTRAIN
  /END
