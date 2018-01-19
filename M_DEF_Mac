@@ -2,9 +2,9 @@
 OPTFREE =  -ffree-form -ffixed-line-length-none -ffree-line-length-none
 OPTFIX =  -ffixed-line-length-none -ffree-line-length-none
 
-LINK = mpif90 
-F90  = mpif90 $(OPTFREE) $(CPPFLAGS) $(LDFLAGS)
-F90_F  = mpif90 $(OPTFIX) $(CPPFLAGS) $(LDFLAGS) 
+LINK  = mpif90 
+F90   = mpif90 $(OPTFREE)
+F90_F = mpif90 $(OPTFIX)
 
 CC   = mpicc
 
