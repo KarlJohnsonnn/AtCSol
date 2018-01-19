@@ -442,7 +442,6 @@ MODULE Chemsys_Mod
             CASE DEFAULT
               WRITE(*,*) '  Unknown particle reaction: ', TypeR
           END SELECT
-<<<<<<< HEAD
 
         CASE ('MICROPHYS')
 
@@ -450,7 +449,6 @@ MODULE Chemsys_Mod
           CALL InsertReaction( ListRMicro , Line , TypeR )
 
           SELECT CASE (TypeR)
->>>>>>> version0.2_alpha
             CASE ('SPECIAL')
               nr_SPECIAL = nr_SPECIAL + 1
               nr_M_special = nr_M_special + 1
@@ -734,7 +732,6 @@ MODULE Chemsys_Mod
     BA%m = neq;   BA%n = nspc
     
     ! Standart alloc
-<<<<<<< HEAD
     ALLOCATE(A%RowPtr(A%m+1),B%RowPtr(B%m+1),BA%RowPtr(BA%m+1))
     A%RowPtr  = 0;    A%RowPtr(1)  = 1
     B%RowPtr  = 0;    B%RowPtr(1)  = 1
@@ -761,7 +758,6 @@ MODULE Chemsys_Mod
             nProd = nProd + 1
             ActiveProduct(nProd) = RS(iR)%Product(i)
             !print*, 'debug::chemssys   ActiveProduct(nProd)=',ActiveProduct(nProd)
->>>>>>> version0.2_alpha
         END SELECT
       END DO
    

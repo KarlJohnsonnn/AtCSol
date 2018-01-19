@@ -1,9 +1,4 @@
-<<<<<<< HEAD
-#IN1=M_DEF_$(MACH)
-IN1=M_DEF_Mac2
-=======
 IN1=M_DEF_Mac
->>>>>>> version0.2_alpha
 
 include $(IN1) 
 
