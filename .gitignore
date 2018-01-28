@@ -10,6 +10,7 @@ list*
 *.o
 *.mod
 REACTION_PATHS/*
+OUTPUT/*
 *.txt
 *.dat
 *.exe*
