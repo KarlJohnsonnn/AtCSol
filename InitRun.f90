@@ -52,6 +52,7 @@
 
       NAMELIST /OUTPUT/  NetCdfFile , &
       &                  StpNetcdf ,  &
+      &                  StpFlux ,    &
       &                  nOutP ,      &
       &                  DebugPrint , &
       &                  MatrixPrint 
@@ -220,6 +221,7 @@
 !
 !--- Set Default Values for OUTPUT Namelist
       StpNetcdf   = -1.0_dp      ! Time step for Netcdf output      [in sec]
+      StpFlux     = -1.0_dp
       nOutP       = 100
       MatrixPrint = .FALSE.
       DebugPrint  = .FALSE.
@@ -230,7 +232,7 @@
       CALL ErrorCheck(io_stat,io_msg,'reading OUTPUT list')
 
       NetCDFFile = ADJUSTL(NetCDFFile)
-      IF ( NetCdfFile == '' ) NetCdfPrint = .FALSE.   ! no output if no filename is declared
+      IF ( TRIM(NetCdfFile) == '' ) NetCdfPrint = .FALSE.   ! no output if no filename is declared
       IF ( nOutP < 2 ) nOutP = 2                          ! minimum output steps are 2
 
       CLOSE(RunUnit)

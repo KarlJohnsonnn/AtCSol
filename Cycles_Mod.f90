@@ -47,7 +47,7 @@ MODULE Cycles_Mod
   !
   FUNCTION Find_Elem_Circuits(A,FAMS) RESULT(Cyclic_Set_Out)
   !SUBROUTINE Find_Elem_Circuits(A,SpcList)
-    USE mo_control,   ONLY: Families_T, BSP
+    USE mo_control,   ONLY: Families_T, BSP, OutputPath
 
     TYPE(List), ALLOCATABLE :: Cyclic_Set_Out(:) 
     ! IN:
@@ -140,9 +140,9 @@ MODULE Cycles_Mod
 
           DEALLOCATE(scc)
           s = s + 1
-          CALL Progress(j,nspc)
+          CALL Progress(iFam,j,nspc)
         ELSE
-          CALL Progress(nspc,nspc)
+          CALL Progress(iFam,nspc,nspc)
           EXIT
         END IF
       END DO
@@ -158,14 +158,10 @@ MODULE Cycles_Mod
     nCycles = cntSCC
     ALLOCATE(Cyclic_Set(nCycles))
 
-    
-
-
-
     ! write paths to file and save it in a allcatable array
-    OPEN(UNIT=99,FILE='reaction_paths_'//TRIM(BSP)//'.txt',STATUS='UNKNOWN')
+    OPEN(UNIT=99,FILE=OutputPath//'all_species_cycles_'//TRIM(BSP)//'.txt',STATUS='UNKNOWN')
     WRITE(99,*)
-    WRITE(99,'(A,*(I0))') '   Anzahl Zyklen:   ',nCycles
+    WRITE(99,'(A,*(I0))') '   Number of all found cycles:   ',nCycles
     WRITE(99,'(A)') '   Cycle Length:       species: '
     printCYC => cycFirst
     i = 0
@@ -225,17 +221,17 @@ MODULE Cycles_Mod
 
     nCycles_red = cntSCC
     ALLOCATE(Cyclic_Set_Out(nCycles_red))
-    OPEN(UNIT=98,FILE='reaction_path_short_'//TRIM(BSP)//'.txt',STATUS='UNKNOWN')
-    WRITE(98,*)
-    WRITE(98,'(A)') '   Cycle Length:       species: '
-    WRITE(98,'(A,*(I0))') '   Anzahl Zyklen nach kuerzen:   ',nCycles_red
+    !OPEN(UNIT=98,FILE=OutputPath//'family_species_cycles_'//TRIM(BSP)//'.txt',STATUS='UNKNOWN')
+    !WRITE(98,*)
+    !WRITE(98,'(A,*(I0))') '   Number of cycles afer sorting out:   ',nCycles_red
+    !WRITE(98,'(A)') '   Cycle Length:       species: '
     DO i = 1, nCycles_red
       iC = iCyc_red(i)
       Cyclic_Set_Out(i)%len = Cyclic_Set(iC)%len
       Cyclic_Set_Out(i)%List = [Cyclic_Set(iC)%List]
-      WRITE(98,'(10X,I2,8X,*(A))') Cyclic_Set_Out(i)%len,                      &
-      & (TRIM(y_name(Cyclic_Set_Out(i)%List(k)))//' -> ' ,k=1,Cyclic_Set_Out(i)%len-1), &
-      &  TRIM(y_name(Cyclic_Set_Out(i)%List(Cyclic_Set_Out(i)%len)))
+      !WRITE(98,'(10X,I2,8X,*(A))') Cyclic_Set_Out(i)%len,                      &
+      !& (TRIM(y_name(Cyclic_Set_Out(i)%List(k)))//' -> ' ,k=1,Cyclic_Set_Out(i)%len-1), &
+      !&  TRIM(y_name(Cyclic_Set_Out(i)%List(Cyclic_Set_Out(i)%len)))
       ! matlab output
       !WRITE(97,'(*(I0,2X))') (Cyclic_Set_Out(i)%List(j) , j=1,Cyclic_Set_Out(i)%len)
     END DO
@@ -434,7 +430,8 @@ MODULE Cycles_Mod
     END DO
 
     nSCC = scc_List%id-1
-
+    
+    IF (ALLOCATED(scc)) DEALLOCATE(scc)
     ALLOCATE( scc(nSCC), nVertexSCC(nSCC), q(nSCC) )
     nVertexSCC = 0;  q = 0
 
@@ -695,10 +692,10 @@ MODULE Cycles_Mod
 
   END FUNCTION Generate_Submatrix
 
-  SUBROUTINE Progress(j,k)
-    INTEGER(4)  :: j,k 
+  SUBROUTINE Progress(i,j,k)
+    INTEGER(4)  :: i,j,k 
     ! print the progress bar.
-    WRITE(*,'(A1,14X,A,I0,A,I0,A,$)') char(13),'Node :: (',j,'/',k,')  processed.'
+    WRITE(*,'(A1,14X,3(A,I0),A,$)') char(13),'Family :: ',i,'  Node :: (',j,'/',k,')  processed.'
   END SUBROUTINE Progress
 
 END MODULE Cycles_Mod

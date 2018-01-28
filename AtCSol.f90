@@ -42,6 +42,7 @@ PROGRAM AtCSol
   CHARACTER(80) :: neuTolA  = ''
   CHARACTER(80) :: neuROW   = ''
   CHARACTER(2)  :: newLinAlg  = ''
+  CHARACTER(1)  :: simul  = ''
 
 
   ! convertion from mole to mass to conc
@@ -57,6 +58,7 @@ PROGRAM AtCSol
 
   ! format string
   CHARACTER(14) :: fmt0 = '  [molec/cm3] '
+  CHARACTER(8) ::  unit  = ''
 
   ! new testing stuff 
   TYPE(CSR_Matrix_T) :: A_T, P_HG, S_HG, R_HG
@@ -460,42 +462,37 @@ PROGRAM AtCSol
     TimeJac  = TimeJac + MPI_WTIME() - StartTimer
   END IF
 
-  ! open file to save the fluxes 
-  IF ( MPI_master .AND. FluxAna ) THEN
-    StpFlux  = StpNetCDF
-    iStpFlux = 0
-    CALL OpenFile_wStream(FluxUnit,FluxFile);       CLOSE(FluxUnit)
-    CALL OpenFile_wSeq(FluxMetaUnit,FluxMetaFile);  CLOSE(FluxMetaUnit)
+  WRITE(*,777,ADVANCE='NO') 'Simulation? [y/n]   ';  READ(*,*) simul
+  IF ( simul=='y' ) THEN
+    ! open file to save the fluxes 
+    IF ( MPI_master .AND. FluxAna ) THEN
+      iStpFlux = 0
+      CALL OpenFile_wStream(FluxUnit,FluxFile);       CLOSE(FluxUnit)
+      CALL OpenFile_wSeq(FluxMetaUnit,FluxMetaFile);  CLOSE(FluxMetaUnit)
+    END IF
+    
+    !-----------------------------------------------------------------------
+    ! --- Start the integration routine 
+    !-----------------------------------------------------------------------
+    CALL Integrate ( InitValAct &  ! initial concentrations activ species
+    &              , Rate       &  ! reaction rates at time=t0
+    &              , Tspan      &  ! integration invervall
+    &              , Atol       &  ! abs. tolerance of species
+    &              , RtolROW    &  ! rel. tolerance Rosenbrock method
+    &              , ODEsolver  )  ! methode for solving the ode system
+    
+    ! --- stop timer and print output statistics
+    Timer_Finish = MPI_WTIME() - Timer_Start + Time_Read
+    
+    CALL Output_Statistics
   END IF
-  
-  !-----------------------------------------------------------------------
-  ! --- Start the integration routine 
-  !-----------------------------------------------------------------------
-  CALL Integrate ( InitValAct &  ! initial concentrations activ species
-  &              , Rate       &  ! reaction rates at time=t0
-  &              , Tspan      &  ! integration invervall
-  &              , Atol       &  ! abs. tolerance of species
-  &              , RtolROW    &  ! rel. tolerance Rosenbrock method
-  &              , ODEsolver  )  ! methode for solving the ode system
-  
-  ! --- stop timer and print output statistics
-  Timer_Finish = MPI_WTIME() - Timer_Start + Time_Read
-  
-  CALL Output_Statistics
 
 
   !************************************************************************************************
   !************************************************************************************************
   IF ( MPI_master .AND. FluxAna ) THEN
-    WRITE(*,*)
-    WRITE(*,'(10X,A)') '*****************************************************'
-    WRITE(*,'(10X,A)') '**                                                 **'
-    WRITE(*,'(10X,A)') '**      ANALYSIS TOOL FOR AUTOMATIC REDUCTION      **'
-    WRITE(*,'(10X,A)') '**                                                 **'
-    WRITE(*,'(10X,A)') '*****************************************************'
-    WRITE(*,*)
-    WRITE(*,'(10X,A,I0)') 'Number of flux records = ', iStpFlux
-    WRITE(*,*)
+    StartTimer = MPI_WTIME()
+    CALL Logo2()
 
     DO i=1,nr           ! Name,iReac,Mech,Class,Type,Param)
       CALL WriteReaction( TRIM(ReactionSystem(i)%Line1)       &
@@ -513,7 +510,10 @@ PROGRAM AtCSol
     ELSE
       WRITE(*,777) '    ** NO IMPORTANT SPECIES ARE DECLARED **'
     END IF
-      WRITE(*,*); WRITE(*,*)
+    TimeReduction = MPI_WTIME()-StartTimer
+    CALL ConvertTime(TimeReduction,unit)
+    WRITE(*,'(32X,A,1X,F10.4,A)') 'Time ISSA reduction = ', TimeReduction, unit
+    WRITE(*,*); WRITE(*,*)
   END IF
 
   ! --- Close MPI 

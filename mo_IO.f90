@@ -5,7 +5,7 @@ MODULE mo_IO
   SUBROUTINE Logo()
     USE mo_MPI
     IF (MPI_master) THEN
-      WRITE(*,777) 
+      WRITE(*,777) ! in Georgi16
       WRITE(*,777) '************ ********** ************ ********** ************'
       WRITE(*,777) "*                                                          *"
       WRITE(*,777) "*         _                ____      ____            ___   *"
@@ -30,6 +30,29 @@ MODULE mo_IO
     END IF
     777 FORMAT(10X,A)
   END SUBROUTINE Logo
+
+  SUBROUTINE Logo2()
+    USE mo_MPI
+    IF (MPI_master) THEN
+      WRITE(*,*)
+      WRITE(*,777) '******** ********** ************ ********** ********'
+      WRITE(*,777) "*                                                  *"
+      WRITE(*,777) "*       `MM'  6MMMMb\   6MMMMb\       dM.          *"
+      WRITE(*,777) "*        MM  6M'    `  6M'    `      ,MMb          *"
+      WRITE(*,777) "*        MM  MM        MM            d'YM.         *"
+      WRITE(*,777) "*        MM  YM.       YM.          ,P `Mb         *"
+      WRITE(*,777) "*        MM   YMMMMb    YMMMMb      d'  YM.        *"
+      WRITE(*,777) "*        MM       `Mb       `Mb    ,P   `Mb        *"
+      WRITE(*,777) "*        MM        MM        MM    d'    YM.       *"
+      WRITE(*,777) "*        MM        MM        MM   ,MMMMMMMMb       *"
+      WRITE(*,777) "*        MM  L    ,M9  L    ,M9   d'      YM.      *"
+      WRITE(*,777) "*       _MM_ MYMMMM9   MYMMMM9  _dM_     _dMM_     *"
+      WRITE(*,777) "*                                                  *"
+      WRITE(*,777) '******** ********** ************ ********** ********'
+      WRITE(*,*)
+    END IF
+    777 FORMAT(10X,A)
+  END SUBROUTINE Logo2
   !
   !
   SUBROUTINE Print_Run_Param()
@@ -85,7 +108,8 @@ MODULE mo_IO
     USE mo_control
     !
     REAL(dp) :: maxTRead,maxTSymb,maxTFac,maxTSolve,maxTRates,maxTJac &
-    &               , maxTInte,maxTAll,maxTSend,maxtNcdf,maxTErr,maxTRhs
+    &               , maxTInte,maxTAll,maxTSend,maxtNcdf,maxTErr,maxTRhs,maxTFlux
+    CHARACTER(8) :: unit(12)
     !
     CALL GetMaxTimes(maxTRead,Time_Read)
     CALL GetMaxTimes(maxTRates,TimeRates)
@@ -98,6 +122,21 @@ MODULE mo_IO
     CALL GetMaxTimes(maxTNcdf,TimeNetCDF)
     CALL GetMaxTimes(maxTErr,TimeErrCalc)
     CALL GetMaxTimes(maxTRhs,TimeRhsCalc)
+    CALL GetMaxTimes(maxTFlux,TimeFluxWrite)
+    maxTInte = maxTInte - maxTNcdf
+
+    CALL ConvertTime(maxTRead,unit(1)(:))
+    CALL ConvertTime(maxTSymb,unit(2)(:))
+    CALL ConvertTime(maxTNcdf,unit(3)(:))
+    CALL ConvertTime(maxTFlux,unit(4)(:))
+    CALL ConvertTime(maxTFac,unit(5)(:))
+    CALL ConvertTime(maxTRhs,unit(6)(:))
+    CALL ConvertTime(maxTSolve,unit(7)(:))
+    CALL ConvertTime(maxTRates,unit(8)(:))
+    CALL ConvertTime(maxTJac,unit(9)(:))
+    CALL ConvertTime(maxTErr,unit(10)(:))
+    CALL ConvertTime(maxTInte,unit(11)(:))
+    CALL ConvertTime(maxTAll,unit(12)(:))
     !
     IF (MPI_master) THEN
       ! print the statistics
@@ -116,19 +155,20 @@ MODULE mo_IO
       WRITE(*,*);  WRITE(*,*)
       WRITE(*,777)   'Statistics (Time):'
       WRITE(*,*)
-      WRITE(*,299) '    reading mechanism       =', maxTRead,' [sec]'
-      WRITE(*,299) '    symbolic phase          =', maxTSymb,' [sec]'
-      WRITE(*,299) '    writing NetCDF-File     =', maxTNcdf,' [sec]'; WRITE(*,*)
+      WRITE(*,299) '    reading mechanism       =', maxTRead,unit(1)
+      WRITE(*,299) '    symbolic phase          =', maxTSymb,unit(2)
+      WRITE(*,299) '    writing NetCDF-File     =', maxTNcdf,unit(3)
+      WRITE(*,299) '    writing flux-dataset    =', maxTFlux,unit(4) ; WRITE(*,*)
       !WRITE(*,777) '    ------------------------+----------------------------'
-      WRITE(*,299) '            factorisation   =', maxTFac  ,' [sec]'
-      WRITE(*,299) '          + right-hand side =', maxTRhs  ,' [sec]'
-      WRITE(*,299) '          + linear systems  =', maxTSolve,' [sec]'
-      WRITE(*,299) '          + reaction rates  =', maxTRates,' [sec]'
-      WRITE(*,299) '          + Jacobian        =', maxTJac  ,' [sec]'
-      WRITE(*,299) '          + error calc      =', maxTErr  ,' [sec]'
+      WRITE(*,299) '            factorisation   =', maxTFac  ,unit(5)
+      WRITE(*,299) '          + right-hand side =', maxTRhs  ,unit(6)
+      WRITE(*,299) '          + linear systems  =', maxTSolve,unit(7)
+      WRITE(*,299) '          + reaction rates  =', maxTRates,unit(8)
+      WRITE(*,299) '          + Jacobian        =', maxTJac  ,unit(9)
+      WRITE(*,299) '          + error calc      =', maxTErr  ,unit(10)
       WRITE(*,777) '    ------------------------=----------------------'
-      WRITE(*,299) '    integration             =', maxTInte-maxTNcdf,' [sec]'; WRITE(*,*)
-      WRITE(*,299) '    total runtime           =', maxTAll,' [sec]'
+      WRITE(*,299) '    integration             =', maxTInte,unit(11); WRITE(*,*)
+      WRITE(*,299) '    total runtime           =', maxTAll,unit(12)
       WRITE(*,*);  WRITE(*,*);  WRITE(*,*)
     END IF
   END SUBROUTINE
@@ -308,47 +348,6 @@ MODULE mo_IO
     WRITE(*,*)
   END SUBROUTINE WriteAnalysisFile
 
-!  SUBROUTINE StreamWriteFluxes(Rate,t,h)
-!    USE Kind_Mod
-!    USE mo_control, ONLY: FluxUnit, FluxFile, FluxMetaUnit, FluxMetaFile, iStpFlux
-!    REAL(dp) :: Rate(:)
-!    REAL(dp) :: t , h
-!
-!    INTEGER :: io_stat, io_pos
-!    CHARACTER(100) :: io_msg
-!
-!    OPEN(unit=FluxUnit,      file=FluxFile,  status='old',   action='write', &
-!    &    position='append', access='stream', iostat=io_stat, iomsg=io_msg    )
-!    CALL file_err(FluxFile,io_stat,io_msg)
-!    INQUIRE(FluxUnit, POS=io_pos)
-!    WRITE(FluxUnit) Rate,t,h
-!    CLOSE(FluxUnit)
-!
-!    iStpFlux   = iStpFlux + 1
-!    OPEN(unit=FluxMetaUnit, file=FluxMetaFile, status='old', action='write', position='append')
-!    WRITE(FluxMetaUnit,*) iStpFlux, io_pos 
-!    CLOSE(FluxMetaUnit)
-!  END SUBROUTINE StreamWriteFluxes
-
-
-  SUBROUTINE SequentialWriteFluxes(Rate,t,h)
-    USE Kind_Mod
-    USE mo_control, ONLY: FluxUnit, FluxFile, FluxMetaUnit, FluxMetaFile, iStpFlux
-    REAL(dp) :: Rate(:)
-    REAL(dp) :: t , h
-
-    INTEGER :: io_stat, io_pos
-    CHARACTER(100) :: io_msg
-
-    OPEN(unit=FluxUnit,      file=FluxFile,  status='old',   action='write', &
-    &    position='append', access='sequential', iostat=io_stat, iomsg=io_msg )
-    CALL file_err(FluxFile,io_stat,io_msg)
-    WRITE(FluxUnit,'(*(1X,E16.10))') Rate, t, h
-    CLOSE(FluxUnit)
-
-  END SUBROUTINE SequentialWriteFluxes
-
-
   SUBROUTINE file_err(filename,io_stat,io_msg)
     CHARACTER(Len=*), INTENT(in) :: filename
     INTEGER         , INTENT(in) :: io_stat
@@ -419,5 +418,27 @@ MODULE mo_IO
     OPEN(unit=UnitNr, file=FileName, status='old', action='read', access='stream', iostat=io_stat)
     CALL file_err(FileName,io_stat)
   END SUBROUTINE OpenFile_rStream
+
+  SUBROUTINE ConvertTime(t,fmt)
+    USE Kind_Mod
+    REAL(dp),   INTENT(INOUT) :: t    ! in seconds
+    CHARACTER(8), INTENT(OUT) :: fmt
+
+    IF ( t > 60.0_dp) THEN
+      t   = t/60.0_dp
+      fmt = ' [min]'
+      IF ( t > 60.0_dp) THEN
+        t   = t/60.0_dp
+        fmt = ' [hours]'
+        IF ( t > 24.0_dp) THEN
+          t   = t/24.0_dp
+          fmt = ' [days]'
+        END IF
+      END IF
+    ELSE
+      fmt = ' [sec]'
+    END IF
+    
+  END SUBROUTINE ConvertTime
 END MODULE mo_IO
 

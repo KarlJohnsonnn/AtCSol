@@ -2643,6 +2643,22 @@ CLASS: AQUA
 aHO + aO3 = aO2 + aHO2 
 TEMP3:  A: 1e8 B: 0.0 
  
+CLASS: AQUA  
+aCO2 + [aH2O] = aH2CO3 
+TEMP3:  A: 4.3e-2 B: -9250.0 
+ 
+CLASS: AQUA  
+aH2CO3 = aCO2 + [aH2O] 
+TEMP3:  A: 5.6e4 B: -8500.0 
+ 
+CLASS: AQUA  
+SO3mm + aCH2OH2 = HMSm + OHm 
+TEMP3:  A: 1.36e5  B: -2450.0 
+ 
+CLASS: AQUA  
+HMSm + OHm = SO3mm + aCH2OH2 
+TEMP3:  A: 4.15e3 B: -5530.0 
+ 
 COMMENT  CLASS: DISS, TYPE: DCONST 
 COMMENT  Temperature dependent dissociation 
 COMMENT  Ke = A exp(B*(1/T -  1/298));  
@@ -2658,14 +2674,6 @@ COMMENT  B= k(back reaction)
 CLASS: DISS   
 [aH2O]          =  OHm + Hp 
 DTEMP:   A: 1.8e-16  B: -6800.0  C: 1.3e11 
- 
-CLASS: AQUA  
-aCO2 + [aH2O] = aH2CO3 
-TEMP3:  A: 4.3e-2 B: -9250.0 
- 
-CLASS: AQUA  
-aH2CO3 = aCO2 + [aH2O] 
-TEMP3:  A: 5.6e4 B: -8500.0 
  
 CLASS: DISS   
 aH2CO3        = HCO3m + Hp  
@@ -2750,14 +2758,6 @@ DTEMP:   A: 2.46e-2  B: 2500.0  C: 5.69e-3
 CLASS: DISS  
 HSO3m + aCH2OH2 = HMSm + [aH2O] 
 DTEMP:  A: 2e8  B: -2500.0  C: 2.2e-9 
- 
-CLASS: AQUA  
-SO3mm + aCH2OH2 = HMSm + OHm 
-TEMP3:  A: 1.36e5  B: -2450.0 
- 
-CLASS: AQUA  
-HMSm + OHm = SO3mm + aCH2OH2 
-TEMP3:  A: 4.15e3 B: -5530.0 
  
 CLASS: DISS   
 aCL + CLm = CL2m 

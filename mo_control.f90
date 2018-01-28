@@ -23,8 +23,9 @@
 &                    , ODEsolver  = ''    & ! Method for Rosenbrock Integration
 &                    , TargetFile = ''      ! file for reductions analysis (target species)
 
-      CHARACTER(80) :: FluxMetaFile = 'fluxmeta.dat' ! meta data for unformatted flux data
-      CHARACTER(80) :: FluxFile     = 'fluxes.dat'   ! flux data (unformatted)
+      CHARACTER(7)  :: OutputPath   = 'OUTPUT/'      ! path to output folder
+      CHARACTER(19) :: FluxMetaFile = 'OUTPUT/fluxmeta.dat' ! meta data for unformatted flux data
+      CHARACTER(17) :: FluxFile     = 'OUTPUT/fluxes.dat'   ! flux data (unformatted)
 !
 !--- Unit Numbers
       INTEGER, PARAMETER :: RunUnit      = 101  & 
@@ -53,7 +54,8 @@
 &              , Teq             & ! prints out pathway analysis file 
 &              , pHSet           & ! Initial pH by charge balance (1=on, 0=off)
 &              , WaitBar         & ! ladebalken im terminal bei simulation (=1, default=0)
-&              , FluxAna           ! writing flux data and analyse after simulaiton -> print new reaction file
+&              , FluxAna         & ! writing flux data and analyse after simulaiton -> print new reaction file
+&              , Simulation        ! calculation of species concentration 
 
       INTEGER :: Error_Est         ! error estimation 1 = inf norm  , 2 = euklid norm
     
@@ -105,6 +107,7 @@
       REAL(dp) :: TimeErrCalc=0.0d0
       REAL(dp) :: TimeFluxWrite=0.0d0
       REAL(dp) :: TimeRhsCalc=0.0d0
+      REAL(dp) :: TimeReduction=0.0d0
   
       REAL(dp) :: TimeIntegration=0.0d0
       REAL(dp) :: TimeRateA=0.0d0

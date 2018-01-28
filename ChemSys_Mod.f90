@@ -135,8 +135,8 @@ MODULE Chemsys_Mod
   INTEGER :: UnitGas=0
   INTEGER :: UnitAqua=0
   !
-  CHARACTER(20) :: Filename !='Salt'
-  CHARACTER(20) :: IniName  !='Salt'
+  CHARACTER(20) :: Filename
+  CHARACTER(20) :: IniName
   !
   REAL(dp), PARAMETER :: RGas=8.3145d0
   REAL(dp), PARAMETER :: TRef=280.0d0 !298.15d0
@@ -623,7 +623,9 @@ MODULE Chemsys_Mod
     INTEGER,      OPTIONAL, INTENT(IN) :: IndexSet(:)
     CHARACTER(*), OPTIONAL             :: NewName
     
-    INTEGER :: i, j
+    INTEGER :: iR, j
+    INTEGER :: nR
+    LOGICAL :: done = .FALSE.
     
     OPEN(UNIT=989,FILE=ADJUSTL(TRIM(NewName)),STATUS='UNKNOWN')
   
@@ -637,40 +639,80 @@ MODULE Chemsys_Mod
     WRITE(989,'(A)') 'UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)'
     WRITE(989,'(A)') 'UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)'
     WRITE(989,'(A)') ''
-    WRITE(989,'(A)') '#  ===================   Gas Phase      ======================'
     WRITE(989,'(A)') '#'
+
  
     IF (PRESENT(IndexSet)) THEN
+      nR = SIZE(IndexSet)
       j = 0
+
+      ! Print IndexSet of reactions
       DO 
         j = j + 1
-        i = IndexSet(j)
-        WRITE(989,'(A)') 'CLASS: '//TRIM(RS(i)%Type)
-        WRITE(989,'(A)') TRIM(RS(i)%Line1)
-        IF ( TRIM(RS(i)%Line3)   /= '' ) WRITE(989,'(A)') TRIM(RS(i)%Line3)
-        !IF ( TRIM(RS(i)%Special%Formula) /= '' ) WRITE(989,'(A,I0)') 'SPECIAL: '//TRIM(RS(i)%Special%Formula)//';  ',RS(i)%Special%nVariables
-        IF ( TRIM(RS(i)%Factor)  /= '' ) WRITE(989,'(A)') 'FACTOR: '//TRIM(RS(i)%Factor)
-        WRITE(989,'(A)') 
-        IF ( MAXVAL(INDEX(RS(i)%Type,['DISS','HENR'])) > 0 ) j = j + 1
-        IF ( j >= SIZE(IndexSet) ) EXIT
+        iR = IndexSet(j)
+
+        IF ( .NOT. RS(iR)%bR ) THEN
+          ! if direction is --> then
+          CALL PrintReac(iR)
+        ELSE
+          ! for equilibrium reactions we need to check if the correct one is printet
+          ! by correct one i mean the reaction which occurs in the original system
+          ! not the reversed reaction string, becaus the evaluation of the rate 
+          ! constant would be garbage if the reversed reaction string is printet
+          IF ( iR-1 /= IndexSet(j-1) ) THEN
+            CALL PrintReac(iR-1)
+          END IF
+        END IF
+
+        IF ( j >= nR ) EXIT
       END DO
     ELSE
-      i = 0
-      DO 
-        i = i + 1
-        WRITE(989,'(A)') 'CLASS: '//TRIM(RS(i)%Type)
-        WRITE(989,'(A)') TRIM(RS(i)%Line1)
-        IF ( TRIM(RS(i)%Line3)   /= '' ) WRITE(989,'(A)') TRIM(RS(i)%Line3)
-        !IF ( TRIM(RS(i)%Special%Formula) /= '' ) WRITE(989,'(A,I0)') 'SPECIAL: '//TRIM(RS(i)%Special%Formula)//';  ',RS(i)%Special%nVariables
-        IF ( TRIM(RS(i)%Factor)  /= '' ) WRITE(989,'(A)') 'FACTOR: '//TRIM(RS(i)%Factor)
-        WRITE(989,'(A)') 
+      nR = SIZE(RS)
 
-        IF ( i >= SIZE(RS) ) EXIT
-        IF ( MAXVAL(INDEX(RS(i)%Type,['DISS','HENR'])) > 0 ) i = i + 1
+      ! Print all reaction in RS list
+      iR = 0
+      DO 
+        iR = iR + 1
+        CALL PrintReac(iR)
+        IF ( iR >= nR ) EXIT
+        IF ( MAXVAL(INDEX(RS(iR)%Type,['DISS','HENR'])) > 0 ) iR = iR + 1
       END DO
+    
     END IF
     CLOSE(989)
+
+      CONTAINS
+        
+      SUBROUTINE PrintReac(iR)
+        INTEGER :: iR
+        WRITE(989,'(A)') 'CLASS: '//TRIM(RS(iR)%Type)
+        WRITE(989,'(A)') TRIM(RS(iR)%Line1)
+        IF ( TRIM(RS(iR)%Line3) /= '' ) WRITE(989,'(A)') TRIM(RS(iR)%Line3)
+        !IF ( TRIM(RS(i)%Special%Formula) /= '' ) WRITE(989,'(A,I0)') 'SPECIAL: '//TRIM(RS(i)%Special%Formula)//';  ',RS(i)%Special%nVariables
+        IF ( TRIM(RS(iR)%Factor)  /= '' ) WRITE(989,'(A)') 'FACTOR: '//TRIM(RS(iR)%Factor)
+        WRITE(989,'(A)') 
+      END SUBROUTINE PrintReac
   END SUBROUTINE Print_SysFile
+
+  FUNCTION RemoveSpaces(String) RESULT(StringOut)
+    ! replaces multiple spaces in string by one space
+    CHARACTER(*), INTENT(IN) :: String
+    CHARACTER(LEN(String))   :: StringOUT
+
+    INTEGER :: i
+
+    StringOut = TRIM(String)
+
+    DO
+      i = INDEX(TRIM(StringOut),'  ')
+      IF ( i == 0 ) EXIT
+      StringOut = TRIM(ADJUSTL(StringOut(:i-1))) &
+      &           //' '//                        &
+      &           TRIM(ADJUSTL(StringOut(i+1:)))
+    END DO
+
+  END FUNCTION RemoveSpaces
+
   !
   SUBROUTINE Print_ChemFile(RS,File,Unit,CK)
     ! IN:
