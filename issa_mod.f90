@@ -233,7 +233,7 @@ MODULE issa
       &  TRIM(y_name(SpcCyc(iCycle)%List(SpcCyc(iCycle)%len)))
       WRITE(Reac_Unit,*)
 
-      WRITE(Reac_Unit,'(5X,A)') '*** Associated Reactions ***'
+      WRITE(Reac_Unit,'(5X,A)') '*** Number of associated reactions = ',ReacCycles(iCycle)%len,' ***'
       DO iReac = 1 , ReacCycles(iCycle)%len
         WRITE(Reac_Unit,'(2X,"Reaction(",I0,") = ",A)')  ReacCycles(iCycle)%List(iReac),TRIM(RemoveSpaces(RS(ReacCycles(iCycle)%List(iReac))%Line1))
       END DO
@@ -243,9 +243,8 @@ MODULE issa
 
     iCycle = SIZE(ReacCycles)
     ! print noncyclic remainder and associated reactions
-    WRITE(Reac_Unit,'(5X,A)') '****************************'
-    WRITE(Reac_Unit,'(5X,A)') '*** Non-Cyclic remainder ***'
-    WRITE(Reac_Unit,'(5X,A)') '****************************'
+    WRITE(Reac_Unit,'(5X,A)') '***    Non-Cyclic remainder    ***'
+    WRITE(Reac_Unit,'(5X,A,I0)') '       Number of reactions = ',ReacCycles(iCycle)%len
     DO iReac = 1 , ReacCycles(iCycle)%len
       WRITE(Reac_Unit,'(2X,"Reaction(",I0,") = ",A)')  ReacCycles(iCycle)%List(iReac),TRIM(RemoveSpaces(RS(ReacCycles(iCycle)%List(iReac))%Line1))
     END DO
