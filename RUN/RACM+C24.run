@@ -20,8 +20,7 @@
 &METEO
   pHSet       = .T.          ! Berechne pH Wert zu Beginn
   LWCLevelmax = 2.0d-8       ! minimaler LWC Wert [l/cm3]
-  LWCLevelmin = 2.0d-8       ! minimaler LWC Wert [l/cm3]
-  !LWCLevelmin = 3.0d-4       ! maximaler LWC Wert [l/cm3]
+  LWCLevelmin = 3.0d-4       ! maximaler LWC Wert [l/cm3]
   Dust        = 1.0d0        ! Zenith Berechnung       (Staub)
   idate       = 010621       ! ---------''---------    (Datum: YYMMDD)
   rlat        = 45.0d0       ! ---------''---------    (Breitengrad)
@@ -46,4 +45,5 @@
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock 
   MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
+  eps_red     = 0.01d0
 /END

@@ -302,6 +302,10 @@
       CHARACTER(LenName), ALLOCATABLE :: Name(:)
       INTEGER,            ALLOCATABLE :: Index(:)
     END TYPE Families_T
+    
+
+
+    REAL(dp) :: eps_red       ! threshold for reduction procedure
    
  END MODULE mo_control
 

@@ -1,9 +1,8 @@
 &SCENARIO
   BSP      = 'LLNL_MD'
   WaitBar  = .T.
-  ChemKin  = .T.        ! input mechanism in ChemKin notation
   FluxAna  = .F.
-  Lehmann  = .F.
+  ChemKin  = .T.
 /END
 &FILES
   SysFile  = 'ckCHEM/LLNL_MD/LLNL_MD_neu.sys'

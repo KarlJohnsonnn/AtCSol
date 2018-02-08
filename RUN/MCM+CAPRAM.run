@@ -10,7 +10,7 @@
   DataFile = 'DAT/MCM32_CAPRAM40_full.dat'
   InitFile = 'INI/Urban.ini'
   MetFile  = 'MET/Urban.met'
-  TargetFile = 'TAR/MCM+CAPRAM.ctrl'
+  TargetFile = 'TAR/MCM+CAPRAM_2.ctrl'
 /END
 &TIMES
   tBegin      = 0.0d0
@@ -46,4 +46,5 @@
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock
   MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
+  eps_red     = 0.9999
 /END

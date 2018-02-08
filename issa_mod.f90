@@ -55,7 +55,7 @@ MODULE issa
     WRITE(*,777) 'Important Species:'
     WRITE(*,*)
     DO j=1,SIZE(Idx)
-      WRITE(*,'(10X,A,I2,A,I6,5X,A)') '    - S_imp(',j,') = ',Idx(j),TRIM(y_name(Idx(j)))
+      WRITE(*,'(10X,A,I0,A,I6,5X,A)') '    - S_imp(',j,') = ',Idx(j),TRIM(y_name(Idx(j)))
     END DO
     WRITE(*,*); WRITE(*,*)
 
@@ -119,7 +119,7 @@ MODULE issa
     WRITE(*,777) 'Species Familes:'
     WRITE(*,*)
     DO j=1,SIZE(Fam)
-      WRITE(*,'(10X,A,I2,A,*(A))')      '    - Family(',j,')  -->  ',    &
+      WRITE(*,'(10X,A,I0,A,*(A))')      '    - Family(',j,')  -->  ',    &
       &    ( TRIM(Fam(j)%Name(i))//' , ' , i=1,SIZE(Fam(j)%Name)-1 ),&
       &      TRIM(Fam(j)%Name(SIZE(Fam(j)%Name)))
     END DO
@@ -233,7 +233,7 @@ MODULE issa
       &  TRIM(y_name(SpcCyc(iCycle)%List(SpcCyc(iCycle)%len)))
       WRITE(Reac_Unit,*)
 
-      WRITE(Reac_Unit,'(5X,A)') '*** Number of associated reactions = ',ReacCycles(iCycle)%len,' ***'
+      WRITE(Reac_Unit,'(5X,A,I0,A)') '*** Number of associated reactions = ',ReacCycles(iCycle)%len,' ***'
       DO iReac = 1 , ReacCycles(iCycle)%len
         WRITE(Reac_Unit,'(2X,"Reaction(",I0,") = ",A)')  ReacCycles(iCycle)%List(iReac),TRIM(RemoveSpaces(RS(ReacCycles(iCycle)%List(iReac))%Line1))
       END DO
@@ -490,7 +490,7 @@ MODULE issa
     INTEGER,  ALLOCATABLE :: Positions(:)
     REAL(dp), ALLOCATABLE :: Rates(:,:)
     REAL(dp), ALLOCATABLE :: time(:), dt(:)
-    REAL(dp)       :: avgRate(nr)
+    REAL(dp)       :: avgRate(nr), avgTime, avgEmis
     INTEGER        :: i, j, jj, k, kk, l, dummy, pos, iRate
     
     INTEGER        :: io_stat = 0
@@ -498,7 +498,7 @@ MODULE issa
 
     INTEGER, ALLOCATABLE  :: S_imp(:), R_imp(:)    ! Sets of importent Species/Reactions
     INTEGER, ALLOCATABLE  :: S_imp_new(:)
-    INTEGER               :: nS_imp=0, nR_imp=0, nR_k=0, nIter=0, nStp=0
+    INTEGER               :: nS_imp=0, nR_imp=0, nR_k=0, nIter=0, nStp=0, nAvg=0
     INTEGER               :: iS=0, iSpc=0, iReac=0
     INTEGER               :: nR_last=0
 
@@ -517,7 +517,6 @@ MODULE issa
     INTEGER,  ALLOCATABLE :: f_p(:),  g_p(:)    ! permuation vector of reaction set
     INTEGER,  ALLOCATABLE :: f_iR(:), g_iR(:)    ! permuation vector of reaction set
 
-    REAL(dp), PARAMETER   :: eps_red = 0.11_dp
     INTEGER               :: lbound, rbound
 
 
@@ -561,7 +560,10 @@ MODULE issa
     !END DO
     !CLOSE(FluxUnit)
 
-    Tspan = [43200.0_dp,129600.0_dp]
+    !Tspan = [tBegin/3600.0_dp+1.0_dp , tEnd/3600.0_dp-1.0_dp]  ! analysis time span 1 Uhr bis 23 Uhr änchster tag
+    Tspan = [12.0_dp , 36.0_dp] ! convert in seconds
+    Tspan = Tspan * 3600.0_dp ! convert in seconds
+    
     lbound = 1
     DO i=1,iStpFlux
       IF ( time(i) < Tspan(1) ) THEN
@@ -601,21 +603,36 @@ MODULE issa
 
 
     ! ITERATIVE LOOP
-    nStp  = rbound - lbound
+    nStp = rbound - lbound
+    nAvg = 3
 
-    ALLOCATE(Rates(nr,2))
+    ALLOCATE(Rates(nr,nAvg))
 
     DO iRate = lbound,rbound
 
+      avgRate = 0.0_dp
+      avgEmis = 0.0_dp
+      avgTime = 0.0_dp
+
       CALL OpenFile_rStream(FluxUnit,FluxFile)
-      DO i = 1,2
-        READ( FluxUnit, POS=Positions(iRate+i), IOSTAT=io_stat, IOMSG=io_msg)  Rates(:,i)
+      DO i = 0,nAvg-1
+        READ( FluxUnit, POS=Positions(iRate+i), IOSTAT=io_stat, IOMSG=io_msg)  Rates(:,i+1)
         IF ( io_stat>0 ) WRITE(*,'(10X,A,I0,A)') '   ERROR reading fluxes.dat :: ',io_stat,'  '//TRIM(io_msg)
         IF ( io_stat<0 ) EXIT
       END DO
       CLOSE(FluxUnit)
 
-      avgRate = (Rates(:,2) - Rates(:,1)) / dt(iRate)
+      ! Vorwärtsdifferenzenquotient
+      avgRate = ABS(Rates(:,2) - Rates(:,1)) / dt(iRate)
+      ! Zentraler Differenzenquotient
+      !avgRate = (Rates(:,3) - Rates(:,1)) / (dt(iRate)+dt(iRate+1))
+
+      ! Zeitmittelwert
+      !DO i = 0,nAvg-1
+      !  avgRate = avgRate + Rates(:,i+1)*dt(i+iRate)
+      !  avgTime = avgTime + dt(i+iRate)
+      !END DO
+      !avgRate = avgRate/avgTime
 
       ITERATIVE_PROCEDURE: DO
         
@@ -634,6 +651,8 @@ MODULE issa
           iSpc       = S_imp(iS)
           rp_iSpc(1) = pos_BAT%RowPtr(iSpc);  rp_iSpcP1(1) = pos_BAT%RowPtr(iSpc+1)-1
           rp_iSpc(2) = neg_BAT%RowPtr(iSpc);  rp_iSpcP1(2) = neg_BAT%RowPtr(iSpc+1)-1
+
+          !avgEmis = y_emi(iSpc)*SUM(dt(iRate:iRate+nAvg-1))/avgTime
         
           !WRITE(*,*)
           !WRITE(*,*) '  Important species:  ', TRIM(y_name(iSpc))
@@ -653,6 +672,7 @@ MODULE issa
             IF (any_sources) THEN
               f_iR  = [ pos_BAT%ColInd(source_reacs) ]
               inR_f = SIZE(f_iR)
+              !f_iJk = [ pos_BAT%Val(source_reacs) * avgRate(f_iR) + avgEmis ] 
               f_iJk = [ pos_BAT%Val(source_reacs) * avgRate(f_iR) ]
               f_iJk = f_iJk / SUM(f_iJk)
 
@@ -812,7 +832,7 @@ MODULE issa
       SUBROUTINE Progress_Step(nStp,n,nIter,nSpc,nReac)
         INTEGER :: nStp,n,nIter,nSpc,nReac
         WRITE(*,123) char(13),      &
-        &           'Step ',nStp,n,' analysed   --->   ',&
+        &           'Timestep ',nStp,n,' analysed   --->   ',&
         &           'Iteration = ', nIter,            &
         &           'nSpecies = ',  nSpc,                &
         &           'nReactions = ',nReac

@@ -11,6 +11,7 @@ list*
 *.mod
 REACTION_PATHS/*
 OUTPUT/*
+*.png
 *.txt
 *.dat
 *.exe*

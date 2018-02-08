@@ -293,7 +293,7 @@ PROGRAM AtCSol
     IF ( hasAquaSpc )  WRITE(*,798) 'aqueous', SUM(InitValAct( bAs(1):bAs(2) )) , fmt0
     IF ( hasSolidSpc ) WRITE(*,798) 'solid  ', SUM(InitValAct( bSs(1):bSs(2) )) , fmt0
     IF ( hasPartiSpc ) WRITE(*,798) 'parti  ', SUM(InitValAct( bPs(1):bPs(2) )) , fmt0
-    WRITE(*,800) SUM(y_emi) , fmt0
+    WRITE(*,800) SUM(y_emi) , '  [molec/cm3/s]'
 
     IF ( Teq ) THEN
       WRITE(*,801) Temperature0
@@ -462,8 +462,8 @@ PROGRAM AtCSol
     TimeJac  = TimeJac + MPI_WTIME() - StartTimer
   END IF
 
-  WRITE(*,777,ADVANCE='NO') 'Simulation? [y/n]   ';  READ(*,*) simul
-  IF ( simul=='y' ) THEN
+  !WRITE(*,777,ADVANCE='NO') 'Simulation? [y/n]   ';  READ(*,*) simul
+  !IF ( simul=='y' ) THEN
     ! open file to save the fluxes 
     IF ( MPI_master .AND. FluxAna ) THEN
       iStpFlux = 0
@@ -485,7 +485,7 @@ PROGRAM AtCSol
     Timer_Finish = MPI_WTIME() - Timer_Start + Time_Read
     
     CALL Output_Statistics
-  END IF
+  !END IF
 
 
   !************************************************************************************************

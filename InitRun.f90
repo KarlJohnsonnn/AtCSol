@@ -55,7 +55,8 @@
       &                  StpFlux ,    &
       &                  nOutP ,      &
       &                  DebugPrint , &
-      &                  MatrixPrint 
+      &                  MatrixPrint, &
+      &                  eps_red 
 
 !
 !===================================================================
@@ -166,6 +167,7 @@
       ODEsolver   = 'ROS34PW3'  ! ROW scheme
       Ordering    = 8           ! sparse LU, no numerical pivoting
       ParOrdering = -1          ! -1 = serial ordering, 0,1,2 = parallel ordering
+      eps_red     = 0.11_dp
       
 !--- Read NUMERICS namelist
       READ(RunUnit,NUMERICS,IOSTAT=io_stat,IOMSG=io_msg)

@@ -58,7 +58,7 @@ MODULE Cycles_Mod
     TYPE(SpRowIndColInd_T) :: sub_A
     TYPE(List), ALLOCATABLE :: scc(:) !, sub_Ak(:)
     INTEGER :: n, s, least_node, nspc
-    INTEGER :: i, j, k, ispc , cnt, nnz, iFam
+    INTEGER :: i, j, k, ispc , cnt, nnz, iFam, nFam
     INTEGER :: iC
     INTEGER, ALLOCATABLE :: comp_nodes(:)
     INTEGER, ALLOCATABLE :: iCyc_red(:)
@@ -78,8 +78,6 @@ MODULE Cycles_Mod
     WRITE(*,777) REPEAT('*',39)
     WRITE(*,777) '********** Structure Analysis *********'
     WRITE(*,777) REPEAT('*',39)
-    WRITE(*,*)
-    WRITE(*,'(10X,A,I0)') '    Maximum cycle length = ',maxlen
     WRITE(*,*)
 
     n    = A%n
@@ -104,8 +102,9 @@ MODULE Cycles_Mod
     
     ! diese schleife später nur über ausgewählte knoten s
     s = 1
+    nFam = SIZE(FAMS)
 
-    DO iFam = 1 , SIZE(FAMS)
+    DO iFam = 1 , nFam
 
       SpcList = [ FAMS(iFam)%Index ]
       nspc = SIZE(SpcList)
@@ -140,9 +139,9 @@ MODULE Cycles_Mod
 
           DEALLOCATE(scc)
           s = s + 1
-          CALL Progress(iFam,j,nspc)
+          CALL Progress(iFam,nFam,j,nspc)
         ELSE
-          CALL Progress(iFam,nspc,nspc)
+          CALL Progress(nFam,nFam,nspc,nspc)
           EXIT
         END IF
       END DO
@@ -692,10 +691,10 @@ MODULE Cycles_Mod
 
   END FUNCTION Generate_Submatrix
 
-  SUBROUTINE Progress(i,j,k)
-    INTEGER(4)  :: i,j,k 
+  SUBROUTINE Progress(i,ii,j,k)
+    INTEGER(4)  :: i,ii,j,k 
     ! print the progress bar.
-    WRITE(*,'(A1,14X,3(A,I0),A,$)') char(13),'Family :: ',i,'  Node :: (',j,'/',k,')  processed.'
+    WRITE(*,'(A1,14X,4(A,I0),A,$)') char(13),'Family :: (',i,'/',ii,')    Node :: (',j,'/',k,')  processed.'
   END SUBROUTINE Progress
 
 END MODULE Cycles_Mod

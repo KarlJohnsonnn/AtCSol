@@ -123,7 +123,7 @@ MODULE mo_IO
     CALL GetMaxTimes(maxTErr,TimeErrCalc)
     CALL GetMaxTimes(maxTRhs,TimeRhsCalc)
     CALL GetMaxTimes(maxTFlux,TimeFluxWrite)
-    maxTInte = maxTInte - maxTNcdf
+    maxTInte = maxTInte - maxTNcdf - maxTFlux
 
     CALL ConvertTime(maxTRead,unit(1)(:))
     CALL ConvertTime(maxTSymb,unit(2)(:))
