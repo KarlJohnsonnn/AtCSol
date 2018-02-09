@@ -8,7 +8,7 @@
 &FILES
   SysFile  = 'CHEM/MCM32+CAPRAM40_red.sys'  
   DataFile = 'DAT/MCM32_CAPRAM40_full.dat'
-  InitFile = 'INI/Urban.ini'
+  InitFile = 'INI/Urban2.ini'
   MetFile  = 'MET/Urban.met'
   !TargetFile  = 'TAR/CAPRAM.ctrl'   
 /END

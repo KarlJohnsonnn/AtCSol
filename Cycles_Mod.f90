@@ -141,7 +141,7 @@ MODULE Cycles_Mod
           s = s + 1
           CALL Progress(iFam,nFam,j,nspc)
         ELSE
-          CALL Progress(nFam,nFam,nspc,nspc)
+          CALL Progress(iFam,nFam,nspc,nspc)
           EXIT
         END IF
       END DO

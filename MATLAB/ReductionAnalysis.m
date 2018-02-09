@@ -4,28 +4,35 @@ clear all
 
 global b1 b2 len_f len_r mech
 
+%% --------------> DEFINE PATHS <--------------
 
-%% BEGIN MAIN
-% Reading .chem file
-
-
-% paths
+% declare path to AtCSol folder
 AtCSol_path = '/Users/schimmel/Code/AtCSol/';
 
+% declare mechanism (.chem, BSP, ini)
+chem_file_f = 'MCM32_CAPRAM40_full.chem';
+chem_file_r = 'MCM32+CAPRAM40_red.chem';
 
-Chem_path = [AtCSol_path,'CHEM/'];
+mech     = 'MCM32+C40';             % name BSP in .run file
+ini_file = 'Urban2.ini';            % name of initial data set in .run file
+
+
+% RACM + CAPRAM2.4 
+% Chem_file_f = 'RACM+C24.chem';
+% Chem_file_r = 'RACM+C24_red.chem';
+% mech     = 'RACM+C24';
+% ini_file = 'Urban.ini';
+
+
+
+
+
+%% BEGIN MAIN
+
+chem_path = [AtCSol_path,'CHEM/'];
 ncdf_path = [AtCSol_path,'NetCDF/'];
 fig_path  = [AtCSol_path,'OUTPUT/'];
 ini_path  = [AtCSol_path,'INI/'];
-
-% files
-Chem_file_f = 'MCM32_CAPRAM40_full.chem';
-Chem_file_r = 'MCM32+CAPRAM40_red.chem';
-ini_file    = 'Urban.ini';
-
-% mechanism (BSP)
-mech = 'MCM32+C40';
-% mech = 'RACM+C24';
 
 
 % NetCDF files
@@ -33,13 +40,13 @@ m_full = [ncdf_path, mech, '_full.nc'];
 m_red  = [ncdf_path, mech, '_red.nc'];
 
 % plot intervall
-b1 = 12.0;   % 12 uhr mittags
-b2 = 36.0;   % 12 uhr mittags nächster tag
+b1 = 12.0;   % 12 noon
+b2 = 36.0;   % 12 noon next day
 
 
 % read chem-file (numbers and species names)
-Full_Mech    = ReadChemFile([Chem_path,Chem_file_f]);
-Reduced_Mech = ReadChemFile([Chem_path,Chem_file_r]);
+Full_Mech    = ReadChemFile([chem_path,chem_file_f]);
+Reduced_Mech = ReadChemFile([chem_path,chem_file_r]);
 
 % analyse Numbers
 Analyse_SpeciesNumers(Full_Mech,Reduced_Mech);
@@ -75,17 +82,11 @@ for iSpc = 1:n_diag
     % calculate deviations
     dev{iSpc} = deviation(c_f{iSpc},c_r{iSpc});
     
-    Plot_Concentrations(t_f,t_r,c_f{iSpc},c_r{iSpc},dev{iSpc},Diag_Spc{iSpc})
+   
+%     Plot_Concentrations(t_f,t_r,c_f{iSpc},c_r{iSpc},dev{iSpc},Diag_Spc{iSpc})
 end
 
-
-
-
-
-
-
-
-
+Analyse_SpeciesDeviation(c_f,c_r,dev,Diag_Spc)
 
 
 
@@ -107,7 +108,7 @@ n_r = [ red.SpcNumbers.nspc,    red.SpcNumbers.nsgas,   red.SpcNumbers.nsaqua, .
 n_perc = zeros(1,6);
 for i=1:6
     if ( n_f(i) > 0 )
-        n_perc(i) = 1.0 - n_r(i)/n_f(i);
+        n_perc(i) = 100.0 - n_r(i)/n_f(i)*100;
     end
 end
 n = [ n_f ; n_r ; n_perc]';
@@ -115,13 +116,13 @@ n = [ n_f ; n_r ; n_perc]';
 
 disp(' ');disp(' ');disp(' ');
 fprintf(' ------------------------------------------------------------------------- \n');
-fprintf(' --------------> Analysis of species numbers in comparison <-------------- \n');
+fprintf(' ---------------------> Analysis of species numbers <--------------------- \n');
 fprintf(' ------------------------------------------------------------------------- \n');
 disp(' ');
 fprintf(' -----------------------+---------------+-------------+------------------- \n');
 fprintf('                        |      full     |    reduced  |  reduction-rate    \n');
 fprintf(' -----------------------+---------------+-------------+------------------- \n');
-fprintf(' Number of species      |    %6d     |    %6d   |    %8.4f [%%]\n',n(1,:));
+fprintf(' number of species      |    %6d     |    %6d   |    %8.4f [%%]\n',n(1,:));
 fprintf(' -----------------------+---------------+-------------+------------------- \n');
 fprintf('         - gaseous      |    %6d     |    %6d   |    %8.4f [%%]\n',n(2,:));
 fprintf('         - aqueous      |    %6d     |    %6d   |    %8.4f [%%]\n',n(3,:));
@@ -132,6 +133,58 @@ fprintf(' -----------------------+---------------+-------------+----------------
 disp(' ');
 end
 
+% Plot the statistic for species numbers
+function Analyse_SpeciesDeviation(c_f,c_r,dev,SpcList)
+
+nSpc = length(SpcList);
+
+exp_thresh = -20;
+
+disp(' ');disp(' ');disp(' ');
+fprintf(' --------------------------------------------------------------------------------------------- \n');
+fprintf(' ------------------------------> Analysis of species deviation <------------------------------ \n');
+fprintf(' --------------------------------------------------------------------------------------------- \n');
+fprintf(' --                    printing species with concentration values > 1.0e%3d                 -- \n',exp_thresh);
+fprintf(' ---------------------------------+---------------------------------------+------------------- \n');
+fprintf('                                  |              daily maxima             |                    \n');
+fprintf('             species              |       full        |      reduced      |   max. deviation   \n');
+fprintf(' ---------------------------------+-------------------+-------------------+------------------- \n');
+
+
+for iSpc = 1:nSpc
+    % add legend with maxdev
+    [pks_f,locs_f] = findpeaks(c_f{iSpc});
+    [pks_r,locs_f] = findpeaks(c_r{iSpc});
+    
+    if isempty(pks_f)
+        [max_f,locs_f] = max(c_f{iSpc});
+    else
+        [max_f,locs_f] = max(pks_f);
+    end
+    if isempty(pks_r)
+        [max_r,locs_r] = max(c_r{iSpc});
+    else
+        [max_r,locs_r] = max(pks_r);
+    end
+    
+    
+    ymax_f = max(abs(dev{iSpc}(locs_f)))*100;
+    ymax_f = eval(sprintf('%.2f',ymax_f));
+    
+    expon_f  = floor(log10(max_f));
+    expon_r  = floor(log10(max_r));
+    
+    if expon_f > exp_thresh || expon_r > exp_thresh
+        
+        fprintf('   %30s |   %12.8e  |   %12.8e  |   %8.4f [%%]\n',SpcList{iSpc}.name,max_f,max_r,ymax_f);
+        
+    end
+end
+
+
+fprintf(' ---------------------------------+-------------------+-------------------+------------------- \n');
+disp(' ');
+end
 
 % Plot the statistic for reaction numbers
 function n = Analyse_ReactionNumers(full,red)
@@ -178,7 +231,7 @@ n_r = [ red.ReacNumbers.nreac,         ...
 n_perc = zeros(1,30);
 for i=1:30
     if ( n_f(i) > 0 )
-        n_perc(i) = 1.0 - n_r(i)/n_f(i);
+        n_perc(i) = 100.0 - n_r(i)/n_f(i)*100;
     end
 end
 n = [ n_f ; n_r ; n_perc]';
@@ -186,13 +239,13 @@ n = [ n_f ; n_r ; n_perc]';
 
 disp(' ');disp(' ');disp(' ');
 fprintf(' ------------------------------------------------------------------------- \n');
-fprintf(' --------------> Analysis of reaction numbers in comparison <------------- \n');
+fprintf(' ---------------------> Analysis of reaction numbers <-------------------- \n');
 fprintf(' ------------------------------------------------------------------------- \n');
 disp(' ');
 fprintf(' -------------------------+-------------+-------------+------------------- \n');
 fprintf('                          |      full   |   reduced   |  reduction-rate    \n');
 fprintf(' -------------------------+-------------+-------------+------------------- \n');
-fprintf(' Number of all reactions  |    %6d   |    %6d   |    %8.4f [%%]\n',n(1,:));
+fprintf(' number of all reactions  |    %6d   |    %6d   |    %8.4f [%%]\n',n(1,:));
 
 if ( full.ReacNumbers.nrgas > 0 )
     fprintf(' -------------------------+-------------+-------------+------------------- \n');
@@ -382,7 +435,7 @@ xlim([b1,b2]);
 
 
 legend({[mech, ' full version'], [mech, ' reduced version']}, ...
-        'Location', 'best',  'Interpreter','latex');
+    'Location', 'best',  'Interpreter','latex');
 %            [mech, ' condensed vers.'], ...
 
 % subplot deviations

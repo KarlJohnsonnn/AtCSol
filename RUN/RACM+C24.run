@@ -45,5 +45,5 @@
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock 
   MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
-  eps_red     = 0.01d0
+  eps_red     = 0.11d0
 /END

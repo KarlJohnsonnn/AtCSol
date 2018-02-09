@@ -28,7 +28,7 @@ NH4p
 #     Acidity
 Hp
 OHm
-PAN
+#     PAN
 CC(=O)OON(=O)=O
 #     Metals (Fe, Cu, Mn)
 FEpp
@@ -163,12 +163,36 @@ END_TARGET_SPC
 
 # One species family per line, seperated by blankspace
 SPC_FAMILIES
+  SO2 SO4mm HSO4m aSULF SULF
+  NO3m aHNO3 HNO3
+  Clm aHCL HCL
+  NO NO2 HONO aHONO NO2m NH4p
+  Hp OHm CC(=O)OON(=O)=O
+  FEpp FEppp FEHULISp FEHULISpp FEOH2p FEOHpp FESO4p
+  CUp CUpp CUOHpp 
+  MNpp MNppp MNOH2p MNOHpp
   OH aHO
   HO2 aHO2 O2m
   NO3 aNO3
   O3 aO3
   H2O2 aH2O2
-  MNpp MNppp MNOH2p MNOHpp
-  CUp CUpp CUOHpp
-  FEpp FEppp FEHULISp FEHULISpp FEOH2p FEOHpp FESO4p
+  C=O aC=O aOCO aOCS(=O)(=O)[O-]
+  O=CO aO=CO aO=C[O-]
+  O=CC=O aO=CC=O aOC(O)C=O aOC(O)C(O)O
+  CC(=O)O aCC(=O)O aCC(=O)[O-]
+  O=C(O)C=O aO=C(O)C=O aOC(O)C(=O)O aO=C([O-])C=O aOC(O)C(=O)[O-]
+  OCC(=O)O  aOCC(=O)[O-] aOCC(=O)O
+  O=C(O)C(=O)O aO=C(O)C(=O)O aO=C(O)C(=O)[O-] aO=C([O-])C(=O)[O-]
+  FEC2O4p FEC2O42m FEC2O43mmm
+  CC(=O)C=O aCC(=O)C=O aCC(=O)C(O)O aCC(O)(O)C=O aCC(O)(O)C(O)O
+  CC(O)C(=O)O CC(O)C(=O)[O-]
+  CC(=O)C(=O)O aCC(=O)C(=O)O aCC(=O)C(=O)[O-] aCC(O)(O)C(=O)[O-] aCC(O)(O)C(=O)O
+  O=C(O)C=C aO=C(O)C=C aO=C([O-])C=C  
+  O=C(O)CC(=O)O aO=C(O)CC(=O)O aO=C(O)CC(=O)[O-] aO=C([O-])CC(=O)[O-]
+  aO=C(O)C(=O)C(=O)O aO=C(O)C(=O)C(=O)[O-] aO=C([O-])C(=O)C(=O)[O-] aO=C(O)C(O)(O)C(=O)O aO=C(O)C(O)(O)C(=O)[O-] aO=C([O-])C(O)(O)C(=O)[O-]
+  CC(C(=O)O)=C aCC(C(=O)O)=C aCC(C(=O)[O-])=C
+  O=C(O)CCC(=O)O aO=C(O)CCC(=O)O aO=C(O)CCC(=O)[O-] aO=C([O-])CCC(=O)[O-] 
+  O=C(O)CC(O)C(=O)O aO=C(O)CC(O)C(=O)O aO=C(O)CC(O)C(=O)[O-] aO=C([O-])CC(O)C(=O)[O-]
+  O=C(O)CC(=O)C(=O)O aO=C(O)CC(=O)C(=O)O aO=C(O)CC(=O)C(=O)[O-] aO=C([O-])CC(=O)C(=O)[O-]
+  O=C(O)C(O)C(O)C(=O)O aO=C(O)C(O)C(O)C(=O)O aO=C(O)C(O)C(O)C(=O)[O-] aO=C([O-])C(O)C(O)C(=O)[O-]
 END_SPC_FAMILIES
