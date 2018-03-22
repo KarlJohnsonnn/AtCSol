@@ -21,9 +21,6 @@
     IMPLICIT NONE
     !
     ! 
-    !REAL(dp) :: LAT  = 45.0_dp
-    !REAL(dp) :: LONG =  0.0_dp
-    !INTEGER  :: IDAT = 010619
     REAL(dp) :: fac_exp = 1.0_dp, fac_A = 1.0_dp
     !
     ! some factors for calculating Troe press dep. reactions

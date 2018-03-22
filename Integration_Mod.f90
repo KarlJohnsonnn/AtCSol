@@ -298,8 +298,13 @@ MODULE Integration_Mod
         LRW    = 20 + 21 * nDIM + 4*(BAT%nnz+A%nnz+2*nDIM)
         ITOL   = 2              ! 2 if atol is an array
         RTOL1  = RtolRow        ! relative tolerance parameter
-        ATOL1(1:nspc) = Atol(1)  ! atol dimension nspc+1
-        ATOL1(nDim)   = Atol(2)  ! temperature tolerance
+        IF (Teq) THEN
+          ATOL1(1:nspc) = Atol(1)  ! atol dimension nspc+1
+          ATOL1(nDim)   = Atol(2)  ! temperature tolerance
+        ELSE
+          ATOL1(1:ns_Gas)  = Atol(1)  ! atol dimension nspc+1
+          ATOL1(ns_gas+1:) = Atol(2)  ! temperature tolerance
+        END IF
 
         ITASK  = 1             ! 1 for normal computation of output values of y at t = TOUT
         ISTATE = 1             ! This is the first call for a problem

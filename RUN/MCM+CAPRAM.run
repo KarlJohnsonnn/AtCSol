@@ -1,7 +1,7 @@
 &SCENARIO
   BSP      = 'MCM32+CAPRAM40'
   WaitBar  = .T.
-  FluxAna  = .T.
+  FluxAna  = .F.
   ChemKin  = .F.        ! input mechanism in ChemKin notation
   Lehmann  = .F.
 /END
@@ -35,7 +35,8 @@
   PI_StepSize = .F.
   LinAlg  = 'cl'
   minStp  = 1.0d-30
-  maxStp  = 100.d0
+  maxStp  = 600.d0
+  !ODEsolver = 'LSODES'
   ODEsolver = 'METHODS/TSRosWRodas3.ros'
   Ordering  = 8
 /END
@@ -46,5 +47,5 @@
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock
   MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
-  eps_red     = 0.95
+  eps_red     = 0.850
 /END

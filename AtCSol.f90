@@ -178,7 +178,8 @@ PROGRAM AtCSol
     ! Initialising reactor density
     rho  = Density( MoleConc )
     rRho = mega/rho       ! in [cm3/g]
-    InitValAct = MoleConc
+    InitValAct = [MoleConc , Temperature0]
+
     
 
   ELSE

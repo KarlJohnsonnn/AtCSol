@@ -1,6 +1,7 @@
 
 
 function ChemOutPut = ReadChemFile(Path)
+ChemOutPut.Mechanism   = ReadMechanismName(Path);
 ChemOutPut.SpcNumbers  = GetSpeciesNumbers(Path);
 ChemOutPut.SpcNames    = ReadSpeciesNames(Path,ChemOutPut.SpcNumbers.nspc);
 ChemOutPut.ReacNumbers = GetReactionNumbers(Path);
@@ -8,6 +9,23 @@ end
 
 
 %% subroutines
+% gather the species names
+function name = ReadMechanismName(Path)
+
+fileID = fopen(Path,'r');
+
+while ~feof(fileID)
+    
+    tline = strtrim(fgetl(fileID));
+    found = contains(tline,'Chemical Mechanism:');
+    
+    if found
+        name = sscanf( tline(27:end) , '%s ');
+        break;
+    end
+end
+end
+
 % gather the numbers of species
 function [num] = GetSpeciesNumbers(Path)
 

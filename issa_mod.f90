@@ -561,7 +561,7 @@ MODULE issa
     !CLOSE(FluxUnit)
 
     !Tspan = [tBegin/3600.0_dp+1.0_dp , tEnd/3600.0_dp-1.0_dp]  ! analysis time span 1 Uhr bis 23 Uhr änchster tag
-    Tspan = [12.0_dp , 36.0_dp] ! convert in seconds
+    Tspan = [1.0_dp , 23.0_dp] ! convert in seconds
     Tspan = Tspan * 3600.0_dp ! convert in seconds
     
     lbound = 1

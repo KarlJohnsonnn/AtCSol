@@ -408,7 +408,7 @@ SUBROUTINE SetOutputNcdf(NCDF,Time,StpSize,iERR,ERR,Conc,Temp)
 	INTEGER :: j,  idx, iDiagSpc, iFr
 	LOGICAL :: NaN=.FALSE.
   REAL(dp), PARAMETER    :: y_Min = 1.e-40_dp    
-  REAL(dp), ALLOCATABLE :: tConc(:), tG(:), tA(:), tS(:), tP(:), tAF(:)
+  REAL(dp), ALLOCATABLE :: tConc(:), tG(:), tA(:), tS(:), tP(:), tAF(:), dbg(:)
 
   !==================================================================
   !===  Saving Output
@@ -429,19 +429,21 @@ SUBROUTINE SetOutputNcdf(NCDF,Time,StpSize,iERR,ERR,Conc,Temp)
  
   tConc = [ MAX(Conc,y_Min) ]             ! minimum for logarithmic plot
   IF ( ChemKin ) THEN
-    tG = [ tConc(iNcdfGas) ]              ! in [???]
+    tConc = MoleConc_to_MoleFr(tConc(1:nspc))
+    tG = [ tConc(iNcdfGas) ]     ! in mole fractions [-]
+    NCDF%Temperature = tConc(nDIM)
   ELSE
     tG = [ tConc(iNcdfGas)   / mol2part ] ! convert to mol/m3
     tA = [ tConc(iNcdfAqua)  / mol2part ] 
     tS = [ tConc(iNcdfSolid) / mol2part ] 
     tS = [ tConc(iNcdfParti) / mol2part ] 
+    NCDF%Temperature = Temp
   END IF
 
   IF ( hasAquaSpc ) tAF = GatherAquaFractions( tA ) 
 
   IF ( MPI_master ) THEN
     NCDF%Time        = Time
-    NCDF%Temperature = Temp
     NCDF%StepSize    = StpSize
     NCDF%MaxErrorSpc = iERR(1,1)
     NCDF%ROWerror    = ERR
@@ -467,8 +469,17 @@ SUBROUTINE SetOutputNcdf(NCDF,Time,StpSize,iERR,ERR,Conc,Temp)
     IF ( hasPhotoReac ) NCDF%Zenith = Zenith(Time)
   END IF
 
+  CONTAINS
+  
+  FUNCTION MoleConc_to_MoleFr(MoleConc) RESULT(MoleFr)
+    REAL(dp), ALLOCATABLE :: MoleFr(:)   ! Mole fraction [mol/mol]
+    REAL(dp), INTENT(IN)  :: MoleConc(:) ! Mole concentration  [mol/cm3]
 
-  END SUBROUTINE SetOutputNcdf
+    MoleFr = MoleConc / SUM( MoleConc)
+
+  END FUNCTION MoleConc_to_MoleFr
+
+END SUBROUTINE SetOutputNcdf
   
   
   

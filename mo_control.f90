@@ -9,7 +9,7 @@
 !-----------------------------------------------------------------
 !
 !--- Identifier for scenario
-      CHARACTER(20) :: Bsp        = ''      ! Identifier for scenario
+      CHARACTER(80) :: Bsp        = ''      ! Identifier for scenario
 
 !--- Files
       CHARACTER(80) :: RunFile    = ''    & ! Simulation data file
@@ -202,7 +202,7 @@
 &                      , milli    =     1.0d-03    &
 &                      , kilo     =     1.0d+03    &
 &                      , mega     =     1.0d+06    &
-&                      , tera     =     1.0d+09
+&                      , giga     =     1.0d+09
 !
 !--- Natural logarithms
   REAL(dp), PARAMETER ::   ln10   =     LOG(TEN)    &

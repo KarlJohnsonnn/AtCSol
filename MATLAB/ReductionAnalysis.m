@@ -39,18 +39,26 @@ ini_path  = [AtCSol_path,'INI/'];
 m_full = [ncdf_path, mech, '_full.nc'];
 m_red  = [ncdf_path, mech, '_red.nc'];
 
+% Output file
+outID = fopen([AtCSol_path,'OUTPUT/ReductionStatistics.txt'],'w');
+
 % plot intervall
-b1 = 12.0;   % 12 noon
-b2 = 36.0;   % 12 noon next day
+b1 = 1.0;   % 12 noon
+b2 = 23.0;   % 12 noon next day
 
 
 % read chem-file (numbers and species names)
 Full_Mech    = ReadChemFile([chem_path,chem_file_f]);
 Reduced_Mech = ReadChemFile([chem_path,chem_file_r]);
 
+% print head
+fprintf(outID,' \n');fprintf(outID,' \n');fprintf(outID,' \n');
+fprintf(outID,'   MECHANISM ::    FULL ::  %-40s\n',Full_Mech.Mechanism);
+fprintf(outID,'             :: REDUCED ::  %-40s\n',Reduced_Mech.Mechanism);
+
 % analyse Numbers
-Analyse_SpeciesNumers(Full_Mech,Reduced_Mech);
-Analyse_ReactionNumers(Full_Mech,Reduced_Mech);
+Analyse_SpeciesNumers(outID,Full_Mech,Reduced_Mech);
+Analyse_ReactionNumers(outID,Full_Mech,Reduced_Mech);
 
 % gather diagnose species
 Diag_Spc = GetDiagnoseSpecies([ini_path,ini_file],Reduced_Mech.SpcNames);
@@ -82,13 +90,14 @@ for iSpc = 1:n_diag
     % calculate deviations
     dev{iSpc} = deviation(c_f{iSpc},c_r{iSpc});
     
-   
+%    if ( strcmp(Diag_Spc{iSpc}.name,'aHCL') || strcmp(Diag_Spc{iSpc}.name,'HCL') )
 %     Plot_Concentrations(t_f,t_r,c_f{iSpc},c_r{iSpc},dev{iSpc},Diag_Spc{iSpc})
+%    end
 end
 
-Analyse_SpeciesDeviation(c_f,c_r,dev,Diag_Spc)
+Analyse_SpeciesDeviation(outID,c_f,c_r,dev,Diag_Spc)
 
-
+fclose(outID);
 
 %% END MAIN
 
@@ -98,7 +107,7 @@ Analyse_SpeciesDeviation(c_f,c_r,dev,Diag_Spc)
 %% BEGIN SUBROUTINES
 
 % Plot the statistic for species numbers
-function n = Analyse_SpeciesNumers(full,red)
+function n = Analyse_SpeciesNumers(id,full,red)
 
 n_f = [ full.SpcNumbers.nspc,   full.SpcNumbers.nsgas,  full.SpcNumbers.nsaqua,...
     full.SpcNumbers.nspart, full.SpcNumbers.nssoli, full.SpcNumbers.nspass];
@@ -114,41 +123,41 @@ end
 n = [ n_f ; n_r ; n_perc]';
 
 
-disp(' ');disp(' ');disp(' ');
-fprintf(' ------------------------------------------------------------------------- \n');
-fprintf(' ---------------------> Analysis of species numbers <--------------------- \n');
-fprintf(' ------------------------------------------------------------------------- \n');
-disp(' ');
-fprintf(' -----------------------+---------------+-------------+------------------- \n');
-fprintf('                        |      full     |    reduced  |  reduction-rate    \n');
-fprintf(' -----------------------+---------------+-------------+------------------- \n');
-fprintf(' number of species      |    %6d     |    %6d   |    %8.4f [%%]\n',n(1,:));
-fprintf(' -----------------------+---------------+-------------+------------------- \n');
-fprintf('         - gaseous      |    %6d     |    %6d   |    %8.4f [%%]\n',n(2,:));
-fprintf('         - aqueous      |    %6d     |    %6d   |    %8.4f [%%]\n',n(3,:));
-fprintf('         - paricular    |    %6d     |    %6d   |    %8.4f [%%]\n',n(4,:));
-fprintf('         - solid        |    %6d     |    %6d   |    %8.4f [%%]\n',n(5,:));
-fprintf('         - non-reactive |    %6d     |    %6d   |    %8.4f [%%]\n',n(6,:));
-fprintf(' -----------------------+---------------+-------------+------------------- \n');
-disp(' ');
+fprintf(id,' \n');fprintf(id,' \n');fprintf(id,' \n');
+fprintf(id,'           +-----------------------------------------------------------------+ \n');
+fprintf(id,'           |---------------->  Analysis of species numbers  <----------------| \n');
+fprintf(id,'           |--+-----------------------------------------------------------+--| \n');
+fprintf(id,'           +--+                                                           +--+ \n');
+fprintf(id,' \n');
+fprintf(id,'                                |      full     |    reduced   |  reduction-rate    \n');
+fprintf(id,'         +----------------------+---------------+--------------+------------------+ \n');
+fprintf(id,'         |   number of species  |    %6d     |    %6d    |    %8.4f [%%]  |\n',n(1,:));
+fprintf(id,'         +----------------------+---------------+--------------+------------------+ \n');
+fprintf(id,'                 - gaseous      |    %6d     |    %6d    |    %8.4f [%%]\n',n(2,:));
+fprintf(id,'                 - aqueous      |    %6d     |    %6d    |    %8.4f [%%]\n',n(3,:));
+fprintf(id,'                 - paricular    |    %6d     |    %6d    |    %8.4f [%%]\n',n(4,:));
+fprintf(id,'                 - solid        |    %6d     |    %6d    |    %8.4f [%%]\n',n(5,:));
+fprintf(id,'                 - non-reactive |    %6d     |    %6d    |    %8.4f [%%]\n',n(6,:));
+
+fprintf(id,' \n');
 end
 
 % Plot the statistic for species numbers
-function Analyse_SpeciesDeviation(c_f,c_r,dev,SpcList)
+function Analyse_SpeciesDeviation(id,c_f,c_r,dev,SpcList)
 
 nSpc = length(SpcList);
 
-exp_thresh = -20;
+exp_thresh = -50;
 
-disp(' ');disp(' ');disp(' ');
-fprintf(' --------------------------------------------------------------------------------------------- \n');
-fprintf(' ------------------------------> Analysis of species deviation <------------------------------ \n');
-fprintf(' --------------------------------------------------------------------------------------------- \n');
-fprintf(' --                    printing species with concentration values > 1.0e%3d                 -- \n',exp_thresh);
-fprintf(' ---------------------------------+---------------------------------------+------------------- \n');
-fprintf('                                  |              daily maxima             |                    \n');
-fprintf('             species              |       full        |      reduced      |   max. deviation   \n');
-fprintf(' ---------------------------------+-------------------+-------------------+------------------- \n');
+fprintf(id,' \n');fprintf(id,' \n');fprintf(id,' \n');
+fprintf(id,'           +----------------------------------------------------------------------------------+ \n');
+fprintf(id,'           |-------------------------> Analysis of species deviation <------------------------| \n');
+fprintf(id,'           |-+------------------------------------------------------------------------------+-|\n');
+fprintf(id,'           +-+             printing species with concentration values > 1.0e%3d             +-+ \n',exp_thresh);
+fprintf(id,'    |-------------------+---------------------------------------+---------------------------------------------+ \n');
+fprintf(id,'    |                   |              daily maxima             |                   |                         | \n');
+fprintf(id,'    |       phase       |       full        |      reduced      |   max. deviation  |       species names     | \n');
+fprintf(id,'    |-------------------+-------------------+-------------------+-------------------|-------------------------+ \n');
 
 
 for iSpc = 1:nSpc
@@ -176,18 +185,16 @@ for iSpc = 1:nSpc
     
     if expon_f > exp_thresh || expon_r > exp_thresh
         
-        fprintf('   %30s |   %12.8e  |   %12.8e  |   %8.4f [%%]\n',SpcList{iSpc}.name,max_f,max_r,ymax_f);
+        fprintf(id,'      %12s      |   %12.8e  |   %12.8e  |   %10.4f [%%]  | %-40s \n', ...
+                 SpcList{iSpc}.phase, max_f, max_r, ymax_f, SpcList{iSpc}.name );
         
     end
 end
-
-
-fprintf(' ---------------------------------+-------------------+-------------------+------------------- \n');
-disp(' ');
+fprintf(id,' \n');
 end
 
 % Plot the statistic for reaction numbers
-function n = Analyse_ReactionNumers(full,red)
+function n = Analyse_ReactionNumers(id,full,red)
 
 n_f = [ full.ReacNumbers.nreac,         ...
     full.ReacNumbers.nrgas,         ...
@@ -237,74 +244,75 @@ end
 n = [ n_f ; n_r ; n_perc]';
 
 
-disp(' ');disp(' ');disp(' ');
-fprintf(' ------------------------------------------------------------------------- \n');
-fprintf(' ---------------------> Analysis of reaction numbers <-------------------- \n');
-fprintf(' ------------------------------------------------------------------------- \n');
-disp(' ');
-fprintf(' -------------------------+-------------+-------------+------------------- \n');
-fprintf('                          |      full   |   reduced   |  reduction-rate    \n');
-fprintf(' -------------------------+-------------+-------------+------------------- \n');
-fprintf(' number of all reactions  |    %6d   |    %6d   |    %8.4f [%%]\n',n(1,:));
+fprintf(id,' \n');fprintf(id,' \n');fprintf(id,' \n');
+fprintf(id,'           +----------------------------------------------------------------+ \n');
+fprintf(id,'           |----------------> Analysis of reaction numbers <----------------| \n');
+fprintf(id,'           |--+----------------------------------------------------------+--| \n');
+fprintf(id,'           +--+                                                          +--+ \n');
+fprintf(id,'                                                                              \n');
+fprintf(id,'                                |      full     |    reduced   |  reduction-rate   \n');
+fprintf(id,'    +---------------------------+---------------+--------------+------------------+ \n');
+fprintf(id,'    |  number of all reactions  |    %6d     |    %6d    |    %8.4f [%%]  |\n',n(1,:));
+fprintf(id,'    +---------------------------+---------------+--------------+------------------+ \n');
 
 if ( full.ReacNumbers.nrgas > 0 )
-    fprintf(' -------------------------+-------------+-------------+------------------- \n');
-    fprintf('       gaseous reactions  |    %6d   |    %6d   |    %8.4f [%%]\n',n(2,:));
-    fprintf('                - photo   |    %6d   |    %6d   |    %8.4f [%%]\n',n(3,:));
-    fprintf('                - const   |    %6d   |    %6d   |    %8.4f [%%]\n',n(4,:));
-    fprintf('                - temp    |    %6d   |    %6d   |    %8.4f [%%]\n',n(5,:));
-    fprintf('                - simp    |    %6d   |    %6d   |    %8.4f [%%]\n',n(6,:));
-    fprintf('                - lind    |    %6d   |    %6d   |    %8.4f [%%]\n',n(7,:));
-    fprintf('                - troe    |    %6d   |    %6d   |    %8.4f [%%]\n',n(8,:));
-    fprintf('                - spec    |    %6d   |    %6d   |    %8.4f [%%]\n',n(9,:));
-    fprintf('                - special |    %6d   |    %6d   |    %8.4f [%%]\n',n(10,:));
+    fprintf(id,'           ---------------------+---------------+--------------+------------------ \n');
+    fprintf(id,'             gaseous reactions  |    %6d     |    %6d    |    %8.4f [%%]\n',n(2,:));
+    fprintf(id,'                      - photo   |    %6d     |    %6d    |    %8.4f [%%]\n',n(3,:));
+    fprintf(id,'                      - const   |    %6d     |    %6d    |    %8.4f [%%]\n',n(4,:));
+    fprintf(id,'                      - temp    |    %6d     |    %6d    |    %8.4f [%%]\n',n(5,:));
+    fprintf(id,'                      - simp    |    %6d     |    %6d    |    %8.4f [%%]\n',n(6,:));
+    fprintf(id,'                      - lind    |    %6d     |    %6d    |    %8.4f [%%]\n',n(7,:));
+    fprintf(id,'                      - troe    |    %6d     |    %6d    |    %8.4f [%%]\n',n(8,:));
+    fprintf(id,'                      - spec    |    %6d     |    %6d    |    %8.4f [%%]\n',n(9,:));
+    fprintf(id,'                      - special |    %6d     |    %6d    |    %8.4f [%%]\n',n(10,:));
 end
 
 if ( full.ReacNumbers.nrhenry > 0 )
-    fprintf(' -------------------------+-------------+-------------+------------------- \n');
-    fprintf('         henry reactions  |    %6d   |    %6d   |    %8.4f [%%]\n',n(11,:));
+    fprintf(id,'           ---------------------+---------------+--------------+------------------ \n');
+    fprintf(id,'               henry reactions  |    %6d     |    %6d    |    %8.4f [%%]\n',n(11,:));
 end
 
 if ( full.ReacNumbers.nrdiss > 0 )
-    fprintf(' -------------------------+-------------+-------------+------------------- \n');
-    fprintf('  dissociation reactions  |    %6d   |    %6d   |    %8.4f [%%]\n',n(12,:));
-    fprintf('                - dconst  |    %6d   |    %6d   |    %8.4f [%%]\n',n(13,:));
-    fprintf('                - dtemp   |    %6d   |    %6d   |    %8.4f [%%]\n',n(14,:));
-    fprintf('                - special |    %6d   |    %6d   |    %8.4f [%%]\n',n(15,:));
+    fprintf(id,'           ---------------------+---------------+--------------+------------------ \n');
+    fprintf(id,'        dissociation reactions  |    %6d     |    %6d    |    %8.4f [%%]\n',n(12,:));
+    fprintf(id,'                      - dconst  |    %6d     |    %6d    |    %8.4f [%%]\n',n(13,:));
+    fprintf(id,'                      - dtemp   |    %6d     |    %6d    |    %8.4f [%%]\n',n(14,:));
+    fprintf(id,'                      - special |    %6d     |    %6d    |    %8.4f [%%]\n',n(15,:));
 end
 
 if ( full.ReacNumbers.nraqua > 0 )
-    fprintf(' -------------------------+-------------+-------------+------------------- \n');
-    fprintf('       aqueous reactions  |    %6d   |    %6d   |    %8.4f [%%]\n',n(16,:));
-    fprintf('                - photo   |    %6d   |    %6d   |    %8.4f [%%]\n',n(17,:));
-    fprintf('                - const   |    %6d   |    %6d   |    %8.4f [%%]\n',n(18,:));
-    fprintf('                - temp    |    %6d   |    %6d   |    %8.4f [%%]\n',n(19,:));
-    fprintf('                - spec    |    %6d   |    %6d   |    %8.4f [%%]\n',n(20,:));
-    fprintf('                - special |    %6d   |    %6d   |    %8.4f [%%]\n',n(21,:));
+    fprintf(id,'           ---------------------+---------------+--------------+------------------ \n');
+    fprintf(id,'             aqueous reactions  |    %6d     |    %6d    |    %8.4f [%%]\n',n(16,:));
+    fprintf(id,'                      - photo   |    %6d     |    %6d    |    %8.4f [%%]\n',n(17,:));
+    fprintf(id,'                      - const   |    %6d     |    %6d    |    %8.4f [%%]\n',n(18,:));
+    fprintf(id,'                      - temp    |    %6d     |    %6d    |    %8.4f [%%]\n',n(19,:));
+    fprintf(id,'                      - spec    |    %6d     |    %6d    |    %8.4f [%%]\n',n(20,:));
+    fprintf(id,'                      - special |    %6d     |    %6d    |    %8.4f [%%]\n',n(21,:));
 end
 
 if ( full.ReacNumbers.nrparti > 0 )
-    fprintf(' -------------------------+-------------+-------------+------------------- \n');
-    fprintf('     paricular reactions  |    %6d   |    %6d   |    %8.4f [%%]\n',n(22,:));
-    fprintf('                - special |    %6d   |    %6d   |    %8.4f [%%]\n',n(23,:));
+    fprintf(id,'           ---------------------+---------------+--------------+------------------ \n');
+    fprintf(id,'           paricular reactions  |    %6d     |    %6d    |    %8.4f [%%]\n',n(22,:));
+    fprintf(id,'                      - special |    %6d     |    %6d    |    %8.4f [%%]\n',n(23,:));
 end
 
 if ( full.ReacNumbers.nrsolid > 0 )
-    fprintf(' -------------------------+-------------+-------------+------------------- \n');
-    fprintf('         solid reactions  |    %6d   |    %6d   |    %8.4f [%%]\n',n(24,:));
-    fprintf('                - dtemp3  |    %6d   |    %6d   |    %8.4f [%%]\n',n(25,:));
-    fprintf('                - equi    |    %6d   |    %6d   |    %8.4f [%%]\n',n(26,:));
-    fprintf('                - spec    |    %6d   |    %6d   |    %8.4f [%%]\n',n(27,:));
-    fprintf('                - special |    %6d   |    %6d   |    %8.4f [%%]\n',n(28,:));
+    fprintf(id,'           ---------------------+---------------+--------------+------------------ \n');
+    fprintf(id,'               solid reactions  |    %6d     |    %6d    |    %8.4f [%%]\n',n(24,:));
+    fprintf(id,'                      - dtemp3  |    %6d     |    %6d    |    %8.4f [%%]\n',n(25,:));
+    fprintf(id,'                      - equi    |    %6d     |    %6d    |    %8.4f [%%]\n',n(26,:));
+    fprintf(id,'                      - spec    |    %6d     |    %6d    |    %8.4f [%%]\n',n(27,:));
+    fprintf(id,'                      - special |    %6d     |    %6d    |    %8.4f [%%]\n',n(28,:));
 end
 
 if ( full.ReacNumbers.nrmicro > 0 )
-    fprintf(' -------------------------+-------------+-------------+------------------- \n');
-    fprintf(' microphysical reactions  |    %6d   |    %6d   |    %8.4f [%%]\n',n(29,:));
-    fprintf('                - special |    %6d   |    %6d   |    %8.4f [%%]\n',n(30,:));
+    fprintf(id,'           ---------------------+---------------+--------------+------------------ \n');
+    fprintf(id,'       microphysical reactions  |    %6d     |    %6d    |    %8.4f [%%]\n',n(29,:));
+    fprintf(id,'                      - special |    %6d     |    %6d    |    %8.4f [%%]\n',n(30,:));
 end
-fprintf(' -------------------------+-------------+-------------+------------------- \n');
-disp(' ');
+
+fprintf(id,' \n');
 end
 
 
@@ -336,10 +344,12 @@ while ~feof(fileID)
                     list{i}.ncdf = [tline,'_1_l'];
                     list{i}.name = tline;
                     list{i}.unit = 'mol/L]';
+                    list{i}.phase = 'aqueous';
                 else
                     list{i}.ncdf = tline;
                     list{i}.name = tline;
                     list{i}.unit = 'mol/m$^3$]';
+                    list{i}.phase = 'gaseous';
                 end
             end
         end

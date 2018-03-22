@@ -14,8 +14,8 @@
 /END
 &TIMES
   tBegin      = 0.0d0
-  tEnd        = 172800.0d0
-  !tEnd        = 84600.0d0
+  !tEnd        = 172800.0d0
+  tEnd        = 84600.0d0
   !tEnd        = 259200.0d0
 /END
 &METEO

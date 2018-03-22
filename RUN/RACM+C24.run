@@ -1,7 +1,7 @@
 &SCENARIO
   BSP        = 'RACM+C24'   ! Name der NetCDF Output-Datei
   WaitBar    = .T.          ! .F. = kein ladebalken, .T. /= ladebalken aktiv
-  FluxAna    = .T.          ! analyse reaction rates (fluxes)
+  FluxAna    = .F.          ! analyse reaction rates (fluxes)
   ChemKin    = .F.          ! input mechanism in ChemKin notation
   Lehmann    = .F.
 /END
@@ -14,8 +14,8 @@
 /END
 &TIMES
   tBegin      = 0.0d0          ! Startzeit Integration   (in [sec])
-  !tEnd        = 86400.0d0      ! Endzeit   Integration   (in [sec])
-  tEnd        = 172800.0d0      ! Endzeit   Integration   (in [sec])
+  tEnd        = 86400.0d0      ! Endzeit   Integration   (in [sec])
+  !tEnd        = 172800.0d0      ! Endzeit   Integration   (in [sec])
 /END
 &METEO
   pHSet       = .T.          ! Berechne pH Wert zu Beginn
@@ -36,6 +36,7 @@
   minStp      = 1.0d-30      ! minimale Schrittweite für Integration
   maxStp      = 25.0d0       ! maximale Schrittweite für Integration
   LinAlg      = 'cl'         ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
+  !ODEsolver   = 'LSODE'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
   ODEsolver   = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
 /END
 &OUTPUT

@@ -645,7 +645,7 @@ MODULE Rosenbrock_Mod
       END IF
       
       IF (dprint) THEN
-        print*,'debug::     Error     =  ', err, '  Error index  =  ', ierr
+        print*,'debug::     Error     =  ', err, '  Error index  =  ', ierr, '  Error species  =  ', TRIM(y_name(ierr(1,1)))
         print*, '------------------------------------------------------------------------------'
         print*, ''
         print*, ' Press ENTER to calculate next step '
