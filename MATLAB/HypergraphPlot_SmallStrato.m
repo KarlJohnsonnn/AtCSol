@@ -87,7 +87,7 @@ yPos = 1 : ns;
 if plots
     figure('units','normalized','outerposition',[0 0 1 1]);
     % gJAC = digraph( sEP , spc  );
-    gJAC = digraph( sEP );
+    gJAC = digraph( sEP' );
 %     g = plot( gJAC );
     h = plot(gJAC,'NodeLabel',[]);
     for i=1:length(spc)

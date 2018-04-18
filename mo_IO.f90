@@ -274,7 +274,8 @@ MODULE mo_IO
     WRITE(*,*)
 
   END SUBROUTINE Matrix_Statistics
-  !
+
+
   !
   SUBROUTINE WriteAnalysisFile(RS,species_names,mixing_ratios,IntRate)
     USE Kind_Mod
@@ -361,6 +362,28 @@ MODULE mo_IO
       STOP
     END IF
   END SUBROUTINE file_err
+
+  SUBROUTINE ShowMaxErrorCounter()
+    USE mo_control, ONLY: maxErrorCounter, BSP, LinAlg, RtolROW, AtolGas, AtolAqua, AtolTemp
+    USE mo_reac,    ONLY: nspc, nr, y_name
+    USE ChemSys_Mod,ONLY: ReactionSystem
+    INTEGER :: i
+
+    OPEN(UNIT=99,FILE='OUTPUT/LocalErrorMaxima.log',STATUS='UNKNOWN')
+    WRITE(99,*) '         Mechanism: ', TRIM(BSP)
+    WRITE(99,*) '    Linear Algebra: ', LinAlg
+    WRITE(99,*) '  Tolerance   rel.: ', RtolROW
+    WRITE(99,*) '      (gas)   abs.: ', AtolGas
+    WRITE(99,*) '      (aqua)  abs.: ', AtolAqua
+    WRITE(99,*) '      (temp)  abs.: ', AtolTemp
+    WRITE(99,*)
+    DO i=1,nspc      
+      IF ( maxErrorCounter(i) > 0 ) THEN
+        WRITE(99,'(A,2X,I8,5X,A)') ' number of local error maximum = ' , maxErrorCounter(i), TRIM(y_name(i))
+      END IF
+    END DO
+    CLOSE(99)
+  END SUBROUTINE ShowMaxErrorCounter
 
   SUBROUTINE SequentialReadNewReactionList(UnitNr)
     USE mo_control

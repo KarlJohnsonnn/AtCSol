@@ -1,6 +1,6 @@
 &SCENARIO
   BSP      = 'ERC_nheptane'
-  WaitBar  = .F.
+  WaitBar  = .T.
   ChemKin  = .T.        ! input mechanism in ChemKin notation
   FluxAna  = .F.
 /END
@@ -19,21 +19,20 @@
   Pressure0   = 2.0d+5        ! in [Pa]
 /END
 &NUMERICS
-  RtolROW   = 1.0d-4
+  RtolROW   = 1.0d-5
   AtolGas   = 1.0d-15
   AtolTemp  = 1.0d-1
   Error_Est = 2
   minStp    = 1.0d-45
   maxStp    = 0.0001d0
   LinAlg    = 'ex' 
-  ODEsolver = 'LSODE'
-  !ODEsolver = 'METHODS/TSRosWRA34PW2.fort'
-  Ordering  = 8
+  !ODEsolver = 'LSODE'
+  ODEsolver = 'METHODS/TSRosWRA34PW2.fort'
 /END
 &OUTPUT
   NetCdfFile  = 'NetCDF/ERC_nheptane_full.nc'
-  StpNetCDF   = -1.0d0
+  StpNetCDF   = 3.75d-5
   nOutP       = 1000
-  MatrixPrint = .F.  
+  MatrixPrint = .F.
   DebugPrint  = .F.
 /END

@@ -36,7 +36,8 @@
 &                         , InitUnit     = 106  & 
 &                         , DataUnit     = 107  & 
 &                         , FluxMetaUnit = 109  &
-&                         , FluxUnit     = 110   
+&                         , FluxUnit     = 110  & 
+&                         , TikZUnit     = 111   
 !
 !-- Set Levels and Parameters for Processes
       REAL(dp) :: LWCLevelmin    & ! Lower level for LWC
@@ -51,7 +52,7 @@
 &              , NetCdfPrint     & ! print out concs and other stuff to netcdf file
 &              , constLWC        & ! true if lwc value is fixed
 &              , Lehmann         & ! prints out pathway analysis file 
-&              , Teq             & ! prints out pathway analysis file 
+&              , Teq             & ! if Teq=.TRUE. simulate combustion mechanism
 &              , pHSet           & ! Initial pH by charge balance (1=on, 0=off)
 &              , WaitBar         & ! ladebalken im terminal bei simulation (=1, default=0)
 &              , FluxAna         & ! writing flux data and analyse after simulaiton -> print new reaction file
@@ -306,6 +307,9 @@
 
 
     REAL(dp) :: eps_red       ! threshold for reduction procedure
+
+    
+    INTEGER, ALLOCATABLE :: maxErrorCounter(:)
    
  END MODULE mo_control
 

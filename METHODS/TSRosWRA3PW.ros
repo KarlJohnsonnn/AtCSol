@@ -10,7 +10,6 @@
 ! 			  partial differential algebraic equations of index 1, 2005. 
 RCo%Order=3
 RCo%nStage=3
-RCo%pinterp=2
 RCo%ga=7.8867513459481287d-01
 ALLOCATE(RCo%Alpha(3,3))
 RCo%Alpha(1,:)=(/0.0d0 , 0.0d0 , 0.0d0/)
@@ -20,13 +19,7 @@ ALLOCATE(RCo%Gamma(3,3))
 RCo%Gamma(1,:)=(/ RCo%ga , 0.0d0 , 0.0d0/)
 RCo%Gamma(2,:)=(/-1.5773502691896257d0 , RCo%ga , 0.0d0/)
 RCo%Gamma(3,:)=(/-6.707531754730548d-1,-1.7075317547305482d-1,RCo%ga/)
-ALLOCATE(RCo%Asum(3))
-RCo%Asum=(/0.0d0 , 1.5773502691896257d0 , 0.5d0/)
 ALLOCATE(RCo%B(3))
 RCo%B=(/1.0566243270259355d-01,4.9038105676657971d-02,8.4529946162074843d-01/)
 ALLOCATE(RCo%Be(3))
 RCo%Be=(/-1.786327949540818d-01,1.0d0/3.0d0,8.4529946162074843d-01/)
-ALLOCATE(RCo%binterpt(3,2))
-RCo%binterpt(1,:)=(/-0.8094010767585034d0 , 0.9641016151377548d0/)
-RCo%binterpt(2,:)=(/-0.5d0 , 0.5d0/)	
-RCo%binterpt(3,:)=(/2.3094010767585034d0 , -1.4641016151377548d0/)

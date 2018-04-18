@@ -288,6 +288,8 @@
 
       Rate = Meff * k * Prod
       RateCnt = RateCnt + 1
+
+
       !CALL Debug_Rates(ReactionSystem,Time,Meff,k,Prod,Rate)
       
       TimeRates = TimeRates + MPI_WTIME() - TimeRateA
@@ -302,15 +304,22 @@
           
           WRITE(987,*)
           WRITE(987,*) REPEAT('*',80)
-          DO j=1,nr
-            WRITE(987,101) RateCnt,j,TRIM(RS(j)%Type),TRIM(RS(j)%TypeConstant),TRIM(RS(j)%Line1)
-            WRITE(987,102) Time,Meff(j),k(j),Prod(j),Rate(j)
+
+          !DO j=1,nr
+          DO j=512,514
+          
+            !WRITE(987,101) RateCnt,j,TRIM(RS(j)%Type),TRIM(RS(j)%TypeConstant),TRIM(RS(j)%Line1)
+            !WRITE(987,102) Time,Meff(j),k(j),Prod(j),Rate(j)
+            WRITE(*,101) RateCnt,j,TRIM(RS(j)%Type),TRIM(RS(j)%TypeConstant),TRIM(RS(j)%Line1)
+            WRITE(*,102) Time,Meff(j),k(j),Prod(j),Rate(j)
+            WRITE(*,*)
           END DO
+          
           WRITE(987,*); WRITE(987,*)
           101 FORMAT( ' NR :: ',I0,'    Reaction(',I0,')   ::   TYPE = ', A, '   ReacTYPE = ', A,'   ReactionString = ',A )
-          102 FORMAT( '     t = ',F8.4, '  Meff = ',Es12.4,'  k = ',Es12.4  &
+          102 FORMAT( '     t = ',F12.4, '  Meff = ',Es12.4,'  k = ',Es12.4  &
           &         , '  Prod = ', Es12.4, '  Rate = ', Es12.4 )
-          !STOP 'Rates_Mod'
+          STOP 'Rates_Mod'
         END SUBROUTINE Debug_Rates
       
     END SUBROUTINE ReactionRates_Tropos
@@ -362,7 +371,7 @@
       INTEGER :: i
       !
       !---------------------------------------------------------------------------
-      term_diff  = henry_diff(  iR%iHENRY(:,2) )             ! diffusion term
+      term_diff  = henry_diff(  iR%iHENRY(:,2) )          ! diffusion term
       term_accom = henry_accom( iR%iHENRY(:,2) ) * T(10)  ! accom term
       !--------------------------------------------------------------------------!
       
@@ -492,6 +501,9 @@
       ! ************************************************************************
       ! *** Temperature dependend reaction
       !
+      IF (nr_TEMP>0) THEN
+        k(iR%iTEMP)  = iR%TEMP(:,1) * T(1)**iR%TEMP(:,2) * EXP(-iR%TEMP(:,3)*T(6))
+      END IF
       IF (nr_TEMP1>0) THEN
         k(iR%iTEMP1) = iR%TEMP1(:,1)*EXP(-iR%TEMP1(:,2)*T(6))
       END IF
@@ -669,6 +681,7 @@
       ! ************************************************************************
 
       IF (nr_T1H2O>0) k(iR%iT1H2O) = iR%T1H2O(:,1)*EXP(-iR%T1H2O(:,2)*T(6))
+      
       IF (nr_S4H2O>0) THEN 
         k(iR%iS4H2O) = iR%S4H2O(:,1)*EXP(iR%S4H2O(:,2)*T(6))      & 
         &            + iR%S4H2O(:,3)*EXP(iR%S4H2O(:,4)*T(6))*mAir
@@ -698,42 +711,23 @@
       END IF
 
     END FUNCTION ComputeRateConstant
-    
 
-    FUNCTION UpdateSun(Time) RESULT(Sun)
-      !--------------------------------------------------------------------
-      ! Input:
-      !   - Time
-      REAL(dp) :: Time
-      !--------------------------------------------------------------------!
-      ! Output:
-      !   - Sun
-      REAL(dp)  :: Sun
-      !--------------------------------------------------------------------!
-      ! Temporary variables:
-      REAL(dp), PARAMETER :: SunRise=4.50_dp, SunSet=19.50_dp
-      REAL(dp) :: Thour, Tlocal, Ttmp
-      !
-      Thour  = Time / HOUR
-      Tlocal = Thour - FLOOR(Thour/hourday)*hourday
-      !
-      IF( (Tlocal>=SunRise) .AND. (Tlocal<=SunSet) ) THEN
-        Ttmp = (TWO*Tlocal-SunRise-SunSet) / (SunSet-SunRise);
-        IF ( Ttmp >ZERO ) THEN
-          Ttmp =  Ttmp * Ttmp
-        ELSE
-          Ttmp = -Ttmp * Ttmp
-        END IF
-        Sun = (ONE+COS(Pi*Ttmp)) * rTWO
-      ELSE
-        Sun = ZERO
-      END IF
-    END FUNCTION UpdateSun
-   
+
+
+    SUBROUTINE UpdateEmission(Emissions,time)
+      REAL(dp), INTENT(OUT) :: Emissions(ns)
+      REAL(dp), INTENT(IN)  :: time
+
+      Emissions = MAX(y_emi - y_depos, ZERO)
+
+    END SUBROUTINE UpdateEmission
+
+
     !   ***************************************************************
-    !   ** Species nondimensional gibbs potentials                   **
+    !   Fitting polynomials for combustion mechanisms
     !   ***************************************************************
     PURE SUBROUTINE GibbsFreeEnergie(Gibbs,T)
+    !   ** Species nondimensional gibbs potentials                   **
       REAL(dp), INTENT(INOUT) :: Gibbs(:)
       REAL(dp), INTENT(IN)    :: T(:)
       !

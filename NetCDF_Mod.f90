@@ -176,6 +176,8 @@ MODULE NetCDF_Mod
     END DO
 
 
+    CALL TikZ_init('OUTPUT/'//TRIM(BSP)//'.dat',Diag_Name)
+
     
     ! ============================================================
     ! --  create Netcdf file (for each size bin / fraction)
@@ -557,6 +559,11 @@ END SUBROUTINE SetOutputNcdf
     ! == Close netcdf-file ===============================================================
     ! ====================================================================================
     !
+    IF (Teq) THEN 
+      CALL TikZ_write( timeLoc , NCDF%Spc_Conc , temp=NCDF%Temperature )
+    ELSE
+      CALL TikZ_write( timeLoc , NCDF%Spc_Conc , LWC=NCDF%LWC, zen=NCDF%Zenith )
+    END IF
     CALL check( nf90_sync(ncid) )
     CALL check( nf90_close(ncid) )
 
@@ -573,6 +580,50 @@ END SUBROUTINE SetOutputNcdf
     END SUBROUTINE check
     !
   END SUBROUTINE StepNetcdf
+
+
+
+
+  SUBROUTINE TikZ_init(Filename,y_names)
+
+    CHARACTER(*) :: Filename
+    CHARACTER(100) :: y_names(:)
+    INTEGER :: j
+    OPEN(UNIT=TikZUnit,FILE=Filename,STATUS='UNKNOWN')
+    
+    IF (Teq) THEN
+      WRITE(TikZUnit,'(*(A,2X))') 'time','temp',(TRIM(y_names(j)),j=1,SIZE(y_names))
+    ELSE
+      WRITE(TikZUnit,'(*(A,2X))') 'time','LWC','solar',(TRIM(y_names(j)),j=1,SIZE(y_names))
+    END IF
+
+  END SUBROUTINE TikZ_init
+
+  SUBROUTINE TikZ_write(time,conc,temp,LWC,zen)
+    REAL(dp) :: time, conc(:)
+    REAL(dp), OPTIONAL :: temp, LWC, zen 
+    INTEGER :: j
+    
+    IF (Teq) THEN
+      WRITE(TikZUnit,'(*(Es18.12,2X))') time,temp,(conc(j), j=1,NetCDF%n_Out)
+    ELSE
+      IF ( zen > pi/TWO ) THEN
+        zen = pi/TWO
+      END IF
+      zen = COS(zen)
+      WRITE(TikZUnit,'(*(Es18.12,2X))') time , LWC , zen , (conc(j), j=1,NetCDF%n_Out)
+      IF (time==tEnd .OR. time==tBegin) THEN
+        BACKSPACE(TikZUnit)
+        WRITE(TikZUnit,'(*(Es18.12,2X))') time , 0.0_dp , 4.0_dp*zen , (conc(j), j=1,NetCDF%n_Out) 
+      END IF
+    END IF
+
+  END SUBROUTINE TikZ_write
+
+  SUBROUTINE TikZ_finished()
+    CLOSE(TikZUnit)
+  END SUBROUTINE TikZ_finished
+!
 
 END MODULE NetCDF_Mod
 

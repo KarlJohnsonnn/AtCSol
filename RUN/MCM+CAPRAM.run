@@ -2,15 +2,12 @@
   BSP      = 'MCM32+CAPRAM40'
   WaitBar  = .T.
   FluxAna  = .F.
-  ChemKin  = .F.        ! input mechanism in ChemKin notation
-  Lehmann  = .F.
 /END
 &FILES
   SysFile  = 'CHEM/MCM32_CAPRAM40_full.sys'  
   DataFile = 'DAT/MCM32_CAPRAM40_full.dat'
   InitFile = 'INI/Urban2.ini'
-  MetFile  = 'MET/Urban.met'
-  TargetFile = 'TAR/MCM+CAPRAM_3.ctrl'
+  !TargetFile = 'TAR/MCM+CAPRAM_3.ctrl'
 /END
 &TIMES
   tBegin      = 0.0d0
@@ -33,16 +30,16 @@
   AtolAqua = 1.0d-7
   Error_Est = 2
   PI_StepSize = .F.
-  LinAlg  = 'cl'
+  LinAlg  = 'ex'
   minStp  = 1.0d-30
-  maxStp  = 600.d0
+  maxStp  = 300.d0
   !ODEsolver = 'LSODES'
-  ODEsolver = 'METHODS/TSRosWRodas3.ros'
+  ODEsolver = 'METHODS/Rodas3.ros'
   Ordering  = 8
 /END
 &OUTPUT
   NetCdfFile  = 'NetCDF/MCM32+C40_full.nc' ! location and name of NetCDF output file
-  StpNetCDF   = 600.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep
+  StpNetCDF   = 100.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep
   StpFlux     = -1.0d0
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock

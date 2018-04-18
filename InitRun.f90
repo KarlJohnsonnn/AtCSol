@@ -91,7 +91,7 @@
       CALL ErrorCheck(io_stat,io_msg,'reading FILES list')
       
 !--- Adjust Filenames
-      IF (.NOT.ChemKin) CALL FileNameCheck(MetFile,'MetFile')
+      !IF (.NOT.ChemKin) CALL FileNameCheck(MetFile,'MetFile')
       CALL FileNameCheck(SysFile,'SysFile')
       CALL FileNameCheck(DataFile,'DataFile')
       CALL FileNameCheck(InitFile,'InitFile')
@@ -251,6 +251,7 @@
           CHARACTER(*) :: Name
           CHARACTER(*) :: miss
           LOGICAL      :: ex
+
           INQUIRE(FILE=TRIM(Name), EXIST=ex)
           
           IF ( TRIM(Name) == '' .OR. .NOT.ex ) THEN

@@ -82,59 +82,60 @@ MODULE Rosenbrock_Mod
     INTEGER :: i
     !
     IF ( TRIM(method(1:7)) == 'bwEuler') THEN
-      tmethod = ADJUSTL(method(:INDEX(method,'.')-1))
+      INCLUDE 'METHODS/bwEuler.ros'
     ELSE
       tmethod = ADJUSTL(method(INDEX(method,'/')+1:INDEX(method,'.')-1))
+      SELECT CASE (tmethod)
+        CASE ('Ros2AMF')       
+          INCLUDE 'METHODS/Ros2AMF.ros'
+        CASE ('Ros3w')         
+          INCLUDE 'METHODS/Ros3w.ros'
+        CASE ('Ros3Dw')        
+          INCLUDE 'METHODS/Ros3Dw.ros'
+        CASE ('Ros3Pw')        
+          INCLUDE 'METHODS/Ros3Pw.ros'
+        CASE ('Ros34PW1a')     
+          INCLUDE 'METHODS/Ros34PW1a.ros'
+        CASE ('Ros34PW2')      
+          INCLUDE 'METHODS/Ros34PW2.ros'
+        CASE ('Ros34PW3')      
+          INCLUDE 'METHODS/Ros34PW3.ros'
+        CASE ('Rodas3')  
+          INCLUDE 'METHODS/Rodas3.ros'
+        CASE ('TSRosW2P')      
+          INCLUDE 'METHODS/TSRosW2P.ros'
+        CASE ('TSRosW2M')      
+          INCLUDE 'METHODS/TSRosW2M.ros'
+        CASE ('TSRosWRA34PW2') 
+          INCLUDE 'METHODS/TSRosWRA34PW2.ros'
+        CASE ('TSRosWSandu3')  
+          INCLUDE 'METHODS/TSRosWSandu3.ros'
+        CASE DEFAULT
+          IF (MPI_master) THEN
+            WRITE(*,*) '    Unknown Method:  ',method
+            WRITE(*,*) '    Use Rodas3 instead.'
+          END IF
+          INCLUDE 'METHODS/Rodas3.ros'
+      END SELECT
     END IF
-
-
-    SELECT CASE (tmethod)
-      CASE ('bwEuler')       
-        INCLUDE 'METHODS/bwEuler.ros'
-      CASE ('Ros2AMF')       
-        INCLUDE 'METHODS/Ros2AMF.ros'
-      CASE ('Ros3w')         
-        INCLUDE 'METHODS/Ros3w.ros'
-      CASE ('Ros3Pw')        
-        INCLUDE 'METHODS/Ros3Pw.ros'
-      CASE ('Ros34PW1a')     
-        INCLUDE 'METHODS/Ros34PW1a.ros'
-      CASE ('Ros34PW2')      
-        INCLUDE 'METHODS/Ros34PW2.ros'
-      CASE ('Ros34PW3')      
-        INCLUDE 'METHODS/Ros34PW3.ros'
-      CASE ('TSRosW2P')      
-        INCLUDE 'METHODS/TSRosW2P.ros'
-      CASE ('TSRosW2M')      
-        INCLUDE 'METHODS/TSRosW2M.ros'
-      CASE ('TSRosWRA3PW')   
-        INCLUDE 'METHODS/TSRosWRA3PW.ros'
-      CASE ('TSRosWRA34PW2') 
-        INCLUDE 'METHODS/TSRosWRA34PW2.ros'
-      CASE ('TSRosWRodas3')  
-        INCLUDE 'METHODS/TSRosWRodas3.ros'
-      CASE ('TSRosWSandu3')  
-        INCLUDE 'METHODS/TSRosWSandu3.ros'
-      CASE DEFAULT
-        IF (MPI_ID==0) WRITE(*,*) '    Unknown Method:  ',method
-        IF (MPI_ID==0) WRITE(*,*) '    Use TSRosWRodas3 instead.'
-        INCLUDE 'METHODS/TSRosWRodas3.ros'
-    END SELECT
     !INCLUDE RosenbrockMethod
     !
     ! converting the butcher tableau 
     ! automatic transformation to avoid mat*vec in ROW methode
-    ROS%pow=ONE/(ROS%Order+ONE)
-    !ROS%pow=1.0d0/ROS%nStage
-    ALLOCATE(ROS%iGamma(ROS%nStage,ROS%nStage))
-    ROS%iGamma=ZERO
-    ALLOCATE(ID(ROS%nStage,ROS%nStage))
-    ID=ZERO
+    ALLOCATE(ID(ROS%nStage,ROS%nStage) , ROS%iGamma(ROS%nStage,ROS%nStage))
+    ROS%pow    = ONE / (ROS%Order+ONE)
+    ROS%iGamma = ZERO
+    ID         = ZERO
     DO i=1,ROS%nStage
-      ROS%iGamma(i,i)=ONE
-      ID(i,i)=ONE
+      ROS%iGamma(i,i) = ONE
+      ID(i,i) = ONE
     END DO
-    !  
+
+    ALLOCATE(RCo%Asum(RCo%nStage))
+    DO i=1,RCo%nStage
+      RCo%Asum(i) = SUM(RCo%Alpha(i,:))
+    END DO
+    
     ! calculate the inverse matrix of gamma
     !
     ! CAUTION ROS%Gamma (IN) =/= ROS%Gamma (OUT) !!!
@@ -149,25 +150,25 @@ MODULE Rosenbrock_Mod
     &            ROS%nStage,     &        ! leading dimension of RHS
     &            INFO)                    ! INFO (integer) if INFO=0 succsessfull	
     !
-    IF (INFO/=0.AND.MPI_ID==0) WRITE(*,*) 'Error while calc row-method parameter'
+    IF ( INFO/= 0 .AND. MPI_master ) WRITE(*,*) 'Error while calc row-method parameter'
     !       
     ALLOCATE(ROS%a(ROS%nStage,ROS%nStage))
-    ROS%a=ZERO
-    ROS%a=ROS%ga*MATMUL(ROS%Alpha, ROS%iGamma)
+    ROS%a = ZERO
+    ROS%a = ROS%ga*MATMUL(ROS%Alpha, ROS%iGamma)
     !  
     ALLOCATE(ROS%C(ROS%nStage,ROS%nStage))
-    ROS%C=ZERO
-    ROS%C=ID-ROS%ga*ROS%iGamma
+    ROS%C = ZERO
+    ROS%C = ID - ROS%ga * ROS%iGamma
     FORALL (i=1:ROS%nStage) ROS%C(i,i)=ZERO
     !  
     ALLOCATE(ROS%m(ROS%nStage))
-    ROS%B=MATMUL(ROS%B, ROS%iGamma)
-    ROS%m=ROS%ga*ROS%B(:)
+    ROS%B = MATMUL(ROS%B, ROS%iGamma)
+    ROS%m = ROS%ga * ROS%B
     !
     IF (.NOT.ROS%nStage==1) THEN
       ALLOCATE(ROS%me(ROS%nStage))
-      ROS%Be=MATMUL(ROS%Be,ROS%iGamma)
-      ROS%me=ROS%ga*ROS%Be(:)
+      ROS%Be = MATMUL(ROS%Be,ROS%iGamma)
+      ROS%me = ROS%ga * ROS%Be(:)
     END IF
     !
     DEALLOCATE(ID)
@@ -199,7 +200,7 @@ MODULE Rosenbrock_Mod
     ! Temp vars:
     REAL(dp) :: tdel, rh, absh
     REAL(dp), DIMENSION(nDIM) :: Y
-    REAL(dp), DIMENSION(nspc) :: wt, DfDt, Tmp, f0, f1, zeros
+    REAL(dp), DIMENSION(nspc) :: wt, DfDt, Tmp, f0, f1, zeros, Emiss
     REAL(dp), DIMENSION(nr)   :: dRdT
     REAL(dp), ALLOCATABLE     :: thresh(:)
     ! DEBUG
@@ -213,7 +214,8 @@ MODULE Rosenbrock_Mod
     ! the working precision, but with this definition, it is 0 if t = 0.
 
     !---- Compute an initial step size h using Yp=Y'(t) 
-    f0 = BAT * Rate + y_emi
+    CALL UpdateEmission(Emiss,t)
+    f0 = BAT * Rate + Emiss
 
     ALLOCATE( thresh(nDIM) )
     IF ( Teq ) THEN
@@ -240,7 +242,8 @@ MODULE Rosenbrock_Mod
     END IF
     Out%nRateEvals = Out%nRateEvals + 1
 
-    f1   = BAT * Rate + y_emi
+    CALL UpdateEmission(Emiss,tdel)
+    f1   = BAT * Rate + Emiss
     DfDt = ( f1 - f0 ) / tdel
     
     tmp  = Jac * f0 
@@ -287,7 +290,7 @@ MODULE Rosenbrock_Mod
     ! TemporarY variables:
     !
     REAL(dp), DIMENSION(nDIM)   :: Y,  Yhat, fRhs
-    REAL(dp), DIMENSION(nspc)   :: Yrh, U, UMat, dUdT, dCdt, d2UdT2 
+    REAL(dp), DIMENSION(nspc)   :: Yrh, U, UMat, dUdT, dCdt, d2UdT2, Emiss
     REAL(dp), DIMENSION(nspc)   :: Jac_CT, Jac_TC
     REAL(dp), DIMENSION(nDIMex) :: bb
     !
@@ -325,6 +328,7 @@ MODULE Rosenbrock_Mod
     rRate   = ZERO
     bb      = ZERO
     Y       = Y0
+    Emiss   = ZERO
     !
 
     IF (dprint) THEN
@@ -355,6 +359,8 @@ MODULE Rosenbrock_Mod
     END IF
     Rate_t = Rate
 
+    CALL UpdateEmission(Emiss,t)
+
     IF ( Teq ) THEN
       Tarr = UpdateTempArray   ( Y0(nDIM) )       
 
@@ -364,7 +370,7 @@ MODULE Rosenbrock_Mod
       CALL MassAveMixSpecHeat  ( cv      , dUdT    , MoleConc=Y0(1:nspc) , rho=rho)
       CALL MassAveMixSpecHeat  ( dcvdT   , d2UdT2  , MoleConc=Y0(1:nspc) , rho=rho)
 
-      dCdT = BAT * Rate + y_emi
+      dCdT = BAT * Rate + Emiss
 
       dTdt    = - SUM(U * dCdt) * rRho/cv
       UMat    = ROS%ga*dcvdT*dTdt*Y0(1:nspc) + U*Yrh
@@ -498,7 +504,7 @@ MODULE Rosenbrock_Mod
 
         IF ( EXTENDED ) THEN
           bb( 1     : neq ) = mONE 
-          bb( neq+1 : nsr ) = y_emi 
+          bb( neq+1 : nsr ) = Emiss 
           IF ( Teq ) bb(nDIMex)  = ZERO
           IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:iprnt)
         END IF
@@ -519,10 +525,12 @@ MODULE Rosenbrock_Mod
           CALL ReactionRates( tt , Y , Rate )
         END IF
 
+        CALL UpdateEmission(Emiss,tt)
+
         IF (dprint) THEN
           !DO i=1,nspc; WRITE(*,'(A,I0,A,Es18.10)') ' Conc(',i,') = ', Y(i); END DO
           !DO i=1,nr; WRITE(*,'(A,I0,A,Es18.10)')   ' Rate(',i,') = ', Rate(i); END DO
-          !DO i=1,nspc; WRITE(*,'(A,I0,A,Es18.10)') ' Emis(',i,') = ', y_emi(i); END DO
+          !DO i=1,nspc; WRITE(*,'(A,I0,A,Es18.10)') ' Emis(',i,') = ', Emiss(i); END DO
           !DO i=1,nspc; WRITE(*,'(A,I0,A,4Es18.10)') '    k(',i,',:) = ', k(i,:); END DO
           !print*, '        STAGE :: ',iStg
           print*, ''
@@ -536,7 +544,7 @@ MODULE Rosenbrock_Mod
       !--- Calculate the right hand side of the linear System
       IF ( CLASSIC ) THEN
 
-        dCdt = BAT * Rate + y_emi
+        dCdt = BAT * Rate + Emiss
         fRhs(1:nspc) =  h * dCdt
         IF (Teq) fRhs( nDIM ) = - h * SUM(U*dCdt) * rRho / cv
 
@@ -560,7 +568,7 @@ MODULE Rosenbrock_Mod
           ! right hand side of the extended linear system
 
           bb( 1      : neq )  = -rRate * Rate
-          bb( neq+1  : nsr )  = y_emi + fRhs(1:nspc)/h
+          bb( neq+1  : nsr )  = Emiss + fRhs(1:nspc)/h
           IF (Teq) bb(nDIMex) = fRhs(nDIM)/h
 
           IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:iprnt)
@@ -634,6 +642,8 @@ MODULE Rosenbrock_Mod
       CALL ERROR( err , ierr , YNew , YHat , ATolAll , RTolROW , t )
       TimeErrCalc = TimeErrCalc + MPI_WTIME() - timerStart
       !WRITE(*,*) ' SUM Y  = ',SUM(YNew), err, Out%nSteps, TRIM(y_name(ierr(1,1)))
+
+      maxErrorCounter(ierr(1,1)) = maxErrorCounter(ierr(1,1)) + 1
 
       ! for analysis and reduction
       IF ( FluxAna .AND. MPI_master .AND. err < ONE ) THEN

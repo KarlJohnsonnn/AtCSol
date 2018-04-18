@@ -2,8 +2,7 @@ COMMENT  CAPRAM 3.0m + RACM-MIM2ext + halogen module 2.0
 COMMENT  last update 05-05-2011 (pb)
 COMMENT   ===================   Unit options   ======================
 
-UNIT GAS    0   COMMENT     Gas phase units     (0 = molec/cm3, 1 = mol/m3)
-UNIT AQUA   0   COMMENT     Aqueous phase units (0 = mol/l)
+UNIT GAS    1   COMMENT     Gas phase units     (0 = molec/cm3, 1 = mol/m3)
 UNIT AQUA   0   COMMENT     Aqueous phase units (0 = mol/l)
 
 COMMENT   ===========================================================
@@ -1994,7 +1993,8 @@ TEMP3:   A:  1e3 B: 0.0
 CLASS: AQUA  
 aCH3OH + CO3m = CO3mm + Hp + aCH2OH 
 TEMP3:   A: 2.6e3  B: 0.0  
- 
+
+# --------------------------------------------
 CLASS: AQUA  
 aCH2OH + aO2 = aO2CH2OH 
 TEMP3:  A: 2e9  B: 0.0 
@@ -2006,6 +2006,7 @@ TEMP3:  A: 1.65e10 B: 0.0
 CLASS: AQUA  
 aO2CH2OH + aO2CH2OH = aCH3OH + aO2 + aHCHO 
 TEMP3:  A: 1.05e9 B: 0.0 
+# --------------------------------------------
   
 CLASS: AQUA  
 aETOH + aHO = [aH2O] + aCH3CHOH 

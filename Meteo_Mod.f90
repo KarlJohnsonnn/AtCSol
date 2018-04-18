@@ -1,6 +1,7 @@
 MODULE Meteo_Mod
 
   USE Kind_Mod
+  USE mo_control
 
   IMPLICIT NONE
   
@@ -42,17 +43,12 @@ MODULE Meteo_Mod
 !-- more LWC stuff for pseudo function 
   REAL(dp) :: LWCb(6) ! boundaries for linear pseudo lwc function
 
-  REAL(dp) :: LAT  = 45.0_dp
-  REAL(dp) :: LONG =  0.0_dp
-  INTEGER  :: IDAT = 010619
-
 CONTAINS 
 
   !=========================================================================!
   !                  calculate sun 
   !=========================================================================!
   FUNCTION Zenith(Time) RESULT(Chi)
-    USE mo_control
     !-----------------------------------------------------------------------!
     ! Input:
     !   - Time
@@ -90,15 +86,15 @@ CONTAINS
     GMT = Time / HOUR
     !
     !  convert to radians
-    RLT = LAT*DR
-    RPHI = LONG*DR
+    RLT = rlat*DR
+    RPHI = rlon*DR
     !
     !  parse date
-    IIYEAR = IDAT/10000
+    IIYEAR = iDate/10000
     IYEAR = 19*100 + IIYEAR
     IF (IIYEAR <= 50) IYEAR = IYEAR + 100 
-    IMTH = (IDAT - IIYEAR*10000)/100
-    IDAY = IDAT - IIYEAR*10000 - IMTH*100
+    IMTH = (iDate - IIYEAR*10000)/100
+    IDAY = iDate - IIYEAR*10000 - IMTH*100
     !
     !  identify and correct leap years
     IIY = (IIYEAR/4)*4
@@ -168,7 +164,7 @@ CONTAINS
     DECL = RDECL/DR
     !
     !   calc local hour angle
-    LBGMT = 12.0_dp - EQT/HOUR + LONG*24.0_dp/360.0_dp
+    LBGMT = 12.0_dp - EQT/HOUR + rlon*24.0_dp/360.0_dp
     LZGMT = 15.0_dp*(GMT - LBGMT)
     ZPT = LZGMT*DR
     CSZ = SIN(RLT)*SIN(RDECL) + COS(RLT)*COS(RDECL)*COS(ZPT)
@@ -182,6 +178,37 @@ CONTAINS
     !--- set Zenith Angle
     Chi =  1.745329252e-02_dp * ZR/DR
   END FUNCTION Zenith
+
+
+  FUNCTION UpdateSun(Time) RESULT(Sun)
+  !--------------------------------------------------------------------
+    ! Input:
+    !   - Time
+    REAL(dp) :: Time
+    !--------------------------------------------------------------------!
+    ! Output:
+    !   - Sun
+    REAL(dp)  :: Sun
+    !--------------------------------------------------------------------!
+    ! Temporary variables:
+    REAL(dp), PARAMETER :: SunRise=4.50_dp, SunSet=19.50_dp
+    REAL(dp) :: Thour, Tlocal, Ttmp
+    !
+    Thour  = MODULO(Time / HOUR,24.0_dp)
+    Tlocal = Thour - FLOOR(Thour/hourday)*hourday
+    !
+    IF( (Tlocal>=SunRise) .AND. (Tlocal<=SunSet) ) THEN
+      Ttmp = (TWO*Tlocal-SunRise-SunSet) / (SunSet-SunRise);
+      IF ( Ttmp >ZERO ) THEN
+        Ttmp =  Ttmp * Ttmp
+      ELSE
+        Ttmp = -Ttmp * Ttmp
+      END IF
+      Sun = (ONE+COS(Pi*Ttmp)) * rTWO
+    ELSE
+      Sun = ZERO
+    END IF
+  END FUNCTION UpdateSun
 
     
   FUNCTION Set_pseudoLWCbounds() RESULT(bounds)
@@ -226,7 +253,7 @@ CONTAINS
     ! minlwclvl _|_/    |  |    \___/            \__...... 
     !------------+----------------------------------------------->
     !            | |    |  |    | |                               Time
-    !  LWCb 1 2    3  4    5 6
+    !     LWCb   1 2    3  4    5 6
     !
     IF ( constLWC ) THEN
       ! Constant LWC level 

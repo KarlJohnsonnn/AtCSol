@@ -1,15 +1,16 @@
 &SCENARIO
-  BSP        = 'INORG'   ! Name der NetCDF Output-Datei
+  BSP        = 'micro_test'   ! Name der NetCDF Output-Datei
   WaitBar    = .T.          ! .F. = kein ladebalken, .T. /= ladebalken aktiv
   FluxAna    = .F.          ! analyse reaction rates (fluxes)
   ChemKin    = .F.          ! input mechanism in ChemKin notation
   Lehmann    = .F.
 /END
 &FILES
-  SysFile    = 'CHEM/INORG.sys'      ! .sys Datei (ohne .sys angeben!)
+  SysFile    = 'CHEM/Micro_neu.sys'      ! .sys Datei (ohne .sys angeben!)
   DataFile   = 'DAT/Urban.dat'          ! .dat Datei (für RO2, RO2aqua Summen)
   InitFile   = 'INI/Urban.ini'          ! .ini Datei (Anfangswerte gas/flüssig), Diagnose spc
   MetFile    = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)
+  TargetFile = 'TAR/RACM+C24.ctrl'     ! .ctrl Datei (Zielspezies,Spezies Familen,gelumpte Species)
 /END
 &TIMES
   tBegin      = 0.0d0          ! Startzeit Integration   (in [sec])
@@ -38,7 +39,7 @@
   ODEsolver   = 'METHODS/Ros3Pw.ros'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
 /END
 &OUTPUT
-  NetCdfFile  = 'NetCDF/INORG.nc' ! location and name of NetCDF output file
+  NetCdfFile  = 'NetCDF/RACM+C24_aO2CH2OH_EX.nc' ! location and name of NetCDF output file
   StpNetCDF   = 100.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep 
   StpFlux     = -1.0d0
   nOutP       = 1000                 ! number of output steps for LSODE case

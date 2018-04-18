@@ -114,6 +114,12 @@
        TYPE (reaction), POINTER :: next_all
     END TYPE reaction
 
+    TYPE reactype
+      CHARACTER(80) :: name=''
+      INTEGER       :: n=0
+      LOGICAL       :: exist=.FALSE.
+    END TYPE reactype
+
 !--------------------------------------------------------------
 !--   dimensions
     INTEGER :: nt=0           ! unused?
@@ -153,7 +159,7 @@
     INTEGER :: nr_H_special = 0, nr_D_special = 0, nr_D_Temp
 
     INTEGER :: nr_PHOTabc = 0, nr_PHOTab = 0, nr_PHOTmcm = 0, nr_CONST = 0
-    INTEGER :: nr_TEMP1 = 0, nr_TEMP2 = 0, nr_TEMP3 = 0, nr_TEMP4 = 0
+    INTEGER :: nr_TEMP = 0, nr_TEMP1 = 0, nr_TEMP2 = 0, nr_TEMP3 = 0, nr_TEMP4 = 0
     INTEGER :: nr_TROE  = 0, nr_TROEf = 0, nr_TROEq = 0, nr_TROEqf = 0, nr_TROExp = 0, nr_TROEmcm = 0
     INTEGER :: nr_SPEC1 = 0, nr_SPEC2 = 0, nr_SPEC3 = 0, nr_SPEC4 = 0
     INTEGER :: nr_SPEC1mcm = 0, nr_SPEC2mcm = 0, nr_SPEC3mcm = 0, nr_SPEC4mcm = 0
@@ -274,6 +280,7 @@
 !--    deposition and emissions
     REAL(dp), ALLOCATABLE :: vd(:)
     REAL(dp), ALLOCATABLE :: y_emi(:)
+    REAL(dp), ALLOCATABLE :: y_depos(:)
 
 !--------------------------------------------------------------
     
@@ -330,7 +337,7 @@
     ! Types for vectorised version
     TYPE ReacTypeIndex_TR
       INTEGER, ALLOCATABLE :: iPHOTabc(:),  iPHOTab(:),   iPHOTmcm(:), iCONST(:)  &
-      &                     , iTEMP1(:),    iTEMP2(:),    iTEMP3(:),   iTEMP4(:)  &
+      &                     , iTEMP(:),    iTEMP1(:),    iTEMP2(:),    iTEMP3(:), iTEMP4(:)  &
       &                     , iTROE(:),     iTROEf(:),    iTROEq(:),   iTROEqf(:), iTROExp(:) &
       &                     , iTROEmcm(:),  iSPEC1(:),    iSPEC2(:),   iSPEC3(:),  iSPEC4(:)  &
       &                     , iSPEC1mcm(:), iSPEC2mcm(:), iSPEC3mcm(:), iSPEC4mcm(:)  &
@@ -349,7 +356,7 @@
       &                     ,  PHOTab(:,:)    &  ! nPHOTab x 2
       &                     ,  PHOTmcm(:,:)   &  ! nPHOTmcm x 3
       &                     ,  CONST(:)       &  ! nCONST x 1
-      &                     ,  TEMP1(:,:), TEMP2(:,:), TEMP3(:,:), TEMP4(:,:) & ! nTEMPi x 2
+      &                     ,  TEMP(:,:), TEMP1(:,:), TEMP2(:,:), TEMP3(:,:), TEMP4(:,:) & ! nTEMPi x 2
       &                     ,  TROE(:,:)      &  ! nTROE x 4
       &                     ,  TROEf(:,:)     &  ! nTROEf x 5
       &                     ,  TROEq(:,:)     &  ! nTROEq x 6
