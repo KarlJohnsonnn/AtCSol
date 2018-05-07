@@ -582,8 +582,8 @@ END SUBROUTINE SetOutputNcdf
   END SUBROUTINE StepNetcdf
 
 
-
-
+  ! Writing Output in format for LaTex TikZ Package
+  !
   SUBROUTINE TikZ_init(Filename,y_names)
 
     CHARACTER(*) :: Filename

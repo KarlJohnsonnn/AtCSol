@@ -113,9 +113,9 @@ PROGRAM AtCSol
 
   IF ( ChemKin ) THEN
 
-    CALL Read_Elements    ( SysFile    , SysUnit )
-    CALL Read_Species     ( SysFile    , SysUnit )
-    CALL Read_Reaction    ( SysFile    , SysUnit )
+    CALL Read_Elements( SysFile , SysUnit )
+    CALL Read_Species ( SysFile , SysUnit )
+    CALL Read_Reaction( SysFile , SysUnit )
 
     IF ( MPI_master ) WRITE(*,*) 'done   ---->  Solve Gas Energy Equation '
 
@@ -139,8 +139,8 @@ PROGRAM AtCSol
    
     !--- Read initial values
     ALLOCATE( InitValAct(ns_GAS) , InitValKat(ns_KAT) , y_emi(ns_GAS) , y_depos(ns_GAS))
-    y_emi=ZERO
-    y_depos=ZERO 
+    y_emi   = ZERO
+    y_depos = ZERO 
 
 		!--- malloc gibbs energy, derivates
     ALLOCATE( GFE(nspc)   , DGFEdT(nspc)   &

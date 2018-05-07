@@ -14,8 +14,8 @@ RCo%ga     = 0.5_dp
 
 ALLOCATE(RCo%Alpha(4,4))
 RCo%Alpha  = ZERO
-RCo%Alpha(2,1) = 1.0_dp
-RCo%Alpha(3,:) = [ 0.75_dp , -0.25_dp , 0.5_dp , 0.0_dp ]
+RCo%Alpha(3,1) = 1.0_dp
+RCo%Alpha(4,:) = [ 0.75_dp , -0.25_dp , 0.5_dp , 0.0_dp ]
 
 ALLOCATE(RCo%Gamma(4,4))
 RCo%Gamma(1,:) = [       RCo%ga   ,       0.0_dp   ,     0.0_dp     , 0.0_dp ]

@@ -313,8 +313,9 @@ MODULE Chemsys_Mod
               IF ( TypeR == 'TROEQF'  ) nr_TROEqf  = nr_TROEqf  + 1
               IF ( TypeR == 'TROEXP'  ) nr_TROExp  = nr_TROExp  + 1
               IF ( TypeR == 'TROEMCM' ) nr_TROEmcm = nr_TROEmcm + 1
-            CASE ('SPEC1','SPEC2','SPEC3','SPEC4','SPEC1MCM','SPEC2MCM',           &
-            &     'SPEC3MCM','SPEC4MCM','SPEC5MCM','SPEC6MCM','SPEC7MCM','SPEC8MCM')
+            CASE ('SPEC1','SPEC2','SPEC3','SPEC4','SPEC1MCM',  &
+            &     'SPEC2MCM','SPEC3MCM','SPEC4MCM','SPEC5MCM', &
+            &     'SPEC6MCM','SPEC7MCM','SPEC8MCM','SPEC9MCM'  )
               nr_G_spec = nr_G_spec + 1
               IF ( TypeR == 'SPEC1' ) nr_SPEC1 = nr_SPEC1 + 1
               IF ( TypeR == 'SPEC2' ) nr_SPEC2 = nr_SPEC2 + 1
@@ -328,6 +329,7 @@ MODULE Chemsys_Mod
               IF ( TypeR == 'SPEC6MCM' ) nr_SPEC6mcm = nr_SPEC6mcm + 1
               IF ( TypeR == 'SPEC7MCM' ) nr_SPEC7mcm = nr_SPEC7mcm + 1
               IF ( TypeR == 'SPEC8MCM' ) nr_SPEC8mcm = nr_SPEC8mcm + 1
+              IF ( TypeR == 'SPEC9MCM' ) nr_SPEC9mcm = nr_SPEC9mcm + 1
             CASE ('S4H2O')
               nr_S4H2O = nr_S4H2O + 1
             CASE ('T1H2O')
@@ -1085,6 +1087,8 @@ MODULE Chemsys_Mod
     Hp_ind   = 0
     OHm_ind  = 0
     aH2O_ind = 0
+    SO4mm_ind = 0
+    HSO4m_ind = 0
     Temp_ind = nspc + 1
     
     !=========================================================================
@@ -1123,8 +1127,10 @@ MODULE Chemsys_Mod
 
       DO iSpc = bAs(1),bAs(2)
         READ(ChemUnit,*,IOSTAT=io_stat)  y_name(iSpc)
-        IF ( y_name(iSpc) == 'Hp'   )   Hp_ind   = iSpc
-        IF ( y_name(iSpc) == 'OHm'  )   OHm_ind  = iSpc
+        IF ( y_name(iSpc) == 'Hp'        ) Hp_ind    = iSpc
+        IF ( y_name(iSpc) == 'OHm'       ) OHm_ind   = iSpc
+        IF ( y_name(iSpc) == 'SO4mm_ind' ) SO4mm_ind = iSpc
+        IF ( y_name(iSpc) == 'HSO4m_ind' ) HSO4m_ind = iSpc
       END DO
 
       !=== Set  Chemical DATA  
@@ -2886,18 +2892,18 @@ MODULE Chemsys_Mod
     !WRITE(*,*) ' iReac =', iReac, TRIM(ReactionSystem(iReac)%Line1), '    Consts = ', C
 
     SELECT CASE ( TRIM(TypeR) )
-      CASE ('CONST')
-        IF ( SIZE(C)<1 ) CALL ErrorMSG(iReac,Line1)
-        icnt(1)=icnt(1)+1; iR%iCONST(icnt(1))=iReac;   iR%CONST(icnt(1))=C(1)
-      CASE ('PHOTAB')
-        IF ( SIZE(C)<2 ) CALL ErrorMSG(iReac,Line1)
-        icnt(2)=icnt(2)+1; iR%iPHOTab(icnt(2))=iReac;  iR%PHOTab(icnt(2),:)=C
       CASE ('PHOTABC')
         IF ( SIZE(C)<3 ) CALL ErrorMSG(iReac,Line1)
         icnt(3)=icnt(3)+1; iR%iPHOTabc(icnt(3))=iReac; iR%PHOTabc(icnt(3),:)=C 
       CASE ('PHOTMCM')
         IF ( SIZE(C)<3 ) CALL ErrorMSG(iReac,Line1)
         icnt(4)=icnt(4)+1; iR%iPHOTmcm(icnt(4))=iReac; iR%PHOTmcm(icnt(4),:)=C 
+      CASE ('PHOTAB')
+        IF ( SIZE(C)<2 ) CALL ErrorMSG(iReac,Line1)
+        icnt(2)=icnt(2)+1; iR%iPHOTab(icnt(2))=iReac;  iR%PHOTab(icnt(2),:)=C
+      CASE ('CONST')
+        IF ( SIZE(C)<1 ) CALL ErrorMSG(iReac,Line1)
+        icnt(1)=icnt(1)+1; iR%iCONST(icnt(1))=iReac;   iR%CONST(icnt(1))=C(1)
       CASE ('TEMP')
         IF ( SIZE(C)<3 ) CALL ErrorMSG(iReac,Line1)
         icnt(46)=icnt(46)+1; iR%iTEMP1(icnt(46))=iReac; iR%TEMP1(icnt(46),:)=C 
@@ -2967,6 +2973,9 @@ MODULE Chemsys_Mod
       CASE ('SPEC8MCM')
         IF ( SIZE(C)<4 ) CALL ErrorMSG(iReac,Line1)
         icnt(26)=icnt(26)+1; iR%iSPEC8mcm(icnt(26))=iReac; iR%SPEC8mcm(icnt(26),:)=C 
+      CASE ('SPEC9MCM')
+        IF ( SIZE(C)<10 ) CALL ErrorMSG(iReac,Line1)
+        icnt(47)=icnt(47)+1; iR%iSPEC9mcm(icnt(47))=iReac; iR%SPEC9mcm(icnt(47),:)=C 
       CASE ('S4H2O')
         IF ( SIZE(C)<4 ) CALL ErrorMSG(iReac,Line1)
         icnt(27)=icnt(27)+1; iR%iS4H2O(icnt(27))=iReac;  iR%S4H2O(icnt(27),:)=C 
@@ -3059,13 +3068,13 @@ MODULE Chemsys_Mod
 
     DO i = 1,SIZE(RS)
       Const_T = RS(i)%TypeConstant
-      DO j=1,37  ! 37 comes from mo_reac def_par
-        IF ( TRIM(var_par(j)%str_type) == ADJUSTL(TRIM(Const_T)) ) EXIT
+      DO j=1,nReacTypes  ! 37 comes from mo_reac def_par
+        IF ( TRIM(reac_par(j)%name_type) == ADJUSTL(TRIM(Const_T)) ) EXIT
       END DO
-      IF ( SIZE(RS(i)%Constants) /= var_par(j)%anzp ) THEN
+      IF ( SIZE(RS(i)%Constants) /= reac_par(j)%n_par ) THEN
         WRITE(*,*) 'ERROR: Wrong number of constants:'
         WRITE(*,*) '----->  reaction:     ',i, '   ', TRIM(RS(i)%Line1)
-        WRITE(*,*) '----->  desired #consts: ', var_par(j)%anzp, j
+        WRITE(*,*) '----->  desired #consts: ', reac_par(j)%n_par, j
         WRITE(*,*) '----->  actual  #consts: ', SIZE(RS(i)%Constants)
         WRITE(*,*) '       Check sys-file for syntax errors!'
         CALL FinishMPI();  STOP
@@ -3098,11 +3107,13 @@ MODULE Chemsys_Mod
     ALLOCATE( iR%iSPEC1mcm(nr_SPEC1mcm), iR%iSPEC2mcm(nr_SPEC2mcm),&
             & iR%iSPEC3mcm(nr_SPEC3mcm), iR%iSPEC4mcm(nr_SPEC4mcm),&
             & iR%iSPEC5mcm(nr_SPEC5mcm), iR%iSPEC6mcm(nr_SPEC6mcm),&
-            & iR%iSPEC7mcm(nr_SPEC7mcm), iR%iSPEC8mcm(nr_SPEC8mcm) )
+            & iR%iSPEC7mcm(nr_SPEC7mcm), iR%iSPEC8mcm(nr_SPEC8mcm),&
+            & iR%iSPEC9mcm(nr_SPEC9mcm) )
     ALLOCATE( iR%SPEC1mcm(nr_SPEC1mcm,3), iR%SPEC2mcm(nr_SPEC2mcm,3),&
             & iR%SPEC3mcm(nr_SPEC3mcm,2), iR%SPEC4mcm(nr_SPEC4mcm,4),&
             & iR%SPEC5mcm(nr_SPEC5mcm,4), iR%SPEC6mcm(nr_SPEC6mcm,4),&
-            & iR%SPEC7mcm(nr_SPEC7mcm,6), iR%SPEC8mcm(nr_SPEC8mcm,4) )
+            & iR%SPEC7mcm(nr_SPEC7mcm,6), iR%SPEC8mcm(nr_SPEC8mcm,4),&
+            & iR%SPEC9mcm(nr_SPEC9mcm,10) )
 
     ALLOCATE( iR%iS4H2O(nr_S4H2O), iR%iT1H2O(nr_T1H2O))
     ALLOCATE( iR%S4H2O(nr_S4H2O,4), iR%T1H2O(nr_T1H2O,2))

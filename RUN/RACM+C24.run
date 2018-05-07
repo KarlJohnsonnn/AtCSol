@@ -2,20 +2,18 @@
   BSP        = 'RACM+C24'   ! Name der NetCDF Output-Datei
   WaitBar    = .T.          ! .F. = kein ladebalken, .T. /= ladebalken aktiv
   FluxAna    = .F.          ! analyse reaction rates (fluxes)
-  ChemKin    = .F.          ! input mechanism in ChemKin notation
-  Lehmann    = .F.
 /END
 &FILES
   SysFile    = 'CHEM/RACM+C24.sys'      ! .sys Datei (ohne .sys angeben!)
   DataFile   = 'DAT/Urban.dat'          ! .dat Datei (für RO2, RO2aqua Summen)
   InitFile   = 'INI/Urban.ini'          ! .ini Datei (Anfangswerte gas/flüssig), Diagnose spc
   MetFile    = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)
-  TargetFile = 'TAR/RACM+C24.ctrl'     ! .ctrl Datei (Zielspezies,Spezies Familen,gelumpte Species)
+ ! TargetFile = 'TAR/RACM+C24.ctrl'     ! .ctrl Datei (Zielspezies,Spezies Familen,gelumpte Species)
 /END
 &TIMES
   tBegin      = 0.0d0          ! Startzeit Integration   (in [sec])
-  !tEnd        = 86400.0d0      ! Endzeit   Integration   (in [sec])
-  tEnd        = 172800.0d0      ! Endzeit   Integration   (in [sec])
+  tEnd        = 86400.0d0      ! Endzeit   Integration   (in [sec])
+  !tEnd        = 172800.0d0      ! Endzeit   Integration   (in [sec])
 /END
 &METEO
   pHSet       = .T.          ! Berechne pH Wert zu Beginn

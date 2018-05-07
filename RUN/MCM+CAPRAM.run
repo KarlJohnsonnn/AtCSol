@@ -11,8 +11,8 @@
 /END
 &TIMES
   tBegin      = 0.0d0
-  tEnd        = 172800.0d0
-  !tEnd        = 84600.0d0
+  !tEnd        = 172800.0d0
+  tEnd        = 84600.0d0
 /END
 &METEO
   pHSet       = .T.          ! Berechne pH Wert zu Beginn
@@ -30,7 +30,7 @@
   AtolAqua = 1.0d-7
   Error_Est = 2
   PI_StepSize = .F.
-  LinAlg  = 'ex'
+  LinAlg  = 'cl'
   minStp  = 1.0d-30
   maxStp  = 300.d0
   !ODEsolver = 'LSODES'

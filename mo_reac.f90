@@ -17,58 +17,110 @@
 !
 !---  reaction types
     TYPE def_para
-      CHARACTER(8) :: str_type
-      INTEGER :: anzp
-      INTEGER :: type
+      CHARACTER(8) :: name_type   ! name of the reaction type
+      INTEGER      :: n_par       ! number of parameters for corresponding reaction type
+      INTEGER      :: n_reac      ! number of corresponding reactions
+      LOGICAL      :: act         ! true if n_reac>0
     END TYPE def_para
-  
-!    INTEGER, PARAMETER ::        &
-!!&              nr_reac  = 37     &  ! number of reaction types
-!&             ,nr_cons  =  4     &  ! constant rate
-!&             ,nr_sgasA = 16     &  ! first special gas reaction 
-!&             ,nr_sgasE = 35     &  ! last  special gas reaction 
-!&             ,nr_equi  = 36     &  ! equilibrium (for solubility)
-!&             ,nr_dtemp_3  = 13        ! equilibrium (for solubility)
-!
 
-    TYPE(def_para), DIMENSION(37) :: var_par = &
-                   (/def_para("PHOTABC", 3,  1), &
-                     def_para("PHOTMCM", 3,  2), &
-                     def_para("PHOTAB",  2,  3), &
-                     def_para("CONST",   1,  4), &
-                     def_para("TEMP1",   2,  5), &
-                     def_para("TEMP2",   2,  6), &
-                     def_para("TEMP3",   2,  7), &
-                     def_para("TEMP4",   2,  8), &
-                     def_para("TEMPX",   3,  9), &
-                     def_para("ASPEC1",  2, 10), &
-                     def_para("ASPEC2",  3, 11), &
-                     def_para("ASPEC3",  2, 12), &
-                     def_para("DCONST",  2, 13), &
-                     def_para("DTEMP",   3, 14), &
-                     def_para("DTEMP2",  4, 15), &
-                     def_para("DTEMP3",  4, 16), &
-                     def_para("TROE",    4, 17), &
-                     def_para("TROEQ",   6, 18), &
-                     def_para("TROEF",   5, 19), &
-                     def_para("TROEQF",  7, 20), &
-                     def_para("TROEXP",  5, 21), &
-                     def_para("TROEMCM",10, 22), &
-                     def_para("SPEC1",   2, 23), &
-                     def_para("SPEC2",   2, 24), &
-                     def_para("SPEC3",   6, 25), &
-                     def_para("SPEC4",   4, 26), &
-                     def_para("SPEC1MCM",3, 27), &
-                     def_para("SPEC2MCM",3, 28), &
-                     def_para("SPEC4MCM",4, 29), &
-                     def_para("SPEC3MCM",2, 30), &
-                     def_para("SPEC5MCM",4, 31), &
-                     def_para("SPEC6MCM",4, 32), &
-                     def_para("SPEC7MCM",6, 33), &
-                     def_para("SPEC8MCM",4, 34), &
-                     def_para("T1H2O",   2, 35), &
-                     def_para("S4H2O",   4, 36), &
-                     def_para("EQUI",    1, 37) /)
+    INTEGER, PARAMETER :: nReacTypes = 45
+    INTEGER, PARAMETER ::           &
+    &            ind_PHOTABC   = 1  &
+    &         ,  ind_PHOTMCM   = 2  &
+    &         ,  ind_PHOTAB    = 3  &
+    &         ,  ind_CONST     = 4  &
+    &         ,  ind_TEMP      = 5  &
+    &         ,  ind_TEMP1     = 6  &
+    &         ,  ind_TEMP2     = 7  &
+    &         ,  ind_TEMP3     = 8  &
+    &         ,  ind_TEMP4     = 9  &
+    &         ,  ind_ASPEC1    = 10  &
+    &         ,  ind_ASPEC2    = 11  &
+    &         ,  ind_ASPEC3    = 12  &
+    &         ,  ind_DCONST    = 13  &
+    &         ,  ind_DTEMP     = 14  &
+    &         ,  ind_DTEMP2    = 15  &
+    &         ,  ind_DTEMP3    = 16  &
+    &         ,  ind_DTEMP4    = 17  &
+    &         ,  ind_DTEMP5    = 18  &
+    &         ,  ind_MESKHIDZE = 19  &
+    &         ,  ind_T1H2O     = 20  &
+    &         ,  ind_S4H2O     = 21  &
+    &         ,  ind_TROE      = 22  &
+    &         ,  ind_TROEQ     = 23  &
+    &         ,  ind_TROEF     = 24  &
+    &         ,  ind_TROEQF    = 25  &
+    &         ,  ind_TROEXP    = 26  &
+    &         ,  ind_TROEMCM   = 27  &
+    &         ,  ind_SPEC1     = 28  &
+    &         ,  ind_SPEC2     = 29  &
+    &         ,  ind_SPEC3     = 30  &
+    &         ,  ind_SPEC4     = 31  &
+    &         ,  ind_SPEC1MCM  = 32  &
+    &         ,  ind_SPEC2MCM  = 33  &
+    &         ,  ind_SPEC3MCM  = 34  &
+    &         ,  ind_SPEC4MCM  = 35  &
+    &         ,  ind_SPEC5MCM  = 36  &
+    &         ,  ind_SPEC6MCM  = 37  &
+    &         ,  ind_SPEC7MCM  = 38  &
+    &         ,  ind_SPEC8MCM  = 39  &
+    &         ,  ind_SPEC9MCM  = 40  &
+    &         ,  ind_HOM1      = 41  &
+    &         ,  ind_PHOTO     = 42  &
+    &         ,  ind_PHOTO2    = 43  &
+    &         ,  ind_PHOTO3    = 44  &
+    &         ,  ind_EQUI      = 45  
+  
+
+
+    TYPE(def_para), DIMENSION(nReacTypes) :: reac_par = &
+                   (/def_para("PHOTABC",   3,  0, .FALSE.), &
+                     def_para("PHOTMCM",   3,  0, .FALSE.), &
+                     def_para("PHOTAB",    2,  0, .FALSE.), &
+                     def_para("CONST",     1,  0, .FALSE.), &
+                     def_para("TEMP",      3,  0, .FALSE.), &
+                     def_para("TEMP1",     2,  0, .FALSE.), &
+                     def_para("TEMP2",     2,  0, .FALSE.), &
+                     def_para("TEMP3",     2,  0, .FALSE.), &
+                     def_para("TEMP4",     2,  0, .FALSE.), &
+                     def_para("ASPEC1",    2,  0, .FALSE.), &
+                     def_para("ASPEC2",    3,  0, .FALSE.), &
+                     def_para("ASPEC3",    2,  0, .FALSE.), &
+                     def_para("DCONST",    2,  0, .FALSE.), &
+                     def_para("DTEMP",     3,  0, .FALSE.), &
+                     def_para("DTEMP2",    4,  0, .FALSE.), &
+                     def_para("DTEMP3",    4,  0, .FALSE.), &
+                     def_para("DTEMP4",    4,  0, .FALSE.), &
+                     def_para("DTEMP5",    4,  0, .FALSE.), &
+                     def_para("MESKHIDZE", 7,  0, .FALSE.), &
+                     def_para("T1H2O",     2,  0, .FALSE.), &
+                     def_para("S4H2O",     4,  0, .FALSE.), &
+                     def_para("TROE",      4,  0, .FALSE.), &
+                     def_para("TROEQ",     6,  0, .FALSE.), &
+                     def_para("TROEF",     5,  0, .FALSE.), &
+                     def_para("TROEQF",    7,  0, .FALSE.), &
+                     def_para("TROEXP",    5,  0, .FALSE.), &
+                     def_para("TROEMCM",  10,  0, .FALSE.), &
+                     def_para("SPEC1",     2,  0, .FALSE.), &
+                     def_para("SPEC2",     2,  0, .FALSE.), &
+                     def_para("SPEC3",     6,  0, .FALSE.), &
+                     def_para("SPEC4",     4,  0, .FALSE.), &
+                     def_para("SPEC1MCM",  3,  0, .FALSE.), &
+                     def_para("SPEC2MCM",  3,  0, .FALSE.), &
+                     def_para("SPEC4MCM",  4,  0, .FALSE.), &
+                     def_para("SPEC3MCM",  2,  0, .FALSE.), &
+                     def_para("SPEC5MCM",  4,  0, .FALSE.), &
+                     def_para("SPEC6MCM",  4,  0, .FALSE.), &
+                     def_para("SPEC7MCM",  6,  0, .FALSE.), &
+                     def_para("SPEC8MCM",  4,  0, .FALSE.), &
+                     def_para("SPEC9MCM",  4,  0, .FALSE.), &
+                     def_para("HOM1",      4,  0, .FALSE.), &
+                     def_para("PHOTO",     4,  0, .FALSE.), &
+                     def_para("PHOTO2",    4,  0, .FALSE.), &
+                     def_para("PHOTO3",    4,  0, .FALSE.), &
+                     def_para("EQUI",      1,  0, .FALSE.) /)
+
+
 !---  reaction structures
     TYPE reactant
        INTEGER :: i_spc
@@ -163,7 +215,7 @@
     INTEGER :: nr_TROE  = 0, nr_TROEf = 0, nr_TROEq = 0, nr_TROEqf = 0, nr_TROExp = 0, nr_TROEmcm = 0
     INTEGER :: nr_SPEC1 = 0, nr_SPEC2 = 0, nr_SPEC3 = 0, nr_SPEC4 = 0
     INTEGER :: nr_SPEC1mcm = 0, nr_SPEC2mcm = 0, nr_SPEC3mcm = 0, nr_SPEC4mcm = 0
-    INTEGER :: nr_SPEC5mcm = 0, nr_SPEC6mcm = 0, nr_SPEC7mcm = 0, nr_SPEC8mcm = 0
+    INTEGER :: nr_SPEC5mcm = 0, nr_SPEC6mcm = 0, nr_SPEC7mcm = 0, nr_SPEC8mcm = 0, nr_SPEC9mcm = 0
     INTEGER :: nr_S4H2O  = 0, nr_T1H2O   = 0, nr_Meskhidze = 0
     INTEGER :: nr_ASPEC1 = 0, nr_ASPEC2  = 0, nr_ASPEC3   = 0, nr_ASPEC4 = 0
     INTEGER :: nr_DTEMP  = 0, nr_DTEMP2  = 0, nr_DTEMP3   = 0, nr_DTEMP4 = 0, nr_DTEMP5 = 0, nr_DCONST = 0
@@ -178,10 +230,12 @@
 
 !    INTEGER :: nreakstemp,nreaksequi,nreaksspec
 !--    define indices of special species
-    INTEGER ::   Hp_ind,         &   ! Index Hp
-&               OHm_ind,         &   ! Index OHm
+    INTEGER ::   Hp_ind,         &   ! Index Hp (aqua)
+&               OHm_ind,         &   ! Index OHm  (aqua)
 &               H2O_ind,         &   ! Index H2O (gas)
 &              aH2O_ind,         &   ! Index aH2O (aqua)
+&              SO4mm_ind,        &   ! Index SO4mm_ind (aqua)
+&              HSO4m_ind,        &   ! Index HSO4m_ind (aqua)
 &              Temp_ind              ! Index Temperatur
 
 !--------------------------------------------------------------
@@ -341,7 +395,7 @@
       &                     , iTROE(:),     iTROEf(:),    iTROEq(:),   iTROEqf(:), iTROExp(:) &
       &                     , iTROEmcm(:),  iSPEC1(:),    iSPEC2(:),   iSPEC3(:),  iSPEC4(:)  &
       &                     , iSPEC1mcm(:), iSPEC2mcm(:), iSPEC3mcm(:), iSPEC4mcm(:)  &
-      &                     , iSPEC5mcm(:), iSPEC6mcm(:), iSPEC7mcm(:), iSPEC8mcm(:)  &
+      &                     , iSPEC5mcm(:), iSPEC6mcm(:), iSPEC7mcm(:), iSPEC8mcm(:), iSPEC9mcm(:)  &
       &                     , iS4H2O(:),    iT1H2O(:),    iASPEC1(:),   iASPEC2(:)    &
       &                     , iASPEC3(:),   iASPEC4(:),   iDCONST(:,:),   iDTEMP(:,:) &
       &                     , iDTEMP2(:,:), iDTEMP3(:,:), iDTEMP4(:,:), iDTEMP5(:,:), iMeskhidze(:,:)&
@@ -370,6 +424,7 @@
       &                     ,  SPEC3mcm(:,:)   & ! nSPEC3mcm x 2
       &                     ,  SPEC4mcm(:,:), SPEC5mcm(:,:), SPEC6mcm(:,:), SPEC8mcm(:,:) & ! nSPEC4,5,6mcm x 4
       &                     ,  SPEC7mcm(:,:)  &  ! nSPEC7mcm x 6
+      &                     ,  SPEC9mcm(:,:)  &  ! nSPEC9mcm x 10
       &                     ,  S4H2O(:,:)     &  ! nS4H2o x 4
       &                     ,  T1H2O(:,:)     &  ! nT1H2o x 2
       &                     ,  Meskhidze(:,:) &  ! nMeskhidze x 7

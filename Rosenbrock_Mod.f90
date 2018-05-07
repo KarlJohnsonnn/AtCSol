@@ -101,6 +101,7 @@ MODULE Rosenbrock_Mod
         CASE ('Ros34PW3')      
           INCLUDE 'METHODS/Ros34PW3.ros'
         CASE ('Rodas3')  
+          !INCLUDE 'METHODS/TSRosWRodas3.ros'
           INCLUDE 'METHODS/Rodas3.ros'
         CASE ('TSRosW2P')      
           INCLUDE 'METHODS/TSRosW2P.ros'
@@ -363,7 +364,6 @@ MODULE Rosenbrock_Mod
 
     IF ( Teq ) THEN
       Tarr = UpdateTempArray   ( Y0(nDIM) )       
-
       CALL InternalEnergy      ( U       , Tarr)             
       CALL DiffInternalEnergy  ( dUdT    , Tarr)              
       CALL Diff2InternalEnergy ( d2UdT2  , Tarr)
@@ -546,7 +546,13 @@ MODULE Rosenbrock_Mod
 
         dCdt = BAT * Rate + Emiss
         fRhs(1:nspc) =  h * dCdt
-        IF (Teq) fRhs( nDIM ) = - h * SUM(U*dCdt) * rRho / cv
+        IF (Teq) THEN
+          Tarr = UpdateTempArray ( Y(nDIM) )       
+          CALL InternalEnergy    ( U       , Tarr)  
+          CALL DiffInternalEnergy( dUdT    , Tarr)              
+          CALL MassAveMixSpecHeat( cv      , dUdT    , MoleConc=Y(1:nspc) , rho=rho)
+          fRhs( nDIM ) = - h * SUM(U*dCdt) * rRho / cv
+        END IF
 
         DO jStg=1,iStg-1; fRhs = fRhs + ROS%C(iStg,jStg)*k(:,jStg); END DO
 
@@ -560,9 +566,14 @@ MODULE Rosenbrock_Mod
 
           DO jStg = 1 , iStg-1
             fRhs(1:nspc) = fRhs(1:nspc) + ROS%C(iStg,jStg)*k(1:nspc,jStg)
-            IF (Teq)                                                       &
-            fRhs(nDIM)   = fRhs(nDIM) + ROS%C(iStg,jStg)*                  &
-            &               ( cv/rRho*k(nDIM,jStg) + SUM(U*k(1:nspc,jStg)) )
+            
+            IF (Teq) THEN
+              Tarr = UpdateTempArray( Y(nDIM) )       
+              CALL InternalEnergy( U , Tarr)    
+              CALL DiffInternalEnergy( dUdT    , Tarr)              
+              CALL MassAveMixSpecHeat( cv      , dUdT    , MoleConc=Y(1:nspc) , rho=rho)
+              fRhs(nDIM)   = fRhs(nDIM) + ROS%C(iStg,jStg)*( cv/rRho*k(nDIM,jStg) + SUM(U*k(1:nspc,jStg)) )
+            END IF
           END DO
 
           ! right hand side of the extended linear system
