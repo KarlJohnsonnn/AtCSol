@@ -52,9 +52,11 @@
 
       NAMELIST /OUTPUT/  NetCdfFile , &
       &                  StpNetcdf ,  &
+      &                  StpFlux ,    &
       &                  nOutP ,      &
       &                  DebugPrint , &
-      &                  MatrixPrint 
+      &                  MatrixPrint, &
+      &                  eps_red 
 
 !
 !===================================================================
@@ -89,7 +91,7 @@
       CALL ErrorCheck(io_stat,io_msg,'reading FILES list')
       
 !--- Adjust Filenames
-      IF (.NOT.ChemKin) CALL FileNameCheck(MetFile,'MetFile')
+      !IF (.NOT.ChemKin) CALL FileNameCheck(MetFile,'MetFile')
       CALL FileNameCheck(SysFile,'SysFile')
       CALL FileNameCheck(DataFile,'DataFile')
       CALL FileNameCheck(InitFile,'InitFile')
@@ -165,6 +167,7 @@
       ODEsolver   = 'ROS34PW3'  ! ROW scheme
       Ordering    = 8           ! sparse LU, no numerical pivoting
       ParOrdering = -1          ! -1 = serial ordering, 0,1,2 = parallel ordering
+      eps_red     = 0.11_dp
       
 !--- Read NUMERICS namelist
       READ(RunUnit,NUMERICS,IOSTAT=io_stat,IOMSG=io_msg)
@@ -220,6 +223,7 @@
 !
 !--- Set Default Values for OUTPUT Namelist
       StpNetcdf   = -1.0_dp      ! Time step for Netcdf output      [in sec]
+      StpFlux     = -1.0_dp
       nOutP       = 100
       MatrixPrint = .FALSE.
       DebugPrint  = .FALSE.
@@ -230,7 +234,7 @@
       CALL ErrorCheck(io_stat,io_msg,'reading OUTPUT list')
 
       NetCDFFile = ADJUSTL(NetCDFFile)
-      IF ( NetCdfFile == '' ) NetCdfPrint = .FALSE.   ! no output if no filename is declared
+      IF ( TRIM(NetCdfFile) == '' ) NetCdfPrint = .FALSE.   ! no output if no filename is declared
       IF ( nOutP < 2 ) nOutP = 2                          ! minimum output steps are 2
 
       CLOSE(RunUnit)
@@ -247,6 +251,7 @@
           CHARACTER(*) :: Name
           CHARACTER(*) :: miss
           LOGICAL      :: ex
+
           INQUIRE(FILE=TRIM(Name), EXIST=ex)
           
           IF ( TRIM(Name) == '' .OR. .NOT.ex ) THEN

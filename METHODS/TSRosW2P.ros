@@ -2,34 +2,24 @@
 !
 ! One stage second order A-stable Rosenbrock-W scheme (aka theta method).
 ! Only an approximate Jacobian is needed. 
-!
+
 RCo%Order=2
 RCo%nStage=2
-RCo%pinterp=2
 RCo%ga=1.0d0 + 1.0d0/SQRT(2.0d0)
-!
+
 ALLOCATE(RCo%Alpha(2,2))
 RCo%Alpha=0.0d0
 RCo%Alpha(2,1)=1.0d0
-!
+
 ALLOCATE(RCo%Gamma(2,2))
 RCo%Gamma=0.0d0
 RCo%Gamma(1,1)=RCo%ga
 RCo%Gamma(2,1)=-2.0d0*RCo%ga
 RCo%Gamma(2,2)=RCo%ga
-!
-ALLOCATE(RCo%Asum(2))
-RCo%Asum=0.0d0
-RCo%Asum(1)=SUM(RCo%Alpha(1,:))
-RCo%Asum(2)=SUM(RCo%Alpha(2,:))
-!
+
 ALLOCATE(RCo%B(2))
 RCo%B=0.0d0
 RCo%B=(/0.5d0,0.5d0/)
 ALLOCATE(RCo%Be(2))
 RCo%Be=0.0d0
 RCo%Be=(/1.0d0,0.0d0/)
-ALLOCATE(RCo%binterpt(2,2))
-RCo%binterpt=0.0d0
-RCo%binterpt(1,:)=(/RCo%ga-1.0d0 , RCo%ga-1.5d0/)
-RCo%binterpt(2,:)=(/2.0d0-RCo%ga , 1.5d0-RCo%ga/)	

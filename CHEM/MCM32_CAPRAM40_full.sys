@@ -6,7 +6,6 @@
 
 UNIT GAS    0   #    Gas phase units     (0 = molec/cm3, 1 = mol/m3)
 UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)
-UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)
 
 #  ===================   Gas Phase      ======================
 #

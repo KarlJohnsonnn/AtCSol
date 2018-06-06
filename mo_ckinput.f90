@@ -981,6 +981,14 @@ CONTAINS
 
   END FUNCTION MoleConc_to_MassFr
 
+  !FUNCTION MoleConc_to_MoleFr(MoleConc) RESULT(MoleFr)
+  !  REAL(dp), ALLOCATABLE :: MoleFr(:)   ! Mole fraction [mol/mol]
+  !  REAL(dp), INTENT(IN)  :: MoleConc(:) ! Mole concentration  [mol/cm3]
+  !
+  !  MoleFr = MoleConc / SUM( MoleConc)
+  !
+  !END FUNCTION MoleConc_to_MoleFr
+
 
   FUNCTION MoleFr_To_MoleConc(MoleFr,rho,Press,Temp) RESULT(MoleConc)
     REAL(dp), ALLOCATABLE :: MoleConc(:)      ! Mole concentration

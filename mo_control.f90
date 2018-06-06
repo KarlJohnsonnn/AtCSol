@@ -9,7 +9,7 @@
 !-----------------------------------------------------------------
 !
 !--- Identifier for scenario
-      CHARACTER(20) :: Bsp        = ''      ! Identifier for scenario
+      CHARACTER(80) :: Bsp        = ''      ! Identifier for scenario
 
 !--- Files
       CHARACTER(80) :: RunFile    = ''    & ! Simulation data file
@@ -23,8 +23,9 @@
 &                    , ODEsolver  = ''    & ! Method for Rosenbrock Integration
 &                    , TargetFile = ''      ! file for reductions analysis (target species)
 
-      CHARACTER(80) :: FluxMetaFile = 'fluxmeta.dat' ! meta data for unformatted flux data
-      CHARACTER(80) :: FluxFile     = 'fluxes.dat'   ! flux data (unformatted)
+      CHARACTER(7)  :: OutputPath   = 'OUTPUT/'      ! path to output folder
+      CHARACTER(19) :: FluxMetaFile = 'OUTPUT/fluxmeta.dat' ! meta data for unformatted flux data
+      CHARACTER(17) :: FluxFile     = 'OUTPUT/fluxes.dat'   ! flux data (unformatted)
 !
 !--- Unit Numbers
       INTEGER, PARAMETER :: RunUnit      = 101  & 
@@ -35,7 +36,8 @@
 &                         , InitUnit     = 106  & 
 &                         , DataUnit     = 107  & 
 &                         , FluxMetaUnit = 109  &
-&                         , FluxUnit     = 110   
+&                         , FluxUnit     = 110  & 
+&                         , TikZUnit     = 111   
 !
 !-- Set Levels and Parameters for Processes
       REAL(dp) :: LWCLevelmin    & ! Lower level for LWC
@@ -50,10 +52,11 @@
 &              , NetCdfPrint     & ! print out concs and other stuff to netcdf file
 &              , constLWC        & ! true if lwc value is fixed
 &              , Lehmann         & ! prints out pathway analysis file 
-&              , Teq             & ! prints out pathway analysis file 
+&              , Teq             & ! if Teq=.TRUE. simulate combustion mechanism
 &              , pHSet           & ! Initial pH by charge balance (1=on, 0=off)
 &              , WaitBar         & ! ladebalken im terminal bei simulation (=1, default=0)
-&              , FluxAna           ! writing flux data and analyse after simulaiton -> print new reaction file
+&              , FluxAna         & ! writing flux data and analyse after simulaiton -> print new reaction file
+&              , Simulation        ! calculation of species concentration 
 
       INTEGER :: Error_Est         ! error estimation 1 = inf norm  , 2 = euklid norm
     
@@ -105,6 +108,7 @@
       REAL(dp) :: TimeErrCalc=0.0d0
       REAL(dp) :: TimeFluxWrite=0.0d0
       REAL(dp) :: TimeRhsCalc=0.0d0
+      REAL(dp) :: TimeReduction=0.0d0
   
       REAL(dp) :: TimeIntegration=0.0d0
       REAL(dp) :: TimeRateA=0.0d0
@@ -199,7 +203,7 @@
 &                      , milli    =     1.0d-03    &
 &                      , kilo     =     1.0d+03    &
 &                      , mega     =     1.0d+06    &
-&                      , tera     =     1.0d+09
+&                      , giga     =     1.0d+09
 !
 !--- Natural logarithms
   REAL(dp), PARAMETER ::   ln10   =     LOG(TEN)    &
@@ -250,6 +254,9 @@
     INTEGER :: GasUnit, AquaUnit, GasRateUnit
     REAL(dp) :: GasFac
 
+    INTEGER :: UnitGas=0
+    INTEGER :: UnitAqua=0
+
 
 !-----------------------------------------------------------------
 !---  Output control 
@@ -299,6 +306,13 @@
       CHARACTER(LenName), ALLOCATABLE :: Name(:)
       INTEGER,            ALLOCATABLE :: Index(:)
     END TYPE Families_T
+    
+
+
+    REAL(dp) :: eps_red       ! threshold for reduction procedure
+
+    
+    INTEGER, ALLOCATABLE :: maxErrorCounter(:)
    
  END MODULE mo_control
 

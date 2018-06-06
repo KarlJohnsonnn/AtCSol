@@ -47,7 +47,7 @@ MODULE Cycles_Mod
   !
   FUNCTION Find_Elem_Circuits(A,FAMS) RESULT(Cyclic_Set_Out)
   !SUBROUTINE Find_Elem_Circuits(A,SpcList)
-    USE mo_control,   ONLY: Families_T, BSP
+    USE mo_control,   ONLY: Families_T, BSP, OutputPath
 
     TYPE(List), ALLOCATABLE :: Cyclic_Set_Out(:) 
     ! IN:
@@ -58,7 +58,7 @@ MODULE Cycles_Mod
     TYPE(SpRowIndColInd_T) :: sub_A
     TYPE(List), ALLOCATABLE :: scc(:) !, sub_Ak(:)
     INTEGER :: n, s, least_node, nspc
-    INTEGER :: i, j, k, ispc , cnt, nnz, iFam
+    INTEGER :: i, j, k, ispc , cnt, nnz, iFam, nFam
     INTEGER :: iC
     INTEGER, ALLOCATABLE :: comp_nodes(:)
     INTEGER, ALLOCATABLE :: iCyc_red(:)
@@ -78,8 +78,6 @@ MODULE Cycles_Mod
     WRITE(*,777) REPEAT('*',39)
     WRITE(*,777) '********** Structure Analysis *********'
     WRITE(*,777) REPEAT('*',39)
-    WRITE(*,*)
-    WRITE(*,'(10X,A,I0)') '    Maximum cycle length = ',maxlen
     WRITE(*,*)
 
     n    = A%n
@@ -104,8 +102,9 @@ MODULE Cycles_Mod
     
     ! diese schleife später nur über ausgewählte knoten s
     s = 1
+    nFam = SIZE(FAMS)
 
-    DO iFam = 1 , SIZE(FAMS)
+    DO iFam = 1 , nFam
 
       SpcList = [ FAMS(iFam)%Index ]
       nspc = SIZE(SpcList)
@@ -140,9 +139,9 @@ MODULE Cycles_Mod
 
           DEALLOCATE(scc)
           s = s + 1
-          CALL Progress(j,nspc)
+          CALL Progress(iFam,nFam,j,nspc)
         ELSE
-          CALL Progress(nspc,nspc)
+          CALL Progress(iFam,nFam,nspc,nspc)
           EXIT
         END IF
       END DO
@@ -158,14 +157,10 @@ MODULE Cycles_Mod
     nCycles = cntSCC
     ALLOCATE(Cyclic_Set(nCycles))
 
-    
-
-
-
     ! write paths to file and save it in a allcatable array
-    OPEN(UNIT=99,FILE='reaction_paths_'//TRIM(BSP)//'.txt',STATUS='UNKNOWN')
+    OPEN(UNIT=99,FILE=OutputPath//'all_species_cycles_'//TRIM(BSP)//'.txt',STATUS='UNKNOWN')
     WRITE(99,*)
-    WRITE(99,'(A,*(I0))') '   Anzahl Zyklen:   ',nCycles
+    WRITE(99,'(A,*(I0))') '   Number of all found cycles:   ',nCycles
     WRITE(99,'(A)') '   Cycle Length:       species: '
     printCYC => cycFirst
     i = 0
@@ -225,17 +220,17 @@ MODULE Cycles_Mod
 
     nCycles_red = cntSCC
     ALLOCATE(Cyclic_Set_Out(nCycles_red))
-    OPEN(UNIT=98,FILE='reaction_path_short_'//TRIM(BSP)//'.txt',STATUS='UNKNOWN')
-    WRITE(98,*)
-    WRITE(98,'(A)') '   Cycle Length:       species: '
-    WRITE(98,'(A,*(I0))') '   Anzahl Zyklen nach kuerzen:   ',nCycles_red
+    !OPEN(UNIT=98,FILE=OutputPath//'family_species_cycles_'//TRIM(BSP)//'.txt',STATUS='UNKNOWN')
+    !WRITE(98,*)
+    !WRITE(98,'(A,*(I0))') '   Number of cycles afer sorting out:   ',nCycles_red
+    !WRITE(98,'(A)') '   Cycle Length:       species: '
     DO i = 1, nCycles_red
       iC = iCyc_red(i)
       Cyclic_Set_Out(i)%len = Cyclic_Set(iC)%len
       Cyclic_Set_Out(i)%List = [Cyclic_Set(iC)%List]
-      WRITE(98,'(10X,I2,8X,*(A))') Cyclic_Set_Out(i)%len,                      &
-      & (TRIM(y_name(Cyclic_Set_Out(i)%List(k)))//' -> ' ,k=1,Cyclic_Set_Out(i)%len-1), &
-      &  TRIM(y_name(Cyclic_Set_Out(i)%List(Cyclic_Set_Out(i)%len)))
+      !WRITE(98,'(10X,I2,8X,*(A))') Cyclic_Set_Out(i)%len,                      &
+      !& (TRIM(y_name(Cyclic_Set_Out(i)%List(k)))//' -> ' ,k=1,Cyclic_Set_Out(i)%len-1), &
+      !&  TRIM(y_name(Cyclic_Set_Out(i)%List(Cyclic_Set_Out(i)%len)))
       ! matlab output
       !WRITE(97,'(*(I0,2X))') (Cyclic_Set_Out(i)%List(j) , j=1,Cyclic_Set_Out(i)%len)
     END DO
@@ -434,7 +429,8 @@ MODULE Cycles_Mod
     END DO
 
     nSCC = scc_List%id-1
-
+    
+    IF (ALLOCATED(scc)) DEALLOCATE(scc)
     ALLOCATE( scc(nSCC), nVertexSCC(nSCC), q(nSCC) )
     nVertexSCC = 0;  q = 0
 
@@ -695,10 +691,10 @@ MODULE Cycles_Mod
 
   END FUNCTION Generate_Submatrix
 
-  SUBROUTINE Progress(j,k)
-    INTEGER(4)  :: j,k 
+  SUBROUTINE Progress(i,ii,j,k)
+    INTEGER(4)  :: i,ii,j,k 
     ! print the progress bar.
-    WRITE(*,'(A1,14X,A,I0,A,I0,A,$)') char(13),'Node :: (',j,'/',k,')  processed.'
+    WRITE(*,'(A1,14X,4(A,I0),A,$)') char(13),'Family :: (',i,'/',ii,')    Node :: (',j,'/',k,')  processed.'
   END SUBROUTINE Progress
 
 END MODULE Cycles_Mod

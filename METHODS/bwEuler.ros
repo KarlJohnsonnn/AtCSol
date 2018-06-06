@@ -1,13 +1,10 @@
 ! RCo
 ! backward euler
-RCo%Order=2
-RCo%nStage=1
-RCo%ga=1.0d0
-ALLOCATE(RCo%Alpha(1,1))
-RCo%Alpha=0.0d0
-ALLOCATE(RCo%Asum(1))
-RCo%Asum=0.0d0
-ALLOCATE(RCo%Gamma(1,1))
-RCo%Gamma=1.0d0
-ALLOCATE(RCo%B(1))
-RCo%B=1.0d0
+RCo%Order  = 2
+RCo%nStage = 1
+RCo%ga     = 1.0_dp
+
+ALLOCATE(RCo%Alpha(1,1), RCo%Gamma(1,1), RCo%B(1))
+RCo%Alpha(1,1) = 0.0_dp
+RCo%Gamma(1,1) = 1.0_dp
+RCo%B(1)       = 1.0_dp

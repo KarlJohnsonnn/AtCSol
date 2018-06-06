@@ -120,7 +120,11 @@ MODULE NetCDF_Mod
   
       Diag_Name(j)     = TRIM(tmpName)
       Diag_LongName(j) = TRIM(tmpName)
-      DIAG_UNITS(j)    = "mol/m3"
+      IF ( UnitGas == 1 ) THEN
+        DIAG_UNITS(j)    = "mol/m3"
+      ELSE
+        DIAG_UNITS(j)    = "molec/cm3"
+      END IF
   
       CALL check_name_slash(Diag_Name(j))
       CALL check_name_bracket(Diag_Name(j))
@@ -175,6 +179,8 @@ MODULE NetCDF_Mod
       iNCout_P = [iNCout_P, j]
     END DO
 
+
+    CALL TikZ_init('OUTPUT/'//TRIM(BSP)//'.dat',Diag_Name)
 
     
     ! ============================================================
@@ -408,7 +414,7 @@ SUBROUTINE SetOutputNcdf(NCDF,Time,StpSize,iERR,ERR,Conc,Temp)
 	INTEGER :: j,  idx, iDiagSpc, iFr
 	LOGICAL :: NaN=.FALSE.
   REAL(dp), PARAMETER    :: y_Min = 1.e-40_dp    
-  REAL(dp), ALLOCATABLE :: tConc(:), tG(:), tA(:), tS(:), tP(:), tAF(:)
+  REAL(dp), ALLOCATABLE :: tConc(:), tG(:), tA(:), tS(:), tP(:), tAF(:), dbg(:)
 
   !==================================================================
   !===  Saving Output
@@ -429,19 +435,25 @@ SUBROUTINE SetOutputNcdf(NCDF,Time,StpSize,iERR,ERR,Conc,Temp)
  
   tConc = [ MAX(Conc,y_Min) ]             ! minimum for logarithmic plot
   IF ( ChemKin ) THEN
-    tG = [ tConc(iNcdfGas) ]              ! in [???]
+    tConc = MoleConc_to_MoleFr(tConc(1:nspc))
+    tG = [ tConc(iNcdfGas) ]     ! in mole fractions [-]
+    NCDF%Temperature = tConc(nDIM)
   ELSE
-    tG = [ tConc(iNcdfGas)   / mol2part ] ! convert to mol/m3
+    IF ( UnitGas == 0 ) THEN
+      tG = [ tConc(iNcdfGas)   ] !  molec/cm3
+    ELSE
+      tG = [ tConc(iNcdfGas)   / mol2part ] ! convert to mol/m3
+    END IF
     tA = [ tConc(iNcdfAqua)  / mol2part ] 
     tS = [ tConc(iNcdfSolid) / mol2part ] 
     tS = [ tConc(iNcdfParti) / mol2part ] 
+    NCDF%Temperature = Temp
   END IF
 
   IF ( hasAquaSpc ) tAF = GatherAquaFractions( tA ) 
 
   IF ( MPI_master ) THEN
     NCDF%Time        = Time
-    NCDF%Temperature = Temp
     NCDF%StepSize    = StpSize
     NCDF%MaxErrorSpc = iERR(1,1)
     NCDF%ROWerror    = ERR
@@ -467,8 +479,17 @@ SUBROUTINE SetOutputNcdf(NCDF,Time,StpSize,iERR,ERR,Conc,Temp)
     IF ( hasPhotoReac ) NCDF%Zenith = Zenith(Time)
   END IF
 
+  CONTAINS
+  
+  FUNCTION MoleConc_to_MoleFr(MoleConc) RESULT(MoleFr)
+    REAL(dp), ALLOCATABLE :: MoleFr(:)   ! Mole fraction [mol/mol]
+    REAL(dp), INTENT(IN)  :: MoleConc(:) ! Mole concentration  [mol/cm3]
 
-  END SUBROUTINE SetOutputNcdf
+    MoleFr = MoleConc / SUM( MoleConc)
+
+  END FUNCTION MoleConc_to_MoleFr
+
+END SUBROUTINE SetOutputNcdf
   
   
   
@@ -546,6 +567,11 @@ SUBROUTINE SetOutputNcdf(NCDF,Time,StpSize,iERR,ERR,Conc,Temp)
     ! == Close netcdf-file ===============================================================
     ! ====================================================================================
     !
+    IF (Teq) THEN 
+      CALL TikZ_write( timeLoc , NCDF%Spc_Conc , temp=NCDF%Temperature )
+    ELSE
+      CALL TikZ_write( timeLoc , NCDF%Spc_Conc , LWC=NCDF%LWC, zen=NCDF%Zenith )
+    END IF
     CALL check( nf90_sync(ncid) )
     CALL check( nf90_close(ncid) )
 
@@ -562,6 +588,50 @@ SUBROUTINE SetOutputNcdf(NCDF,Time,StpSize,iERR,ERR,Conc,Temp)
     END SUBROUTINE check
     !
   END SUBROUTINE StepNetcdf
+
+
+  ! Writing Output in format for LaTex TikZ Package
+  !
+  SUBROUTINE TikZ_init(Filename,y_names)
+
+    CHARACTER(*) :: Filename
+    CHARACTER(100) :: y_names(:)
+    INTEGER :: j
+    OPEN(UNIT=TikZUnit,FILE=Filename,STATUS='UNKNOWN')
+    
+    IF (Teq) THEN
+      WRITE(TikZUnit,'(*(A,2X))') 'time','temp',(TRIM(y_names(j)),j=1,SIZE(y_names))
+    ELSE
+      WRITE(TikZUnit,'(*(A,2X))') 'time','LWC','solar',(TRIM(y_names(j)),j=1,SIZE(y_names))
+    END IF
+
+  END SUBROUTINE TikZ_init
+
+  SUBROUTINE TikZ_write(time,conc,temp,LWC,zen)
+    REAL(dp) :: time, conc(:)
+    REAL(dp), OPTIONAL :: temp, LWC, zen 
+    INTEGER :: j
+    
+    IF (Teq) THEN
+      WRITE(TikZUnit,'(*(Es18.12,2X))') time,temp,(conc(j), j=1,NetCDF%n_Out)
+    ELSE
+      IF ( zen > pi/TWO ) THEN
+        zen = pi/TWO
+      END IF
+      zen = COS(zen)
+      WRITE(TikZUnit,'(*(Es18.12,2X))') time , LWC , zen , (conc(j), j=1,NetCDF%n_Out)
+      IF (time==tEnd .OR. time==tBegin) THEN
+        BACKSPACE(TikZUnit)
+        WRITE(TikZUnit,'(*(Es18.12,2X))') time , 0.0_dp , 4.0_dp*zen , (conc(j), j=1,NetCDF%n_Out) 
+      END IF
+    END IF
+
+  END SUBROUTINE TikZ_write
+
+  SUBROUTINE TikZ_finished()
+    CLOSE(TikZUnit)
+  END SUBROUTINE TikZ_finished
+!
 
 END MODULE NetCDF_Mod
 

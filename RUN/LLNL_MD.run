@@ -1,9 +1,8 @@
 &SCENARIO
   BSP      = 'LLNL_MD'
   WaitBar  = .T.
-  ChemKin  = .T.        ! input mechanism in ChemKin notation
   FluxAna  = .F.
-  Lehmann  = .F.
+  ChemKin  = .T.
 /END
 &FILES
   SysFile  = 'ckCHEM/LLNL_MD/LLNL_MD_neu.sys'
@@ -26,14 +25,16 @@
   Error_Est = 2
   minStp    = 1.0d-45
   maxStp    = 2.0d-4
-  LinAlg    = 'ex' 
-  ODEsolver = 'METHODS/TSRosWRA34PW2.fort'
+  LinAlg    = 'ex'
+  ODEsolver = 'METHODS/TSRosWRA34PW2.ros'
+  !ODEsolver = 'METHODS/Rodas3.ros'
+  !ODEsolver = 'METHODS/Ros3Pw.ros'
   Ordering  = 8
 /END
 &OUTPUT
-  NetCdfFile  = 'NetCDF/LLNL_MD.nc'
-  StpNetCDF   = 8.0d-5
+  NetCdfFile  = 'NetCDF/LLNL_MD_full.nc'
+  StpNetCDF   = 0.0001d0
   nOutP       = 1000
-  MatrixPrint = .F.  
+  MatrixPrint = .F.
   DebugPrint  = .F.
 /END

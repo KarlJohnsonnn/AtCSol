@@ -154,6 +154,24 @@ MODULE Sparse_Mod
   SUBROUTINE Free_SpRowColD(A)
     TYPE(SpRowColD_T) :: A
     !
+    !WRITE(*,*) ' vor free :: '
+    !WRITE(*,*) ' m = ', A%m
+    !WRITE(*,*) ' n = ', A%n
+    !WRITE(*,*) ' ep = ', A%ep
+    !WRITE(*,*) ' last = ', A%last
+    !WRITE(*,*) ' len = ', A%len
+    !WRITE(*,*) ' nnz = ', A%nnz
+    !WRITE(*,*) ' size RP = ', SIZE(A%RowPtr)
+    !WRITE(*,*) ' size cI = ', SIZE(A%ColInd)
+    !WRITE(*,*) ' size P  = ', SIZE(A%Permu)
+    !WRITE(*,*) ' size iP = ', SIZE(A%InvPer)
+
+    A%m=0
+    A%n=0
+    A%ep=1
+    A%last=0
+    A%len=0
+    A%nnz=0
     IF (ASSOCIATED(A%RowPtr)) NULLIFY(A%RowPtr)
     IF (ASSOCIATED(A%ColInd)) NULLIFY(A%ColInd)
     IF (ASSOCIATED(A%Permu )) NULLIFY(A%Permu)
@@ -222,7 +240,6 @@ MODULE Sparse_Mod
 
 
 
-
   SUBROUTINE CompressDoubleArray(Array)
     REAL(dp), ALLOCATABLE, INTENT(INOUT) :: Array(:)
     REAL(dp), ALLOCATABLE :: tmpArray(:)
@@ -283,6 +300,31 @@ MODULE Sparse_Mod
     copy%ColInd = orig%ColInd
     copy%Val    = orig%Val
   END FUNCTION Copy_SpRowIndColInd
+
+
+  FUNCTION Copy_SpRowColD(orig) RESULT(copy)
+    TYPE(SpRowColD_T) :: orig
+    TYPE(SpRowColD_T) :: copy
+
+    !ALLOCATE(copy%RowInd()
+    copy%m = orig%m
+    copy%n = orig%n
+    copy%nnz = orig%nnz
+    copy%RowPtr = orig%RowPtr
+    copy%ColInd = orig%ColInd
+    copy%Permu  = orig%Permu
+    copy%InvPer = orig%InvPer
+
+    !INTEGER :: m=0,n=0
+    !INTEGER, POINTER :: RowPtr(:,:)=>NULL()
+    !INTEGER, POINTER :: ColInd(:)=>NULL()
+    !INTEGER, POINTER :: Permu(:)=>NULL()
+    !INTEGER, POINTER :: InvPer(:)=>NULL()
+    !INTEGER :: ep=1
+    !INTEGER :: last=0
+    !INTEGER :: len=0
+    !INTEGER :: nnz=0
+  END FUNCTION Copy_SpRowColD
 
 
   FUNCTION Copy_CSR(orig) RESULT(copy)
@@ -521,7 +563,10 @@ MODULE Sparse_Mod
     INTEGER :: r(A%n),c(A%n),RowPiv(A%n)
     INTEGER :: i,j,l,jj,ip,ip1(1),iPiv
     REAL(dp) :: md 
+    INTEGER ::  rc
+    INTEGER, ALLOCATABLE :: rc_idx(:,:)
     LOGICAL :: ins
+    INTEGER :: indexP(1,1)
   
     c = 0
     DO i = 1 , A%n
@@ -533,25 +578,38 @@ MODULE Sparse_Mod
         c(A%ColInd(jj)) = c(A%ColInd(jj)) + 1
       END DO
     END DO
+
+    !ALLOCATE(rc_idx(2,3))
+    !rc_idx = 0
+
     
     MAIN_LOOP: DO i = 1 , A%n
       ip = 0
       md = 1.d99
+      
+      !ALLOCATE(rc_idx(0))
       DO j = i , A%n
-        IF ( (r(j)-1)*(c(j)-1) <= md ) THEN
-          md = (r(j)-1)*(c(j)-1)
+        rc = (r(j)-1) * (c(j)-1)
+        IF ( rc <= md ) THEN
+          !rc_idx = [ j , rc_idx]
+          md = rc
           ip = j
         END IF
       END DO
+      !ip = rc_idx(1)
+      !DEALLOCATE(rc_idx)
+
+      !WRITE(*,*) 'ip loop/vect = ', ip, rc_idx(:)
+      !READ(*,*)
       
-      ! wird nie erreicht?
-      IF (ip==0) THEN
-        ip1(:) = MINLOC((r(i:A%n)-1)*(c(i:A%n)-1))+(i-1)
-        ip = ip1(1)
-        MarkowitzCounts(i,1) = ip1(1)
-        MarkowitzCounts(i,2) = SIZE(ip1)
-      END IF
-      !
+      !! wird nie erreicht?
+      !IF (ip==0) THEN
+      !  ip1(:) = MINLOC((r(i:A%n)-1)*(c(i:A%n)-1))+(i-1)
+      !  ip = ip1(1)
+      !  MarkowitzCounts(i,1) = ip1(1)
+      !  MarkowitzCounts(i,2) = SIZE(ip1)
+      !END IF
+      
       CALL Swap( r(i) , r(ip) )
       CALL Swap( c(i) , c(ip) )
       CALL Swap( A%InvPer(i)   , A%InvPer(ip) )
@@ -1925,7 +1983,7 @@ MODULE Sparse_Mod
     !
 
     ! 
-    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName))//'.SparseMat',STATUS='UNKNOWN')
+    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName))//'_'//TRIM(LinAlg)//'.SparseMat',STATUS='UNKNOWN')
 
     WRITE(99,*) '###########################################################'
     WRITE(99,*) '##############  Sparse Matrix  Matlab input ###############'
@@ -2059,7 +2117,7 @@ MODULE Sparse_Mod
     END IF
 
     CLOSE(99)
-    WRITE(*,*) '  Writing matrices to file: ',TRIM(FileName)
+    WRITE(*,*) '  Writing matrices to file: ',TRIM(FileName)//'_'//TRIM(LinAlg)//'.SparseMat'
   END SUBROUTINE WriteSparseMatrix
   !
   

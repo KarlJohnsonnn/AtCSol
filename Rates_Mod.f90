@@ -21,9 +21,6 @@
     IMPLICIT NONE
     !
     ! 
-    !REAL(dp) :: LAT  = 45.0_dp
-    !REAL(dp) :: LONG =  0.0_dp
-    !INTEGER  :: IDAT = 010619
     REAL(dp) :: fac_exp = 1.0_dp, fac_A = 1.0_dp
     !
     ! some factors for calculating Troe press dep. reactions
@@ -50,16 +47,12 @@
     SUBROUTINE ReactionRates_ChemKin(Time,Y_in,Rate,DRatedT)
       !--------------------------------------------------------------------!
       ! Input: 
-      !   - Time
-      !   - y_conc
-!     REAL(dp), INTENT(IN) :: Time
-      REAL(dp) :: Time
+      REAL(dp), INTENT(IN) :: Time
       REAL(dp), INTENT(IN) :: Y_in(nDIM)
       !--------------------------------------------------------------------!
       ! Output:
-      !   - Rate vector
-      REAL(dp) :: Rate(neq)
-      REAL(dp) :: DRatedT(neq)
+      REAL(dp), INTENT(OUT) :: Rate(neq)
+      REAL(dp), INTENT(OUT) :: DRatedT(neq)
       !--------------------------------------------------------------------!
       ! Temporary variables:
       REAL(dp) :: Conc(nspc)
@@ -215,17 +208,14 @@
     !      Calculate the Rates for current concentraions and time
     !======================================================================!
     SUBROUTINE ReactionRates_Tropos(Time,Y_in,Rate)
+      USE fparser
       !--------------------------------------------------------------------!
       ! Input: 
-      !   - Time
-      !   - y_conc
-!     REAL(dp), INTENT(IN) :: Time
-      REAL(dp) :: Time
+      REAL(dp), INTENT(IN) :: Time
       REAL(dp), INTENT(IN) :: Y_in(nDIM)
       !--------------------------------------------------------------------!
       ! Output:
-      !   - Rate vector
-      REAL(dp) :: Rate(neq)
+      REAL(dp), INTENT(OUT) :: Rate(neq)
       !--------------------------------------------------------------------!
       ! Temporary variables:
       REAL(dp) :: Conc(nspc)
@@ -235,7 +225,6 @@
       REAL(dp) :: mAir
       REAL(dp) :: AquaFac(nr_HOAqua)
       
-      !REAL(dp) :: tHenry(nr_HENRY,2)
       REAL(dp) :: tHenry(nr_HENRY,2,nFrac)
       INTEGER  :: j,i
       !==================================================================!
@@ -250,14 +239,14 @@
       IF ( PHOTO ) THEN
         ! tropos syntax calculation of zenith
         chi(1) = Zenith(Time)
-        chi(2) = ONE/COS(Chi(1))
+        chi(2) = ONE/COS(chi(1))
         ! kkp syntax calculation of sun for photo reactions
         chi(3) = UpdateSun(Time)
       END IF
      
       
       Conc = Y_in
-			Temp = 280.0_dp 
+			Temp = Temperature0
       T = UpdateTempArray( Temp )
       
       !*************************************************************
@@ -265,25 +254,38 @@
       !*************************************************************
 
       ! ====== Computing effective molecularity 
-      mAir = 2.46e19_dp / T(1) * 298.15_dp * Pres / p0
+      !   mAir = (N2+O2) [molec/cm3] * 298.15 [K] / Temperature [1/K] * 850 [hPa] / 1013.25 [hPa]
+      mAir = M * RefTemp * T(6) * Pres / p0
       Meff = ONE
       IF ( nr_FACTOR > 0 ) Meff = EffectiveMolecularity( Conc , mAir )
       
       ! ====== Compute the rate constant for specific reaction type
       k = ComputeRateConstant( T, Time, chi, mAir, Conc )
 
-      ! ===== correct unit of concentrations for higher order aqueous reactions
+      ! ====== Correct unit of concentrations for higher order aqueous reactions
       IF ( ns_AQUA > 0 ) THEN
         LWC = pseudoLWC(Time)
         InitValKat(aH2O_ind) = aH2O*LWC
         k(iR%iHOaqua) = k(iR%iHOaqua) / (LWC*mol2part)**iR%HOaqua
       END IF
 
-      !=== Compute mass transfer coefficient 
+      ! ====== Compute mass transfer coefficient 
       IF ( nr_HENRY > 0 ) THEN
         thenry = MassTransfer( k(iR%iHENRY(:,1)), T, LWC )
         k(iR%iHENRY(:,1)) = thenry(:,1,1)
         k(iR%iHENRY(:,3)) = thenry(:,2,1)
+      END IF
+
+      ! ====== Special Reactions
+      IF ( nr_special > 0 ) THEN 
+        DO i = 1,nr_SPECIAL
+          j = iR%iSPECIAL(i)
+          IF (ReactionSystem(j)%Special%Temp) THEN
+            k(j) = evalf(i,[ Conc(ReactionSystem(j)%Special%iVariables),T(1)])
+          ELSE
+            k(j) = evalf(i,Conc(ReactionSystem(j)%Special%iVariables))
+          END IF
+        END DO
       END IF
 
       ! ==== Law of mass action productories
@@ -291,6 +293,8 @@
 
       Rate = Meff * k * Prod
       RateCnt = RateCnt + 1
+
+
       !CALL Debug_Rates(ReactionSystem,Time,Meff,k,Prod,Rate)
       
       TimeRates = TimeRates + MPI_WTIME() - TimeRateA
@@ -305,15 +309,22 @@
           
           WRITE(987,*)
           WRITE(987,*) REPEAT('*',80)
-          DO j=1,nr
-            WRITE(987,101) RateCnt,j,TRIM(RS(j)%Type),TRIM(RS(j)%TypeConstant),TRIM(RS(j)%Line1)
-            WRITE(987,102) Time,Meff(j),k(j),Prod(j),Rate(j)
+
+          !DO j=1,nr
+          DO j=512,514
+          
+            !WRITE(987,101) RateCnt,j,TRIM(RS(j)%Type),TRIM(RS(j)%TypeConstant),TRIM(RS(j)%Line1)
+            !WRITE(987,102) Time,Meff(j),k(j),Prod(j),Rate(j)
+            WRITE(*,101) RateCnt,j,TRIM(RS(j)%Type),TRIM(RS(j)%TypeConstant),TRIM(RS(j)%Line1)
+            WRITE(*,102) Time,Meff(j),k(j),Prod(j),Rate(j)
+            WRITE(*,*)
           END DO
+          
           WRITE(987,*); WRITE(987,*)
           101 FORMAT( ' NR :: ',I0,'    Reaction(',I0,')   ::   TYPE = ', A, '   ReacTYPE = ', A,'   ReactionString = ',A )
-          102 FORMAT( '     t = ',F8.4, '  Meff = ',Es12.4,'  k = ',Es12.4  &
+          102 FORMAT( '     t = ',F12.4, '  Meff = ',Es12.4,'  k = ',Es12.4  &
           &         , '  Prod = ', Es12.4, '  Rate = ', Es12.4 )
-          !STOP 'Rates_Mod'
+          STOP 'Rates_Mod'
         END SUBROUTINE Debug_Rates
       
     END SUBROUTINE ReactionRates_Tropos
@@ -325,30 +336,25 @@
       INTEGER :: i
 
       Prod = ONE
-
       !
       ! stoechometric coefficients equal 1
       DO i=1,nFirst_order
         Prod(iFO(i,1)) = Prod(iFO(i,1)) * Conc(iFO(i,2))
-        !write(988,*) ' FO     :: Prod , Conc = ',iFO(i,1),Prod(iFO(i,1)),iFO(i,2),Conc(iFO(i,2))
       END DO
       !
       ! stoechometric coefficients equal 2
       DO i=1,nSecond_order
         Prod(iSO(i,1)) = Prod(iSO(i,1)) * Conc(iSO(i,2)) * ABS(Conc(iSO(i,2)))
-        !write(988,*) ' SO     :: Prod , Conc = ',iSO(i,1),Prod(iSO(i,1)),iSO(i,2),Conc(iSO(i,2))
       END DO
       !
       ! stoechometric coefficients not equal 1 or 2
       DO i=1,nHigher_order
         Prod(iHO(i,1)) = Prod(iHO(i,1)) * Conc(iHO(i,2)) ** aHO(i)
-        !write(988,*) ' HO     :: Prod , Conc = ',iHO(i,1),Prod(iHO(i,1)),iHO(i,2),Conc(iHO(i,2)), aHO(i)
       END DO
       !
       ! if there are passive (katalytic) species e.g. [N2], [O2] or [aH2O]
       DO i=1,nfirst_orderKAT
         Prod(iFO_kat(i,1)) = Prod(iFO_kat(i,1)) * InitValKat(iFO_kat(i,2)) 
-        !write(988,*) ' FO KAT :: Prod , Conc = ',iFO_kat(i,1),Prod(iFO_kat(i,1)),iFO_kat(i,2),InitValKat(iFO_kat(i,2))
       END DO
 
     END FUNCTION MassActionProducts
@@ -365,7 +371,7 @@
       INTEGER :: i
       !
       !---------------------------------------------------------------------------
-      term_diff  = henry_diff(  iR%iHENRY(:,2) )             ! diffusion term
+      term_diff  = henry_diff(  iR%iHENRY(:,2) )          ! diffusion term
       term_accom = henry_accom( iR%iHENRY(:,2) ) * T(10)  ! accom term
       !--------------------------------------------------------------------------!
       
@@ -415,7 +421,6 @@
     END FUNCTION EffectiveMolecularity
 
     PURE FUNCTION ComputeRateConstant(T,Time,chi,mAir,Conc) RESULT(k)
-      USE fparser
 
       REAL(dp)                :: k(neq)
       REAL(dp), INTENT(IN)    :: Time, mAir, chi(:)
@@ -446,18 +451,22 @@
       REAL(dp), DIMENSION(nr_SPEC6mcm) :: k1smcm6, k2smcm6
       REAL(dp), DIMENSION(nr_SPEC7mcm) :: k1smcm7, k2smcm7
       REAL(dp), DIMENSION(nr_SPEC8mcm) :: k1smcm8, k2smcm8
+      REAL(dp), DIMENSION(nr_SPEC9mcm) :: k1smcm9, k2smcm9, k3smcm9
 
       k = ZERO
       
-      ! *************************************************************************
-      ! *** Photolytic reactions
+      !--------------------------------------------------------------------------!
+      !---  Photolysis
+      !--------------------------------------------------------------------------!
       !
+      !---  Roeth
       IF (nr_PHOTAB>0) THEN
         IF ( chi(1) < PiHalf ) THEN
           k(iR%iPHOTab) = Dust * iR%PHOTab(:,1)*EXP(-iR%PHOTab(:,2)*chi(2))
         END IF
       END IF
 
+      !---  Derwent and Hough (1988)
       IF (nr_PHOTabc>0) THEN
         IF ( chi(1) < PiHalf ) THEN
           ChiZabc = chi(1) * iR%PHOTabc(:,3) 
@@ -477,6 +486,7 @@
         END IF
       END IF
 
+      !---  MCM version
       IF (nr_PHOTMCM>0) THEN
         IF ( chi(1) < PiHalf ) THEN
           ChiZmcm  = EXP( -iR%PHOTmcm(:,3) * chi(2) )
@@ -484,17 +494,20 @@
           k(iR%iPHOTmcm) = Dust * iR%PHOTmcm(:,1) * yChiZmcm * ChiZmcm
         END IF
       END IF
-      ! ************************************************************************
 
-      ! ************************************************************************
-      ! *** Constant reactions
+      !--------------------------------------------------------------------------!
+      !---  Constant
+      !--------------------------------------------------------------------------!
       !
       IF (nr_CONST>0) k(iR%iCONST) = iR%CONST
-      ! ************************************************************************
 
-      ! ************************************************************************
-      ! *** Temperature dependend reaction
+      !--------------------------------------------------------------------------!
+      !---  Temperature-Dependent  (Arrhenius)
+      !--------------------------------------------------------------------------!
       !
+      IF (nr_TEMP>0) THEN
+        k(iR%iTEMP)  = iR%TEMP(:,1) * T(1)**iR%TEMP(:,2) * EXP(-iR%TEMP(:,3)*T(6))
+      END IF
       IF (nr_TEMP1>0) THEN
         k(iR%iTEMP1) = iR%TEMP1(:,1)*EXP(-iR%TEMP1(:,2)*T(6))
       END IF
@@ -507,11 +520,12 @@
       IF (nr_TEMP4>0) THEN
         k(iR%iTEMP4) = iR%TEMP4(:,1)*T(1)*EXP(-iR%TEMP4(:,2)*T(6))
       END IF
-      ! ************************************************************************
 
-      ! ************************************************************************
-      ! *** specieal aqua reactions
+      !--------------------------------------------------------------------------!
+      !---  Special reactions for aqueous phase chemistry
+      !--------------------------------------------------------------------------!
       !
+      !---  pH dependent
       IF (nr_ASPEC1>0) THEN
         k(iR%iASPEC1) = Conc(Hp_ind)*(iR%ASPEC1(:,1)*EXP(iR%ASPEC1(:,2)       & 
         &             * (T(6)-InvRefTemp)))/(ONE + x*Conc(Hp_ind))
@@ -523,51 +537,78 @@
       IF (nr_ASPEC3>0) THEN 
         k(iR%iASPEC3) = iR%ASPEC3(:,1)*EXP(iR%ASPEC3(:,2)*(-LOG10(Conc(Hp_ind))))
       END IF
-      ! ************************************************************************
-      
-      ! ************************************************************************
-      ! *** dissociation reactions
+
+      !--------------------------------------------------------------------------!
+      !---  Dissociation reactions (equilibrium reactions)
+      !--------------------------------------------------------------------------!
       !
+      !---  constant
       IF (nr_DCONST>0) THEN
         k(iR%iDCONST(:,2)) = iR%DCONST(:,2) ! backward reactions
         k(iR%iDCONST(:,1)) = iR%DCONST(:,1) * k(iR%iDCONST(:,2)) ! forward reactions
       END IF
+
+      !---  temperatur-dependent
       IF (nr_DTEMP>0)  THEN 
         k(iR%iDTEMP(:,2)) = iR%DTEMP(:,3) ! backward reactions
         k(iR%iDTEMP(:,1)) = iR%DTEMP(:,1)*EXP(iR%DTEMP(:,2)*(T(6)-InvRefTemp)) * k(iR%iDTEMP(:,2)) ! forward reactions
       END IF
+
+      !---  temperatur-dependent forward and backward reaction
       IF (nr_DTEMP2>0) THEN 
         k(iR%iDTEMP2(:,2)) = iR%DTEMP2(:,3)*EXP(iR%DTEMP2(:,4)*(T(6)-InvRefTemp)) ! backward reactions
         k(iR%iDTEMP2(:,1)) = iR%DTEMP2(:,1)*EXP(iR%DTEMP2(:,2)*(T(6)-InvRefTemp)) * k(iR%iDTEMP2(:,2))! forward reactions
       END IF
+      
+      !--- Jacobson(1999, Table B7, p. 603-605)
       IF (nr_DTEMP3>0) THEN 
         k(iR%iDTEMP3(:,2)) = iR%DTEMP3(:,4) ! backward reactions
         k(iR%iDTEMP3(:,1)) = iR%DTEMP3(:,1) * EXP(iR%DTEMP3(:,2)*(RefTemp*T(6)-ONE)         &
         &      + iR%DTEMP3(:,3)*(One-RefTemp*T(6) + LOG10(RefTemp*T(6)))) * k(iR%iDTEMP3(:,2)) ! forward reactions
       END IF
+
+      !---  temperatur-dependent forward and backward reaction
       IF (nr_DTEMP4>0) THEN 
         k(iR%iDTEMP4(:,2)) = ONE ! backward reactions
         k(iR%iDTEMP4(:,1)) = iR%DTEMP4(:,1)*EXP(iR%DTEMP4(:,2)        &
         &      * (T(1)*InvRefTemp-One) + iR%DTEMP4(:,3)            &
         &      * (ONE+LOG(T(1)*InvRefTemp)-T(1)*InvRefTemp)) * k(iR%iDTEMP4(:,2)) ! forward reactions
       END IF
+
+      !---  temperatur-dependent forward and backward reaction
       IF (nr_DTEMP5>0) THEN 
         k(iR%iDTEMP5(:,2)) = ONE ! backward reactions
         k(iR%iDTEMP5(:,1)) = iR%DTEMP5(:,1)*(T*InvRefTemp)**iR%DTEMP4(:,2)  &
         &      * EXP(iR%DTEMP5(:,3)*(T(6)-InvRefTemp)) * k(iR%iDTEMP5(:,2))! forward reactions
       END IF
+
       IF (nr_Meskhidze>0) THEN
         k(iR%iMeskhidze(:,2)) = iR%Meskhidze(:,4) * EXP(iR%Meskhidze(:,5)  &
         &      * (T(6)-InvRefTemp)) * iR%Meskhidze(:,7) ! backward reactions
-        k(iR%iMeskhidze(:,1)) = iR%Meskhidze(:,1) * (T*InvRefTemp)**iR%Meskhidze(:,2)  &
+        k(iR%iMeskhidze(:,1)) = iR%Meskhidze(:,1) * (T(1)*InvRefTemp)**iR%Meskhidze(:,2)  &
         &      * EXP(iR%Meskhidze(:,3)*(T(6)-InvRefTemp)) * k(iR%iMeskhidze(:,2)) ! forward reactions
       END IF
-      ! ************************************************************************
+
+      !--------------------------------------------------------------------------!
+      !---  Humidity-Dependent
+      !--------------------------------------------------------------------------!
+      !
+      !---  (O1D = HO+HO)
+      IF (nr_T1H2O>0) k(iR%iT1H2O) = iR%T1H2O(:,1)*EXP(-iR%T1H2O(:,2)*T(6))
+      
+      !---  (HO2+HO2 = H2O2)
+      IF (nr_S4H2O>0) THEN 
+        k(iR%iS4H2O) = iR%S4H2O(:,1)*EXP(iR%S4H2O(:,2)*T(6))      & 
+        &            + iR%S4H2O(:,3)*EXP(iR%S4H2O(:,4)*T(6))*mAir
+      END IF
      
-      ! ************************************************************************
-      ! *** Troe reactions
+      !--------------------------------------------------------------------------!
+      !---  Special reactions for Gas Phase Chemistry 
+      !--------------------------------------------------------------------------!
       !
       Tr300 = T(1)*r300
+
+      !---  Troe
       IF (nr_TROE>0) THEN   
         F = 0.6_dp
         k1 = iR%TROE(:,1) * (Tr300)**(-iR%TROE(:,2))*mAir
@@ -576,6 +617,7 @@
         k(iR%iTROE) = k1/(One+k1/k2)*F**(One/(One+log10_k1k2*log10_k1k2))
       END IF
 
+      !---  Troe equilibrium
       IF (nr_TROEQ>0) THEN  
         F = 0.6_dp
         k1q = iR%TROEq(:,1)*(Tr300)**(-iR%TROEq(:,2))*mAir
@@ -585,6 +627,7 @@
         k(iR%iTROEq) = k3q/(iR%TROEq(:,5)*EXP(iR%TROEq(:,6)*T(6)))
       END IF
       
+      !---  Troe with variable F factor
       IF (nr_TROEF>0) THEN  
         k1f = iR%TROEf(:,1)*(Tr300)**(-iR%TROEf(:,2))*mAir
         k2f = iR%TROEf(:,3)*(Tr300)**(-iR%TROEf(:,4))
@@ -592,6 +635,7 @@
         k(iR%iTROEf) = k1f/(One+k1f/k2f)*iR%TROEf(:,5)**(One/(One+log10_k1k2f*log10_k1k2f))
       END IF
       
+      !---  Troe equilibrium with variable F factor
       IF (nr_TROEQF>0) THEN 
         k1qf = iR%TROEqf(:,1) * (Tr300)**(-iR%TROEqf(:,2))*mAir
         k2qf = iR%TROEqf(:,3) * (Tr300)**(-iR%TROEqf(:,4))
@@ -600,6 +644,7 @@
         k(iR%iTROEqf) = k3qf/(iR%TROEqf(:,5)*EXP(iR%TROEqf(:,6)*T(6)))          
       END IF
       
+      !---  modified Troe with variable F factor
       IF (nr_TROEXP>0) THEN 
         k1xp = iR%TROExp(:,1)*EXP(-iR%TROExp(:,2)*T(6))*mAir
         k2xp = iR%TROExp(:,3)*EXP(-iR%TROExp(:,4)*T(6))
@@ -607,6 +652,7 @@
         k(iR%iTROExp) = k1xp/(One+k1xp/k2xp)*iR%TROExp(:,5)**(One/(One+log10_k1k2xp*log10_k1k2xp)) 
       END IF
       
+      !---  MCM-reaction TROE
       IF (nr_TROEMCM>0) THEN 
         k1mcm = iR%TROEmcm(:,1)*(T(1)*InvRefTemp)**iR%TROEmcm(:,2)*EXP(iR%TROEmcm(:,3)*T(6))*mAir
         k2mcm = iR%TROEmcm(:,4)*(T(1)*InvRefTemp)**iR%TROEmcm(:,5)*EXP(iR%TROEmcm(:,6)*T(6))
@@ -614,70 +660,98 @@
         tmpTROE = LOG10(k1mcm/k2mcm)/(n-d*LOG10(Fc))
         k(iR%iTROEmcm) = k1mcm/(One+k1mcm/k2mcm)*Fc**(One/(One+tmpTROE*tmpTROE))
       END IF
-      ! ************************************************************************
 
-      ! ************************************************************************
-      ! *** Spec reactions
+      !--------------------------------------------------------------------------!
+      !---  Special Types  (Gas Phase: Density-Dependent in RADM/RACM)
+      !--------------------------------------------------------------------------!
       !
+      !---  (CO+HO = HO2+CO2)
       IF (nr_SPEC1>0) k(iR%iSPEC1) = iR%SPEC1(:,1)*(ONE+mAir*iR%SPEC1(:,2))
+
+      !---  (O3PX + [O2] = O3)
       IF (nr_SPEC2>0) k(iR%iSPEC2) = iR%SPEC2(:,1)*(Tr300)**iR%SPEC2(:,2)*mAir
+      
+      !---  (HNO3+HO = NO3)
       IF (nr_SPEC3>0) THEN 
         k1s = iR%SPEC3(:,1)*EXP(iR%SPEC3(:,2)*T(6))
         k2s = iR%SPEC3(:,3)*EXP(iR%SPEC3(:,4)*T(6))
         k3s = iR%SPEC3(:,5)*EXP(iR%SPEC3(:,6)*T(6))*mAir
         k(iR%iSPEC3) = k1s+k3s/(One+k3s/k2s)
       END IF
+
+      !---  (HO2+HO2 = H2O2)
       IF (nr_SPEC4>0) THEN 
         k(iR%iSPEC4) = iR%SPEC4(:,1)*EXP(iR%SPEC4(:,2)*T(6))+iR%SPEC4(:,3)*EXP(iR%SPEC4(:,4)*T(6))*mAir 
       END IF
+
+      !---  SPEC1 for MCM
       IF (nr_SPEC1MCM>0) THEN 
         k(iR%iSPEC1mcm) = iR%SPEC1mcm(:,1)*(ONE+mAir*iR%SPEC1mcm(:,2)*Tr300/iR%SPEC1mcm(:,3))
       END IF
+
+      !---  SPEC2 for MCM (HO2 + O3 = OH)
       IF (nr_SPEC2MCM>0) THEN 
         k(iR%iSPEC2mcm) = iR%SPEC2mcm(:,1)*(Tr300)**iR%SPEC2mcm(:,2)*EXP(iR%SPEC2mcm(:,3)*T(6))
       END IF
+
+      !---  OH + CO = HO2
       IF (nr_SPEC3MCM>0) THEN 
         k(iR%iSPEC3mcm) = iR%SPEC3mcm(:,1)*(ONE+mAir/iR%SPEC3mcm(:,2))
       END IF
+
+      !---  SPEC4 for MCM
       IF (nr_SPEC4MCM>0) THEN 
         k(iR%iSPEC4mcm) = iR%SPEC4mcm(:,1)*(ONE+iR%SPEC4mcm(:,2) &
         &               * EXP(iR%SPEC4mcm(:,3)*T(6))*H2O)*EXP(iR%SPEC4mcm(:,4)*T(6))
       END IF
+
+      !---  (SPEC5 for MCM)
       IF (nr_SPEC5MCM>0) THEN 
         F = 0.21_dp
         k1smcm5 = iR%SPEC5mcm(:,1)*mAir*F*EXP(iR%SPEC5mcm(:,2)*T(6))
         k2smcm5 = iR%SPEC5mcm(:,3)*mAir*F*EXP(iR%SPEC5mcm(:,4)*T(6))
         k(iR%iSPEC5mcm) = k1smcm5*(One-k2smcm5)
       END IF
+
+      !---  (SPEC6 for MCM)
       IF (nr_SPEC6MCM>0) THEN 
         k1smcm6 = iR%SPEC6mcm(:,1)*EXP(iR%SPEC6mcm(:,2)*T(6))
         k2smcm6 = iR%SPEC6mcm(:,3)*EXP(iR%SPEC6mcm(:,4)*T(6))
         k(iR%iSPEC6mcm) = k1smcm6*(ONE-k2smcm6)
       END IF
+
+      !---  (SPEC7 for MCM)
       IF (nr_SPEC7MCM>0) THEN 
         k1smcm7 = iR%SPEC7mcm(:,1)*EXP(iR%SPEC7mcm(:,2)*T(6))
         k2smcm7 = iR%SPEC7mcm(:,3)*EXP(iR%SPEC7mcm(:,4)*T(6))
         k(iR%iSPEC7mcm) = k1smcm7*(iR%SPEC7mcm(:,5)-iR%SPEC7mcm(:,6)/(One+k2smcm7))
       END IF
+
+      !---  (SPEC8 for MCM)
       IF (nr_SPEC8MCM>0) THEN 
         F = 0.21_dp
         k1smcm8 = iR%SPEC8mcm(:,1)*mAir*F*EXP(iR%SPEC8mcm(:,2)*T(6))
         k2smcm8 = iR%SPEC8mcm(:,3)*mAir*F*EXP(iR%SPEC8mcm(:,4)*T(6))
         k(iR%iSPEC8mcm) = k1smcm8/(One+k2smcm8)*T(6)
       END IF
+
+      !---  (SPEC9 for MCM)
+      IF (nr_SPEC9MCM>0) THEN 
+        F = 0.21_dp
+        k1smcm9 = iR%SPEC9mcm(:,1)*mAir*F*EXP(iR%SPEC8mcm(:,2)*T(6)) / (ONE  + iR%SPEC9mcm(:,3)*mAir*F*EXP(iR%SPEC8mcm(:,4)*T(6)))
+        k2smcm9 = iR%SPEC9mcm(:,5)*mAir*F*EXP(iR%SPEC9mcm(:,6)*T(6)) / ((ONE + iR%SPEC9mcm(:,7)*mAir*F*EXP(iR%SPEC9mcm(:,8)*T(6)))*T(1))
+        k3smcm9 = iR%SPEC9mcm(:,9)*EXP(iR%SPEC9mcm(:,10)*T(6))
+        k(iR%iSPEC9mcm) =  (k1smcm9 * k3smcm9) / (k2smcm9 + k3smcm9)
+      END IF
+
       IF (nr_HOM1>0) THEN
         k(iR%iHOM1) = iR%HOM1(:,1) * EXP(iR%HOM1(:,2)/T(1)) * EXP(iR%HOM1(:,3)/(T(3)))
       END IF
 
       ! ************************************************************************
-
-      IF (nr_T1H2O>0) k(iR%iT1H2O) = iR%T1H2O(:,1)*EXP(-iR%T1H2O(:,2)*T(6))
-      IF (nr_S4H2O>0) THEN 
-        k(iR%iS4H2O) = iR%S4H2O(:,1)*EXP(iR%S4H2O(:,2)*T(6))      & 
-        &            + iR%S4H2O(:,3)*EXP(iR%S4H2O(:,4)*T(6))*mAir
-      END IF
-      
       ! *** KKP photolytic reactions
+      ! ************************************************************************
+      !
       IF (nr_PHOTOkpp>0)  THEN 
         k(iR%iPHOTOkpp)  = iR%PHOTOkpp(:) * Chi(3)
       END IF
@@ -688,55 +762,26 @@
         k(iR%iPHOTO3kpp) = iR%PHOTO3kpp(:) * Chi(3)*Chi(3)*Chi(3)
       END IF
       
-      ! special reactions
-      IF (nr_special>0) THEN 
-        DO i = 1,nr_SPECIAL
-          j = iR%iSPECIAL(i)
-          IF (ReactionSystem(j)%Special%Temp) THEN
-            !k(j) = evalf(i,[ Conc(ReactionSystem(j)%Special%iVariables),T(1)])
-          ELSE
-            !k(j) = evalf(i,Conc(ReactionSystem(j)%Special%iVariables))
-          END IF
-        END DO
-      END IF
+      
 
     END FUNCTION ComputeRateConstant
-    
 
-    FUNCTION UpdateSun(Time) RESULT(Sun)
-      !--------------------------------------------------------------------
-      ! Input:
-      !   - Time
-      REAL(dp) :: Time
-      !--------------------------------------------------------------------!
-      ! Output:
-      !   - Sun
-      REAL(dp)  :: Sun
-      !--------------------------------------------------------------------!
-      ! Temporary variables:
-      REAL(dp), PARAMETER :: SunRise=4.50_dp, SunSet=19.50_dp
-      REAL(dp) :: Thour, Tlocal, Ttmp
-      !
-      Thour  = Time / HOUR
-      Tlocal = Thour - FLOOR(Thour/hourday)*hourday
-      !
-      IF( (Tlocal>=SunRise) .AND. (Tlocal<=SunSet) ) THEN
-        Ttmp = (TWO*Tlocal-SunRise-SunSet) / (SunSet-SunRise);
-        IF ( Ttmp >ZERO ) THEN
-          Ttmp =  Ttmp * Ttmp
-        ELSE
-          Ttmp = -Ttmp * Ttmp
-        END IF
-        Sun = (ONE+COS(Pi*Ttmp)) * rTWO
-      ELSE
-        Sun = ZERO
-      END IF
-    END FUNCTION UpdateSun
-   
+
+
+    SUBROUTINE UpdateEmission(Emissions,time)
+      REAL(dp), INTENT(OUT) :: Emissions(ns)
+      REAL(dp), INTENT(IN)  :: time
+
+      Emissions = MAX(y_emi - y_depos, ZERO)
+
+    END SUBROUTINE UpdateEmission
+
+
     !   ***************************************************************
-    !   ** Species nondimensional gibbs potentials                   **
+    !   Fitting polynomials for combustion mechanisms
     !   ***************************************************************
     PURE SUBROUTINE GibbsFreeEnergie(Gibbs,T)
+    !   ** Species nondimensional gibbs potentials                   **
       REAL(dp), INTENT(INOUT) :: Gibbs(:)
       REAL(dp), INTENT(IN)    :: T(:)
       !
@@ -976,3 +1021,4 @@
     END SUBROUTINE Diff2InternalEnergy
     
   END MODULE Rates_Mod
+  

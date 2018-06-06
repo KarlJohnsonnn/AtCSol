@@ -42,6 +42,7 @@ PROGRAM AtCSol
   CHARACTER(80) :: neuTolA  = ''
   CHARACTER(80) :: neuROW   = ''
   CHARACTER(2)  :: newLinAlg  = ''
+  CHARACTER(1)  :: simul  = ''
 
 
   ! convertion from mole to mass to conc
@@ -50,13 +51,14 @@ PROGRAM AtCSol
 
   ! matricies for symbolic phase
   TYPE(CSR_Matrix_T)     :: Id , tmpJacCC  ! compressed row
-  TYPE(SpRowColD_T)      :: temp_LU_Dec    ! sparse-LU matrix format
+  TYPE(SpRowColD_T)      :: temp_LU_Dec,temp_LU_Dec2    ! sparse-LU matrix format
   ! permutation vector/ pivot order for LU-decomp
   INTEGER, ALLOCATABLE :: InvPermu(:)
   INTEGER, ALLOCATABLE :: PivOrder(:)
 
   ! format string
   CHARACTER(14) :: fmt0 = '  [molec/cm3] '
+  CHARACTER(8) ::  unit  = ''
 
   ! new testing stuff 
   TYPE(CSR_Matrix_T) :: A_T, P_HG, S_HG, R_HG
@@ -66,6 +68,8 @@ PROGRAM AtCSol
   
   ! timer
   REAL(dp) :: t_1,t_2
+
+  LOGICAL :: more_than_one=.FALSE.
 
   !
   !================================================================
@@ -107,11 +111,11 @@ PROGRAM AtCSol
 
   IF ( MPI_master ) WRITE(*,777,ADVANCE='NO') 'Reading sys-file .............'
 
-  IF ( Teq.AND.ChemKin ) THEN
+  IF ( ChemKin ) THEN
 
-    CALL Read_Elements    ( SysFile    , SysUnit )
-    CALL Read_Species     ( SysFile    , SysUnit )
-    CALL Read_Reaction    ( SysFile    , SysUnit )
+    CALL Read_Elements( SysFile , SysUnit )
+    CALL Read_Species ( SysFile , SysUnit )
+    CALL Read_Reaction( SysFile , SysUnit )
 
     IF ( MPI_master ) WRITE(*,*) 'done   ---->  Solve Gas Energy Equation '
 
@@ -134,7 +138,9 @@ PROGRAM AtCSol
     CALL Setup_ReactionIndex
    
     !--- Read initial values
-    ALLOCATE( InitValAct(ns_GAS) , InitValKat(ns_KAT) , y_emi(ns_GAS) )
+    ALLOCATE( InitValAct(ns_GAS) , InitValKat(ns_KAT) , y_emi(ns_GAS) , y_depos(ns_GAS))
+    y_emi   = ZERO
+    y_depos = ZERO 
 
 		!--- malloc gibbs energy, derivates
     ALLOCATE( GFE(nspc)   , DGFEdT(nspc)   &
@@ -151,7 +157,7 @@ PROGRAM AtCSol
       MoleFrac = ZERO;	MassFrac  = ZERO  
 
       MoleFrac = 1.0e-20_dp
-      CALL Read_INITITALS( InitFile , MoleFrac, InitValKat , 'GAS')
+      CALL Read_INI_file( InitFile , MoleFrac, InitValKat , 'GAS' , 'INITIAL' )
 
       !Press = Pressure0               ! initial pressure in [Pa]
       Press_in_dyncm2 = Pressure0 * Pa_to_dyncm2
@@ -169,14 +175,15 @@ PROGRAM AtCSol
       END IF
       ALLOCATE( MoleConc(ns_GAS) )
       MoleConc = 1.0e-20_dp
-      CALL Read_INITITALS( InitFile , MoleConc, InitValKat , 'GAS')
+      CALL Read_INI_file( InitFile , MoleConc, InitValKat , 'GAS' , 'INITIAL' )
     END IF
-    CALL Read_EMISS( InitFile , y_emi )
+    !CALL Read_EMISS( InitFile , y_emi )
     
     ! Initialising reactor density
     rho  = Density( MoleConc )
     rRho = mega/rho       ! in [cm3/g]
-    InitValAct = MoleConc
+    InitValAct = [MoleConc , Temperature0]
+
     
 
   ELSE
@@ -291,7 +298,7 @@ PROGRAM AtCSol
     IF ( hasAquaSpc )  WRITE(*,798) 'aqueous', SUM(InitValAct( bAs(1):bAs(2) )) , fmt0
     IF ( hasSolidSpc ) WRITE(*,798) 'solid  ', SUM(InitValAct( bSs(1):bSs(2) )) , fmt0
     IF ( hasPartiSpc ) WRITE(*,798) 'parti  ', SUM(InitValAct( bPs(1):bPs(2) )) , fmt0
-    WRITE(*,800) SUM(y_emi) , fmt0
+    WRITE(*,800) SUM(y_emi) , '  [molec/cm3/s]'
 
     IF ( Teq ) THEN
       WRITE(*,801) Temperature0
@@ -369,6 +376,9 @@ PROGRAM AtCSol
     CALL SymbolicAdd( Jac_CC , Id , tmpJacCC )
     CALL Free_Matrix_CSR( Id )
 
+    ALLOCATE(maxErrorCounter(nDIM))
+    maxErrorCounter = 0
+
     ! gephi testing
     !CALL CSR_to_GephiGraph(tmpJacCC,y_name,'Test1')
     !stop ' after gephi plot'
@@ -387,9 +397,28 @@ PROGRAM AtCSol
       ! Permutation given by Markowitz Ordering strategie
       temp_LU_Dec = CSR_to_SpRowColD(Miter) 
 
+
+      !temp_LU_Dec2 = Copy_SpRowColD(temp_LU_Dec) 
+
       IF ( Ordering == 8 ) THEN
-        CALL SymbLU_SpRowColD_M ( temp_LU_Dec )        
-      ELSE 
+
+        ! test for better permutation 
+
+        CALL SymbLU_SpRowColD_M( temp_LU_Dec )
+
+        !IF (more_than_one) THEN
+        !  DO i=1,10
+        !    WRITE(*,*) ' nonzeros after fact :: ' , i , temp_LU_Dec2%nnz
+        !    
+        !    CALL Free_SpRowColD ( temp_LU_Dec2 )
+        !
+        !    temp_LU_Dec2 = Copy_SpRowColD(temp_LU_Dec) 
+        !    
+        !    CALL SymbLU_SpRowColD_M ( temp_LU_Dec2 )        
+        !  END DO
+        !END IF
+      
+        ELSE 
         ALLOCATE(PivOrder(temp_LU_Dec%n))
         PivOrder = -90
         
@@ -421,11 +450,11 @@ PROGRAM AtCSol
       WRITE(*,*) 
 
       IF (MatrixPrint) THEN
-        CALL WriteSparseMatrix(A,       'MATRICES/alpha_'//TRIM(BSP), neq, nspc)
-        CALL WriteSparseMatrix(B,       'MATRICES/beta_'//TRIM(BSP), neq, nspc)
+        CALL WriteSparseMatrix(A,'MATRICES/alpha_'//TRIM(BSP), neq, nspc)
+        CALL WriteSparseMatrix(B,'MATRICES/beta_'//TRIM(BSP), neq, nspc)
         CALL WriteSparseMatrix(tmpJacCC,'MATRICES/JAC_'//TRIM(BSP), neq, nspc)
-        CALL WriteSparseMatrix(BA,      'MATRICES/BA_'//TRIM(BSP), neq, nspc)
-        CALL WriteSparseMatrix(Miter,   'MATRICES/Miter_'//TRIM(BSP), neq, nspc)
+        CALL WriteSparseMatrix(BA,'MATRICES/BA_'//TRIM(BSP), neq, nspc)
+        CALL WriteSparseMatrix(Miter,'MATRICES/Miter_'//TRIM(BSP), neq, nspc)
         CALL WriteSparseMatrix(LU_Miter,'MATRICES/LU_Miter_'//TRIM(BSP), neq, nspc)
         WRITE(*,777,ADVANCE='NO') '  Continue? [y/n]';  READ(*,*) inpt
         IF (inpt/='y') STOP
@@ -460,42 +489,40 @@ PROGRAM AtCSol
     TimeJac  = TimeJac + MPI_WTIME() - StartTimer
   END IF
 
-  ! open file to save the fluxes 
-  IF ( MPI_master .AND. FluxAna ) THEN
-    StpFlux  = StpNetCDF
-    iStpFlux = 0
-    CALL OpenFile_wStream(FluxUnit,FluxFile);       CLOSE(FluxUnit)
-    CALL OpenFile_wSeq(FluxMetaUnit,FluxMetaFile);  CLOSE(FluxMetaUnit)
-  END IF
-  
-  !-----------------------------------------------------------------------
-  ! --- Start the integration routine 
-  !-----------------------------------------------------------------------
-  CALL Integrate ( InitValAct &  ! initial concentrations activ species
-  &              , Rate       &  ! reaction rates at time=t0
-  &              , Tspan      &  ! integration invervall
-  &              , Atol       &  ! abs. tolerance of species
-  &              , RtolROW    &  ! rel. tolerance Rosenbrock method
-  &              , ODEsolver  )  ! methode for solving the ode system
-  
-  ! --- stop timer and print output statistics
-  Timer_Finish = MPI_WTIME() - Timer_Start + Time_Read
-  
-  CALL Output_Statistics
+  !WRITE(*,777,ADVANCE='NO') 'Simulation? [y/n]   ';  READ(*,*) simul
+  !IF ( simul=='y' ) THEN
+    ! open file to save the fluxes 
+    IF ( MPI_master .AND. FluxAna ) THEN
+      iStpFlux = 0
+      CALL OpenFile_wStream(FluxUnit,FluxFile);       CLOSE(FluxUnit)
+      CALL OpenFile_wSeq(FluxMetaUnit,FluxMetaFile);  CLOSE(FluxMetaUnit)
+    END IF
+    
+    !-----------------------------------------------------------------------
+    ! --- Start the integration routine 
+    !-----------------------------------------------------------------------
+    CALL Integrate ( InitValAct &  ! initial concentrations activ species
+    &              , Rate       &  ! reaction rates at time=t0
+    &              , Tspan      &  ! integration invervall
+    &              , Atol       &  ! abs. tolerance of species
+    &              , RtolROW    &  ! rel. tolerance Rosenbrock method
+    &              , ODEsolver  )  ! methode for solving the ode system
+    
+    ! --- stop timer and print output statistics
+    Timer_Finish = MPI_WTIME() - Timer_Start + Time_Read
+    
+    CALL Output_Statistics
+
+    IF (NetCdfPrint) CALL TikZ_finished
+
+  !END IF
 
 
   !************************************************************************************************
   !************************************************************************************************
   IF ( MPI_master .AND. FluxAna ) THEN
-    WRITE(*,*)
-    WRITE(*,'(10X,A)') '*****************************************************'
-    WRITE(*,'(10X,A)') '**                                                 **'
-    WRITE(*,'(10X,A)') '**      ANALYSIS TOOL FOR AUTOMATIC REDUCTION      **'
-    WRITE(*,'(10X,A)') '**                                                 **'
-    WRITE(*,'(10X,A)') '*****************************************************'
-    WRITE(*,*)
-    WRITE(*,'(10X,A,I0)') 'Number of flux records = ', iStpFlux
-    WRITE(*,*)
+    StartTimer = MPI_WTIME()
+    CALL Logo2()
 
     DO i=1,nr           ! Name,iReac,Mech,Class,Type,Param)
       CALL WriteReaction( TRIM(ReactionSystem(i)%Line1)       &
@@ -513,7 +540,10 @@ PROGRAM AtCSol
     ELSE
       WRITE(*,777) '    ** NO IMPORTANT SPECIES ARE DECLARED **'
     END IF
-      WRITE(*,*); WRITE(*,*)
+    TimeReduction = MPI_WTIME()-StartTimer
+    CALL ConvertTime(TimeReduction,unit)
+    WRITE(*,'(32X,A,1X,F10.4,A)') 'Time ISSA reduction = ', TimeReduction, unit
+    WRITE(*,*); WRITE(*,*)
   END IF
 
   ! --- Close MPI 
@@ -524,6 +554,9 @@ PROGRAM AtCSol
     WRITE(*,777) '************ ********** *********** ********** ************'
     WRITE(*,*); WRITE(*,*)
   END IF
+
+  CALL ShowMaxErrorCounter()
+
   CALL FinishMPI()
 
   !================================================================

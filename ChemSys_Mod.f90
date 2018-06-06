@@ -132,11 +132,10 @@ MODULE Chemsys_Mod
   
   INTEGER :: nsr                        ! # activ species + all Reactions
 
-  INTEGER :: UnitGas=0
-  INTEGER :: UnitAqua=0
+ 
   !
-  CHARACTER(20) :: Filename !='Salt'
-  CHARACTER(20) :: IniName  !='Salt'
+  CHARACTER(20) :: Filename
+  CHARACTER(20) :: IniName
   !
   REAL(dp), PARAMETER :: RGas=8.3145d0
   REAL(dp), PARAMETER :: TRef=280.0d0 !298.15d0
@@ -218,6 +217,250 @@ MODULE Chemsys_Mod
     Out = .TRUE.
 999 CONTINUE
   END SUBROUTINE ReadSpecies
+
+
+  SUBROUTINE ReadReaction_neu(Out)
+    LOGICAL :: Out
+    !
+    INTEGER :: iLine,PosColon,Pos,is
+    CHARACTER(LenLine) :: LocLine
+    CHARACTER(LenLine) :: Line(1:4)
+    CHARACTER(20) :: CLASS
+    CHARACTER(40) :: TypeR
+    INTEGER :: idxFAC
+    
+    iLine = 0
+    DO
+
+      READ( InputUnit , '(A400)' , IOSTAT=is ) LocLine
+      idxFAC = INDEX(LocLine,'$')
+
+      IF ( idxFAC > 0 ) THEN
+        SELECT CASE (TRIM(LocLine(idxFAC:)))
+          CASE ('$H2','$O2N2','$M','$O2','$N2','$H2O','$O2O2','$aH2O','$+M','$(+M)','$RO2','$RO2aq')
+            IF ( TRIM(LocLine(idxFAC:)) == '$H2'    ) nr_FAC_H2    = nr_FAC_H2    + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$O2N2'  ) nr_FAC_O2N2  = nr_FAC_O2N2  + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$M'     ) nr_FAC_M     = nr_FAC_M     + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$O2'    ) nr_FAC_O2    = nr_FAC_O2    + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$N2'    ) nr_FAC_N2    = nr_FAC_N2    + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$H2O'   ) nr_FAC_H2O   = nr_FAC_H2O   + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$O2O2'  ) nr_FAC_O2O2  = nr_FAC_O2O2  + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$RO2'   ) nr_FAC_RO2   = nr_FAC_RO2   + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$RO2aq' ) nr_FAC_RO2aq = nr_FAC_RO2aq + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$aH2O'  ) nr_FAC_aH2O  = nr_FAC_aH2O  + 2
+            nr_FACTOR = nr_FACTOR + 1
+          CASE DEFAULT
+            WRITE(*,*) '  Unknown FACTOR:  ', TRIM(LocLine(idxFAC:)), '   at Line:  ???'
+        END SELECT
+      END IF
+
+      IF ( ABS(is) > 0 ) EXIT
+      
+      ! if no comment or blank line then
+      IF ( ADJUSTL(LocLine(1:1)) /= '#'       .AND.  &
+      &    ADJUSTL(LocLine(1:7)) /= 'COMMENT' .AND.  &
+      &    LEN(TRIM(LocLine)) > 0 ) THEN
+        iLine = iLine + 1
+        Line(iLine) = LocLine
+        IF ( iLine == 4 ) EXIT
+      END IF
+
+    END DO
+
+    IF ( iLine >= 3 ) THEN
+      Pos = SCAN(Line(1),'#')
+      IF ( Pos > 0 ) Line(1) = Line(1)(:Pos-1)
+      
+      ! if new reaction line starts go one line back
+      IF ( INDEX(Line(4),'CLASS') > 0 ) BACKSPACE(InputUnit)
+      
+      ! read the reaction TYPE
+      PosColon = Index(Line(1),':')
+      CLASS    = ADJUSTL(Line(1)(PosColon+1:))
+      
+      ! count the number of each reaction type
+      SELECT CASE (CLASS)
+        
+        CASE ('GAS')      ! gaseous phase reactions
+
+          nr_gas = nr_gas + 1
+          CALL InsertReaction( ListRGas , Line , TypeR )
+
+          SELECT CASE (TypeR)
+            CASE ('PHOTO','PHOTO2','PHOTO3','PHOTAB','PHOTABC','PHOTMCM')
+              IF ( TypeR == 'PHOTAB'  ) reac_par(iPHOTAB)%n_reac  = reac_par(iPHOTAB)%n_reac + 1
+              IF ( TypeR == 'PHOTABC' ) reac_par(iPHOTABC)%n_reac = reac_par(iPHOTABC)%n_reac + 1
+              IF ( TypeR == 'PHOTMCM' ) reac_par(iPHOTMCM)%n_reac = reac_par(iPHOTMCM)%n_reac + 1
+              IF ( TypeR == 'PHOTO'   ) reac_par(iPHOTO)%n_reac   = reac_par(iPHOTO)%n_reac + 1
+              IF ( TypeR == 'PHOTO2'  ) reac_par(iPHOTO2)%n_reac  = reac_par(iPHOTO2)%n_reac + 1
+              IF ( TypeR == 'PHOTO3'  ) reac_par(iPHOTO3)%n_reac  = reac_par(iPHOTO3)%n_reac + 1
+            CASE ('CONST')
+              reac_par(iCONST)%n_reac = reac_par(iCONST)%n_reac + 1
+            CASE ('TEMP','TEMP1','TEMP2','TEMP3','TEMP4')
+              IF ( TypeR == 'TEMP' )  reac_par(iTEMP)%n_reac  = reac_par(iTEMP)%n_reac + 1
+              IF ( TypeR == 'TEMP1' ) reac_par(iTEMP1)%n_reac = reac_par(iTEMP1)%n_reac + 1
+              IF ( TypeR == 'TEMP2' ) reac_par(iTEMP2)%n_reac = reac_par(iTEMP2)%n_reac + 1
+              IF ( TypeR == 'TEMP3' ) reac_par(iTEMP3)%n_reac = reac_par(iTEMP3)%n_reac + 1
+              IF ( TypeR == 'TEMP4' ) reac_par(iTEMP4)%n_reac = reac_par(iTEMP4)%n_reac + 1
+            CASE ('TROE','TROEF','TROEQ','TROEQF','TROEXP','TROEMCM')
+              IF ( TypeR == 'TROE'    ) reac_par(iTROE)%n_reac    = reac_par(iTROE)%n_reac + 1
+              IF ( TypeR == 'TROEF'   ) reac_par(iTROEF)%n_reac   = reac_par(iTROEF)%n_reac + 1 
+              IF ( TypeR == 'TROEQ'   ) reac_par(iTROEQ)%n_reac   = reac_par(iTROEQ)%n_reac + 1
+              IF ( TypeR == 'TROEQF'  ) reac_par(iTROEQF)%n_reac  = reac_par(iTROEQF)%n_reac + 1 
+              IF ( TypeR == 'TROEXP'  ) reac_par(iTROEXP)%n_reac  = reac_par(iTROEXP)%n_reac + 1 
+              IF ( TypeR == 'TROEMCM' ) reac_par(iTROEMCM)%n_reac = reac_par(iTROEMCM)%n_reac + 1
+            CASE ('SPEC1','SPEC2','SPEC3','SPEC4','SPEC1MCM',  &
+            &     'SPEC2MCM','SPEC3MCM','SPEC4MCM','SPEC5MCM', &
+            &     'SPEC6MCM','SPEC7MCM','SPEC8MCM','SPEC9MCM'  )
+              nr_G_spec = nr_G_spec + 1
+              IF ( TypeR == 'SPEC1' ) reac_par(iSPEC1)%n_reac = reac_par(iSPEC1)%n_reac + 1
+              IF ( TypeR == 'SPEC2' ) reac_par(iSPEC2)%n_reac = reac_par(iSPEC2)%n_reac + 1
+              IF ( TypeR == 'SPEC3' ) reac_par(iSPEC3)%n_reac = reac_par(iSPEC3)%n_reac + 1
+              IF ( TypeR == 'SPEC4' ) reac_par(iSPEC4)%n_reac = reac_par(iSPEC4)%n_reac + 1
+              IF ( TypeR == 'SPEC1MCM' ) reac_par(iSPEC1MCM)%n_reac = reac_par(iSPEC1MCM)%n_reac + 1
+              IF ( TypeR == 'SPEC2MCM' ) reac_par(iSPEC2MCM)%n_reac = reac_par(iSPEC2MCM)%n_reac + 1
+              IF ( TypeR == 'SPEC3MCM' ) reac_par(iSPEC3MCM)%n_reac = reac_par(iSPEC3MCM)%n_reac + 1
+              IF ( TypeR == 'SPEC4MCM' ) reac_par(iSPEC4MCM)%n_reac = reac_par(iSPEC4MCM)%n_reac + 1
+              IF ( TypeR == 'SPEC5MCM' ) reac_par(iSPEC5MCM)%n_reac = reac_par(iSPEC5MCM)%n_reac + 1
+              IF ( TypeR == 'SPEC6MCM' ) reac_par(iSPEC6MCM)%n_reac = reac_par(iSPEC6MCM)%n_reac + 1
+              IF ( TypeR == 'SPEC7MCM' ) reac_par(iSPEC7MCM)%n_reac = reac_par(iSPEC7MCM)%n_reac + 1
+              IF ( TypeR == 'SPEC8MCM' ) reac_par(iSPEC8MCM)%n_reac = reac_par(iSPEC8MCM)%n_reac + 1
+              IF ( TypeR == 'SPEC9MCM' ) reac_par(iSPEC9MCM)%n_reac = reac_par(iSPEC9MCM)%n_reac + 1
+            CASE ('S4H2O')
+              reac_par(iS4H2O)%n_reac = reac_par(iS4H2O)%n_reac + 1 
+            CASE ('T1H2O')
+              reac_par(iT1H2O)%n_reac = reac_par(iT1H2O)%n_reac + 1 
+            CASE ('SPECIAL')
+              reac_par(iSPECIAL)%n_reac = reac_par(iSPECIAL)%n_reac + 1 
+            CASE ('HOM1')
+              reac_par(iHOM1)%n_reac = reac_par(iHOM1)%n_reac + 1 
+            CASE DEFAULT
+              WRITE(*,*) '  Unknown gaseous reaction: ', TypeR
+          END SELECT
+
+        CASE ('HENRY')        ! phase transfer pseudo-reactions 
+
+          nr_henry = nr_henry + 1
+          CALL InsertReaction( ListRHenry , Line , TypeR )
+
+          SELECT CASE (TypeR)
+            CASE ('TEMP','TEMP1','TEMP2','TEMP3')
+              IF ( TypeR == 'TEMP' )  reac_par(iTEMP)%n_reac  = reac_par(iTEMP)%n_reac + 1
+              IF ( TypeR == 'TEMP1' ) reac_par(iTEMP1)%n_reac = reac_par(iTEMP1)%n_reac + 1
+              IF ( TypeR == 'TEMP2' ) reac_par(iTEMP2)%n_reac = reac_par(iTEMP2)%n_reac + 1
+              IF ( TypeR == 'TEMP3' ) reac_par(iTEMP3)%n_reac = reac_par(iTEMP3)%n_reac + 1
+            CASE ('CONST')
+              reac_par(iCONST)%n_reac = reac_par(iCONST)%n_reac + 1
+            CASE ('SPECIAL')
+              reac_par(iSPECIAL)%n_reac = reac_par(iSPECIAL)%n_reac + 1 
+            CASE DEFAULT
+              WRITE(*,*) '  Unknown phase transfer reaction: ', TypeR
+          END SELECT
+
+        CASE ('AQUA')         ! aquatic phase reactions 
+
+          nr_aqua = nr_aqua + 1
+          CALL InsertReaction( ListRAqua , Line , TypeR )
+
+          SELECT CASE (TypeR)
+            CASE ('PHOTAB','PHOTABC','PHOTMCM')
+              IF ( TypeR == 'PHOTAB'  ) reac_par(iPHOTAB)%n_reac  = reac_par(iPHOTAB)%n_reac + 1
+              IF ( TypeR == 'PHOTABC' ) reac_par(iPHOTABC)%n_reac = reac_par(iPHOTABC)%n_reac + 1
+              IF ( TypeR == 'PHOTMCM' ) reac_par(iPHOTMCM)%n_reac = reac_par(iPHOTMCM)%n_reac + 1
+            CASE ('CONST')
+              reac_par(iCONST)%n_reac = reac_par(iCONST)%n_reac + 1
+            CASE ('TEMP','Temp1''TEMP2','TEMP3','TEMP4')
+              IF ( TypeR == 'TEMP' )  reac_par(iTEMP)%n_reac  = reac_par(iTEMP)%n_reac + 1
+              IF ( TypeR == 'TEMP1' ) reac_par(iTEMP1)%n_reac = reac_par(iTEMP1)%n_reac + 1
+              IF ( TypeR == 'TEMP2' ) reac_par(iTEMP2)%n_reac = reac_par(iTEMP2)%n_reac + 1
+              IF ( TypeR == 'TEMP3' ) reac_par(iTEMP3)%n_reac = reac_par(iTEMP3)%n_reac + 1
+              IF ( TypeR == 'TEMP4' ) reac_par(iTEMP4)%n_reac = reac_par(iTEMP4)%n_reac + 1
+            CASE ('ASPEC1','ASPEC2','ASPEC3','ASPEC4')
+              IF ( TypeR == 'ASPEC1' ) reac_par(iASPEC1)%n_reac = reac_par(iASPEC1)%n_reac + 1
+              IF ( TypeR == 'ASPEC2' ) reac_par(iASPEC2)%n_reac = reac_par(iASPEC2)%n_reac + 1
+              IF ( TypeR == 'ASPEC3' ) reac_par(iASPEC3)%n_reac = reac_par(iASPEC3)%n_reac + 1
+              !IF ( TypeR == 'ASPEC4' ) reac_par(iASPEC4)%n_reac = reac_par(iASPEC4)%n_reac + 1
+            CASE ('SPECIAL')
+              reac_par(iSPECIAL)%n_reac = reac_par(iSPECIAL)%n_reac + 1 
+            CASE DEFAULT
+              WRITE(*,*) '  Unknown aqueous reaction: ', TypeR
+          END SELECT
+
+        CASE ('DISS')        ! fast aquatic phase equil. reactions 
+
+          nr_diss = nr_diss + 1
+          CALL InsertReaction( ListRDiss , Line , TypeR )
+
+          SELECT CASE (TypeR)
+            CASE ('DCONST','DTEMP','DTEMP2','DTEMP3','DTEMP4','DTEMP5','MESKHIDZE')
+              IF ( TypeR == 'DCONST' ) reac_par(iDCONST)%n_reac = reac_par(iDCONST)%n_reac + 1
+              IF ( TypeR == 'DTEMP'  ) reac_par(iDTEMP)%n_reac  = reac_par(iDTEMP)%n_reac + 1
+              IF ( TypeR == 'DTEMP2' ) reac_par(iDTEMP2)%n_reac = reac_par(iDTEMP2)%n_reac + 1
+              IF ( TypeR == 'DTEMP3' ) reac_par(iDTEMP3)%n_reac = reac_par(iDTEMP3)%n_reac + 1
+              IF ( TypeR == 'DTEMP4' ) reac_par(iDTEMP4)%n_reac = reac_par(iDTEMP4)%n_reac + 1
+              IF ( TypeR == 'DTEMP5' ) reac_par(iDTEMP5)%n_reac = reac_par(iDTEMP5)%n_reac + 1
+              IF ( TypeR == 'MESKHIDZE' ) reac_par(iMESKHIDZE)%n_reac  = reac_par(iMESKHIDZE)%n_reac + 1
+            CASE ('SPECIAL')
+              reac_par(iSPECIAL)%n_reac = reac_par(iSPECIAL)%n_reac + 1 
+            CASE DEFAULT
+              WRITE(*,*) '  Unknown dissociation reaction: ', TypeR
+          END SELECT
+
+        CASE ('SOLID')
+
+          nr_solid = nr_solid + 1
+          CALL InsertReaction( ListRSolid , Line , TypeR )
+
+          SELECT CASE (TypeR)
+            CASE ('EQUI')
+              reac_par(iEQUI)%n_reac = reac_par(iEQUI)%n_reac + 1
+            CASE ('DTEMP3')
+              reac_par(iDTEMP3)%n_reac = reac_par(iDTEMP3)%n_reac + 1
+            CASE ('SPECIAL')
+              reac_par(iSPECIAL)%n_reac = reac_par(iSPECIAL)%n_reac + 1 
+            CASE DEFAULT
+              WRITE(*,*) '  Unknown solid reaction: ', TypeR
+          END SELECT
+
+        CASE ('PARTI')
+
+          nr_parti = nr_parti + 1
+          CALL InsertReaction( ListRPartic , Line , TypeR )
+
+          SELECT CASE (TypeR)
+            CASE ('SPECIAL')
+              reac_par(iSPECIAL)%n_reac = reac_par(iSPECIAL)%n_reac + 1 
+            CASE DEFAULT
+              WRITE(*,*) '  Unknown particle reaction: ', TypeR
+          END SELECT
+
+        CASE ('MICROPHYS')
+
+          nr_micphys = nr_micphys + 1
+          CALL InsertReaction( ListRMicro , Line , TypeR )
+
+          SELECT CASE (TypeR)
+            CASE ('SPECIAL')
+              reac_par(iSPECIAL)%n_reac = reac_par(iSPECIAL)%n_reac + 1 
+            CASE DEFAULT
+              WRITE(*,*) '  Unknown microphysic reaction: ', TypeR
+          END SELECT
+
+        CASE DEFAULT
+          WRITE(*,*) '  Unknown reaction CLASS: ', CLASS
+          STOP
+      END SELECT
+
+      Out = .FALSE.
+    ELSE
+      Out = .TRUE.
+    END IF
+
+  END SUBROUTINE ReadReaction_neu
+
+
+
+
   !
   SUBROUTINE ReadReaction(Out)
     LOGICAL :: Out
@@ -298,8 +541,9 @@ MODULE Chemsys_Mod
             CASE ('CONST')
               nr_G_const = nr_G_const + 1
               nr_CONST   = nr_CONST   + 1
-            CASE ('TEMP1','TEMP2','TEMP3')
+            CASE ('TEMP','TEMP1','TEMP2','TEMP3','TEMP4')
               nr_G_temp  = nr_G_temp + 1
+              IF ( TypeR == 'TEMP' )  nr_TEMP  = nr_TEMP  + 1
               IF ( TypeR == 'TEMP1' ) nr_TEMP1 = nr_TEMP1 + 1
               IF ( TypeR == 'TEMP2' ) nr_TEMP2 = nr_TEMP2 + 1
               IF ( TypeR == 'TEMP3' ) nr_TEMP3 = nr_TEMP3 + 1
@@ -312,8 +556,9 @@ MODULE Chemsys_Mod
               IF ( TypeR == 'TROEQF'  ) nr_TROEqf  = nr_TROEqf  + 1
               IF ( TypeR == 'TROEXP'  ) nr_TROExp  = nr_TROExp  + 1
               IF ( TypeR == 'TROEMCM' ) nr_TROEmcm = nr_TROEmcm + 1
-            CASE ('SPEC1','SPEC2','SPEC3','SPEC4','SPEC1MCM','SPEC2MCM',           &
-            &     'SPEC3MCM','SPEC4MCM','SPEC5MCM','SPEC6MCM','SPEC7MCM','SPEC8MCM')
+            CASE ('SPEC1','SPEC2','SPEC3','SPEC4','SPEC1MCM',  &
+            &     'SPEC2MCM','SPEC3MCM','SPEC4MCM','SPEC5MCM', &
+            &     'SPEC6MCM','SPEC7MCM','SPEC8MCM','SPEC9MCM'  )
               nr_G_spec = nr_G_spec + 1
               IF ( TypeR == 'SPEC1' ) nr_SPEC1 = nr_SPEC1 + 1
               IF ( TypeR == 'SPEC2' ) nr_SPEC2 = nr_SPEC2 + 1
@@ -327,6 +572,7 @@ MODULE Chemsys_Mod
               IF ( TypeR == 'SPEC6MCM' ) nr_SPEC6mcm = nr_SPEC6mcm + 1
               IF ( TypeR == 'SPEC7MCM' ) nr_SPEC7mcm = nr_SPEC7mcm + 1
               IF ( TypeR == 'SPEC8MCM' ) nr_SPEC8mcm = nr_SPEC8mcm + 1
+              IF ( TypeR == 'SPEC9MCM' ) nr_SPEC9mcm = nr_SPEC9mcm + 1
             CASE ('S4H2O')
               nr_S4H2O = nr_S4H2O + 1
             CASE ('T1H2O')
@@ -346,7 +592,8 @@ MODULE Chemsys_Mod
           CALL InsertReaction( ListRHenry , Line , TypeR )
 
           SELECT CASE (TypeR)
-            CASE ('TEMP1','TEMP2','TEMP3')
+            CASE ('TEMP','TEMP1','TEMP2','TEMP3')
+              IF ( TypeR == 'TEMP' )  nr_TEMP  = nr_TEMP  + 1
               IF ( TypeR == 'TEMP1' ) nr_TEMP1 = nr_TEMP1 + 1
               IF ( TypeR == 'TEMP2' ) nr_TEMP2 = nr_TEMP2 + 1
               IF ( TypeR == 'TEMP3' ) nr_TEMP3 = nr_TEMP3 + 1
@@ -373,8 +620,9 @@ MODULE Chemsys_Mod
             CASE ('CONST')
               nr_A_const = nr_A_const + 1
               nr_CONST   = nr_CONST   + 1
-            CASE ('TEMP','Temp1''TEMP2','TEMP3')
+            CASE ('TEMP','Temp1''TEMP2','TEMP3','TEMP4')
               nr_A_temp  = nr_A_temp + 1
+              IF ( TypeR == 'TEMP' )  nr_TEMP  = nr_TEMP  + 1
               IF ( TypeR == 'TEMP1' ) nr_TEMP1 = nr_TEMP1 + 1
               IF ( TypeR == 'TEMP2' ) nr_TEMP2 = nr_TEMP2 + 1
               IF ( TypeR == 'TEMP3' ) nr_TEMP3 = nr_TEMP3 + 1
@@ -623,7 +871,9 @@ MODULE Chemsys_Mod
     INTEGER,      OPTIONAL, INTENT(IN) :: IndexSet(:)
     CHARACTER(*), OPTIONAL             :: NewName
     
-    INTEGER :: i, j
+    INTEGER :: iR, j
+    INTEGER :: nR
+    LOGICAL :: done = .FALSE.
     
     OPEN(UNIT=989,FILE=ADJUSTL(TRIM(NewName)),STATUS='UNKNOWN')
   
@@ -635,42 +885,81 @@ MODULE Chemsys_Mod
     WRITE(989,'(A)') ''
     WRITE(989,'(A)') 'UNIT GAS    0   #    Gas phase units     (0 = molec/cm3, 1 = mol/m3)'
     WRITE(989,'(A)') 'UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)'
-    WRITE(989,'(A)') 'UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)'
     WRITE(989,'(A)') ''
-    WRITE(989,'(A)') '#  ===================   Gas Phase      ======================'
     WRITE(989,'(A)') '#'
+
  
     IF (PRESENT(IndexSet)) THEN
+      nR = SIZE(IndexSet)
       j = 0
+
+      ! Print IndexSet of reactions
       DO 
         j = j + 1
-        i = IndexSet(j)
-        WRITE(989,'(A)') 'CLASS: '//TRIM(RS(i)%Type)
-        WRITE(989,'(A)') TRIM(RS(i)%Line1)
-        IF ( TRIM(RS(i)%Line3)   /= '' ) WRITE(989,'(A)') TRIM(RS(i)%Line3)
-        !IF ( TRIM(RS(i)%Special%Formula) /= '' ) WRITE(989,'(A,I0)') 'SPECIAL: '//TRIM(RS(i)%Special%Formula)//';  ',RS(i)%Special%nVariables
-        IF ( TRIM(RS(i)%Factor)  /= '' ) WRITE(989,'(A)') 'FACTOR: '//TRIM(RS(i)%Factor)
-        WRITE(989,'(A)') 
-        IF ( MAXVAL(INDEX(RS(i)%Type,['DISS','HENR'])) > 0 ) j = j + 1
-        IF ( j >= SIZE(IndexSet) ) EXIT
+        iR = IndexSet(j)
+
+        IF ( .NOT. RS(iR)%bR ) THEN
+          ! if direction is --> then
+          CALL PrintReac(iR)
+        ELSE
+          ! for equilibrium reactions we need to check if the correct one is printet
+          ! by correct one i mean the reaction which occurs in the original system
+          ! not the reversed reaction string, becaus the evaluation of the rate 
+          ! constant would be garbage if the reversed reaction string is printet
+          IF ( iR-1 /= IndexSet(j-1) ) THEN
+            CALL PrintReac(iR-1)
+          END IF
+        END IF
+
+        IF ( j >= nR ) EXIT
       END DO
     ELSE
-      i = 0
-      DO 
-        i = i + 1
-        WRITE(989,'(A)') 'CLASS: '//TRIM(RS(i)%Type)
-        WRITE(989,'(A)') TRIM(RS(i)%Line1)
-        IF ( TRIM(RS(i)%Line3)   /= '' ) WRITE(989,'(A)') TRIM(RS(i)%Line3)
-        !IF ( TRIM(RS(i)%Special%Formula) /= '' ) WRITE(989,'(A,I0)') 'SPECIAL: '//TRIM(RS(i)%Special%Formula)//';  ',RS(i)%Special%nVariables
-        IF ( TRIM(RS(i)%Factor)  /= '' ) WRITE(989,'(A)') 'FACTOR: '//TRIM(RS(i)%Factor)
-        WRITE(989,'(A)') 
+      nR = SIZE(RS)
 
-        IF ( i >= SIZE(RS) ) EXIT
-        IF ( MAXVAL(INDEX(RS(i)%Type,['DISS','HENR'])) > 0 ) i = i + 1
+      ! Print all reaction in RS list
+      iR = 0
+      DO 
+        iR = iR + 1
+        CALL PrintReac(iR)
+        IF ( iR >= nR ) EXIT
+        IF ( MAXVAL(INDEX(RS(iR)%Type,['DISS','HENR'])) > 0 ) iR = iR + 1
       END DO
+    
     END IF
     CLOSE(989)
+
+      CONTAINS
+        
+      SUBROUTINE PrintReac(iR)
+        INTEGER :: iR
+        WRITE(989,'(A)') 'CLASS: '//TRIM(RS(iR)%Type)
+        WRITE(989,'(A)') TRIM(RS(iR)%Line1)
+        IF ( TRIM(RS(iR)%Line3) /= '' ) WRITE(989,'(A)') TRIM(RS(iR)%Line3)
+        !IF ( TRIM(RS(i)%Special%Formula) /= '' ) WRITE(989,'(A,I0)') 'SPECIAL: '//TRIM(RS(i)%Special%Formula)//';  ',RS(i)%Special%nVariables
+        IF ( TRIM(RS(iR)%Factor)  /= '' ) WRITE(989,'(A)') 'FACTOR: '//TRIM(RS(iR)%Factor)
+        WRITE(989,'(A)') 
+      END SUBROUTINE PrintReac
   END SUBROUTINE Print_SysFile
+
+  FUNCTION RemoveSpaces(String) RESULT(StringOut)
+    ! replaces multiple spaces in string by one space
+    CHARACTER(*), INTENT(IN) :: String
+    CHARACTER(LEN(String))   :: StringOUT
+
+    INTEGER :: i
+
+    StringOut = TRIM(String)
+
+    DO
+      i = INDEX(TRIM(StringOut),'  ')
+      IF ( i == 0 ) EXIT
+      StringOut = TRIM(ADJUSTL(StringOut(:i-1))) &
+      &           //' '//                        &
+      &           TRIM(ADJUSTL(StringOut(i+1:)))
+    END DO
+
+  END FUNCTION RemoveSpaces
+
   !
   SUBROUTINE Print_ChemFile(RS,File,Unit,CK)
     ! IN:
@@ -765,11 +1054,9 @@ MODULE Chemsys_Mod
       WRITE(Unit,*)
       WRITE(Unit,'(A,I6,A)') '#-----------', iR ,'. Reaction ----------- '
     
-      WRITE(Unit,*) TRIM(RS(iR)%Type)//'   '//        &
-      &             TRIM(RS(iR)%TypeConstant)
+      WRITE(Unit,*) TRIM(RS(iR)%Type)//'   '//TRIM(RS(iR)%TypeConstant)
      
-      WRITE(Unit,*) SIZE(RS(iR)%Educt),               &
-      &             SIZE(RS(iR)%Product), nEduct, nProd
+      WRITE(Unit,*) SIZE(RS(iR)%Educt), SIZE(RS(iR)%Product), nEduct, nProd
       
       ! Educt Matrix A
       IF ( nEduct > 1 ) THEN
@@ -1016,12 +1303,13 @@ MODULE Chemsys_Mod
     pi43=4.0d0/3.0d0*PI
     !
     ! this is for mass transfer (accom , diffus term)
-    ALLOCATE( InitValAct(nspc) , InitValKat(ns_KAT) ,  y_emi(nspc) )
+    ALLOCATE( InitValAct(nspc) , InitValKat(ns_KAT) ,  y_emi(nspc) , y_depos(nspc) )
     ALLOCATE( henry_diff(nspc+ns_KAT), henry_accom(nspc+ns_KAT) )
 
     InitValAct = 1.0e-20_dp
     InitValKat = 1.0e-20_dp
-    y_emi(:)   = ZERO
+    y_emi   = ZERO
+    y_depos = ZERO
     henry_diff  = ZERO;   henry_diff(1:ns_GAS)  = 5.0e-6_dp
     henry_accom = ZERO;   henry_accom(1:ns_GAS) = 5.0e-5_dp
     !
@@ -1041,6 +1329,8 @@ MODULE Chemsys_Mod
     Hp_ind   = 0
     OHm_ind  = 0
     aH2O_ind = 0
+    SO4mm_ind = 0
+    HSO4m_ind = 0
     Temp_ind = nspc + 1
     
     !=========================================================================
@@ -1060,10 +1350,11 @@ MODULE Chemsys_Mod
       END DO
 
       InitValAct(iGs) = 1.e-20_dp
-      CALL Read_INITITALS( InitFileName , InitValAct, InitValKat , 'GAS')
+      CALL Read_INI_file( InitFileName , InitValAct, InitValKat , 'GAS' , 'INITIAL' )
 
       !---  Read gase phase emission values
-      CALL Read_EMISS( InitFileName , y_emi )
+      CALL Read_INI_file( InitFileName , y_emi , InitValKat , 'GAS' , 'EMISS' )
+      CALL Read_INI_file( InitFileName , y_depos , InitValKat , 'GAS' , 'DEPOS' )
 
     END IF
 
@@ -1078,8 +1369,10 @@ MODULE Chemsys_Mod
 
       DO iSpc = bAs(1),bAs(2)
         READ(ChemUnit,*,IOSTAT=io_stat)  y_name(iSpc)
-        IF ( y_name(iSpc) == 'Hp'   )   Hp_ind   = iSpc
-        IF ( y_name(iSpc) == 'OHm'  )   OHm_ind  = iSpc
+        IF ( y_name(iSpc) == 'Hp'        ) Hp_ind    = iSpc
+        IF ( y_name(iSpc) == 'OHm'       ) OHm_ind   = iSpc
+        IF ( y_name(iSpc) == 'SO4mm_ind' ) SO4mm_ind = iSpc
+        IF ( y_name(iSpc) == 'HSO4m_ind' ) HSO4m_ind = iSpc
       END DO
 
       !=== Set  Chemical DATA  
@@ -1121,7 +1414,7 @@ MODULE Chemsys_Mod
       END DO
 
       InitValAct(iAs) = 1.e-16_dp
-      CALL Read_INITITALS( InitFileName, InitValAct, InitValKat, 'AQUA' )
+      CALL Read_INI_file( InitFileName , InitValAct, InitValKat , 'AQUA' , 'INITIAL' )
 
 
       DO i = 1 , SIZE(AFrac%Species)
@@ -1222,248 +1515,9 @@ MODULE Chemsys_Mod
     iSr = [(i, i=bSr(1),bSr(2))]
     iPr = [(i, i=bPr(1),bPr(2))]
   END SUBROUTINE InputChemicalData
-  !
-  ! Read Chemical Data (initial values and Emisions)
-!  SUBROUTINE InputChemicalData(InitFileName,DataFileName,MeteoFileName)
-!    CHARACTER(*) :: InitFileName, DataFileName, MeteoFileName
-!     !
-!    !REAL(dp), ALLOCATABLE :: GasInAct(:), AqInAct(:)
-!    !
-!    INTEGER, PARAMETER :: GasRateUnit=0 ! ???
-!    INTEGER :: iSpc, i, iPos, lb, ub
-!    INTEGER :: io_stat
-!    REAL(dp) :: pi43, LWC
-!    CHARACTER(60) :: string = ''
-!    !
-!    ! for pH Start
-!    REAL(dp) :: kappa
-!    !
-!    pi43=4.0d0/3.0d0*PI
-!    !
-!    ! this is for mass transfer (accom , diffus term)
-!    ALLOCATE( henry_diff(nspc+ns_KAT), henry_accom(nspc+ns_KAT) )
-!    henry_diff  = ZERO;   henry_diff(1:ns_GAS)  = 5.0e-6_dp
-!    henry_accom = ZERO;   henry_accom(1:ns_GAS) = 5.0e-5_dp
-!    !
-!    !
-!    !=========================================================================
-!    !===  Read and save species names in lists
-!    !=========================================================================
-!    !
-!    !-- Open .chem-file and skip the first 24 lines (head)
-!    OPEN(unit=ChemUnit, file=ChemFile, status='old', action='read', access='sequential', iostat=io_stat)
-!    IF ( io_stat /= 0 ) WRITE(*,*) '  ERROR opening chem-file :: ',io_stat
-!    REWIND(ChemUnit)
-!    
-!    DO i=1,24;  READ(ChemUnit,*);  END DO         ! skip the first 24 lines
-!
-!    !---  set indices for pH and water dissociation 
-!    Hp_ind =0
-!    OHm_ind=0
-!    aH2O_ind=0
-!    Temp_ind=nspc+1
-!    nDIM=nspc
-!    
-!    !=========================================================================
-!    !===  Read and Split Species Names
-!    !=========================================================================
-!    !--- allocate space for a list of all species (incl. kat spc)
-!    ALLOCATE(y_name(nspc+ns_KAT))
-!
-!    ! read gaseous phase species
-!    IF (ns_GAS>0) THEN
-!      ALLOCATE(GasName(ns_GAS))
-!      DO iSpc = 1 , ns_GAS
-!        READ(ChemUnit,*)  y_name(iSpc)
-!      END DO
-!      GasName = y_name(1:ns_GAS)
-!    END IF
-!
-!    ! read aqueous phase species
-!    IF (ns_AQUA>0) THEN
-!      lb = ns_GAS+1; ub = ns_AQUA+ns_GAS
-!      ALLOCATE(AquaName(ns_AQUA))
-!      DO iSpc = lb,ub
-!        READ(ChemUnit,*)  y_name(iSpc)
-!        IF ( y_name(iSpc)=='Hp' )   Hp_ind = iSpc
-!        IF ( y_name(iSpc)=='OHm' ) OHm_ind = iSpc
-!      END DO
-!      AquaName = y_name(lb:ub)
-!    END IF
-!
-!    ! read solid phase species
-!    IF (ns_SOLID>0) THEN
-!      ALLOCATE(AquaName(ns_SOLID))
-!      lb = ns_AQUA+ns_GAS+1
-!      ub = ns_AQUA+ns_GAS+ns_SOLID
-!      DO iSpc = lb,ub
-!        READ(ChemUnit,*)  y_name(iSpc) 
-!      END DO
-!      SolidName = y_name(lb:ub)
-!    END IF
-!
-!    ! read particle phase species
-!    IF (ns_PARTIC>0) THEN
-!      ALLOCATE(AquaName(ns_PARTIC))
-!      lb = ns_SOLID+ns_AQUA+ns_GAS+1
-!      ub = ns_AQUA+ns_GAS+ns_SOLID+ns_PARTIC
-!      DO iSpc = lb,ub
-!        READ(ChemUnit,*)  y_name(iSpc) 
-!      END DO
-!      ParticName = y_name(lb:ub)
-!    END IF
-!
-!    ! read catalytic phase species
-!    IF (ns_KAT>0) THEN
-!      ALLOCATE(PassName(ns_KAT))
-!      lb = ns_AQUA+ns_GAS+ns_SOLID+ns_PARTIC+1
-!      ub = ns_KAT+ns_AQUA+ns_GAS+ns_SOLID+ns_PARTIC
-!      DO iSpc = lb,ub
-!        READ(ChemUnit,*)  y_name(iSpc)
-!        IF ( y_name(iSpc)=='[aH2O]' ) THEN
-!          aH2O_ind = iSpc -(ns_AQUA+ns_GAS+ns_SOLID+ns_PARTIC)
-!        ELSE
-!          henry_diff(iSpc)  = 5.0e-6_dp
-!          henry_accom(iSpc) = 5.0e-5_dp
-!        END IF
-!      END DO
-!      PassName = y_name(lb:ub)
-!    END IF
-!   
-!    IF (MPI_ID==0.AND.ns_AQUA>=1) THEN
-!      IF (hp_ind==0)   WRITE(*,*) 'ReadChem...Warning: Hp  not in mechanism!' 
-!      IF (ohm_ind==0)  WRITE(*,*) 'ReadChem...Warning: OHm  not in mechanism!' 
-!      IF (ah2o_ind==0) WRITE(*,*) 'ReadChem...Warning: aH2O  not in mechanism!' 
-!    END IF
-!    REWIND(ChemUnit);  CLOSE(ChemUnit)
-!    
-!    !=========================================================================
-!    !===  Set  Chemical DATA  
-!    !===  (Molar Mass, Charges, Densities) 
-!    !=========================================================================
-!    !
-!    IF ( ns_AQUA>=1 ) THEN
-!      !---  Allocate arrays
-!      ALLOCATE ( Charge(ns_AQUA),   &      ! charge of ions
-!               & SolubInd(ns_AQUA), &      ! solubility
-!               & MolMass(ns_AQUA),  &      ! molar mass of species
-!               & SpcDens(ns_AQUA),  &      ! density of species
-!               & OrgIndex(ns_AQUA), &      ! carbon atoms
-!               & CC(ns_AQUA),       &      ! compound class
-!               & ActIndex(ns_AQUA)  )      ! index for calculation of activity coefficient
-!  
-!      !---  Set default values
-!      Charge   = ZERO
-!      SolubInd = ZERO
-!      MolMass  = ZERO
-!      SpcDens  = ONE
-!      OrgIndex = ZERO
-!      CC       = '  '
-!      ActIndex = ZERO
-!      !
-!      !--------------------------------------------------------------
-!      !---  Determine Charges of Ions
-!      DO iSpc=1,ns_AQUA
-!        string = AquaName(iSpc)
-!        i = 1
-!        DO ! loop for cations
-!          iPos = INDEX(string(i:),'p')
-!          IF ( iPos <= 0 )  EXIT 
-!          Charge(iSpc) = Charge(iSpc) + 1
-!          i = i + iPos
-!        END DO
-!        i = 1
-!        DO ! loop for anions
-!          iPos = INDEX(string(i:),'m')
-!          IF ( iPos <= 0 )  EXIT 
-!          Charge(iSpc) = Charge(iSpc) - 1
-!          i = i + iPos
-!        END DO
-!      END DO
-!    END IF
-!    !
-!    !=========================================================================
-!    !===  Read Initial Values from file   
-!    !=========================================================================
-!    !---------------------------------
-!    ! Units for Chemistry
-!    ALLOCATE( InitValAct(nspc) , y_e(nspc) )
-!    ALLOCATE( InitValKat(ns_KAT) )
-!    InitValAct = 1.0e-20_dp
-!    InitValKat = 1.0e-20_dp
-!    y_e = ZERO
-!    !
-!    !---  Read gase phase inititals
-!    !---------------------------------
-!    CALL Read_EMISS( InitFileName , y_e(:) )
-!    CALL Read_GASini( InitFileName , InitValAct(1:nspc), InitValKat(:) )
-!    ns_KAT = ns_G_KAT
-!
-!    !
-!    !--- Read thermodynamic data,....
-!    CALL Read_SpeciesData( henry_diff, henry_accom, DataFileName )
-!    !---------------------------------
-!    !
-!    !---  Read/Calculate aqua phase initials
-!    !---------------------------------
-!    IF ( ns_AQUA > 0 ) THEN
-!      !
-!      CALL Read_AQUAini( InitValAct(ns_GAS+1:), InitValKat(:), InitFileName )
-!      ns_KAT = ns_KAT + ns_A_KAT
-!      CALL Read_AFRAC( InitAFrac, InitFileName )
-!      CALL Read_Frac( Frac , InitFileName )
-!      
-!      LWC  = pseudoLWC(tBegin)
-!     
-!      IF ( ns_A_KAT > 0 ) THEN
-!        DO i=1,ns_KAT
-!          IF (y_name(nspc+i)=='[aH2O]') THEN
-!            InitValKat(i) = InitValKat(i)*LWC*mol2part    ! convert aH2O [mol/L] to [molec/cm3]
-!          END IF
-!        END DO
-!      END IF
-!
-!      !
-!      !-----------------------------------------
-!      ! calculate initial aqueus concentrations 
-!      !-----------------------------------------
-!      !InitValAct(ns_GAS+1:)=1.0d-16     ! notwendig? (willi 10.5.) scheinbar nicht (willi 12.7.)
-!      DO i=1,SIZE(InitAFrac)
-!        iPos = PositionSpeciesAll(InitAFrac(i)%Species)
-!        IF (iPos>0) THEN
-!          !
-!          InitValAct(iPos) = Frac%Number(1) * kilo           &  ! [#/m3]
-!          &                * InitAFrac(i)%Frac1              &  ! [g/g]
-!          &                * pi43 * Frac%Radius(1)**3        &  ! [m3]
-!          &                * Frac%Density(1)                 &  ! [kg/m3]
-!          &                / InitAFrac(i)%MolMass               ! 1/[kg/mol] 
-!          InitValAct(iPos) = InitValAct(iPos) * mol2Part        ! *[molec/mol]
-!        END IF
-!      END DO
-!    END IF
-!    
-!    !DO i=1,nspc; WRITE(989,'(A,I0,A,Es12.4,A)') ' ini (',i,') = ', InitValAct(i), '    '//TRIM(y_name(i)); END DO
-!    
-!    !======================================================
-!    !---  Compute pH value and number of ions
-!    !---  Initial pH by charge balance 
-!    IF ( pHSet .AND. ns_AQUA>0 )  THEN
-!      Kappa = pHValue( InitValAct(ns_GAS+1:) )
-!      IF ( Kappa > ZERO )  THEN
-!        InitValAct(Hp_ind)  = Kappa
-!        !WRITE(*,*) '  pH(t0) = ', Kappa
-!      ELSE 
-!        InitValAct(OHm_ind) = InitValAct(OHm_ind) + InitValAct(Hp_ind) - Kappa
-!      END IF
-!    END IF
-!    !
-!    !do i = 1,ns_AQUA
-!    !  write(*,'(A,I6,A,F6.1,F12.3)') 'back = ',i,TRIM(Aquaname(i))//'  ', Charge(i), InitValAct(i)
-!    !END DO
-!  END SUBROUTINE InputChemicalData
-  !
-  !
-  !
+
+
+
   SUBROUTINE Read_SpeciesData(y_acc,y_diff,FileName)
     REAL(dp) :: y_acc(:) , y_diff(:) 
     CHARACTER(*) :: FileName
@@ -1611,39 +1665,14 @@ MODULE Chemsys_Mod
     !END DO 
   END SUBROUTINE Read_SpeciesData
   !
-  SUBROUTINE Read_EMISS(FileName,Emi)
-    CHARACTER(*) :: FileName
-    REAL(dp) :: Emi(:)
-    !
-    INTEGER :: iPos
-    REAL(dp) :: c1
-    CHARACTER(20) :: SpeciesName
-    LOGICAL :: Back=.FALSE.
-    !
-    ! read emission values
-    Emi(:)=ZERO
-    CALL OpenIniFile(FileName)
-    DO
-      CALL LineFile( Back,                    &
-      &              Start1='BEGIN_GAS',      &
-      &              Start2='BEGIN_EMISS',    &
-      &              End   ='END_EMISS',      &
-      &              Name1=SpeciesName, R1=c1 )
-      IF (Back)   EXIT
-      !
-      iPos=PositionSpeciesALL(SpeciesName)
-      IF (iPos>0) Emi(iPos)=c1
-    END DO
-    CALL CloseIniFile
-  END SUBROUTINE Read_EMISS
-  !
 
-  SUBROUTINE Read_INITITALS(FileName,Activ,Passiv,Phase)
+
+  SUBROUTINE Read_INI_file(FileName,Activ,Passiv,Phase,section)
     CHARACTER(*) :: FileName
     !
     REAL(dp)      :: Activ(:)
     REAL(dp)      :: Passiv(:)
-    CHARACTER(*)  :: Phase
+    CHARACTER(*)  :: Phase, section
     !
     INTEGER :: iPos
     REAL(dp) :: c1
@@ -1655,8 +1684,8 @@ MODULE Chemsys_Mod
     DO
       CALL LineFile( Back,                       &
       &              Start1 = 'BEGIN_'//Phase,   &
-      &              Start2 = 'BEGIN_INITIAL',   &
-      &              End    = 'END_INITIAL',     &
+      &              Start2 = 'BEGIN_'//section,   &
+      &              End    = 'END_'//section,     &
       &              Name1  = SpeciesName,       &
       &              R1     = c1                 )
       IF (Back)   EXIT
@@ -1681,51 +1710,8 @@ MODULE Chemsys_Mod
       END IF
     END DO
     CALL CloseIniFile
-  END SUBROUTINE Read_INITITALS
+  END SUBROUTINE Read_INI_file
 
-
-  !
-  SUBROUTINE Read_GASini(FileName,GASact,InAct)
-    CHARACTER(*) :: FileName
-    !
-    REAL(dp) :: GASact(:)
-    REAL(dp) :: InAct(:)
-    !
-    INTEGER :: iPos
-    REAL(dp) :: c1
-    CHARACTER(20) :: SpeciesName
-    LOGICAL :: Back=.FALSE.
-    !
-    !
-    GASact = 1.0d-20 
-    InAct  = 1.0d-20
-    ! read initial values
-    CALL OpenIniFile(FileName)
-    DO
-      CALL LineFile( Back,                       &
-      &              Start1 = 'BEGIN_GAS',       &
-      &              Start2 = 'BEGIN_INITIAL',   &
-      &              End    = 'END_INITIAL',     &
-      &              Name1  = SpeciesName,       &
-      &              R1     = c1                 )
-      IF (Back)   EXIT
-      !
-      iPos = PositionSpeciesAll(SpeciesName)
-      !print*, ' debug :: gas spc :: ', TRIM(SpeciesName), c1, back, iPos
-      IF (iPos>0) THEN
-        SpeciesName = ADJUSTL(SpeciesName)
-        IF (SpeciesName(1:1)=='['.AND. LEN(TRIM(SpeciesName))<maxLENinActDuct) THEN
-          InAct(iPos-nspc) = c1
-          ns_G_KAT = ns_G_KAT + 1
-        ELSE
-          !iPos=PositionSpeciesAll(SpeciesName)
-          GASact(iPos) = c1
-       END IF
-      END IF
-    END DO
-    CALL CloseIniFile
-  END SUBROUTINE Read_GASini
-  !
   !
   SUBROUTINE Read_Diag(DiagSpc_Pos,DiagSpc_Phase,FileName)
     INTEGER, ALLOCATABLE :: DiagSpc_Pos(:)
@@ -1796,112 +1782,6 @@ MODULE Chemsys_Mod
   END SUBROUTINE Read_Diag
 
 
-
-!  SUBROUTINE Read_Diag(DiagSpc_idx,DiagSpc_phs,FileName)
-!    INTEGER,      ALLOCATABLE :: DiagSpc_idx(:)
-!    CHARACTER(1), ALLOCATABLE :: DiagSpc_phs(:)
-!    CHARACTER(*)              :: FileName
-!    !
-!    INTEGER :: iPos, cnt, lb, ub
-!    CHARACTER(100) :: SpeciesName
-!    LOGICAL :: Back
-!    !
-!    !
-!
-!    ! Read initial values of aqua spc
-!    CALL OpenIniFile(FileName)
-!    cnt=0
-!    DO
-!      CALL LineFile( Back,                &
-!      &              Start1='BEGIN_DIAG', &
-!      &              End   ='END_DIAG',   &
-!      &              Name1 =SpeciesName   )
-!      IF (Back)   EXIT
-!      !
-!      IF ( ADJUSTL(SpeciesName(1:1)) /= '#' .AND. &
-!         & PositionSpeciesAll(SpeciesName) > 0    ) cnt = cnt + 1
-!    END DO
-!    CALL CloseIniFile
-!    !
-!    ALLOCATE(DiagSpc_idx(cnt),DiagSpc_phs(cnt))
-!    ALLOCATE(iNcdfGas(0),iNcdfAqua(0),iNcdfSolid(0),iNcdfParti(0))
-!    DiagSpc_idx = 0
-!    DiagSpc_phs = '-'
-!    !
-!    CALL OpenIniFile(FileName)
-!    cnt = 0
-!    DO
-!      CALL LineFile( Back,                &
-!      &              Start1='BEGIN_DIAG', &
-!      &              End   ='END_DIAG',   &
-!      &              Name1 =SpeciesName   )
-!      IF (Back)   EXIT
-!      !
-!      IF (ADJUSTL(SpeciesName(1:1))/='#') THEN
-!        iPos = PositionSpeciesAll(SpeciesName)
-!        IF ( iPos > 0 ) THEN
-!          cnt = cnt + 1
-!          !print*, cnt, SpeciesName, ipos
-!          DiagSpc(cnt) = iPos
-!          IF      ( iPos <= ns_GAS ) THEN
-!            DiagPhase(cnt)='g'
-!          ELSE IF ( iPos >  ns_GAS .AND.   &
-!                  & iPos <= ns_GAS+ns_AQUA ) THEN
-!            DiagPhase(cnt)='a'
-!          ELSE IF ( iPos >  ns_GAS+ns_AQUA .AND.    &
-!                  & iPos <= ns_GAS+ns_AQUA+ns_SOLID ) THEN
-!            DiagPhase(cnt)='s'
-!          ELSE IF ( iPos >  ns_GAS+ns_AQUA+ns_SOLID .AND.     &
-!                  & iPos <= ns_GAS+ns_AQUA+ns_SOLID+ns_PARTIC ) THEN
-!            DiagPhase(cnt)='p'
-!          ELSE
-!            DiagPhase(cnt)='k'
-!          END IF
-!        END IF
-!      END IF
-!    END DO
-!    CALL CloseIniFile
-!  END SUBROUTINE Read_Diag
-  !
-  SUBROUTINE Read_AQUAini(AQUAact,AquaInAct,FileName)
-    REAL(dp) :: AQUAact(:)
-    REAL(dp) :: AquaInAct(:)
-    CHARACTER(*) :: FileName
-    !
-    INTEGER :: iPos
-    REAL(dp) :: c1
-    CHARACTER(20) :: SpeciesName
-    LOGICAL :: Back
-    !
-    ! Read initial values of aqua spc
-    AQUAact(:)=1.0d-16
-    CALL OpenIniFile(FileName)
-    DO
-      CALL LineFile( Back,                    &
-      &              Start1 = 'BEGIN_AQUA',   &
-      &              Start2 = 'BEGIN_INITIAL',&
-      &              End    = 'END_INITIAL',  &
-      &              Name1  = SpeciesName,    &
-      &              R1     = c1              )
-      IF (Back)   EXIT
-      
-      iPos = PositionSpecies(SpeciesName)
-      SpeciesName = ADJUSTL(SpeciesName)
-
-      !print*, ' debug :: gas spc :: ', TRIM(SpeciesName), c1, back, iPos
-      IF (iPos>0) THEN
-        IF (SpeciesName(1:1)=='['.AND. LEN(TRIM(SpeciesName))<maxLENinActDuct) THEN
-          AquaInAct(iPos)=c1
-          ns_A_KAT = ns_A_KAT + 1
-        ELSE
-          AquaAct(iPos) = c1
-       END IF
-      END IF
-    END DO
-    CALL CloseIniFile
-  END SUBROUTINE Read_AQUAini
-
-
   SUBROUTINE Read_AFrac(AFrac,FileName) 
     CHARACTER(*)  :: FileName
     TYPE(AFrac_T) :: AFrac
@@ -1949,52 +1829,6 @@ MODULE Chemsys_Mod
     END DO
     CALL CloseIniFile
   END SUBROUTINE Read_AFrac
-  !  
-!  !
-!  SUBROUTINE Read_Frac(Fractions,FileName)
-!    CHARACTER(*) :: FileName
-!    TYPE(FRACTION_T) :: Fractions
-!    !
-!    INTEGER :: cnt
-!    REAL(dp) :: c1,c2,c3
-!    LOGICAL :: Back
-!    REAL(dp) :: LWC
-!    !
-!    ! Read SPEK values
-!    CALL OpenIniFile(FileName)
-!    CALL LineFile( Back,                 &
-!    &              Start1 ='BEGIN_AQUA', &
-!    &              Start2 ='BEGIN_SPEK', &
-!    &              End    ='END_SPEK',   &
-!    &              R1=c1                 )
-!    !
-!    ntFrac = INT(c1)
-!    ALLOCATE( Fractions%Radius(ntFrac)  , Fractions%Number(ntFrac)    &
-!    &       , Fractions%Density(ntFrac) , Fractions%wetRadius(ntFrac) ) 
-!    !
-!    LWC = pseudoLWC(tBegin)
-!    cnt = 0
-!    REWIND(InputUnit_Initials)
-!    CALL ClearIniFile()
-!    DO 
-!      CALL LineFile( Back,                 &
-!      &              Start1 ='BEGIN_AQUA', &
-!      &              Start2 ='BEGIN_SPEK', &
-!      &              End    ='END_SPEK',   &
-!      &              R1=c1, R2=c2, R3=c3   )
-!      IF (Back)   EXIT
-!      !
-!      ! HIER KÖNNTE MAL WIEDER WAS PASSIEREN
-!      IF (c1 < ONE) THEN
-!        cnt = cnt + 1
-!        Fractions%Radius(cnt) = REAL(c1,KIND=dp)
-!        Fractions%Number(cnt) = REAL(c2,KIND=dp)
-!        Fractions%Density(cnt) = REAL(c3,KIND=dp)
-!        Fractions%wetRadius(cnt) = (Pi34*LWC/Fractions%Number(cnt))**(rTHREE)*0.1_dp
-!      END IF
-!    END DO
-!    CALL CloseIniFile
-!  END SUBROUTINE Read_Frac
 
   SUBROUTINE Read_Modes(Mode,FileName)
     CHARACTER(*) :: FileName
@@ -2042,8 +1876,6 @@ MODULE Chemsys_Mod
   END SUBROUTINE Read_Modes
 
 
-  !
-  !
   SUBROUTINE InputDatFile(FileName)
     CHARACTER(*) :: FileName
     !
@@ -2099,31 +1931,6 @@ MODULE Chemsys_Mod
     CLOSE(InputUnit) 
   END SUBROUTINE InputDatFile
 
-
-!  FUNCTION FindSection(iUnit,SectionName) RESULT(iLine)
-!    ! OUT:
-!    INTEGER      :: iLine
-!    ! IN: 
-!    INTEGER      :: iUnit
-!    CHARACTER(*) :: SectionName
-!    ! TEMP: 
-!    CHARACTER(LenLine) :: Line
-!    INTEGER      :: io_err
-!    
-!    iLine = 0
-!    DO
-!      READ(iUnit,'(A)',IOSTAT=io_err) Line
-!      IF (io_err==0) THEN
-!        IF (TRIM(ADJUSTL(Line))==SectionName)  EXIT
-!        iLine = iLine + 1
-!      ELSEIF (io_err>0.OR.io_err<0) THEN
-!        WRITE(*,*) '  No '//TRIM(SectionName)//' found.'
-!        iLine = -1
-!        EXIT
-!      END IF
-!    END DO
-!  END FUNCTION FindSection
-!
 
   !
   SUBROUTINE InsertReaction(List,Line,TypeR)
@@ -2195,36 +2002,35 @@ MODULE Chemsys_Mod
   !
   !
   SUBROUTINE ReadUnits
-     !
-     INTEGER :: iLine,Pos
-     CHARACTER(LenLine) :: LocLine
-     CHARACTER(LenLine) :: Line(3)
-     !
-     iLine=0
-     BACKSPACE(InputUnit)
-     DO
-       READ(InputUnit,'(a200)',END=1) LocLine
-       IF (ADJUSTL(LocLine(1:1))/='#'.AND.         &
-       &   ADJUSTL(LocLine(1:7))/='COMMENT'.AND.   &
-       &   LEN(TRIM(LocLine))>0) THEN
-         iLine=iLine+1
-         Line(iLine)=LocLine
-         IF (iLine==3) THEN
-           Pos=INDEX(Line(1),'GAS')
-           IF (Pos>0) THEN
-             Line(1)=Line(1)(Pos+3:)
-             READ(Line(1),*) UnitGas
-           END IF
-           Pos=INDEX(Line(2),'AQUA')
-           IF (Pos>0) THEN
-             Line(2)=Line(2)(Pos+4:)
-             READ(Line(2),*) UnitAqua
-           END IF
-           EXIT
-         END IF
-       END IF
-     END DO
-  1  CONTINUE
+    !
+    INTEGER :: Pos
+    CHARACTER(LenLine) :: LocLine
+    INTEGER :: ios
+    CHARACTER(400) :: iom
+    LOGICAL :: comments
+    !
+    REWIND(InputUnit)
+    DO 
+      READ(InputUnit,'(A400)',IOSTAT=ios,IOMSG=iom) LocLine
+      IF ( ios /= 0 ) THEN
+        WRITE(*,*) ' Error Reading Units'
+        WRITE(*,*) ' Error Message  ::  ',TRIM(iom)
+      ELSE
+        comments = (ADJUSTL(LocLine(1:1)) == '#'        .OR. &
+        &           ADJUSTL(LocLine(1:7)) == 'COMMENT'  .OR. &
+        &           LEN_TRIM(LocLine)     == 0 )
+        IF ( comments ) CYCLE
+
+        Pos = INDEX(LocLine,'GAS')
+        IF ( Pos > 0 ) READ(LocLine(Pos+3:),*) UnitGas 
+        Pos = INDEX(LocLine,'AQUA')
+        IF ( Pos > 0 ) THEN
+          READ(LocLine(Pos+4:),*) UnitAQUA 
+          EXIT
+        END IF
+      END IF
+    END DO
+
   END SUBROUTINE ReadUnits
   !
   !
@@ -3318,6 +3124,93 @@ MODULE Chemsys_Mod
     END SELECT
   END SUBROUTINE Setup_iFACTOR
 
+
+  SUBROUTINE Setup_ReacParameter_neu(iReac,icnt,Typ,TypeR,C,Line1)
+  REAL(dp), INTENT(IN) :: C(:)
+  CHARACTER(*),   INTENT(IN) :: Typ
+  CHARACTER(*),   INTENT(IN) :: TypeR
+  CHARACTER(*),   INTENT(IN) :: Line1
+  INTEGER :: iReac, idx
+  INTEGER   :: icnt(:)
+
+  idx = 0 
+
+!  SELECT CASE ( TRIM(TypeR) )
+!    CASE ('PHOTABC'); idx = iPHOTABC
+!    CASE ('PHOTMCM'); idx = iPHOTMCM
+!    CASE ('PHOTAB');  idx = iPHOTAB
+!    CASE ('CONST'); idx = iCONST
+!    CASE ('TEMP');  idx = iTEMP
+!    CASE ('TEMP1'); idx = iTEMP1
+!    CASE ('TEMP2'); idx = iTEMP2
+!    CASE ('TEMP3'); idx = iTEMP3
+!    CASE ('TEMP4'); idx = iTEMP4
+!    CASE ('TROE');    idx = iTROE
+!    CASE ('TROEF');   idx = iTROEF
+!    CASE ('TROEQ');   idx = iTROEQ
+!    CASE ('TROEQF');  idx = iTROEQF
+!    CASE ('TROEXP');  idx = iTROEXP
+!    CASE ('TROEMCM'); idx = iTROEMCM
+!    CASE ('SPEC1'); idx = iSPEC1
+!    CASE ('SPEC2'); idx = iSPEC2
+!    CASE ('SPEC3'); idx = iSPEC3
+!    CASE ('SPEC4'); idx = iSPEC4
+!    CASE ('SPEC1MCM'); idx = iSPEC1MCM
+!    CASE ('SPEC2MCM'); idx = iSPEC2MCM
+!    CASE ('SPEC3MCM'); idx = iSPEC3MCM
+!    CASE ('SPEC4MCM'); idx = iSPEC4MCM
+!    CASE ('SPEC5MCM'); idx = iSPEC5MCM
+!    CASE ('SPEC6MCM'); idx = iSPEC6MCM
+!    CASE ('SPEC7MCM'); idx = iSPEC7MCM
+!    CASE ('SPEC8MCM'); idx = iSPEC8MCM
+!    CASE ('SPEC9MCM'); idx = iSPEC9MCM
+!    CASE ('S4H2O');  idx = iS4H2O
+!    CASE ('T1H2O');  idx = iT1H2O
+!    CASE ('ASPEC1'); idx = iASPEC1
+!    CASE ('ASPEC2'); idx = iASPEC2
+!    CASE ('ASPEC3'); idx = iASPEC3
+!    CASE ('ASPEC4'); idx = iASPEC4
+!    CASE ('DCONST'); idx = iDCONST
+!    CASE ('DTEMP');  idx = iDTEMP
+!    CASE ('DTEMP2'); idx = iDTEMP2
+!    CASE ('DTEMP3'); idx = iDTEMP3
+!    CASE ('DTEMP4'); idx = iDTEMP4
+!    CASE ('DTEMP5'); idx = iDTEMP5
+!    CASE ('MESKHIDZE'); idx = iMESKHIDZE
+!    CASE ('PHOTO');   idx = iPHOTO
+!    CASE ('PHOTO2');  idx = iPHOTO2 
+!    CASE ('PHOTO3');  idx = iPHOTO3
+!    CASE ('SPECIAL'); idx = iSPECIAL
+!    CASE ('HOM1');    idx = iHOM1
+!    CASE DEFAULT
+!      WRITE(*,*) ''
+!      WRITE(*,*) ' Reaction Type unknown:  ',TRIM(TypeR),'  --> check input file'
+!      WRITE(*,*) ''
+!  END SELECT
+
+  IF ( idx > 0 ) THEN
+    IF ( SIZE(C) < reac_par(idx)%n_par ) CALL ErrorMSG(iReac,TRIM(Line1))
+    icnt(idx) = icnt(idx) + 1
+    reac_par(idx)%act = .TRUE.
+    !reac_val(idx)%iR( icnt(idx)     ) = iReac 
+    reac_val(idx)%vR( icnt(idx) , : ) = C
+  END IF
+
+
+
+  CONTAINS
+
+    SUBROUTINE ErrorMSG(iR,Line)
+      INTEGER      :: iR
+      CHARACTER(*) :: Line
+      WRITE(*,*);  WRITE(*,*)
+      WRITE(*,*) '  ERROR -- > check parameter in reaction: ', iR ,'  ::  '//Line
+      WRITE(*,*);  WRITE(*,*)
+      STOP
+    END SUBROUTINE ErrorMSG
+
+END SUBROUTINE Setup_ReacParameter_neu
+
   SUBROUTINE Setup_ReacParameter(iReac,icnt,Typ,TypeR,C,Line1)
     REAL(dp), INTENT(IN) :: C(:)
     CHARACTER(*),   INTENT(IN) :: Typ
@@ -3328,18 +3221,26 @@ MODULE Chemsys_Mod
     !WRITE(*,*) ' iReac =', iReac, TRIM(ReactionSystem(iReac)%Line1), '    Consts = ', C
 
     SELECT CASE ( TRIM(TypeR) )
-      CASE ('CONST')
-        IF ( SIZE(C)<1 ) CALL ErrorMSG(iReac,Line1)
-        icnt(1)=icnt(1)+1; iR%iCONST(icnt(1))=iReac;   iR%CONST(icnt(1))=C(1)
-      CASE ('PHOTAB')
-        IF ( SIZE(C)<2 ) CALL ErrorMSG(iReac,Line1)
-        icnt(2)=icnt(2)+1; iR%iPHOTab(icnt(2))=iReac;  iR%PHOTab(icnt(2),:)=C
       CASE ('PHOTABC')
         IF ( SIZE(C)<3 ) CALL ErrorMSG(iReac,Line1)
         icnt(3)=icnt(3)+1; iR%iPHOTabc(icnt(3))=iReac; iR%PHOTabc(icnt(3),:)=C 
+
+        !IF ( SIZE(C) < reac_par(ind_PHOTABC)%n_par ) CALL ErrorMSG(iReac,Line1)
+        !reac_par(ind_PHOTABC)%n_reac = reac_par(ind_PHOTABC)%n_reac + 1
+        !iR%iPHOTabc( reac_par(ind_PHOTABC)%n_reac     ) = iReac 
+        !iR%PHOTabc ( reac_par(ind_PHOTABC)%n_reac , : ) = C 
       CASE ('PHOTMCM')
         IF ( SIZE(C)<3 ) CALL ErrorMSG(iReac,Line1)
         icnt(4)=icnt(4)+1; iR%iPHOTmcm(icnt(4))=iReac; iR%PHOTmcm(icnt(4),:)=C 
+      CASE ('PHOTAB')
+        IF ( SIZE(C)<2 ) CALL ErrorMSG(iReac,Line1)
+        icnt(2)=icnt(2)+1; iR%iPHOTab(icnt(2))=iReac;  iR%PHOTab(icnt(2),:)=C
+      CASE ('CONST')
+        IF ( SIZE(C)<1 ) CALL ErrorMSG(iReac,Line1)
+        icnt(1)=icnt(1)+1; iR%iCONST(icnt(1))=iReac;   iR%CONST(icnt(1))=C(1)
+      CASE ('TEMP')
+        IF ( SIZE(C)<3 ) CALL ErrorMSG(iReac,Line1)
+        icnt(46)=icnt(46)+1; iR%iTEMP1(icnt(46))=iReac; iR%TEMP1(icnt(46),:)=C 
       CASE ('TEMP1')
         IF ( SIZE(C)<2 ) CALL ErrorMSG(iReac,Line1)
         icnt(5)=icnt(5)+1; iR%iTEMP1(icnt(5))=iReac; iR%TEMP1(icnt(5),:)=C 
@@ -3406,6 +3307,9 @@ MODULE Chemsys_Mod
       CASE ('SPEC8MCM')
         IF ( SIZE(C)<4 ) CALL ErrorMSG(iReac,Line1)
         icnt(26)=icnt(26)+1; iR%iSPEC8mcm(icnt(26))=iReac; iR%SPEC8mcm(icnt(26),:)=C 
+      CASE ('SPEC9MCM')
+        IF ( SIZE(C)<10 ) CALL ErrorMSG(iReac,Line1)
+        icnt(47)=icnt(47)+1; iR%iSPEC9mcm(icnt(47))=iReac; iR%SPEC9mcm(icnt(47),:)=C 
       CASE ('S4H2O')
         IF ( SIZE(C)<4 ) CALL ErrorMSG(iReac,Line1)
         icnt(27)=icnt(27)+1; iR%iS4H2O(icnt(27))=iReac;  iR%S4H2O(icnt(27),:)=C 
@@ -3498,13 +3402,13 @@ MODULE Chemsys_Mod
 
     DO i = 1,SIZE(RS)
       Const_T = RS(i)%TypeConstant
-      DO j=1,37  ! 37 comes from mo_reac def_par
-        IF ( TRIM(var_par(j)%str_type) == ADJUSTL(TRIM(Const_T)) ) EXIT
+      DO j=1,nReacTypes  ! 37 comes from mo_reac def_par
+        IF ( TRIM(reac_par(j)%name_type) == ADJUSTL(TRIM(Const_T)) ) EXIT
       END DO
-      IF ( SIZE(RS(i)%Constants) /= var_par(j)%anzp ) THEN
+      IF ( SIZE(RS(i)%Constants) /= reac_par(j)%n_par ) THEN
         WRITE(*,*) 'ERROR: Wrong number of constants:'
         WRITE(*,*) '----->  reaction:     ',i, '   ', TRIM(RS(i)%Line1)
-        WRITE(*,*) '----->  desired #consts: ', var_par(j)%anzp, j
+        WRITE(*,*) '----->  desired #consts: ', reac_par(j)%n_par, j
         WRITE(*,*) '----->  actual  #consts: ', SIZE(RS(i)%Constants)
         WRITE(*,*) '       Check sys-file for syntax errors!'
         CALL FinishMPI();  STOP
@@ -3515,6 +3419,7 @@ MODULE Chemsys_Mod
 
 
   SUBROUTINE AllocateRTarrays()
+    INTEGER :: iType
 
     ! allocate index arrays and parameter arrays for the new vectorized version
     ALLOCATE( iR%iCONST(nr_CONST), iR%CONST(nr_CONST))
@@ -3522,8 +3427,8 @@ MODULE Chemsys_Mod
     ALLOCATE( iR%iPHOTabc(nr_PHOTabc), iR%iPHOTab(nr_PHOTab), iR%iPHOTmcm(nr_PHOTmcm))
     ALLOCATE( iR%PHOTabc(nr_PHOTabc,3), iR%PHOTab(nr_PHOTab,2), iR%PHOTmcm(nr_PHOTmcm,3))
 
-    ALLOCATE( iR%iTEMP1(nr_TEMP1), iR%iTEMP2(nr_TEMP2), iR%iTEMP3(nr_TEMP3), iR%iTEMP4(nr_TEMP4))
-    ALLOCATE( iR%TEMP1(nr_TEMP1,2), iR%TEMP2(nr_TEMP2,2), iR%TEMP3(nr_TEMP3,2), iR%TEMP4(nr_TEMP4,2))
+    ALLOCATE( iR%iTEMP(nr_TEMP),  iR%iTEMP1(nr_TEMP1),  iR%iTEMP2(nr_TEMP2),  iR%iTEMP3(nr_TEMP3),  iR%iTEMP4(nr_TEMP4))
+    ALLOCATE( iR%TEMP(nr_TEMP,3), iR%TEMP1(nr_TEMP1,2), iR%TEMP2(nr_TEMP2,2), iR%TEMP3(nr_TEMP3,2), iR%TEMP4(nr_TEMP4,2))
 
     ALLOCATE( iR%iTROE(nr_TROE),     iR%iTROEf(nr_TROEf),   iR%iTROEq(nr_TROEq),   &
             & iR%iTROEqf(nr_TROEqf), iR%iTROExp(nr_TROExp), iR%iTROEmcm(nr_TROEmcm))
@@ -3537,11 +3442,13 @@ MODULE Chemsys_Mod
     ALLOCATE( iR%iSPEC1mcm(nr_SPEC1mcm), iR%iSPEC2mcm(nr_SPEC2mcm),&
             & iR%iSPEC3mcm(nr_SPEC3mcm), iR%iSPEC4mcm(nr_SPEC4mcm),&
             & iR%iSPEC5mcm(nr_SPEC5mcm), iR%iSPEC6mcm(nr_SPEC6mcm),&
-            & iR%iSPEC7mcm(nr_SPEC7mcm), iR%iSPEC8mcm(nr_SPEC8mcm) )
+            & iR%iSPEC7mcm(nr_SPEC7mcm), iR%iSPEC8mcm(nr_SPEC8mcm),&
+            & iR%iSPEC9mcm(nr_SPEC9mcm) )
     ALLOCATE( iR%SPEC1mcm(nr_SPEC1mcm,3), iR%SPEC2mcm(nr_SPEC2mcm,3),&
             & iR%SPEC3mcm(nr_SPEC3mcm,2), iR%SPEC4mcm(nr_SPEC4mcm,4),&
             & iR%SPEC5mcm(nr_SPEC5mcm,4), iR%SPEC6mcm(nr_SPEC6mcm,4),&
-            & iR%SPEC7mcm(nr_SPEC7mcm,6), iR%SPEC8mcm(nr_SPEC8mcm,4) )
+            & iR%SPEC7mcm(nr_SPEC7mcm,6), iR%SPEC8mcm(nr_SPEC8mcm,4),&
+            & iR%SPEC9mcm(nr_SPEC9mcm,10) )
 
     ALLOCATE( iR%iS4H2O(nr_S4H2O), iR%iT1H2O(nr_T1H2O))
     ALLOCATE( iR%S4H2O(nr_S4H2O,4), iR%T1H2O(nr_T1H2O,2))
@@ -3574,6 +3481,7 @@ MODULE Chemsys_Mod
     ALLOCATE( iR%iSpecial(nr_special) ) 
 
     ALLOCATE( iR%iHOM1(nr_HOM1) , iR%HOM1(nr_HOM1,3) ) 
+
   END SUBROUTINE AllocateRTarrays
 
 

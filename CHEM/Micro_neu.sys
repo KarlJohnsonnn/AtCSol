@@ -1,0 +1,12 @@
+COMMENT  Test for MUSCAT
+COMMENT  22-05-2008 (RS)
+COMMENT   ===================   Unit options   ======================
+
+UNIT GAS    0   COMMENT     Gas phase units     (0 = molec/cm3, 1 = mol/m3)
+UNIT AQUA   0   COMMENT     Aqueous phase units (0 = mol/l)
+
+COMMENT   ===========================================================
+
+CLASS: MICROPHYS
+[RHO] + QV + QC + [QR] + NV + TE + NC = [RHO]
+COND:

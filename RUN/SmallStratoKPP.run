@@ -1,41 +1,47 @@
  &SCENARIO
-  BSP         = 'SmallStratoKPP'
-  Ladebalken  = 1
-  ErrorLog    = 0
-  MatrixPrint = .true.
-  DebugPrint  = .false.
-  NetCdfPrint = .true. 
-  ChemKin     = .false.        ! input mechanism in ChemKin notation
- /END
+  BSP        = 'SmallStratoKPP'   ! Name der NetCDF Output-Datei
+  WaitBar    = .T.          ! .F. = kein ladebalken, .T. /= ladebalken aktiv
+  FluxAna    = .F.          ! analyse reaction rates (fluxes)
+  ChemKin    = .F.          ! input mechanism in ChemKin notation
+/END
  &FILES
   SysFile  = 'CHEM/SmallStratoKPP.sys'
   DataFile = 'DAT/RACM.dat'
   InitFile = 'INI/SmallStratoKPP.ini'
-  MetFile  = 'MET/1day_wocloud.met'
-  TargetFile  = 'TAR/SmallStrato.ctrl'
+  !TargetFile  = 'TAR/SmallStrato.ctrl'
  /END
- &TIMES
-  tAnf    = 0.0d0
-  !tEnd    = 2592000.0d0
-  tEnd    = 86400.0d0
-  Dust    = 0.5d0
-  idate   = 010619     
-  rlat    = 45.d0     
-  rlon    =  0.d0
-  minStp  = 1.0d-25
-  maxStp  = 200.d0
+&TIMES
+  tBegin      = 0.0d0          ! Startzeit Integration   (in [sec])
+  !tEnd        = 86400.0d0      ! Endzeit   Integration   (in [sec])
+  tEnd        = 172800.0d0      ! Endzeit   Integration   (in [sec])
 /END
- &NUMERICS
-  RtolROW   = 1.0d-2
-  AtolGas   = 1.0d-5
-  AtolAqua  = 1.0d-5
-  Error_Est = 2
-  solveLA   = 'ex'  
-  ImpEuler  = 0
-  ODEsolver = 'METHODS/TSRosWRodas3.fort'
-  !ODEsolver = 'LSODE'
- /END
- &ORDERING
-  OrderingStrategie  = 8
-  ParOrdering        = -1
- /END
+&METEO
+  pHSet       = .T.          ! Berechne pH Wert zu Beginn
+  LWCLevelmax = 2.0d-8       ! minimaler LWC Wert [l/cm3]
+  LWCLevelmin = 3.0d-4       ! maximaler LWC Wert [l/cm3]
+  Dust        = 1.0d0        ! Zenith Berechnung       (Staub)
+  idate       = 010621       ! ---------''---------    (Datum: YYMMDD)
+  rlat        = 45.0d0       ! ---------''---------    (Breitengrad)
+  rlon        = 0.0d0        ! ---------''---------    (Längengrad)
+  Temperature0= 280.0d0
+/END
+&NUMERICS
+  RtolROW     = 1.0d-3       ! rel. Toleranz für Rosenbrock-Wanner Fehlersteuerung
+  AtolGas     = 1.0d-4       ! abs. Toleranzen für gasförmige Stoffe 
+  Error_Est   = 2            ! Error estimation = 2 -> 2-norm, else maxnorm
+  PI_StepSize = .F.          ! Gustafsson, Söderlind Fehlersteuerung
+  minStp      = 1.0d-30      ! minimale Schrittweite für Integration
+  maxStp      = 25.0d0       ! maximale Schrittweite für Integration
+  LinAlg      = 'cl'         ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
+  !ODEsolver   = 'LSODE'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
+  ODEsolver   = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
+/END
+&OUTPUT
+  !NetCdfFile  = 'NetCDF/SmallStrato_full.nc' ! location and name of NetCDF output file
+  StpNetCDF   = 100.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep 
+  StpFlux     = -1.0d0
+  nOutP       = 1000                 ! number of output steps for LSODE case
+  DebugPrint  = .F.                ! DEBUGGING Rosenbrock 
+  MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
+  eps_red     = 0.11d0
+/END

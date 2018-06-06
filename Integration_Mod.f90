@@ -181,7 +181,8 @@ MODULE Integration_Mod
           IF ( NetCdfPrint ) THEN 
             TimeNetCDFA = MPI_WTIME()
             ! Time to save a step?
-            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
+            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) .OR.  &
+            &     t == Tspan(2) )  THEN
               iStpNetCDF  = iStpNetCDF + 1
               ! Update NetCDF struct and save the new set of values
               IF ( ChemKin ) Temperature = Y(nDIM)
@@ -265,7 +266,8 @@ MODULE Integration_Mod
           IF ( NetCdfPrint ) THEN 
             TimeNetCDFA = MPI_WTIME()
             ! Time to save a step?
-            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
+            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) .OR.  &
+            &     t == Tspan(2) )  THEN
               iStpNetCDF  = iStpNetCDF + 1
               ! Update NetCDF struct and save a new step
               IF ( ChemKin ) Temperature = Y(nDIM)
@@ -298,8 +300,13 @@ MODULE Integration_Mod
         LRW    = 20 + 21 * nDIM + 4*(BAT%nnz+A%nnz+2*nDIM)
         ITOL   = 2              ! 2 if atol is an array
         RTOL1  = RtolRow        ! relative tolerance parameter
-        ATOL1(1:nspc) = Atol(1)  ! atol dimension nspc+1
-        ATOL1(nDim)   = Atol(2)  ! temperature tolerance
+        IF (Teq) THEN
+          ATOL1(1:nspc) = Atol(1)  ! atol dimension nspc+1
+          ATOL1(nDim)   = Atol(2)  ! temperature tolerance
+        ELSE
+          ATOL1(1:ns_Gas)  = Atol(1)  ! atol dimension nspc+1
+          ATOL1(ns_gas+1:) = Atol(2)  ! temperature tolerance
+        END IF
 
         ITASK  = 1             ! 1 for normal computation of output values of y at t = TOUT
         ISTATE = 1             ! This is the first call for a problem
@@ -337,7 +344,8 @@ MODULE Integration_Mod
           IF ( NetCdfPrint ) THEN 
             TimeNetCDFA = MPI_WTIME()
             ! Time to save a step?
-            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
+            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) .OR.  &
+            &     t == Tspan(2) )  THEN
               iStpNetCDF  = iStpNetCDF + 1
               ! Update NetCDF struct and save a new step
               IF ( ChemKin ) Temperature = Y(nDIM)
@@ -394,7 +402,8 @@ MODULE Integration_Mod
           IF ( NetCdfPrint ) THEN 
             TimeNetCDFA = MPI_WTIME()
             ! Time to save a step?
-            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) )  THEN
+            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) .OR.  &
+            &     t == Tspan(2) )  THEN
               iStpNetCDF  = iStpNetCDF + 1
               ! Update NetCDF struct and save a new step
               IF ( ChemKin ) Temperature = Y(nDIM)
@@ -422,6 +431,7 @@ MODULE Integration_Mod
       CASE DEFAULT
         
         WRITE(*,*) ' No other methods implemented jet. Use Rosenbrock, LSODE[S] or backward Euler'
+        CALL DropOut()
 
     END SELECT
     TimeIntegration = MPI_WTIME() - time_int
@@ -478,7 +488,7 @@ MODULE Integration_Mod
     INTEGER        :: NEQ1
     REAL(dp) :: T , Y(NEQ1) , YDOT(NEQ1)
     !
-    REAL(dp) :: dCdt(nspc)
+    REAL(dp) :: dCdt(nspc), Emiss(nspc)
     REAL(dp) :: Rate(neq) , DRate(neq)
     REAL(dp) :: Tarr(10)
     REAL(dp) :: U(nspc) , dUdT(nspc)
@@ -487,7 +497,8 @@ MODULE Integration_Mod
     IF (Teq) THEN         ! OUT:   IN:
       ! MASS CONSERVATION
       CALL ReactionRates( T , Y , Rate , DRate)
-      dCdt = BAT * Rate + y_emi   ! [mol/cm3/s]
+      CALL UpdateEmission(Emiss,T)
+      dCdt = BAT * Rate + Emiss   ! [mol/cm3/s]
     
       YDOT(1:nspc) = dCdt
 
@@ -503,7 +514,8 @@ MODULE Integration_Mod
     ELSE
       ! MASS CONSERVATION
       CALL ReactionRates( T , Y , Rate )
-      dCdt = BAT * Rate + y_emi   ! [mol/cm3/s]
+      CALL UpdateEmission(Emiss,T)
+      dCdt = BAT * Rate + Emiss   ! [mol/cm3/s]
       
       YDOT(1:nspc) = dCdt
     END IF
