@@ -550,18 +550,8 @@ MODULE issa
     CLOSE(FluxMetaUnit)
     
 
-    ! reading unformatted binary file
-    !ALLOCATE( Rates(nr,iStpFlux) )
-    !CALL OpenFile_rStream(FluxUnit,FluxFile)
-    !DO i = 1,iStpFlux
-    !  READ(FluxUnit,POS=Positions(i),IOSTAT=io_stat,IOMSG=io_msg) Rates(:,i)
-    !  IF ( io_stat>0 ) WRITE(*,'(10X,A,I0,A)') '   ERROR reading fluxes.dat :: ',io_stat,'  '//TRIM(io_msg)
-    !  IF ( io_stat<0 ) EXIT
-    !END DO
-    !CLOSE(FluxUnit)
-
-    !Tspan = [tBegin/3600.0_dp+1.0_dp , tEnd/3600.0_dp-1.0_dp]  ! analysis time span 1 Uhr bis 23 Uhr änchster tag
-    Tspan = [1.0_dp , 23.0_dp] ! convert in seconds
+    Tspan = [12.0_dp , 37.0_dp] ! convert in seconds
+    !Tspan = [1.0_dp , 23.0_dp] ! convert in seconds
     Tspan = Tspan * 3600.0_dp ! convert in seconds
     
     lbound = 1
@@ -583,12 +573,6 @@ MODULE issa
     END DO
     rbound = iStpFlux-rbound
 
-    !OPEN(unit=199, file=OutputPath//'Rates_'//TRIM(BSP)//'.txt', action='write')
-    !DO j=1,SIZE(avgRate) 
-    !  WRITE(199,'(A,I0,A,Es16.8,A)') ' time-avgeraged Rate(',j,') = ',avgRate(j), '    '//TRIM(RS(j)%Type)//'    '//TRIM(RS(j)%Line1)
-    !END DO
-    !CLOSE(199)
-
 
     ! vorbereitend: positive und negative elemente separieren
     CALL SeperatePosNegValues( pos_BAT , neg_BAT , BAT)
@@ -600,7 +584,6 @@ MODULE issa
     ALLOCATE( R_imp(0) )
 
     nR_k = SIZE(R_k)
-
 
     ! ITERATIVE LOOP
     nStp = rbound - lbound

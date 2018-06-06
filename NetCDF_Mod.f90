@@ -120,7 +120,11 @@ MODULE NetCDF_Mod
   
       Diag_Name(j)     = TRIM(tmpName)
       Diag_LongName(j) = TRIM(tmpName)
-      DIAG_UNITS(j)    = "mol/m3"
+      IF ( UnitGas == 1 ) THEN
+        DIAG_UNITS(j)    = "mol/m3"
+      ELSE
+        DIAG_UNITS(j)    = "molec/cm3"
+      END IF
   
       CALL check_name_slash(Diag_Name(j))
       CALL check_name_bracket(Diag_Name(j))
@@ -435,7 +439,11 @@ SUBROUTINE SetOutputNcdf(NCDF,Time,StpSize,iERR,ERR,Conc,Temp)
     tG = [ tConc(iNcdfGas) ]     ! in mole fractions [-]
     NCDF%Temperature = tConc(nDIM)
   ELSE
-    tG = [ tConc(iNcdfGas)   / mol2part ] ! convert to mol/m3
+    IF ( UnitGas == 0 ) THEN
+      tG = [ tConc(iNcdfGas)   ] !  molec/cm3
+    ELSE
+      tG = [ tConc(iNcdfGas)   / mol2part ] ! convert to mol/m3
+    END IF
     tA = [ tConc(iNcdfAqua)  / mol2part ] 
     tS = [ tConc(iNcdfSolid) / mol2part ] 
     tS = [ tConc(iNcdfParti) / mol2part ] 

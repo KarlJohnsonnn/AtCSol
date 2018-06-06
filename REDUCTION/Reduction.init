@@ -1,0 +1,6 @@
+&SCENARIO
+  TargetFile = 'RACM+C24.ctrl'    ! file name for species targets and species families
+  TStart     = 10.0d0             ! start reduction procedure
+  TEnd       = 37.0d0             ! end reduction procedure 
+  eps_red    = 0.11d0             ! controls reduction intensity 0 <= eps_red <= 1 
+/END

@@ -2,8 +2,6 @@
   BSP        = 'RACM+C24_red'   ! Name der NetCDF Output-Datei
   WaitBar    = .T.          ! .F. = kein ladebalken, .T. /= ladebalken aktiv
   FluxAna    = .F.          ! analyse reaction rates (fluxes)
-  ChemKin    = .F.          ! input mechanism in ChemKin notation
-  Lehmann    = .F.
 /END
 &FILES
   SysFile    = 'CHEM/RACM+C24_red.sys'      ! .sys Datei (ohne .sys angeben!)
@@ -29,18 +27,18 @@
 /END
 &NUMERICS
   RtolROW     = 1.0d-3       ! rel. Toleranz für Rosenbrock-Wanner Fehlersteuerung
-  AtolGas     = 1.0d-4       ! abs. Toleranzen für gasförmige Stoffe 
-  AtolAqua    = 1.0d-4       ! abs. Toleranzen für aquatische Stoffe
+  AtolGas     = 1.0d-5       ! abs. Toleranzen für gasförmige Stoffe 
+  AtolAqua    = 1.0d-5       ! abs. Toleranzen für aquatische Stoffe
   Error_Est   = 2            ! Error estimation = 2 -> 2-norm, else maxnorm
   PI_StepSize = .F.          ! Gustafsson, Söderlind Fehlersteuerung
   minStp      = 1.0d-30      ! minimale Schrittweite für Integration
   maxStp      = 25.0d0       ! maximale Schrittweite für Integration
   LinAlg      = 'cl'         ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
-  ODEsolver   = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
+  ODEsolver   = 'METHODS/Rodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
 /END
 &OUTPUT
   NetCdfFile  = 'NetCDF/RACM+C24_red.nc' ! location and name of NetCDF output file
-  StpNetCDF   = 600.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep 
+  StpNetCDF   = 300.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep 
   StpFlux     = -1.0d0
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock 

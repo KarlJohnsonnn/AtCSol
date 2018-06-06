@@ -418,8 +418,6 @@ PROGRAM AtCSol
         !  END DO
         !END IF
       
-      
-      
         ELSE 
         ALLOCATE(PivOrder(temp_LU_Dec%n))
         PivOrder = -90

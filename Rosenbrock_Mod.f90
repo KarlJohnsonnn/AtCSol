@@ -314,13 +314,12 @@ MODULE Rosenbrock_Mod
     !
     INTEGER :: iStg, jStg, i, j          ! increments
     LOGICAL :: dprint=.false.
-    INTEGER :: iprnt
+
 
     REAL(dp) :: CM(nDIM)
 
     dprint = DebugPrint   !init run
-    !
-    iprnt = 4
+    
 
     ! Initial settings
     k       = ZERO
@@ -330,12 +329,8 @@ MODULE Rosenbrock_Mod
     bb      = ZERO
     Y       = Y0
     Emiss   = ZERO
-    !
+    
 
-    IF (dprint) THEN
-      print*, ' '
-      print*, '******************************************************************************'
-    END IF
 
     !********************************************************************************
     !    _   _             _         _          __  __         _          _       
@@ -506,7 +501,7 @@ MODULE Rosenbrock_Mod
           bb( 1     : neq ) = mONE 
           bb( neq+1 : nsr ) = Emiss 
           IF ( Teq ) bb(nDIMex)  = ZERO
-          IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:iprnt)
+          IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:4)
         END IF
 
       ELSE ! iStage > 1 ==> Update time and concentration
@@ -556,7 +551,7 @@ MODULE Rosenbrock_Mod
 
         DO jStg=1,iStg-1; fRhs = fRhs + ROS%C(iStg,jStg)*k(:,jStg); END DO
 
-        IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',fRhs( 1:iprnt)
+        IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',fRhs( 1:4)
 
       ELSE !IF ( EXTENDED ) THEN
 
@@ -570,8 +565,8 @@ MODULE Rosenbrock_Mod
             IF (Teq) THEN
               Tarr = UpdateTempArray( Y(nDIM) )       
               CALL InternalEnergy( U , Tarr)    
-              CALL DiffInternalEnergy( dUdT    , Tarr)              
-              CALL MassAveMixSpecHeat( cv      , dUdT    , MoleConc=Y(1:nspc) , rho=rho)
+              CALL DiffInternalEnergy( dUdT , Tarr)              
+              CALL MassAveMixSpecHeat( cv   , dUdT , MoleConc=Y(1:nspc) , rho=rho)
               fRhs(nDIM)   = fRhs(nDIM) + ROS%C(iStg,jStg)*( cv/rRho*k(nDIM,jStg) + SUM(U*k(1:nspc,jStg)) )
             END IF
           END DO
@@ -582,7 +577,7 @@ MODULE Rosenbrock_Mod
           bb( neq+1  : nsr )  = Emiss + fRhs(1:nspc)/h
           IF (Teq) bb(nDIMex) = fRhs(nDIM)/h
 
-          IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:iprnt)
+          IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:4)
         END IF
 
       END IF
@@ -652,7 +647,6 @@ MODULE Rosenbrock_Mod
 
       CALL ERROR( err , ierr , YNew , YHat , ATolAll , RTolROW , t )
       TimeErrCalc = TimeErrCalc + MPI_WTIME() - timerStart
-      !WRITE(*,*) ' SUM Y  = ',SUM(YNew), err, Out%nSteps, TRIM(y_name(ierr(1,1)))
 
       maxErrorCounter(ierr(1,1)) = maxErrorCounter(ierr(1,1)) + 1
 

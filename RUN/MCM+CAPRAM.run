@@ -11,8 +11,8 @@
 /END
 &TIMES
   tBegin      = 0.0d0
-  !tEnd        = 172800.0d0
-  tEnd        = 84600.0d0
+  tEnd        = 172800.0d0
+  !tEnd        = 84600.0d0
 /END
 &METEO
   pHSet       = .T.          ! Berechne pH Wert zu Beginn
@@ -32,15 +32,14 @@
   PI_StepSize = .F.
   LinAlg  = 'cl'
   minStp  = 1.0d-30
-  maxStp  = 300.d0
-  !ODEsolver = 'LSODES'
+  maxStp  = 200.d0
   ODEsolver = 'METHODS/Rodas3.ros'
   Ordering  = 8
 /END
 &OUTPUT
   NetCdfFile  = 'NetCDF/MCM32+C40_full.nc' ! location and name of NetCDF output file
-  StpNetCDF   = 100.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep
-  StpFlux     = -1.0d0
+  StpNetCDF   = 300.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep
+  StpFlux     = 300.0d0
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock
   MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix

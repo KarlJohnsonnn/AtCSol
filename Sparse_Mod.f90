@@ -1983,7 +1983,7 @@ MODULE Sparse_Mod
     !
 
     ! 
-    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName))//'.SparseMat',STATUS='UNKNOWN')
+    OPEN(UNIT=99,FILE=ADJUSTL(TRIM(FileName))//'_'//TRIM(LinAlg)//'.SparseMat',STATUS='UNKNOWN')
 
     WRITE(99,*) '###########################################################'
     WRITE(99,*) '##############  Sparse Matrix  Matlab input ###############'
@@ -2117,7 +2117,7 @@ MODULE Sparse_Mod
     END IF
 
     CLOSE(99)
-    WRITE(*,*) '  Writing matrices to file: ',TRIM(FileName)
+    WRITE(*,*) '  Writing matrices to file: ',TRIM(FileName)//'_'//TRIM(LinAlg)//'.SparseMat'
   END SUBROUTINE WriteSparseMatrix
   !
   

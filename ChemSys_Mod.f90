@@ -132,8 +132,7 @@ MODULE Chemsys_Mod
   
   INTEGER :: nsr                        ! # activ species + all Reactions
 
-  INTEGER :: UnitGas=0
-  INTEGER :: UnitAqua=0
+ 
   !
   CHARACTER(20) :: Filename
   CHARACTER(20) :: IniName
@@ -218,6 +217,250 @@ MODULE Chemsys_Mod
     Out = .TRUE.
 999 CONTINUE
   END SUBROUTINE ReadSpecies
+
+
+  SUBROUTINE ReadReaction_neu(Out)
+    LOGICAL :: Out
+    !
+    INTEGER :: iLine,PosColon,Pos,is
+    CHARACTER(LenLine) :: LocLine
+    CHARACTER(LenLine) :: Line(1:4)
+    CHARACTER(20) :: CLASS
+    CHARACTER(40) :: TypeR
+    INTEGER :: idxFAC
+    
+    iLine = 0
+    DO
+
+      READ( InputUnit , '(A400)' , IOSTAT=is ) LocLine
+      idxFAC = INDEX(LocLine,'$')
+
+      IF ( idxFAC > 0 ) THEN
+        SELECT CASE (TRIM(LocLine(idxFAC:)))
+          CASE ('$H2','$O2N2','$M','$O2','$N2','$H2O','$O2O2','$aH2O','$+M','$(+M)','$RO2','$RO2aq')
+            IF ( TRIM(LocLine(idxFAC:)) == '$H2'    ) nr_FAC_H2    = nr_FAC_H2    + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$O2N2'  ) nr_FAC_O2N2  = nr_FAC_O2N2  + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$M'     ) nr_FAC_M     = nr_FAC_M     + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$O2'    ) nr_FAC_O2    = nr_FAC_O2    + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$N2'    ) nr_FAC_N2    = nr_FAC_N2    + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$H2O'   ) nr_FAC_H2O   = nr_FAC_H2O   + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$O2O2'  ) nr_FAC_O2O2  = nr_FAC_O2O2  + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$RO2'   ) nr_FAC_RO2   = nr_FAC_RO2   + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$RO2aq' ) nr_FAC_RO2aq = nr_FAC_RO2aq + 1
+            IF ( TRIM(LocLine(idxFAC:)) == '$aH2O'  ) nr_FAC_aH2O  = nr_FAC_aH2O  + 2
+            nr_FACTOR = nr_FACTOR + 1
+          CASE DEFAULT
+            WRITE(*,*) '  Unknown FACTOR:  ', TRIM(LocLine(idxFAC:)), '   at Line:  ???'
+        END SELECT
+      END IF
+
+      IF ( ABS(is) > 0 ) EXIT
+      
+      ! if no comment or blank line then
+      IF ( ADJUSTL(LocLine(1:1)) /= '#'       .AND.  &
+      &    ADJUSTL(LocLine(1:7)) /= 'COMMENT' .AND.  &
+      &    LEN(TRIM(LocLine)) > 0 ) THEN
+        iLine = iLine + 1
+        Line(iLine) = LocLine
+        IF ( iLine == 4 ) EXIT
+      END IF
+
+    END DO
+
+    IF ( iLine >= 3 ) THEN
+      Pos = SCAN(Line(1),'#')
+      IF ( Pos > 0 ) Line(1) = Line(1)(:Pos-1)
+      
+      ! if new reaction line starts go one line back
+      IF ( INDEX(Line(4),'CLASS') > 0 ) BACKSPACE(InputUnit)
+      
+      ! read the reaction TYPE
+      PosColon = Index(Line(1),':')
+      CLASS    = ADJUSTL(Line(1)(PosColon+1:))
+      
+      ! count the number of each reaction type
+      SELECT CASE (CLASS)
+        
+        CASE ('GAS')      ! gaseous phase reactions
+
+          nr_gas = nr_gas + 1
+          CALL InsertReaction( ListRGas , Line , TypeR )
+
+          SELECT CASE (TypeR)
+            CASE ('PHOTO','PHOTO2','PHOTO3','PHOTAB','PHOTABC','PHOTMCM')
+              IF ( TypeR == 'PHOTAB'  ) reac_par(iPHOTAB)%n_reac  = reac_par(iPHOTAB)%n_reac + 1
+              IF ( TypeR == 'PHOTABC' ) reac_par(iPHOTABC)%n_reac = reac_par(iPHOTABC)%n_reac + 1
+              IF ( TypeR == 'PHOTMCM' ) reac_par(iPHOTMCM)%n_reac = reac_par(iPHOTMCM)%n_reac + 1
+              IF ( TypeR == 'PHOTO'   ) reac_par(iPHOTO)%n_reac   = reac_par(iPHOTO)%n_reac + 1
+              IF ( TypeR == 'PHOTO2'  ) reac_par(iPHOTO2)%n_reac  = reac_par(iPHOTO2)%n_reac + 1
+              IF ( TypeR == 'PHOTO3'  ) reac_par(iPHOTO3)%n_reac  = reac_par(iPHOTO3)%n_reac + 1
+            CASE ('CONST')
+              reac_par(iCONST)%n_reac = reac_par(iCONST)%n_reac + 1
+            CASE ('TEMP','TEMP1','TEMP2','TEMP3','TEMP4')
+              IF ( TypeR == 'TEMP' )  reac_par(iTEMP)%n_reac  = reac_par(iTEMP)%n_reac + 1
+              IF ( TypeR == 'TEMP1' ) reac_par(iTEMP1)%n_reac = reac_par(iTEMP1)%n_reac + 1
+              IF ( TypeR == 'TEMP2' ) reac_par(iTEMP2)%n_reac = reac_par(iTEMP2)%n_reac + 1
+              IF ( TypeR == 'TEMP3' ) reac_par(iTEMP3)%n_reac = reac_par(iTEMP3)%n_reac + 1
+              IF ( TypeR == 'TEMP4' ) reac_par(iTEMP4)%n_reac = reac_par(iTEMP4)%n_reac + 1
+            CASE ('TROE','TROEF','TROEQ','TROEQF','TROEXP','TROEMCM')
+              IF ( TypeR == 'TROE'    ) reac_par(iTROE)%n_reac    = reac_par(iTROE)%n_reac + 1
+              IF ( TypeR == 'TROEF'   ) reac_par(iTROEF)%n_reac   = reac_par(iTROEF)%n_reac + 1 
+              IF ( TypeR == 'TROEQ'   ) reac_par(iTROEQ)%n_reac   = reac_par(iTROEQ)%n_reac + 1
+              IF ( TypeR == 'TROEQF'  ) reac_par(iTROEQF)%n_reac  = reac_par(iTROEQF)%n_reac + 1 
+              IF ( TypeR == 'TROEXP'  ) reac_par(iTROEXP)%n_reac  = reac_par(iTROEXP)%n_reac + 1 
+              IF ( TypeR == 'TROEMCM' ) reac_par(iTROEMCM)%n_reac = reac_par(iTROEMCM)%n_reac + 1
+            CASE ('SPEC1','SPEC2','SPEC3','SPEC4','SPEC1MCM',  &
+            &     'SPEC2MCM','SPEC3MCM','SPEC4MCM','SPEC5MCM', &
+            &     'SPEC6MCM','SPEC7MCM','SPEC8MCM','SPEC9MCM'  )
+              nr_G_spec = nr_G_spec + 1
+              IF ( TypeR == 'SPEC1' ) reac_par(iSPEC1)%n_reac = reac_par(iSPEC1)%n_reac + 1
+              IF ( TypeR == 'SPEC2' ) reac_par(iSPEC2)%n_reac = reac_par(iSPEC2)%n_reac + 1
+              IF ( TypeR == 'SPEC3' ) reac_par(iSPEC3)%n_reac = reac_par(iSPEC3)%n_reac + 1
+              IF ( TypeR == 'SPEC4' ) reac_par(iSPEC4)%n_reac = reac_par(iSPEC4)%n_reac + 1
+              IF ( TypeR == 'SPEC1MCM' ) reac_par(iSPEC1MCM)%n_reac = reac_par(iSPEC1MCM)%n_reac + 1
+              IF ( TypeR == 'SPEC2MCM' ) reac_par(iSPEC2MCM)%n_reac = reac_par(iSPEC2MCM)%n_reac + 1
+              IF ( TypeR == 'SPEC3MCM' ) reac_par(iSPEC3MCM)%n_reac = reac_par(iSPEC3MCM)%n_reac + 1
+              IF ( TypeR == 'SPEC4MCM' ) reac_par(iSPEC4MCM)%n_reac = reac_par(iSPEC4MCM)%n_reac + 1
+              IF ( TypeR == 'SPEC5MCM' ) reac_par(iSPEC5MCM)%n_reac = reac_par(iSPEC5MCM)%n_reac + 1
+              IF ( TypeR == 'SPEC6MCM' ) reac_par(iSPEC6MCM)%n_reac = reac_par(iSPEC6MCM)%n_reac + 1
+              IF ( TypeR == 'SPEC7MCM' ) reac_par(iSPEC7MCM)%n_reac = reac_par(iSPEC7MCM)%n_reac + 1
+              IF ( TypeR == 'SPEC8MCM' ) reac_par(iSPEC8MCM)%n_reac = reac_par(iSPEC8MCM)%n_reac + 1
+              IF ( TypeR == 'SPEC9MCM' ) reac_par(iSPEC9MCM)%n_reac = reac_par(iSPEC9MCM)%n_reac + 1
+            CASE ('S4H2O')
+              reac_par(iS4H2O)%n_reac = reac_par(iS4H2O)%n_reac + 1 
+            CASE ('T1H2O')
+              reac_par(iT1H2O)%n_reac = reac_par(iT1H2O)%n_reac + 1 
+            CASE ('SPECIAL')
+              reac_par(iSPECIAL)%n_reac = reac_par(iSPECIAL)%n_reac + 1 
+            CASE ('HOM1')
+              reac_par(iHOM1)%n_reac = reac_par(iHOM1)%n_reac + 1 
+            CASE DEFAULT
+              WRITE(*,*) '  Unknown gaseous reaction: ', TypeR
+          END SELECT
+
+        CASE ('HENRY')        ! phase transfer pseudo-reactions 
+
+          nr_henry = nr_henry + 1
+          CALL InsertReaction( ListRHenry , Line , TypeR )
+
+          SELECT CASE (TypeR)
+            CASE ('TEMP','TEMP1','TEMP2','TEMP3')
+              IF ( TypeR == 'TEMP' )  reac_par(iTEMP)%n_reac  = reac_par(iTEMP)%n_reac + 1
+              IF ( TypeR == 'TEMP1' ) reac_par(iTEMP1)%n_reac = reac_par(iTEMP1)%n_reac + 1
+              IF ( TypeR == 'TEMP2' ) reac_par(iTEMP2)%n_reac = reac_par(iTEMP2)%n_reac + 1
+              IF ( TypeR == 'TEMP3' ) reac_par(iTEMP3)%n_reac = reac_par(iTEMP3)%n_reac + 1
+            CASE ('CONST')
+              reac_par(iCONST)%n_reac = reac_par(iCONST)%n_reac + 1
+            CASE ('SPECIAL')
+              reac_par(iSPECIAL)%n_reac = reac_par(iSPECIAL)%n_reac + 1 
+            CASE DEFAULT
+              WRITE(*,*) '  Unknown phase transfer reaction: ', TypeR
+          END SELECT
+
+        CASE ('AQUA')         ! aquatic phase reactions 
+
+          nr_aqua = nr_aqua + 1
+          CALL InsertReaction( ListRAqua , Line , TypeR )
+
+          SELECT CASE (TypeR)
+            CASE ('PHOTAB','PHOTABC','PHOTMCM')
+              IF ( TypeR == 'PHOTAB'  ) reac_par(iPHOTAB)%n_reac  = reac_par(iPHOTAB)%n_reac + 1
+              IF ( TypeR == 'PHOTABC' ) reac_par(iPHOTABC)%n_reac = reac_par(iPHOTABC)%n_reac + 1
+              IF ( TypeR == 'PHOTMCM' ) reac_par(iPHOTMCM)%n_reac = reac_par(iPHOTMCM)%n_reac + 1
+            CASE ('CONST')
+              reac_par(iCONST)%n_reac = reac_par(iCONST)%n_reac + 1
+            CASE ('TEMP','Temp1''TEMP2','TEMP3','TEMP4')
+              IF ( TypeR == 'TEMP' )  reac_par(iTEMP)%n_reac  = reac_par(iTEMP)%n_reac + 1
+              IF ( TypeR == 'TEMP1' ) reac_par(iTEMP1)%n_reac = reac_par(iTEMP1)%n_reac + 1
+              IF ( TypeR == 'TEMP2' ) reac_par(iTEMP2)%n_reac = reac_par(iTEMP2)%n_reac + 1
+              IF ( TypeR == 'TEMP3' ) reac_par(iTEMP3)%n_reac = reac_par(iTEMP3)%n_reac + 1
+              IF ( TypeR == 'TEMP4' ) reac_par(iTEMP4)%n_reac = reac_par(iTEMP4)%n_reac + 1
+            CASE ('ASPEC1','ASPEC2','ASPEC3','ASPEC4')
+              IF ( TypeR == 'ASPEC1' ) reac_par(iASPEC1)%n_reac = reac_par(iASPEC1)%n_reac + 1
+              IF ( TypeR == 'ASPEC2' ) reac_par(iASPEC2)%n_reac = reac_par(iASPEC2)%n_reac + 1
+              IF ( TypeR == 'ASPEC3' ) reac_par(iASPEC3)%n_reac = reac_par(iASPEC3)%n_reac + 1
+              !IF ( TypeR == 'ASPEC4' ) reac_par(iASPEC4)%n_reac = reac_par(iASPEC4)%n_reac + 1
+            CASE ('SPECIAL')
+              reac_par(iSPECIAL)%n_reac = reac_par(iSPECIAL)%n_reac + 1 
+            CASE DEFAULT
+              WRITE(*,*) '  Unknown aqueous reaction: ', TypeR
+          END SELECT
+
+        CASE ('DISS')        ! fast aquatic phase equil. reactions 
+
+          nr_diss = nr_diss + 1
+          CALL InsertReaction( ListRDiss , Line , TypeR )
+
+          SELECT CASE (TypeR)
+            CASE ('DCONST','DTEMP','DTEMP2','DTEMP3','DTEMP4','DTEMP5','MESKHIDZE')
+              IF ( TypeR == 'DCONST' ) reac_par(iDCONST)%n_reac = reac_par(iDCONST)%n_reac + 1
+              IF ( TypeR == 'DTEMP'  ) reac_par(iDTEMP)%n_reac  = reac_par(iDTEMP)%n_reac + 1
+              IF ( TypeR == 'DTEMP2' ) reac_par(iDTEMP2)%n_reac = reac_par(iDTEMP2)%n_reac + 1
+              IF ( TypeR == 'DTEMP3' ) reac_par(iDTEMP3)%n_reac = reac_par(iDTEMP3)%n_reac + 1
+              IF ( TypeR == 'DTEMP4' ) reac_par(iDTEMP4)%n_reac = reac_par(iDTEMP4)%n_reac + 1
+              IF ( TypeR == 'DTEMP5' ) reac_par(iDTEMP5)%n_reac = reac_par(iDTEMP5)%n_reac + 1
+              IF ( TypeR == 'MESKHIDZE' ) reac_par(iMESKHIDZE)%n_reac  = reac_par(iMESKHIDZE)%n_reac + 1
+            CASE ('SPECIAL')
+              reac_par(iSPECIAL)%n_reac = reac_par(iSPECIAL)%n_reac + 1 
+            CASE DEFAULT
+              WRITE(*,*) '  Unknown dissociation reaction: ', TypeR
+          END SELECT
+
+        CASE ('SOLID')
+
+          nr_solid = nr_solid + 1
+          CALL InsertReaction( ListRSolid , Line , TypeR )
+
+          SELECT CASE (TypeR)
+            CASE ('EQUI')
+              reac_par(iEQUI)%n_reac = reac_par(iEQUI)%n_reac + 1
+            CASE ('DTEMP3')
+              reac_par(iDTEMP3)%n_reac = reac_par(iDTEMP3)%n_reac + 1
+            CASE ('SPECIAL')
+              reac_par(iSPECIAL)%n_reac = reac_par(iSPECIAL)%n_reac + 1 
+            CASE DEFAULT
+              WRITE(*,*) '  Unknown solid reaction: ', TypeR
+          END SELECT
+
+        CASE ('PARTI')
+
+          nr_parti = nr_parti + 1
+          CALL InsertReaction( ListRPartic , Line , TypeR )
+
+          SELECT CASE (TypeR)
+            CASE ('SPECIAL')
+              reac_par(iSPECIAL)%n_reac = reac_par(iSPECIAL)%n_reac + 1 
+            CASE DEFAULT
+              WRITE(*,*) '  Unknown particle reaction: ', TypeR
+          END SELECT
+
+        CASE ('MICROPHYS')
+
+          nr_micphys = nr_micphys + 1
+          CALL InsertReaction( ListRMicro , Line , TypeR )
+
+          SELECT CASE (TypeR)
+            CASE ('SPECIAL')
+              reac_par(iSPECIAL)%n_reac = reac_par(iSPECIAL)%n_reac + 1 
+            CASE DEFAULT
+              WRITE(*,*) '  Unknown microphysic reaction: ', TypeR
+          END SELECT
+
+        CASE DEFAULT
+          WRITE(*,*) '  Unknown reaction CLASS: ', CLASS
+          STOP
+      END SELECT
+
+      Out = .FALSE.
+    ELSE
+      Out = .TRUE.
+    END IF
+
+  END SUBROUTINE ReadReaction_neu
+
+
+
+
   !
   SUBROUTINE ReadReaction(Out)
     LOGICAL :: Out
@@ -641,7 +884,6 @@ MODULE Chemsys_Mod
     WRITE(989,'(A)') '#  ===================   Unit options   ======================'
     WRITE(989,'(A)') ''
     WRITE(989,'(A)') 'UNIT GAS    0   #    Gas phase units     (0 = molec/cm3, 1 = mol/m3)'
-    WRITE(989,'(A)') 'UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)'
     WRITE(989,'(A)') 'UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)'
     WRITE(989,'(A)') ''
     WRITE(989,'(A)') '#'
@@ -2882,6 +3124,93 @@ MODULE Chemsys_Mod
     END SELECT
   END SUBROUTINE Setup_iFACTOR
 
+
+  SUBROUTINE Setup_ReacParameter_neu(iReac,icnt,Typ,TypeR,C,Line1)
+  REAL(dp), INTENT(IN) :: C(:)
+  CHARACTER(*),   INTENT(IN) :: Typ
+  CHARACTER(*),   INTENT(IN) :: TypeR
+  CHARACTER(*),   INTENT(IN) :: Line1
+  INTEGER :: iReac, idx
+  INTEGER   :: icnt(:)
+
+  idx = 0 
+
+!  SELECT CASE ( TRIM(TypeR) )
+!    CASE ('PHOTABC'); idx = iPHOTABC
+!    CASE ('PHOTMCM'); idx = iPHOTMCM
+!    CASE ('PHOTAB');  idx = iPHOTAB
+!    CASE ('CONST'); idx = iCONST
+!    CASE ('TEMP');  idx = iTEMP
+!    CASE ('TEMP1'); idx = iTEMP1
+!    CASE ('TEMP2'); idx = iTEMP2
+!    CASE ('TEMP3'); idx = iTEMP3
+!    CASE ('TEMP4'); idx = iTEMP4
+!    CASE ('TROE');    idx = iTROE
+!    CASE ('TROEF');   idx = iTROEF
+!    CASE ('TROEQ');   idx = iTROEQ
+!    CASE ('TROEQF');  idx = iTROEQF
+!    CASE ('TROEXP');  idx = iTROEXP
+!    CASE ('TROEMCM'); idx = iTROEMCM
+!    CASE ('SPEC1'); idx = iSPEC1
+!    CASE ('SPEC2'); idx = iSPEC2
+!    CASE ('SPEC3'); idx = iSPEC3
+!    CASE ('SPEC4'); idx = iSPEC4
+!    CASE ('SPEC1MCM'); idx = iSPEC1MCM
+!    CASE ('SPEC2MCM'); idx = iSPEC2MCM
+!    CASE ('SPEC3MCM'); idx = iSPEC3MCM
+!    CASE ('SPEC4MCM'); idx = iSPEC4MCM
+!    CASE ('SPEC5MCM'); idx = iSPEC5MCM
+!    CASE ('SPEC6MCM'); idx = iSPEC6MCM
+!    CASE ('SPEC7MCM'); idx = iSPEC7MCM
+!    CASE ('SPEC8MCM'); idx = iSPEC8MCM
+!    CASE ('SPEC9MCM'); idx = iSPEC9MCM
+!    CASE ('S4H2O');  idx = iS4H2O
+!    CASE ('T1H2O');  idx = iT1H2O
+!    CASE ('ASPEC1'); idx = iASPEC1
+!    CASE ('ASPEC2'); idx = iASPEC2
+!    CASE ('ASPEC3'); idx = iASPEC3
+!    CASE ('ASPEC4'); idx = iASPEC4
+!    CASE ('DCONST'); idx = iDCONST
+!    CASE ('DTEMP');  idx = iDTEMP
+!    CASE ('DTEMP2'); idx = iDTEMP2
+!    CASE ('DTEMP3'); idx = iDTEMP3
+!    CASE ('DTEMP4'); idx = iDTEMP4
+!    CASE ('DTEMP5'); idx = iDTEMP5
+!    CASE ('MESKHIDZE'); idx = iMESKHIDZE
+!    CASE ('PHOTO');   idx = iPHOTO
+!    CASE ('PHOTO2');  idx = iPHOTO2 
+!    CASE ('PHOTO3');  idx = iPHOTO3
+!    CASE ('SPECIAL'); idx = iSPECIAL
+!    CASE ('HOM1');    idx = iHOM1
+!    CASE DEFAULT
+!      WRITE(*,*) ''
+!      WRITE(*,*) ' Reaction Type unknown:  ',TRIM(TypeR),'  --> check input file'
+!      WRITE(*,*) ''
+!  END SELECT
+
+  IF ( idx > 0 ) THEN
+    IF ( SIZE(C) < reac_par(idx)%n_par ) CALL ErrorMSG(iReac,TRIM(Line1))
+    icnt(idx) = icnt(idx) + 1
+    reac_par(idx)%act = .TRUE.
+    !reac_val(idx)%iR( icnt(idx)     ) = iReac 
+    reac_val(idx)%vR( icnt(idx) , : ) = C
+  END IF
+
+
+
+  CONTAINS
+
+    SUBROUTINE ErrorMSG(iR,Line)
+      INTEGER      :: iR
+      CHARACTER(*) :: Line
+      WRITE(*,*);  WRITE(*,*)
+      WRITE(*,*) '  ERROR -- > check parameter in reaction: ', iR ,'  ::  '//Line
+      WRITE(*,*);  WRITE(*,*)
+      STOP
+    END SUBROUTINE ErrorMSG
+
+END SUBROUTINE Setup_ReacParameter_neu
+
   SUBROUTINE Setup_ReacParameter(iReac,icnt,Typ,TypeR,C,Line1)
     REAL(dp), INTENT(IN) :: C(:)
     CHARACTER(*),   INTENT(IN) :: Typ
@@ -2895,6 +3224,11 @@ MODULE Chemsys_Mod
       CASE ('PHOTABC')
         IF ( SIZE(C)<3 ) CALL ErrorMSG(iReac,Line1)
         icnt(3)=icnt(3)+1; iR%iPHOTabc(icnt(3))=iReac; iR%PHOTabc(icnt(3),:)=C 
+
+        !IF ( SIZE(C) < reac_par(ind_PHOTABC)%n_par ) CALL ErrorMSG(iReac,Line1)
+        !reac_par(ind_PHOTABC)%n_reac = reac_par(ind_PHOTABC)%n_reac + 1
+        !iR%iPHOTabc( reac_par(ind_PHOTABC)%n_reac     ) = iReac 
+        !iR%PHOTabc ( reac_par(ind_PHOTABC)%n_reac , : ) = C 
       CASE ('PHOTMCM')
         IF ( SIZE(C)<3 ) CALL ErrorMSG(iReac,Line1)
         icnt(4)=icnt(4)+1; iR%iPHOTmcm(icnt(4))=iReac; iR%PHOTmcm(icnt(4),:)=C 
@@ -3085,6 +3419,7 @@ MODULE Chemsys_Mod
 
 
   SUBROUTINE AllocateRTarrays()
+    INTEGER :: iType
 
     ! allocate index arrays and parameter arrays for the new vectorized version
     ALLOCATE( iR%iCONST(nr_CONST), iR%CONST(nr_CONST))
@@ -3146,6 +3481,7 @@ MODULE Chemsys_Mod
     ALLOCATE( iR%iSpecial(nr_special) ) 
 
     ALLOCATE( iR%iHOM1(nr_HOM1) , iR%HOM1(nr_HOM1,3) ) 
+
   END SUBROUTINE AllocateRTarrays
 
 

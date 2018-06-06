@@ -12,33 +12,38 @@ mechanism(4) = {'ERC_nheptane'};
 mechanism(5) = {'nheptane'};
 mechanism(6) = {'LLNL_MD'};
 
+linAlg = 'cl';
+% linAlg = 'ex';
 
-j = 2;
+
+j = 3;
 
 %% spy plots
 fs = 20;
-
-figure1 = figure('InvertHardcopy','off','Color',[1 1 1],...
+figure1 = figure('Units', 'normalized', 'Position', [0.0, 0.0, 1.0, 1.0],...
+    'InvertHardcopy','off','Color',[1 1 1],...
     'Renderer','painters');
 
-    [~,sp_m]     = SparseInput([p_atcsol,'Miter_',mechanism{j},'.SparseMat']);  
-    
-    subplot(1,2,1);
-    spy(sp_m);      hold on;
-%     xlabel([]);     
-    set(gca,'xtick',[]);
-    ylabel([]);     set(gca,'ytick',[]);
-   set(gca,'fontsize', fs);
-   set (gca,'color','none')
-    
-    [~,sp_lum]     = SparseInput([p_atcsol,'LU_Miter_',mechanism{j},'.SparseMat']);
-        
-    subplot(1,2,2); 
-    spy(sp_lum);    hold on;
-%     xlabel([]);     
-    set(gca,'xtick',[]);
-    ylabel([]);     set(gca,'ytick',[]);
-    
-    set(gca,'fontsize', fs);
-    set (gca,'color','none')
+[~,sp_m]     = SparseInput([p_atcsol,'Miter_',mechanism{j},'_',linAlg,'.SparseMat']);
+
+subplot(1,2,1);
+spy(sp_m);      hold on;
+%     xlabel([]);
+xlabel(['nz = ',num2str(nnz(sp_m))], 'Interpreter','latex');
+ylabel([]);     
+set(gca,'xtick',[]);
+set(gca,'ytick',[]);
+
+set(gca,'color','none','FontSize',fs)
+
+[~,sp_lum]     = SparseInput([p_atcsol,'LU_Miter_',mechanism{j},'_',linAlg,'.SparseMat']);
+
+subplot(1,2,2);
+spy(sp_lum);    hold on;
+xlabel(['nz = ',num2str(nnz(sp_lum))], 'Interpreter','latex');
+ylabel([]);     
+set(gca,'xtick',[]);
+set(gca,'ytick',[]);
+
+set(gca,'color','none','FontSize',fs)
 

@@ -10,18 +10,17 @@ global b1 b2 len_f len_r mech
 AtCSol_path = '/Users/schimmel/Code/AtCSol/';
 
 % declare mechanism (.chem, BSP, ini)
-chem_file_f = 'MCM32_CAPRAM40_full.chem';
-chem_file_r = 'MCM32+CAPRAM40_red.chem';
-
-mech     = 'MCM32+C40';             % name BSP in .run file
-ini_file = 'Urban2.ini';            % name of initial data set in .run file
+% chem_file_f = 'MCM32_CAPRAM40_full.chem';
+% chem_file_r = 'MCM32+CAPRAM40_red.chem';
+% mech     = 'MCM32+C40';             % name BSP in .run file
+% ini_file = 'Urban2.ini';            % name of initial data set in .run file
 
 
 % RACM + CAPRAM2.4 
-% Chem_file_f = 'RACM+C24.chem';
-% Chem_file_r = 'RACM+C24_red.chem';
-% mech     = 'RACM+C24';
-% ini_file = 'Urban.ini';
+chem_file_f = 'RACM+C24.chem';
+chem_file_r = 'RACM+C24_red.chem';
+mech     = 'RACM+C24';
+ini_file = 'Urban.ini';
 
 
 
@@ -40,11 +39,11 @@ m_full = [ncdf_path, mech, '_full.nc'];
 m_red  = [ncdf_path, mech, '_red.nc'];
 
 % Output file
-outID = fopen([AtCSol_path,'OUTPUT/ReductionStatistics.txt'],'w');
+outID = fopen([AtCSol_path,'OUTPUT/Statistics_',mech,'.txt'],'w');
 
 % plot intervall
-b1 = 1.0;   % 12 noon
-b2 = 23.0;   % 12 noon next day
+b1 = 10.0;   % 12 noon
+b2 = 37.0;   % 12 noon next day
 
 
 % read chem-file (numbers and species names)
@@ -78,7 +77,8 @@ len_r = length(t_r);
 n_diag = length(Diag_Spc);
 c_f = cell(n_diag,1);
 c_r = cell(n_diag,1);
-dev = cell(n_diag,1);
+dev_max  = cell(n_diag,1);
+dev_mean = cell(n_diag,1);
 
 % Plot
 for iSpc = 1:n_diag
@@ -88,14 +88,15 @@ for iSpc = 1:n_diag
     c_r{iSpc} = c_r{iSpc}(idx_f(1):idx_f(2));
     
     % calculate deviations
-    dev{iSpc} = deviation(c_f{iSpc},c_r{iSpc});
+    dev_max{iSpc} = max_deviation(c_f{iSpc},c_r{iSpc});
+    dev_mean{iSpc} = mean_deviation(c_f{iSpc},c_r{iSpc});
     
 %    if ( strcmp(Diag_Spc{iSpc}.name,'aHCL') || strcmp(Diag_Spc{iSpc}.name,'HCL') )
 %     Plot_Concentrations(t_f,t_r,c_f{iSpc},c_r{iSpc},dev{iSpc},Diag_Spc{iSpc})
 %    end
 end
 
-Analyse_SpeciesDeviation(outID,c_f,c_r,dev,Diag_Spc)
+Analyse_SpeciesDeviation(outID,c_f,c_r,dev_max,Diag_Spc)
 
 fclose(outID);
 
@@ -147,7 +148,7 @@ function Analyse_SpeciesDeviation(id,c_f,c_r,dev,SpcList)
 
 nSpc = length(SpcList);
 
-exp_thresh = -50;
+exp_thresh = -18;
 
 fprintf(id,' \n');fprintf(id,' \n');fprintf(id,' \n');
 fprintf(id,'           +----------------------------------------------------------------------------------+ \n');
@@ -389,7 +390,7 @@ end
 IDX(2) = len - IDX(2);
 end
 
-function DEV=deviation(C_f,C_r)
+function DEV=max_deviation(C_f,C_r)
 
 n1 = length(C_f);
 n2 = length(C_r);
@@ -402,6 +403,26 @@ DEV = zeros(n1,1);
 for i=1:n1
     DEV(i) = (C_f(i) - C_r(i)) / max(C_f(i),C_r(i));
 end
+end
+
+function DEV=mean_deviation(C_f,C_r)
+
+n1 = length(C_f);
+n2 = length(C_r);
+
+if n1~=n2
+    disp('WARNING   len(full) /= len(red)')
+end
+
+full = zeros(n1,1);
+red  = zeros(n1,1);
+DEV  = zeros(n1,1);
+for i=1:n1
+    full(i) = full(i) + C_f(i);
+    red(i)  = red(i) + C_r(i);
+end
+
+    DEV(:)  = (full(:) - red(:))/n1 ;
 end
 
 % PLOT FUNCTIONS

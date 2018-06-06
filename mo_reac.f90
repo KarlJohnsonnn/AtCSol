@@ -23,55 +23,63 @@
       LOGICAL      :: act         ! true if n_reac>0
     END TYPE def_para
 
-    INTEGER, PARAMETER :: nReacTypes = 45
-    INTEGER, PARAMETER ::           &
-    &            ind_PHOTABC   = 1  &
-    &         ,  ind_PHOTMCM   = 2  &
-    &         ,  ind_PHOTAB    = 3  &
-    &         ,  ind_CONST     = 4  &
-    &         ,  ind_TEMP      = 5  &
-    &         ,  ind_TEMP1     = 6  &
-    &         ,  ind_TEMP2     = 7  &
-    &         ,  ind_TEMP3     = 8  &
-    &         ,  ind_TEMP4     = 9  &
-    &         ,  ind_ASPEC1    = 10  &
-    &         ,  ind_ASPEC2    = 11  &
-    &         ,  ind_ASPEC3    = 12  &
-    &         ,  ind_DCONST    = 13  &
-    &         ,  ind_DTEMP     = 14  &
-    &         ,  ind_DTEMP2    = 15  &
-    &         ,  ind_DTEMP3    = 16  &
-    &         ,  ind_DTEMP4    = 17  &
-    &         ,  ind_DTEMP5    = 18  &
-    &         ,  ind_MESKHIDZE = 19  &
-    &         ,  ind_T1H2O     = 20  &
-    &         ,  ind_S4H2O     = 21  &
-    &         ,  ind_TROE      = 22  &
-    &         ,  ind_TROEQ     = 23  &
-    &         ,  ind_TROEF     = 24  &
-    &         ,  ind_TROEQF    = 25  &
-    &         ,  ind_TROEXP    = 26  &
-    &         ,  ind_TROEMCM   = 27  &
-    &         ,  ind_SPEC1     = 28  &
-    &         ,  ind_SPEC2     = 29  &
-    &         ,  ind_SPEC3     = 30  &
-    &         ,  ind_SPEC4     = 31  &
-    &         ,  ind_SPEC1MCM  = 32  &
-    &         ,  ind_SPEC2MCM  = 33  &
-    &         ,  ind_SPEC3MCM  = 34  &
-    &         ,  ind_SPEC4MCM  = 35  &
-    &         ,  ind_SPEC5MCM  = 36  &
-    &         ,  ind_SPEC6MCM  = 37  &
-    &         ,  ind_SPEC7MCM  = 38  &
-    &         ,  ind_SPEC8MCM  = 39  &
-    &         ,  ind_SPEC9MCM  = 40  &
-    &         ,  ind_HOM1      = 41  &
-    &         ,  ind_PHOTO     = 42  &
-    &         ,  ind_PHOTO2    = 43  &
-    &         ,  ind_PHOTO3    = 44  &
-    &         ,  ind_EQUI      = 45  
-  
+    TYPE val_para
+      INTEGER,  ALLOCATABLE :: iR(:,:)
+      REAL(dp), ALLOCATABLE :: vR(:,:)
+    END TYPE val_para
 
+
+    INTEGER, PARAMETER ::           &
+    &            iPHOTABC   = 1  &
+    &         ,  iPHOTMCM   = 2  &
+    &         ,  iPHOTAB    = 3  &
+    &         ,  iCONST     = 4  &
+    &         ,  iTEMP      = 5  &
+    &         ,  iTEMP1     = 6  &
+    &         ,  iTEMP2     = 7  &
+    &         ,  iTEMP3     = 8  &
+    &         ,  iTEMP4     = 9  &
+    &         ,  iASPEC1    = 10  &
+    &         ,  iASPEC2    = 11  &
+    &         ,  iASPEC3    = 12  &
+    &         ,  iDCONST    = 13  &
+    &         ,  iDTEMP     = 14  &
+    &         ,  iDTEMP2    = 15  &
+    &         ,  iDTEMP3    = 16  &
+    &         ,  iDTEMP4    = 17  &
+    &         ,  iDTEMP5    = 18  &
+    &         ,  iMESKHIDZE = 19  &
+    &         ,  iT1H2O     = 20  &
+    &         ,  iS4H2O     = 21  &
+    &         ,  iTROE      = 22  &
+    &         ,  iTROEQ     = 23  &
+    &         ,  iTROEF     = 24  &
+    &         ,  iTROEQF    = 25  &
+    &         ,  iTROEXP    = 26  &
+    &         ,  iTROEMCM   = 27  &
+    &         ,  iSPEC1     = 28  &
+    &         ,  iSPEC2     = 29  &
+    &         ,  iSPEC3     = 30  &
+    &         ,  iSPEC4     = 31  &
+    &         ,  iSPEC1MCM  = 32  &
+    &         ,  iSPEC2MCM  = 33  &
+    &         ,  iSPEC3MCM  = 34  &
+    &         ,  iSPEC4MCM  = 35  &
+    &         ,  iSPEC5MCM  = 36  &
+    &         ,  iSPEC6MCM  = 37  &
+    &         ,  iSPEC7MCM  = 38  &
+    &         ,  iSPEC8MCM  = 39  &
+    &         ,  iSPEC9MCM  = 40  &
+    &         ,  iHOM1      = 41  &
+    &         ,  iPHOTO     = 42  &
+    &         ,  iPHOTO2    = 43  &
+    &         ,  iPHOTO3    = 44  &
+    &         ,  iEQUI      = 45  &
+    &         ,  iSPECIAL   = 46
+  
+    INTEGER, PARAMETER :: nReacTypes = 46
+
+    TYPE(val_para), DIMENSION(nReacTypes) :: reac_val
 
     TYPE(def_para), DIMENSION(nReacTypes) :: reac_par = &
                    (/def_para("PHOTABC",   3,  0, .FALSE.), &
@@ -118,7 +126,8 @@
                      def_para("PHOTO",     4,  0, .FALSE.), &
                      def_para("PHOTO2",    4,  0, .FALSE.), &
                      def_para("PHOTO3",    4,  0, .FALSE.), &
-                     def_para("EQUI",      1,  0, .FALSE.) /)
+                     def_para("EQUI",      1,  0, .FALSE.), &
+                     def_para("SPECIAL",   0,  0, .FALSE.)  /)
 
 
 !---  reaction structures

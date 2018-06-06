@@ -246,7 +246,7 @@
      
       
       Conc = Y_in
-			Temp = 280.0_dp 
+			Temp = Temperature0
       T = UpdateTempArray( Temp )
       
       !*************************************************************
@@ -254,28 +254,29 @@
       !*************************************************************
 
       ! ====== Computing effective molecularity 
-      mAir = 2.46e19_dp / T(1) * 298.15_dp * Pres / p0
+      !   mAir = (N2+O2) [molec/cm3] * 298.15 [K] / Temperature [1/K] * 850 [hPa] / 1013.25 [hPa]
+      mAir = M * RefTemp * T(6) * Pres / p0
       Meff = ONE
       IF ( nr_FACTOR > 0 ) Meff = EffectiveMolecularity( Conc , mAir )
       
       ! ====== Compute the rate constant for specific reaction type
       k = ComputeRateConstant( T, Time, chi, mAir, Conc )
 
-      ! ===== correct unit of concentrations for higher order aqueous reactions
+      ! ====== Correct unit of concentrations for higher order aqueous reactions
       IF ( ns_AQUA > 0 ) THEN
         LWC = pseudoLWC(Time)
         InitValKat(aH2O_ind) = aH2O*LWC
         k(iR%iHOaqua) = k(iR%iHOaqua) / (LWC*mol2part)**iR%HOaqua
       END IF
 
-      !=== Compute mass transfer coefficient 
+      ! ====== Compute mass transfer coefficient 
       IF ( nr_HENRY > 0 ) THEN
         thenry = MassTransfer( k(iR%iHENRY(:,1)), T, LWC )
         k(iR%iHENRY(:,1)) = thenry(:,1,1)
         k(iR%iHENRY(:,3)) = thenry(:,2,1)
       END IF
 
-      ! special reactions
+      ! ====== Special Reactions
       IF ( nr_special > 0 ) THEN 
         DO i = 1,nr_SPECIAL
           j = iR%iSPECIAL(i)
@@ -335,30 +336,25 @@
       INTEGER :: i
 
       Prod = ONE
-
       !
       ! stoechometric coefficients equal 1
       DO i=1,nFirst_order
         Prod(iFO(i,1)) = Prod(iFO(i,1)) * Conc(iFO(i,2))
-        !write(988,*) ' FO     :: Prod , Conc = ',iFO(i,1),Prod(iFO(i,1)),iFO(i,2),Conc(iFO(i,2))
       END DO
       !
       ! stoechometric coefficients equal 2
       DO i=1,nSecond_order
         Prod(iSO(i,1)) = Prod(iSO(i,1)) * Conc(iSO(i,2)) * ABS(Conc(iSO(i,2)))
-        !write(988,*) ' SO     :: Prod , Conc = ',iSO(i,1),Prod(iSO(i,1)),iSO(i,2),Conc(iSO(i,2))
       END DO
       !
       ! stoechometric coefficients not equal 1 or 2
       DO i=1,nHigher_order
         Prod(iHO(i,1)) = Prod(iHO(i,1)) * Conc(iHO(i,2)) ** aHO(i)
-        !write(988,*) ' HO     :: Prod , Conc = ',iHO(i,1),Prod(iHO(i,1)),iHO(i,2),Conc(iHO(i,2)), aHO(i)
       END DO
       !
       ! if there are passive (katalytic) species e.g. [N2], [O2] or [aH2O]
       DO i=1,nfirst_orderKAT
         Prod(iFO_kat(i,1)) = Prod(iFO_kat(i,1)) * InitValKat(iFO_kat(i,2)) 
-        !write(988,*) ' FO KAT :: Prod , Conc = ',iFO_kat(i,1),Prod(iFO_kat(i,1)),iFO_kat(i,2),InitValKat(iFO_kat(i,2))
       END DO
 
     END FUNCTION MassActionProducts
@@ -1025,3 +1021,4 @@
     END SUBROUTINE Diff2InternalEnergy
     
   END MODULE Rates_Mod
+  

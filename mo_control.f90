@@ -254,6 +254,9 @@
     INTEGER :: GasUnit, AquaUnit, GasRateUnit
     REAL(dp) :: GasFac
 
+    INTEGER :: UnitGas=0
+    INTEGER :: UnitAqua=0
+
 
 !-----------------------------------------------------------------
 !---  Output control 
