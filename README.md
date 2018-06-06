@@ -9,7 +9,9 @@ Installation:
   2.  open M_DEF_Mac and set the corret paths to NetCDF and LAPack
   
   3.  run: make
+  
       3.1 make AtCSol     (for optimized version)
+  
       3.2 make AtCSol_dbg (for debugging version)
       
   4.  run: make test      (for several test scenarios)
