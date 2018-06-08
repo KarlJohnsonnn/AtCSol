@@ -1,17 +1,26 @@
+# Libraries
 LIB/*
 LIB_D/*
-NetCDF/*
-MATRICES/*
+
+# NetCDF output files
+NetCDF/*.nc
+
+# Output matrices 
+MATRICES/*.SparseMat
+
 .DS_Store
-*.chem
+
+# generated .chem files
+CHEM/*.chem
+
+# debugging output files
 fort.*
 list*
-*.SparseMat
-*.o
-*.mod
+*.txt
+
 REACTION_PATHS/*
+
 OUTPUT/*
 *.png
-*.txt
 *.dat
 *.exe*

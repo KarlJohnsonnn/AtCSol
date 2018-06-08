@@ -12,9 +12,9 @@ MODULE Rosenbrock_Mod
   USE Sparse_Mod
   USE Chemsys_Mod
   USE Rates_Mod
-  USE mo_control
-  USE mo_reac
-  USE mo_ckinput
+  USE Control_Mod
+  USE Reac_Mod
+  USE ChemKinInput_Mod
   IMPLICIT NONE
   !
   !
@@ -38,18 +38,7 @@ MODULE Rosenbrock_Mod
     REAL(dp), ALLOCATABLE :: binterpt(:,:)    ! Dense output formula
   END TYPE RosenbrockMethod_T
 
-!  TYPE Out
-!    REAL(dp), ALLOCATABLE :: y(:)    ! y-vector at Tend
-!    INTEGER :: nsteps     = 0              ! # succ. steps
-!    INTEGER :: nfailed    = 0              ! # failed steps
-!    INTEGER :: nRateEvals = 0              ! # Rate evaluation
-!    INTEGER :: npds       = 0              ! # Jacobian evaluation
-!    INTEGER :: ndecomps   = 0              ! # LU factorisation
-!    INTEGER :: nsolves    = 0              ! # solved lin algebra
-!    REAL(dp) :: Ttimestep = 0.0d0  ! mean Time for one ROW step
-!  END TYPE Out
-!
-!  TYPE(Out) :: Output
+
   TYPE(RosenbrockMethod_T) :: ROS
 
   REAL(dp), PRIVATE :: timerStart
@@ -263,8 +252,8 @@ MODULE Rosenbrock_Mod
   !    Subroutine Rosenbrock-Method universal for classic and extended case
   !=========================================================================
   SUBROUTINE Rosenbrock(YNew,err,ierr,Y0,t,h,Euler)
-    USE issa
-    USE mo_IO
+    USE ISSA_mod
+    USE IO_Mod
     !--------------------------------------------------------
     ! Input:
     !   - Y0............. concentrations at Time = t

@@ -14,15 +14,15 @@ PROGRAM AtCSol
   USE Chemsys_Mod
   USE Integration_Mod
   USE Rosenbrock_Mod
-  USE mo_control
-  USE mo_reac
-  USE mo_MPI
-  USE mo_IO
-  USE mo_ckinput
+  USE Control_Mod
+  USE Reac_Mod
+  USE MPI_Mod
+  USE IO_Mod
+  USE ChemKinInput_Mod
   USE NetCDF_Mod
   USE Cycles_Mod
   USE fparser
-  USE issa
+  USE ISSA_Mod
   IMPLICIT NONE
   !
   CHARACTER(80)   :: Filename0 = ''        ! *.run file
@@ -65,6 +65,7 @@ PROGRAM AtCSol
   CHARACTER(1) :: inpt=''
   TYPE(List), ALLOCATABLE :: ReacCyc(:)
   INTEGER,    ALLOCATABLE :: Target_Spc(:) 
+  LOGICAL :: ExistFile
   
   ! timer
   REAL(dp) :: t_1,t_2
@@ -520,25 +521,28 @@ PROGRAM AtCSol
 
   !************************************************************************************************
   !************************************************************************************************
-  IF ( MPI_master .AND. FluxAna ) THEN
+  IF ( MPI_master .AND. Reduction ) THEN
     StartTimer = MPI_WTIME()
     CALL Logo2()
 
-    DO i=1,nr           ! Name,iReac,Mech,Class,Type,Param)
-      CALL WriteReaction( TRIM(ReactionSystem(i)%Line1)       &
-      &                 , i                                   &
-      &                 , TRIM(BSP)                           &
-      &                 , TRIM(ReactionSystem(i)%Type)        &
-      &                 , TRIM(ReactionSystem(i)%Line3)       )
-    END DO
+    ! writing reactions to file in another form
+!    DO i=1,nr           ! Name,iReac,Mech,Class,Type,Param)
+!      CALL WriteReaction( TRIM(ReactionSystem(i)%Line1)       &
+!      &                 , i                                   &
+!      &                 , TRIM(BSP)                           &
+!      &                 , TRIM(ReactionSystem(i)%Type)        &
+!      &                 , TRIM(ReactionSystem(i)%Line3)       )
+!    END DO
 
     !-----------------------------------------------------------------------
     ! --- Read species groups in order to combine them (Species Lumping)
-    IF( TargetFile/='' ) THEN
+    INQUIRE( FILE='REDUCTION/Reduction.init', EXIST=ExistFile )
+
+    IF( ExistFile ) THEN
       CALL ISSA_structure( ReacCyc , Target_Spc , TargetFile )
       CALL ISSA_screening( ReactionSystem, ReacCyc, Target_Spc )
     ELSE
-      WRITE(*,777) '    ** NO IMPORTANT SPECIES ARE DECLARED **'
+      WRITE(*,777) '    ** NO Reduction.init file found **'
     END IF
     TimeReduction = MPI_WTIME()-StartTimer
     CALL ConvertTime(TimeReduction,unit)
@@ -548,10 +552,6 @@ PROGRAM AtCSol
 
   ! --- Close MPI 
   IF ( MPI_master ) THEN
-    WRITE(*,*); WRITE(*,*)
-    WRITE(*,777) '************ ********** *********** ********** ************'
-    WRITE(*,777) '************ **********     DONE    ********** ************'
-    WRITE(*,777) '************ ********** *********** ********** ************'
     WRITE(*,*); WRITE(*,*)
   END IF
 

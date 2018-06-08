@@ -1,7 +1,7 @@
 MODULE Meteo_Mod
 
   USE Kind_Mod
-  USE mo_control
+  USE Control_Mod
 
   IMPLICIT NONE
   
@@ -212,7 +212,7 @@ CONTAINS
 
     
   FUNCTION Set_pseudoLWCbounds() RESULT(bounds)
-    USE mo_control, ONLY: tBegin, HOUR
+    USE Control_Mod, ONLY: tBegin, HOUR
     REAL(dp) :: bounds(6)
     ! --- set cloud intervall
     bounds(1) = tBegin * HOUR 
@@ -232,8 +232,8 @@ CONTAINS
     
   FUNCTION pseudoLWC(RealTime)  RESULT(LWC)
     USE Kind_Mod
-    USE mo_reac
-    USE mo_control
+    USE Reac_Mod
+    USE Control_Mod
     !
     IMPLICIT NONE
     !
@@ -297,8 +297,8 @@ CONTAINS
   !**************************************************************************!
   !
   FUNCTION pHValue(ConcAqua) RESULT(pH)
-    USE mo_reac,    ONLY: ns_AQUA, Hp_ind, Charge
-    USE mo_control, ONLY: ZERO
+    USE Reac_Mod,    ONLY: ns_AQUA, Hp_ind, Charge
+    USE Control_Mod, ONLY: ZERO
     USE Kind_Mod,   ONLY: dp
 
     IMPLICIT NONE

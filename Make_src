@@ -1,14 +1,14 @@
 include $(IN2) 
 
-OBJ = mo_unirnk.f90\
+OBJ = UniRnk_Mod.f90\
       csv_file.f90\
       LexicalStringSort.f90\
       Kind_Mod.f90\
-      mo_control.f90\
-      mo_reac.f90\
+      Control_Mod.f90\
+      Reac_Mod.f90\
       Meteo_Mod.f90\
-      mo_MPI.f90\
-      InitRun.f90\
+      MPI_Mod.f90\
+      InitRun_Mod.f90\
       NetCDF_Mod.f90\
       Sparse_Mod.f90\
       Cycles_Mod.f90\
@@ -16,12 +16,12 @@ OBJ = mo_unirnk.f90\
       HashStr_Mod.f90\
       InputTool_Mod.f90\
       ChemSys_Mod.f90\
-      mo_IO.f90\
-      mo_ckinput.f90\
+      IO_Mod.f90\
+      ChemKinInput_Mod.f90\
       fp_parameters.f90\
       fparser.f90\
       Rates_Mod.f90\
-      issa_Mod.f90\
+      ISSA_Mod.f90\
       Rosenbrock_Mod.f90\
       Integration_Mod.f90\
       AtCSol.f90

@@ -12,9 +12,9 @@ MODULE Chemsys_Mod
   USE String_Mod
   USE LexicalStringSort
   USE hashtbl
-  USE mo_unirnk
-  USE mo_control
-  USE mo_reac
+  USE UniRnk_Mod
+  USE Control_Mod
+  USE Reac_Mod
   USE InputTool_Mod
   USE NetCDF_Mod
   !

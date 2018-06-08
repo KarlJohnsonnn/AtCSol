@@ -3,9 +3,9 @@ MODULE NetCDF_Mod
   USE Kind_Mod
   USE Meteo_Mod
   USE netcdf
-  USE mo_reac
-  USE mo_control
-  USE mo_MPI
+  USE Reac_Mod
+  USE Control_Mod
+  USE MPI_Mod
   !
   IMPLICIT NONE
 

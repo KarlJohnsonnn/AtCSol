@@ -6,9 +6,9 @@ MODULE Cycles_Mod
                       & CSR_to_SpRowIndColInd, Free_Matrix_CSR, &
                       & New_CSR, Copy_CSR, CompressIntegerArray,&
                       & PrintSparseMatrix
-  !USE mo_unirnk
-  USE mo_reac,    ONLY: y_name
-  USE mo_control, ONLY: List
+
+  USE Reac_Mod,    ONLY: y_name
+  USE Control_Mod, ONLY: List
 
   IMPLICIT NONE
 
@@ -47,7 +47,7 @@ MODULE Cycles_Mod
   !
   FUNCTION Find_Elem_Circuits(A,FAMS) RESULT(Cyclic_Set_Out)
   !SUBROUTINE Find_Elem_Circuits(A,SpcList)
-    USE mo_control,   ONLY: Families_T, BSP, OutputPath
+    USE Control_Mod,   ONLY: Families_T, BSP, OutputPath
 
     TYPE(List), ALLOCATABLE :: Cyclic_Set_Out(:) 
     ! IN:

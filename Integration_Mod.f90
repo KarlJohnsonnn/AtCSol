@@ -8,11 +8,11 @@
 MODULE Integration_Mod
   !
   USE Kind_Mod
-  USE mo_MPI
-  USE mo_control
-  USE mo_IO
-  USE mo_reac
-  USE mo_ckinput, ONLY: Density
+  USE MPI_Mod
+  USE Control_Mod
+  USE IO_Mod
+  USE Reac_Mod
+  USE ChemKinInput_Mod, ONLY: Density
   USE Sparse_Mod, ONLY: Jac_CC
   USE Rosenbrock_Mod
   USE NetCDF_Mod

@@ -2,12 +2,13 @@
   BSP      = 'MCM32+CAPRAM40'
   WaitBar  = .T.
   FluxAna  = .F.
+  Simulation = .T.
+  Reduction  = .F.
 /END
 &FILES
   SysFile  = 'CHEM/MCM32_CAPRAM40_full.sys'  
   DataFile = 'DAT/MCM32_CAPRAM40_full.dat'
   InitFile = 'INI/Urban2.ini'
-  !TargetFile = 'TAR/MCM+CAPRAM_3.ctrl'
 /END
 &TIMES
   tBegin      = 0.0d0
@@ -34,7 +35,6 @@
   minStp  = 1.0d-30
   maxStp  = 200.d0
   ODEsolver = 'METHODS/Rodas3.ros'
-  Ordering  = 8
 /END
 &OUTPUT
   NetCdfFile  = 'NetCDF/MCM32+C40_full.nc' ! location and name of NetCDF output file
@@ -43,5 +43,4 @@
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock
   MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
-  eps_red     = 0.850
 /END

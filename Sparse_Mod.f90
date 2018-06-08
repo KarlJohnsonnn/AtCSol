@@ -21,9 +21,9 @@ MODULE Sparse_Mod
   !   - PRINT SPARSE MATRIX (ROW-INDEX COLUMN-INDEX)
   !   - SPARSE MATRIX*VECTOR+VECTOR (SPARSE-MATRIX, DENSE VECTORS)
   ! 
-  USE mo_unirnk
-  USE mo_MPI
-  USE mo_control
+  USE UniRnk_Mod
+  USE MPI_Mod
+  USE Control_Mod
   USE Kind_Mod
   !
   IMPLICIT NONE 

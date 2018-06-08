@@ -1,4 +1,4 @@
-MODULE issa
+MODULE ISSA_Mod
   
   USE Kind_Mod
   USE Sparse_Mod, ONLY: CSR_Matrix_T
@@ -25,8 +25,8 @@ MODULE issa
 
   FUNCTION Read_Target_Spc(FileName) RESULT(Idx)
     USE ChemSys_Mod, ONLY: PositionSpeciesAll
-    USE mo_control,  ONLY: LenLine
-    USE mo_reac,     ONLY: y_name
+    USE Control_Mod,  ONLY: LenLine
+    USE Reac_Mod,     ONLY: y_name
     ! This routine will read the target species for ISSA reduction algorithm.
     ! OUT:
     INTEGER, ALLOCATABLE :: Idx(:)
@@ -66,7 +66,7 @@ MODULE issa
 
   FUNCTION Read_Spc_Families(FileName) RESULT(Fam)
     USE ChemSys_Mod, ONLY: PositionSpeciesAll
-    USE mo_control,  ONLY: Families_T, LenLine
+    USE Control_Mod,  ONLY: Families_T, LenLine
     ! This routine will read the species families for ISSA reduction algorithm.
     ! OUT: globl type(Families_T) declared at start of this file
     TYPE(Families_T), ALLOCATABLE :: Fam(:)
@@ -128,7 +128,7 @@ MODULE issa
   END FUNCTION Read_Spc_Families
 
   FUNCTION FindSection(iUnit,SectionName) RESULT(iLine)
-    USE mo_control, ONLY: lenLine
+    USE Control_Mod, ONLY: lenLine
     ! OUT:
     INTEGER      :: iLine
     ! IN: 
@@ -157,7 +157,7 @@ MODULE issa
   ! writing reaction rates , time and stepsize h to file via stream access
   SUBROUTINE StreamWriteFluxes(Rate,t,h)
     USE Kind_Mod
-    USE mo_control, ONLY: FluxUnit, FluxFile, FluxMetaUnit, FluxMetaFile, iStpFlux
+    USE Control_Mod, ONLY: FluxUnit, FluxFile, FluxMetaUnit, FluxMetaFile, iStpFlux
     REAL(dp) :: Rate(:)
     REAL(dp) :: t , h
 
@@ -194,7 +194,7 @@ MODULE issa
   END SUBROUTINE StreamWriteFluxes
 
   SUBROUTINE WriteReaction(Name,iReac,Mech,Class,Param)
-    USE mo_control,   ONLY: OutputPath
+    USE Control_Mod,   ONLY: OutputPath
     CHARACTER(*) :: Name, Mech, Class, Param
     INTEGER      :: iReac
     INTEGER, PARAMETER :: Reac_Unit = 112
@@ -211,8 +211,8 @@ MODULE issa
   END SUBROUTINE WriteReaction
 
   SUBROUTINE PrintReactionCycles(ReacCycles,SpcCyc,RS)
-    USE mo_control,  ONLY: List, BSP, OutputPath
-    USE mo_reac,     ONLY: y_name
+    USE Control_Mod,  ONLY: List, BSP, OutputPath
+    USE Reac_Mod,     ONLY: y_name
     USE ChemSys_Mod, ONLY: ReactionStruct_T, RemoveSpaces
 
     TYPE(List),             INTENT(IN) :: ReacCycles(:)
@@ -269,8 +269,8 @@ MODULE issa
 
   
   SUBROUTINE ISSA_structure(R_k,Target_Spc,TargetFile)
-    USE mo_reac,    ONLY: nr
-    USE mo_control, ONLY: List, Families_T
+    USE Reac_Mod,    ONLY: nr
+    USE Control_Mod, ONLY: List, Families_T
     USE Sparse_Mod, ONLY: B, A, WriteSparseMatrix, CSR_Matrix_T, TransposeSparse, SymbolicMult
     USE Cycles_Mod
     USE ChemSys_Mod,ONLY: ReactionSystem
@@ -364,7 +364,7 @@ MODULE issa
  
 
   SUBROUTINE SortVecAsc_R(v,q,m)
-    USE mo_control, ONLY: big
+    USE Control_Mod, ONLY: big
 
     REAL(dp), INTENT(INOUT) :: v(:)
     INTEGER,  ALLOCATABLE, OPTIONAL :: q(:)
@@ -415,7 +415,7 @@ MODULE issa
   END SUBROUTINE SortVecAsc_I
 
   SUBROUTINE ShowChain(C1)
-    USE mo_control, ONLY: Chain
+    USE Control_Mod, ONLY: Chain
     TYPE(Chain) :: C1(:)
     INTEGER :: k, ii, iR, j
    
@@ -447,7 +447,7 @@ MODULE issa
 
 
   SUBROUTINE Sort_And_Remove_Duplicates(Array,n)
-    USE mo_unirnk
+    USE UniRnk_Mod
     INTEGER, ALLOCATABLE, INTENT(INOUT) :: Array(:)
     INTEGER, ALLOCATABLE                :: Perm(:)
     INTEGER                             :: n
@@ -476,9 +476,9 @@ MODULE issa
 
 
   SUBROUTINE ISSA_screening(RS,R_k,S_imp_ini)
-    USE mo_control
-    USE mo_reac
-    USE mo_IO
+    USE Control_Mod
+    USE Reac_Mod
+    USE IO_Mod
     USE ChemSys_Mod
     USE Sparse_Mod
 
@@ -634,14 +634,8 @@ MODULE issa
           iSpc       = S_imp(iS)
           rp_iSpc(1) = pos_BAT%RowPtr(iSpc);  rp_iSpcP1(1) = pos_BAT%RowPtr(iSpc+1)-1
           rp_iSpc(2) = neg_BAT%RowPtr(iSpc);  rp_iSpcP1(2) = neg_BAT%RowPtr(iSpc+1)-1
-
-          !avgEmis = y_emi(iSpc)*SUM(dt(iRate:iRate+nAvg-1))/avgTime
         
-          !WRITE(*,*)
-          !WRITE(*,*) '  Important species:  ', TRIM(y_name(iSpc))
           DO k = 1, nR_k
-
-            !WRITE(*,*) '  Reaction Cycle nr.:  ', k
 
             ! --- SOURCE terms
             ALLOCATE(source_reacs(0)); any_sources = .FALSE.
@@ -662,12 +656,6 @@ MODULE issa
               CALL SortVecAsc_R( f_iJk , f_p , inR_f )
               f_iR = f_iR(f_p)
               DEALLOCATE(f_p)
-
-              !WRITE(*,*) '  Number of source reactions in cycle: ', inR_f
-              !DO j=1,inR_f
-                !WRITE(*,'(A,I0,A,Es16.8,2X,L)') '   Reaction = ',f_iR(j), '  f_iJk = ',f_iJk(j), f_iJk(j)>eps_red
-              !END DO
-              !WRITE(*,*)
 
             ELSE
               inR_f = 0
@@ -693,13 +681,7 @@ MODULE issa
               g_iR = g_iR(g_p)
               DEALLOCATE(g_p)
 
-              !WRITE(*,*) '  Number of sink reactions in cycle: ', inR_g
-              !DO j=1,inR_g
-                !WRITE(*,'(A,I0,A,Es16.8,2X,L)') '   Reaction = ',g_iR(j), ' g_iJk = ',g_iJk(j),g_iJk(j)>eps_red
-              !END DO
-              !WRITE(*,*)
-            
-              ELSE
+            ELSE
               inR_g = 0
             END IF
 
@@ -723,8 +705,6 @@ MODULE issa
               END IF
             END DO
 
-            !WRITE(*,'(A,*(I0,2X))') ' New source reacs :: ',CF_ik
-
             sum_g_ijk = 0.0_dp
             DO j = 1,inR_g
               sum_g_ijk = sum_g_ijk + g_iJk(j)
@@ -733,9 +713,6 @@ MODULE issa
                 EXIT
               END IF
             END DO
-
-            
-            !WRITE(*,'(A,*(I0,2X))') ' New sink reacs :: ',CG_ik
 
             !*******************************************************************
             ! (c) The important reactions (index set R_imp) of important species 
@@ -748,7 +725,7 @@ MODULE issa
             DEALLOCATE( CF_ik, CG_ik, source_reacs, sink_reacs )
 
           END DO   !  k = 1, nCycles
-          !READ(*,*)
+          
         END DO     !  i = 1 , nS_imp
 
         !*******************************************************************************
@@ -789,12 +766,6 @@ MODULE issa
     END DO ! iRate=lbound,rbound
 
 
-    !DO j=1,SIZE(R_imp); WRITE(*,'(A,I0,A,I0)') ' R_imp(',j,') = ',R_imp(j); END DO
-    !DO j=1,SIZE(S_imp); WRITE(*,'(A,I0,A,I0)') ' S_imp(',j,') = ',S_imp(j); END DO
-!    DO j=1,nR_imp
-!      i = R_imp(j)
-!      WRITE(*,*) 'reac = ',TRIM(ADJUSTL(ReactionSystem(i)%Line1))//'    '//TRIM(ReactionSystem(i)%Line2), ReactionSystem(i)%bR
-!    END DO
     
     !-----------------------------------------------------------------------
     ! --- Writing a new sys-File with less reactions
@@ -804,11 +775,9 @@ MODULE issa
     WRITE(*,*)
     write(*,'(14X,A,I6)') 'Reduced system :: Number of Reactions = ',nR_imp
     write(*,'(32X,A,I6)') 'Number of Species   = ',nS_imp
-    !stop
+    
     777 FORMAT(10X,A)
 
-
-    !STOP ' UNDER CONSTRUCTION '
 
     CONTAINS
 
@@ -827,4 +796,4 @@ MODULE issa
   END SUBROUTINE ISSA_screening
 
   
-END MODULE issa
+END MODULE ISSA_Mod

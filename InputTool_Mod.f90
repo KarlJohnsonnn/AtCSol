@@ -1,7 +1,6 @@
 MODULE InputTool_Mod
 
   USE Kind_Mod
-  !USE Control_Mod
 
   IMPLICIT NONE
 

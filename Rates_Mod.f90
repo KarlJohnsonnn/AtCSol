@@ -9,13 +9,13 @@
   MODULE Rates_Mod
     !
     USE Kind_Mod
-    USE mo_reac
-    USE mo_control
-    USE mo_MPI
+    USE Reac_Mod
+    USE Control_Mod
+    USE MPI_Mod
     USE Sparse_Mod
     USE Chemsys_Mod
     USE Meteo_Mod
-    USE mo_ckinput, ONLY: lowA,lowB,lowC,lowD,lowE,lowF,lowG       &
+    USE ChemKinInput_Mod, ONLY: lowA,lowB,lowC,lowD,lowE,lowF,lowG       &
     &                  , highA,highB,highC,highD,highE,highF,highG
     !
     IMPLICIT NONE
