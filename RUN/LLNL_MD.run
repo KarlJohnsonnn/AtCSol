@@ -1,7 +1,6 @@
 &SCENARIO
   BSP      = 'LLNL_MD'
   WaitBar  = .T.
-  FluxAna  = .F.
   ChemKin  = .T.
 /END
 &FILES

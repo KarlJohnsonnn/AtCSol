@@ -23,11 +23,12 @@
 &                    , ODEsolver  = ''    & ! Method for Rosenbrock Integration
 &                    , TargetFile = ''      ! file for reductions analysis (target species)
 
-      CHARACTER(7)  :: OutputPath   = 'OUTPUT/'      ! path to output folder
-      CHARACTER(80) :: FluxMetaFile = '' ! meta data for unformatted flux data
-      CHARACTER(80) :: FluxFile     = ''   ! flux data (unformatted)
+      CHARACTER(7)  :: OutputPath   = 'OUTPUT/'  ! path to output folder
+      CHARACTER(80) :: FluxMetaFile = ''         ! meta data for unformatted flux data
+      CHARACTER(80) :: FluxFile     = ''         ! flux data (unformatted)
 
-      REAL(dp)      :: Red_TStart, Red_TEnd     ! time interval for redcution procedure
+      REAL(dp) :: Red_TStart, Red_TEnd     ! time interval for redcution procedure
+      REAL(dp) :: eps_red                  ! threshold for reduction procedure
 !
 !--- Unit Numbers
       INTEGER, PARAMETER :: RunUnit      = 101  & 
@@ -64,7 +65,8 @@
     
 !--- Output of reaction fluxes
       REAL(dp)                    :: StpFlux
-      INTEGER                     :: iStpFlux
+      INTEGER                     :: iStpFlux ! number of written flux steps
+
 
       INTEGER,          PARAMETER :: newReac_nr    = 1977
       CHARACTER(LEN=*), PARAMETER :: newReac_name  = 'BigRates.dat'
@@ -88,6 +90,11 @@
 !---  Photolysis
       INTEGER :: iDate               ! Current date
       REAL(dp) :: rlat, rlon          ! Latitude, Longitude
+
+!---  Liquid water content parameter
+
+      REAL(dp) :: LWCconst=2.0d-8       ! [l/m3] no cloud 
+      REAL(dp) :: NCC=1000.0d0
 
 
 !--  dust factor for damping of photolysis rates, measured JNO2
@@ -296,22 +303,11 @@
       Type(List),     ALLOCATABLE :: rIdx(:)
     END TYPE Chain
 
-    TYPE LUMP_SPC
-      CHARACTER(LenName)              :: SuperSpc
-      CHARACTER(LenName), ALLOCATABLE :: cSingleSpc(:)
-      INTEGER,            ALLOCATABLE :: iSingleSpc(:)
-    END TYPE LUMP_SPC
-
-    TYPE(LUMP_SPC), ALLOCATABLE :: LUMP(:)
-
     TYPE Families_T
       CHARACTER(LenName), ALLOCATABLE :: Name(:)
       INTEGER,            ALLOCATABLE :: Index(:)
     END TYPE Families_T
-    
 
-
-    REAL(dp) :: eps_red       ! threshold for reduction procedure
 
     
     INTEGER, ALLOCATABLE :: maxErrorCounter(:)

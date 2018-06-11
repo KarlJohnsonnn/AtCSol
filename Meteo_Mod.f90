@@ -12,7 +12,6 @@ MODULE Meteo_Mod
   REAL(dp), PARAMETER :: Pres = 850.d0 ! hPa
   REAL(dp), PARAMETER :: p0   = 1013.25d0 ! hPa Normaldruck
   REAL(dp), PARAMETER :: Rd   = Cp-Cv
-  !REAL(dp) :: mAir = 2.46d19/Temp*298.15d0*Pres/p0*1.0d0
 
   REAL(dp), PARAMETER :: mol2part   = 6.02295d17            &
   &                    , GasConst_R = 0.082056d0            &   ! [in l*atm/mol/K]
@@ -33,10 +32,7 @@ MODULE Meteo_Mod
   &                    , densi      = 1.0545184035426323d0 
   REAL(dp) :: mH2O
 
-  REAL(dp), PARAMETER :: LWCconst=2.0d-8       ! [l/m3] no cloud 
-  REAL(dp), PARAMETER :: NCC=1000d0
 
-  !REAL(dp), PARAMETER :: R_const=8.344598d0 ! [ J / mol / K ] = [ kg * m2 / s2 / mol /K ]
   REAL(dp), PARAMETER :: R_const=8.3144621d0 ! [ J / mol / K ] = [ kg * m2 / s2 / mol /K ]
   REAL(dp) :: PressR=Pres/R_const
 
@@ -216,11 +212,11 @@ CONTAINS
     REAL(dp) :: bounds(6)
     ! --- set cloud intervall
     bounds(1) = tBegin * HOUR 
-    bounds(2) = bounds(1) + 1.00_dp  * HOUR
-    bounds(3) = bounds(2) + 0.25_dp  * HOUR
-    bounds(4) = bounds(3) + 9.50_dp  * HOUR
-    bounds(5) = bounds(4) + 0.25_dp  * HOUR
-    bounds(6) = bounds(5) + 1.00_dp  * HOUR
+    bounds(2) = bounds(1) + 1.00_dp * HOUR
+    bounds(3) = bounds(2) + 0.25_dp * HOUR
+    bounds(4) = bounds(3) + 9.50_dp * HOUR
+    bounds(5) = bounds(4) + 0.25_dp * HOUR
+    bounds(6) = bounds(5) + 1.00_dp * HOUR
   END FUNCTION Set_pseudoLWCbounds
 
   SUBROUTINE ThirdPartyKoeff(Time)
@@ -233,10 +229,8 @@ CONTAINS
   FUNCTION pseudoLWC(RealTime)  RESULT(LWC)
     USE Kind_Mod
     USE Reac_Mod
-    USE Control_Mod
-    !
-    IMPLICIT NONE
-    !
+    USE Control_Mod,  ONLY: constLWC, constLWC, LWCLevelmin, LWCLevelmax
+
     REAL(dp) :: LWC
     REAL(dp) :: RealTime
     REAL(dp) :: Time
@@ -285,7 +279,6 @@ CONTAINS
       ! --- Constant minium LWC level
       ELSEIF (LWCb(5)<=Time.AND.Time<=LWCb(6)) THEN
         LWC = LwcLevelmin
-
       END IF
     END IF
   END FUNCTION
@@ -299,16 +292,14 @@ CONTAINS
   FUNCTION pHValue(ConcAqua) RESULT(pH)
     USE Reac_Mod,    ONLY: ns_AQUA, Hp_ind, Charge
     USE Control_Mod, ONLY: ZERO
-    USE Kind_Mod,   ONLY: dp
-
-    IMPLICIT NONE
+    USE Kind_Mod,    ONLY: dp
 
     REAL(dp) :: pH
     REAL(dp) :: ConcAqua(ns_AQUA)   ! molar density
     INTEGER :: j
 
     pH = ZERO
-    DO j=1,ns_AQUA!-1 
+    DO j=1,ns_AQUA
       IF (j/=Hp_ind) pH = pH + ConcAqua(j) * Charge(j)
     END DO
     pH = -pH

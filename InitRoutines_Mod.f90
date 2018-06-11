@@ -63,8 +63,7 @@ MODULE InitRoutines_Mod
       &                  nOutP ,      &
       &                  DebugPrint , &
       &                  MatrixPrint, &
-      &                  FluxDataPrint , &
-      &                  eps_red 
+      &                  FluxDataPrint
 
 !
 !===================================================================
@@ -154,7 +153,10 @@ MODULE InitRoutines_Mod
       READ(RunUnit,METEO,IOSTAT=io_stat,IOMSG=io_msg)
       CALL ErrorCheck(io_stat,io_msg,'reading METEO list')
 
-      IF ( LWCLevelmin ==  LWCLevelmax ) constLWC = .TRUE.
+      IF ( LWCLevelmin ==  LWCLevelmax ) THEN
+        constLWC = .TRUE.
+        LWCconst = LWCLevelmin
+      END IF
 
 !
 !-----------------------------------------------------------------

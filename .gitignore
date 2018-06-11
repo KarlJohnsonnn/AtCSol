@@ -12,6 +12,7 @@ MATRICES/*.SparseMat
 
 # generated .chem files
 CHEM/*.chem
+ckCHEM/**/*.chem
 
 # debugging output files
 fort.*

@@ -207,7 +207,7 @@ MODULE IO_Mod
   !
   !
   SUBROUTINE DebugPrint1(yvec,rvec,stepsize,time)
-    USE Kind_MOd
+    USE Kind_Mod
     REAL(dp) :: yvec(:),rvec(:)
     REAL(dp) :: stepsize, time
     !

@@ -1,8 +1,8 @@
 &SCENARIO
   BSP      = 'ERC_nheptane'
   WaitBar  = .T.
-  FluxAna  = .F.
   ChemKin  = .T.
+  Simulation = .T.
 /END
 &FILES
   SysFile  = 'ckCHEM/ERC_nheptane/ERC_nheptane.sys'
@@ -27,8 +27,6 @@
   maxStp    = 2.0d-4
   LinAlg    = 'ex'
   ODEsolver = 'METHODS/TSRosWRA34PW2.ros'
-  !ODEsolver = 'METHODS/Rodas3.ros'
-  !ODEsolver = 'METHODS/Ros3Pw.ros'
   Ordering  = 8
 /END
 &OUTPUT

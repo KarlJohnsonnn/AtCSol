@@ -738,8 +738,10 @@
       !---  (SPEC9 for MCM)
       IF (nr_SPEC9MCM>0) THEN 
         F = 0.21_dp
-        k1smcm9 = iR%SPEC9mcm(:,1)*mAir*F*EXP(iR%SPEC8mcm(:,2)*T(6)) / (ONE  + iR%SPEC9mcm(:,3)*mAir*F*EXP(iR%SPEC8mcm(:,4)*T(6)))
-        k2smcm9 = iR%SPEC9mcm(:,5)*mAir*F*EXP(iR%SPEC9mcm(:,6)*T(6)) / ((ONE + iR%SPEC9mcm(:,7)*mAir*F*EXP(iR%SPEC9mcm(:,8)*T(6)))*T(1))
+        k1smcm9 = iR%SPEC9mcm(:,1)*mAir*F*EXP(iR%SPEC8mcm(:,2)*T(6)) &
+        &       / (ONE  + iR%SPEC9mcm(:,3)*mAir*F*EXP(iR%SPEC8mcm(:,4)*T(6)))
+        k2smcm9 = iR%SPEC9mcm(:,5)*mAir*F*EXP(iR%SPEC9mcm(:,6)*T(6)) &
+        &       / ((ONE + iR%SPEC9mcm(:,7)*mAir*F*EXP(iR%SPEC9mcm(:,8)*T(6)))*T(1))
         k3smcm9 = iR%SPEC9mcm(:,9)*EXP(iR%SPEC9mcm(:,10)*T(6))
         k(iR%iSPEC9mcm) =  (k1smcm9 * k3smcm9) / (k2smcm9 + k3smcm9)
       END IF
@@ -941,7 +943,7 @@
 
       log10_Prc   = vlog10_Pr + cTroe
 
-      DlogF_Troedlog_Pr = - TWO*n1Troe*vlog10_Fcent*log10_Prc             &
+      DlogF_Troedlog_Pr = - TWO*n1Troe*vlog10_Fcent*log10_Prc            &
                         &       * ( n1Troe - dTroe*log10_Prc )           &
                         &  / (  n1Troe**2 - TWO*n1Troe*dTroe*log10_Prc + &
                         &      (dTroe**2 + ONE)*log10_Prc*log10_Prc  )**2

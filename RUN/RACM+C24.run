@@ -1,8 +1,8 @@
 &SCENARIO
   BSP        = 'RACM+C24'   ! Name der NetCDF Output-Datei
   WaitBar    = .T.          ! .F. = kein ladebalken, .T. /= ladebalken aktiv
-  Simulation = .F.          ! perform the numerical simulation
-  Reduction  = .T.          ! perform the reduction of the chemical system
+  Simulation = .T.          ! perform the numerical simulation
+  Reduction  = .F.          ! perform the reduction of the chemical system
 /END
 &FILES
   SysFile    = 'CHEM/RACM+C24.sys'      ! .sys Datei (ohne .sys angeben!)

@@ -2,7 +2,6 @@
   BSP      = 'nheptane'
   WaitBar  = .T.
   ChemKin  = .T.        ! input mechanism in ChemKin notation
-  FluxAna  = .F.
 /END
  &FILES
   SysFile  = 'ckCHEM/nHeptane/nHeptane.sys'

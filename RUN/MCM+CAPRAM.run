@@ -1,8 +1,8 @@
 &SCENARIO
   BSP      = 'MCM32+CAPRAM40'
   WaitBar  = .T.
-  Simulation = .F.
-  Reduction  = .T.
+  Simulation = .T.
+  Reduction  = .F.
 /END
 &FILES
   SysFile  = 'CHEM/MCM32_CAPRAM40_full.sys'  
@@ -41,5 +41,5 @@
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock
   MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
-  FluxDataPrint = .T.
+  FluxDataPrint = .F.
 /END
