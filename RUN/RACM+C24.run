@@ -1,14 +1,14 @@
 &SCENARIO
   BSP        = 'RACM+C24'   ! Name der NetCDF Output-Datei
   WaitBar    = .T.          ! .F. = kein ladebalken, .T. /= ladebalken aktiv
-  FluxAna    = .F.          ! analyse reaction rates (fluxes)
+  Simulation = .F.          ! perform the numerical simulation
+  Reduction  = .T.          ! perform the reduction of the chemical system
 /END
 &FILES
   SysFile    = 'CHEM/RACM+C24.sys'      ! .sys Datei (ohne .sys angeben!)
   DataFile   = 'DAT/Urban.dat'          ! .dat Datei (für RO2, RO2aqua Summen)
   InitFile   = 'INI/Urban.ini'          ! .ini Datei (Anfangswerte gas/flüssig), Diagnose spc
   MetFile    = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)
-  !TargetFile = 'TAR/RACM+C24.ctrl'     ! .ctrl Datei (Zielspezies,Spezies Familen,gelumpte Species)
 /END
 &TIMES
   tBegin      = 0.0d0          ! Startzeit Integration   (in [sec])
@@ -44,5 +44,5 @@
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock 
   MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
-  eps_red     = 0.11d0
+  FluxDataPrint = .F.          ! Writing rate fluxes to file
 /END

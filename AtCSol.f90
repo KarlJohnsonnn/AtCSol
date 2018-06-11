@@ -9,6 +9,7 @@
 PROGRAM AtCSol
   !
   USE Kind_Mod
+  USE InitRoutines_Mod
   USE Rates_Mod
   USE Sparse_Mod
   USE Chemsys_Mod
@@ -491,10 +492,12 @@ PROGRAM AtCSol
   END IF
 
   !WRITE(*,777,ADVANCE='NO') 'Simulation? [y/n]   ';  READ(*,*) simul
-  !IF ( simul=='y' ) THEN
+  IF ( Simulation ) THEN
     ! open file to save the fluxes 
-    IF ( MPI_master .AND. FluxAna ) THEN
+    IF ( MPI_master .AND. FluxDataPrint ) THEN
       iStpFlux = 0
+      FluxFile     = 'REDUCTION/flux_'//TRIM(BSP)//'.dat'
+      FluxMetaFile = 'REDUCTION/fluxmeta_'//TRIM(BSP)//'.dat'
       CALL OpenFile_wStream(FluxUnit,FluxFile);       CLOSE(FluxUnit)
       CALL OpenFile_wSeq(FluxMetaUnit,FluxMetaFile);  CLOSE(FluxMetaUnit)
     END IF
@@ -516,35 +519,28 @@ PROGRAM AtCSol
 
     IF (NetCdfPrint) CALL TikZ_finished
 
-  !END IF
+  END IF
 
 
-  !************************************************************************************************
-  !************************************************************************************************
+ 
+ 
   IF ( MPI_master .AND. Reduction ) THEN
-    StartTimer = MPI_WTIME()
-    CALL Logo2()
-
-    ! writing reactions to file in another form
-!    DO i=1,nr           ! Name,iReac,Mech,Class,Type,Param)
-!      CALL WriteReaction( TRIM(ReactionSystem(i)%Line1)       &
-!      &                 , i                                   &
-!      &                 , TRIM(BSP)                           &
-!      &                 , TRIM(ReactionSystem(i)%Type)        &
-!      &                 , TRIM(ReactionSystem(i)%Line3)       )
-!    END DO
+    !-----------------------------------------------------------------------
+    ! --- Start the reduction procedure
+    !-----------------------------------------------------------------------
+    CALL Logo2
 
     !-----------------------------------------------------------------------
     ! --- Read species groups in order to combine them (Species Lumping)
-    INQUIRE( FILE='REDUCTION/Reduction.init', EXIST=ExistFile )
+    StartTimer = MPI_WTIME()
 
-    IF( ExistFile ) THEN
-      CALL ISSA_structure( ReacCyc , Target_Spc , TargetFile )
-      CALL ISSA_screening( ReactionSystem, ReacCyc, Target_Spc )
-    ELSE
-      WRITE(*,777) '    ** NO Reduction.init file found **'
-    END IF
+    CALL InitReduction
+    
+    CALL ISSA_structure( ReacCyc , Target_Spc , TargetFile )
+    CALL ISSA_screening( ReactionSystem, ReacCyc, Target_Spc )
+    
     TimeReduction = MPI_WTIME()-StartTimer
+  
     CALL ConvertTime(TimeReduction,unit)
     WRITE(*,'(32X,A,1X,F10.4,A)') 'Time ISSA reduction = ', TimeReduction, unit
     WRITE(*,*); WRITE(*,*)

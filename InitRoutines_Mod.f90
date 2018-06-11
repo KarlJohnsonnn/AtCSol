@@ -1,11 +1,18 @@
+MODULE InitRoutines_Mod   
+   
+
+   USE MPI_Mod
+   IMPLICIT NONE
+
+
+   CONTAINS
+   
    SUBROUTINE InitRun()
 !==================================================
 !===  Reading and Setting of Run Control Parameters
 !==================================================
       USE Control_Mod
-			USE MPI_Mod
 
-      IMPLICIT NONE
 
       INTEGER        :: io_stat
       CHARACTER(400) :: io_msg = ''
@@ -15,7 +22,6 @@
       NAMELIST /SCENARIO/  Bsp ,     &
       &                    WaitBar , &
       &                    ChemKin , &
-      &                    FluxAna , &
       &                    Simulation, &
       &                    Reduction
 
@@ -57,6 +63,7 @@
       &                  nOutP ,      &
       &                  DebugPrint , &
       &                  MatrixPrint, &
+      &                  FluxDataPrint , &
       &                  eps_red 
 
 !
@@ -76,7 +83,6 @@
 
       WaitBar  = .TRUE.
       ChemKin  = .FALSE.
-      FluxAna  = .FALSE.
       Simulation = .TRUE.
       Reduction  = .FALSE.
 
@@ -223,12 +229,13 @@
 !-----------------------------------------------------------------
 !
 !--- Set Default Values for OUTPUT Namelist
-      StpNetcdf   = -1.0_dp      ! Time step for Netcdf output      [in sec]
-      StpFlux     = -1.0_dp
-      nOutP       = 100
-      MatrixPrint = .FALSE.
-      DebugPrint  = .FALSE.
-      NetCdfPrint = .TRUE.
+      StpNetcdf     = -1.0_dp      ! Time step for Netcdf output      [in sec]
+      StpFlux       = -1.0_dp
+      nOutP         = 100
+      MatrixPrint   = .FALSE.
+      DebugPrint    = .FALSE.
+      NetCdfPrint   = .TRUE.
+      FluxDataPrint = .FALSE.
 !
 !--- Read OUTPUT namelist
       READ(RunUnit,OUTPUT,IOSTAT=io_stat,IOMSG=io_msg)
@@ -238,32 +245,91 @@
       IF ( TRIM(NetCdfFile) == '' ) NetCdfPrint = .FALSE.   ! no output if no filename is declared
       IF ( nOutP < 2 ) nOutP = 2                          ! minimum output steps are 2
 
-      CLOSE(RunUnit)
       
-      CONTAINS
-
-        SUBROUTINE ErrorCheck(io_stat,io_msg,cause)
-          INTEGER      :: io_stat
-          CHARACTER(*) :: io_msg, cause
-          IF ( io_stat>0 ) WRITE(*,*) '   ERROR while '//cause//'  ::  ',io_stat,'  '//TRIM(io_msg)
-        END SUBROUTINE ErrorCheck
-
-				SUBROUTINE FileNameCheck(Name,miss)
-          CHARACTER(*) :: Name
-          CHARACTER(*) :: miss
-          LOGICAL      :: ex
-
-          INQUIRE(FILE=TRIM(Name), EXIST=ex)
-          
-          IF ( TRIM(Name) == '' .OR. .NOT.ex ) THEN
-            WRITE(*,*); WRITE(*,*)
-						WRITE(*,'(10X,A)') 'ERROR    Missing:  '//TRIM(miss)
-						WRITE(*,'(10X,A)') '         FileName: '//TRIM(Name)
-            WRITE(*,*); WRITE(*,*)
-						CALL FinishMPI(); STOP
-					ELSE
-            Name = ADJUSTL(Name)
-					END IF
-        END SUBROUTINE FileNameCheck
-
    END SUBROUTINE InitRun
+
+
+  SUBROUTINE InitReduction
+    USE Control_Mod
+
+    INTEGER, PARAMETER :: ReductionUnit = 112
+    INTEGER        :: io_stat
+    CHARACTER(400) :: io_msg = ''
+
+
+    NAMELIST /SCENARIO/  TargetFile , &
+     &                   FluxFile, &
+     &                   FluxMetaFile, &
+     &                   Red_TStart ,  &
+     &                   Red_TEnd ,    &
+     &                   eps_red 
+
+    OPEN( FILE='REDUCTION/Reduction.init' , UNIT=ReductionUnit &
+    &   , IOSTAT=io_stat , IOMSG=io_msg )
+
+    CALL ErrorCheck(io_stat,io_msg,'opening reduction.init file')
+
+    TargetFile   = ''
+    FluxFile     = ''
+    FluxMetaFile = ''
+    Red_TStart   = 0.0d0 
+    Red_TEnd     = 0.0d0 
+    eps_red      = 0.11d0 
+
+
+    READ(ReductionUnit,SCENARIO,IOSTAT=io_stat,IOMSG=io_msg)
+    CALL ErrorCheck(io_stat,io_msg,'reading SCENARIO list')
+
+    CALL FileNameCheck('REDUCTION/'//TRIM(TargetFile),'TargetFile')
+    CALL FileNameCheck('REDUCTION/'//TRIM(FluxFile),'FluxDataFile')
+    CALL FileNameCheck('REDUCTION/'//TRIM(FluxMetaFile),'FluxMetaDataFile')
+  
+    TargetFile   = 'REDUCTION/'//TRIM(TargetFile)
+    FluxFile     = 'REDUCTION/'//TRIM(FluxFile)
+    FluxMetaFile = 'REDUCTION/'//TRIM(FluxMetaFile)
+
+
+    IF ( Red_TStart >= Red_TEnd ) THEN
+   	  WRITE(*,*) '  tBegin >= tEnd  '
+   	  CALL FinishMPI(); STOP 
+    END IF
+
+    IF ( eps_red <= 0.0_dp ) THEN
+      WRITE(*,*) '  reduction parameter eps_red <= 0  ---> increase value'
+      CALL FinishMPI(); STOP 
+    ELSE IF ( eps_red > 1.0 ) THEN
+      WRITE(*,*) '  reduction parameter  eps_red > 1  ---> decrease value'
+      CALL FinishMPI(); STOP 
+    END IF
+
+
+    CLOSE(ReductionUnit)
+
+  END SUBROUTINE InitReduction
+
+
+  SUBROUTINE ErrorCheck(io_stat,io_msg,cause)
+    INTEGER      :: io_stat
+    CHARACTER(*) :: io_msg, cause
+    IF ( io_stat>0 ) WRITE(*,*) '   ERROR while '//cause//'  ::  ',io_stat,'  '//TRIM(io_msg)
+  END SUBROUTINE ErrorCheck
+
+  SUBROUTINE FileNameCheck(Name,miss)
+    CHARACTER(*) :: Name
+    CHARACTER(*) :: miss
+    LOGICAL      :: ex
+
+    INQUIRE(FILE=TRIM(Name), EXIST=ex)
+    
+    IF ( TRIM(Name) == '' .OR. .NOT.ex ) THEN
+      WRITE(*,*); WRITE(*,*)
+      WRITE(*,'(10X,A)') 'ERROR    Missing:  '//TRIM(miss)
+      WRITE(*,'(10X,A)') '         FileName: '//TRIM(Name)
+      WRITE(*,*); WRITE(*,*)
+      CALL FinishMPI(); STOP
+    ELSE
+      Name = ADJUSTL(Name)
+    END IF
+  END SUBROUTINE FileNameCheck
+
+END MODULE InitRoutines_Mod

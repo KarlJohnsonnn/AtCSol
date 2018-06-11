@@ -62,7 +62,7 @@ MODULE IO_Mod
 
     IF ( INDEX(SysFile,'.sys')==0)  SysFile = TRIM(SysFile)//'.sys'
 
-    IF (MPI_master) THEN
+    IF (MPI_master.AND.Simulation) THEN
       WRITE(*,*)
       WRITE(*,777)   'Run - Paramter:'
       WRITE(*,*)

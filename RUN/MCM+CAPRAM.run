@@ -1,9 +1,8 @@
 &SCENARIO
   BSP      = 'MCM32+CAPRAM40'
   WaitBar  = .T.
-  FluxAna  = .F.
-  Simulation = .T.
-  Reduction  = .F.
+  Simulation = .F.
+  Reduction  = .T.
 /END
 &FILES
   SysFile  = 'CHEM/MCM32_CAPRAM40_full.sys'  
@@ -30,7 +29,6 @@
   AtolGas  = 1.0d-7
   AtolAqua = 1.0d-7
   Error_Est = 2
-  PI_StepSize = .F.
   LinAlg  = 'cl'
   minStp  = 1.0d-30
   maxStp  = 200.d0
@@ -43,4 +41,5 @@
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock
   MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
+  FluxDataPrint = .T.
 /END

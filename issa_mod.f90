@@ -550,9 +550,7 @@ MODULE ISSA_Mod
     CLOSE(FluxMetaUnit)
     
 
-    Tspan = [12.0_dp , 37.0_dp] ! convert in seconds
-    !Tspan = [1.0_dp , 23.0_dp] ! convert in seconds
-    Tspan = Tspan * 3600.0_dp ! convert in seconds
+    Tspan = [Red_TStart, Red_TEnd] * HOUR ! convert in seconds
     
     lbound = 1
     DO i=1,iStpFlux
@@ -587,7 +585,7 @@ MODULE ISSA_Mod
 
     ! ITERATIVE LOOP
     nStp = rbound - lbound
-    nAvg = 3
+    nAvg = 2
 
     ALLOCATE(Rates(nr,nAvg))
 
@@ -769,9 +767,9 @@ MODULE ISSA_Mod
     
     !-----------------------------------------------------------------------
     ! --- Writing a new sys-File with less reactions
-    CALL Print_SysFile( ReactionSystem, R_imp, OutputPath//TRIM(BSP)//'_red.sys' )
+    CALL Print_SysFile( ReactionSystem, R_imp, 'REDUCTION/'//TRIM(BSP)//'_red.sys' )
     write(*,*); write(*,*) 
-    write(*,777) '    Printing reduced system  ::  '//OutputPath//TRIM(BSP)//'_red.sys'
+    write(*,777) '    Printing reduced system  ::  '//'REDUCTION/'//TRIM(BSP)//'_red.sys'
     WRITE(*,*)
     write(*,'(14X,A,I6)') 'Reduced system :: Number of Reactions = ',nR_imp
     write(*,'(32X,A,I6)') 'Number of Species   = ',nS_imp

@@ -640,7 +640,7 @@ MODULE Rosenbrock_Mod
       maxErrorCounter(ierr(1,1)) = maxErrorCounter(ierr(1,1)) + 1
 
       ! for analysis and reduction
-      IF ( FluxAna .AND. MPI_master .AND. err < ONE ) THEN
+      IF ( FluxDataPrint .AND. MPI_master .AND. err < ONE ) THEN
         IF ( t - Tspan(1) >= StpFlux*REAL(iStpFlux,dp) ) THEN
           timerStart = MPI_WTIME()
           CALL StreamWriteFluxes(Rate_t,t,h)

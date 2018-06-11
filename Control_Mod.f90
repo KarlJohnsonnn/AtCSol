@@ -24,8 +24,10 @@
 &                    , TargetFile = ''      ! file for reductions analysis (target species)
 
       CHARACTER(7)  :: OutputPath   = 'OUTPUT/'      ! path to output folder
-      CHARACTER(19) :: FluxMetaFile = 'OUTPUT/fluxmeta.dat' ! meta data for unformatted flux data
-      CHARACTER(17) :: FluxFile     = 'OUTPUT/fluxes.dat'   ! flux data (unformatted)
+      CHARACTER(80) :: FluxMetaFile = '' ! meta data for unformatted flux data
+      CHARACTER(80) :: FluxFile     = ''   ! flux data (unformatted)
+
+      REAL(dp)      :: Red_TStart, Red_TEnd     ! time interval for redcution procedure
 !
 !--- Unit Numbers
       INTEGER, PARAMETER :: RunUnit      = 101  & 
@@ -54,7 +56,7 @@
 &              , Teq             & ! if Teq=.TRUE. simulate combustion mechanism
 &              , pHSet           & ! Initial pH by charge balance (1=on, 0=off)
 &              , WaitBar         & ! ladebalken im terminal bei simulation (=1, default=0)
-&              , FluxAna         & ! writing flux data and analyse after simulaiton -> print new reaction file
+&              , FluxDataPrint   & ! writing flux data and analyse after simulaiton -> print new reaction file
 &              , Simulation      & ! calculation of species concentration 
 &              , Reduction         ! reduction of chemical species and reactions
 

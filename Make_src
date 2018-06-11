@@ -8,7 +8,7 @@ OBJ = UniRnk_Mod.f90\
       Reac_Mod.f90\
       Meteo_Mod.f90\
       MPI_Mod.f90\
-      InitRun_Mod.f90\
+      InitRoutines_Mod.f90\
       NetCDF_Mod.f90\
       Sparse_Mod.f90\
       Cycles_Mod.f90\
