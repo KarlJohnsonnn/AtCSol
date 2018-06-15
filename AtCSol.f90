@@ -243,7 +243,9 @@ PROGRAM AtCSol
   ! --- this is for the new mass action product routine 
   CALL Setup_SpeciesOrder(A)
   !-----------------------------------------------------------------------
-  
+
+  CALL SYS_TO_KPP(ReactionSystem)
+
   !-----------------------------------------------------------------------
   ! --- Dimension initialisation for the unknowns and matrices
   !-----------------------------------------------------------------------

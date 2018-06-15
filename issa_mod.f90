@@ -193,23 +193,6 @@ MODULE ISSA_Mod
       END SUBROUTINE file_err
   END SUBROUTINE StreamWriteFluxes
 
-  SUBROUTINE WriteReaction(Name,iReac,Mech,Class,Param)
-    USE Control_Mod,   ONLY: OutputPath
-    CHARACTER(*) :: Name, Mech, Class, Param
-    INTEGER      :: iReac
-    INTEGER, PARAMETER :: Reac_Unit = 112
-
-    IF ( iReac == 1 ) THEN
-      OPEN(unit=Reac_Unit, file=OutputPath//'Reactions_'//Mech//'.txt', action='write')
-    ELSE
-      OPEN(unit=Reac_Unit, file=OutputPath//'Reactions_'//Mech//'.txt', status='old', action='write', position='append')
-    END IF
-
-    WRITE(Reac_Unit,'(A)') Class // ' ::: ' // Name // ' ::: ' // Param
-    CLOSE(Reac_Unit)
-
-  END SUBROUTINE WriteReaction
-
   SUBROUTINE PrintReactionCycles(ReacCycles,SpcCyc,RS)
     USE Control_Mod,  ONLY: List, BSP, OutputPath
     USE Reac_Mod,     ONLY: y_name

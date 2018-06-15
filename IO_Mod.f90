@@ -409,6 +409,153 @@ MODULE IO_Mod
     CLOSE(UnitNr)
   END SUBROUTINE SequentialReadNewReactionList
 
+  SUBROUTINE SYS_TO_KPP(RS)
+    USE Kind_Mod
+    USE Control_Mod, ONLY: BSP
+    USE Reac_Mod,    ONLY: y_name
+    USE ChemSys_Mod, ONLY: ReactionStruct_T  
+
+    TYPE(ReactionStruct_T), INTENT(IN) :: RS(:)
+
+    CHARACTER(400) :: Reaction, LeftSide, RightSide, renameSpc
+    CHARACTER(10)  :: Type
+    REAL(dp), ALLOCATABLE :: Param(:)
+    
+    INTEGER, PARAMETER :: File_Unit = 112
+    INTEGER :: iReac, iSpc, iEnd, nSpc
+
+    !OPEN(UNIT=File_Unit, FILE='OUTPUT/'//TRIM(BSP)//'.eqn', ACTION='write')
+    OPEN(UNIT=File_Unit, FILE='OUTPUT/mcm_32.eqn', ACTION='write')
+    WRITE(File_Unit,'(A)') '#EQUATIONS'
+
+
+    DO iReac=1,SIZE(RS)
+      
+      ! Renaming all species names to SPC1,...SPCnspc
+      
+      LeftSide  = ''
+      IF ( RS(iReac)%Educt(1)%Koeff /= 1.0_dp ) THEN
+        WRITE(LeftSide,'(F5.3,A,I0)') RS(iReac)%Educt(1)%Koeff,' SPC',RS(iReac)%Educt(1)%iSpecies
+      ELSE
+        WRITE(LeftSide,'(A,I0)') 'SPC',RS(iReac)%Educt(1)%iSpecies
+      END IF
+      nSpc = RS(iReac)%nActEd
+      IF ( nSpc >1 ) THEN
+        DO iSpc = 2 , nSpc
+          iEnd = LEN_TRIM(LeftSide)
+          IF ( RS(iReac)%Educt(iSpc)%iSpecies == 0 ) THEN
+            WRITE(LeftSide(iEnd+1:),'(" + ",A)') 'SPCdummy'
+          ELSE
+            IF ( RS(iReac)%Educt(iSpc)%Koeff /= 1.0_dp ) THEN
+              WRITE(LeftSide(iEnd+1:),'(" + ",F5.3,A,I0)') RS(iReac)%Educt(iSpc)%Koeff,' SPC',RS(iReac)%Educt(iSpc)%iSpecies
+            ELSE
+              WRITE(LeftSide(iEnd+1:),'(" + ",A,I0)') 'SPC',RS(iReac)%Educt(iSpc)%iSpecies
+            END IF
+          END IF
+        END DO
+      END IF
+
+      RightSide = ''
+      IF ( RS(iReac)%Product(1)%Koeff /= 1.0_dp ) THEN
+        WRITE(RightSide,'(F5.3,A,I0)') RS(iReac)%Product(1)%Koeff,' SPC',RS(iReac)%Product(1)%iSpecies
+      ELSE
+        WRITE(RightSide,'(A,I0)') 'SPC',RS(iReac)%Product(1)%iSpecies
+      END IF
+      nSpc = RS(iReac)%nActPro
+      IF ( nSpc >1 ) THEN
+        DO iSpc = 2 , nSpc
+          iEnd = LEN_TRIM(RightSide)
+          IF ( RS(iReac)%Product(iSpc)%iSpecies == 0 ) THEN
+            WRITE(RightSide(iEnd+1:),'(" + ",A)') 'SPCdummy'
+          ELSE
+            IF ( RS(iReac)%Product(iSpc)%Koeff /= 1.0_dp ) THEN
+              WRITE(RightSide(iEnd+1:),'(" + ",F5.3,A,I0)') RS(iReac)%Product(iSpc)%Koeff,' SPC',RS(iReac)%Product(iSpc)%iSpecies
+            ELSE
+              WRITE(RightSide(iEnd+1:),'(" + ",A,I0)') 'SPC',RS(iReac)%Product(iSpc)%iSpecies
+            END IF
+          END IF
+        END DO
+      END IF
+
+      Reaction = TRIM(ADJUSTL(LeftSide))//' = '//TRIM(ADJUSTL(RightSide))
+
+      Type  = ADJUSTL(RS(iReac)%TypeConstant)
+      Param = [RS(iReac)%Constants]
+
+      SELECT CASE( TRIM(Type) )
+
+        CASE('CONST'); WRITE(File_Unit,100) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
+        CASE('TEMP0'); WRITE(File_Unit,101) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
+        CASE('TEMP1'); WRITE(File_Unit,102) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
+        CASE('TEMP2'); WRITE(File_Unit,103) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
+        CASE('TEMP3'); WRITE(File_Unit,104) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
+        CASE('TEMP4'); WRITE(File_Unit,105) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
+        CASE('SPEC3'); WRITE(File_Unit,130) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
+        CASE('SPEC2MCM'); WRITE(File_Unit,131) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
+        CASE('SPEC3MCM'); WRITE(File_Unit,132) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
+        CASE('SPEC4MCM'); WRITE(File_Unit,133) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
+        CASE('SPEC5MCM'); WRITE(File_Unit,134) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
+        CASE('SPEC6MCM'); WRITE(File_Unit,135) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
+        CASE('SPEC7MCM'); WRITE(File_Unit,136) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
+        CASE('TROEMCM'); WRITE(File_Unit,110) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
+        CASE('PHOTMCM'); WRITE(File_Unit,120) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
+      END SELECT
+
+      DEALLOCATE(Param)
+      
+      !READ(*,*)
+
+    END DO
+    CLOSE(File_Unit)
+    
+    WRITE(*,*)
+    WRITE(*,'(10X,A)') 'OUTPUT/mcm_32.eqn file written.'
+
+
+    !OPEN(UNIT=File_Unit, FILE='OUTPUT/'//TRIM(BSP)//'.spc', ACTION='write')
+
+    OPEN(UNIT=File_Unit, FILE='OUTPUT/mcm_32.spc', ACTION='write')
+
+    WRITE(File_Unit,'(A)') '#include atoms'
+    WRITE(File_Unit,'(A)')
+    WRITE(File_Unit,'(A)') '#DEFVAR'
+    
+    DO iSpc=1,SIZE(y_name)
+      WRITE(renameSpc,'(A,I0)') 'SPC',iSpc
+      WRITE(File_Unit,'(A)') TRIM(renameSpc)//' = IGNORE ;    //  '//TRIM(y_name(iSpc))
+      renameSpc = ''
+    END DO
+    
+    CLOSE(File_Unit)
+
+    WRITE(*,'(10X,A)') 'OUTPUT/mcm_32.spc file written.'
+    WRITE(*,*)
+
+
+
+    !---  constant
+    100  FORMAT(A,I0,A,Es9.2,' ;')    ! CONST
+    !--- temperature dependent arrhenius
+    101  FORMAT(A,I0,A,Es8.2,'*TEMP**',Es9.2,'*EXP(-(',F7.1,'/TEMP)   ;')       ! TEMP0
+    102  FORMAT(A,I0,A,Es8.2,'*EXP(-1.0D0*(',F7.1,'/TEMP))   ;')                ! TEMP1
+    103  FORMAT(A,I0,A,Es8.2,'*TEMP*TEMP*EXP(-1.0D0*(',F7.1,'/TEMP))   ;')      ! TEMP2
+    104  FORMAT(A,I0,A,Es8.2,'*EXP(',Es9.2,'*(1.0D0/TEMP-1.0D0/298.15D0))   ;') ! TEMP3
+    105  FORMAT(A,I0,A,Es8.2,'*TEMP*EXP(-1.0D0*(',F7.1,'/TEMP))   ;')           ! TEMP4
+    !--- troe pressure dependent reactions
+    110  FORMAT(A,I0,A,'k_TROEMCM(',10(Es9.2,','),'TEMP,M)   ;')  ! TROEMCM
+    !--- mcm version photolysis
+    120 FORMAT(A,I0,A,'k_PHOTOMCM(',3(Es9.2,','),'chi)   ;')      ! PHOTMCM
+    !--- Special Types  (Gas Phase: Density-Dependent)
+    130 FORMAT(A,I0,A,   'k_SPEC3(',6(Es9.2,','),'TEMP,M)   ;')   ! SPEC3
+    131 FORMAT(A,I0,A,'k_SPEC2MCM(',3(Es9.2,','),'TEMP)   ;')     ! SPEC2MCM
+    132 FORMAT(A,I0,A,'k_SPEC3MCM(',2(Es9.2,','),'TEMP,M)   ;')   ! SPEC2MCM
+    133 FORMAT(A,I0,A,'k_SPEC4MCM(',4(Es9.2,','),'H2O,TEMP)   ;') ! SPEC2MCM
+    134 FORMAT(A,I0,A,'k_SPEC5MCM(',6(Es9.2,','),'TEMP,M)   ;')   ! SPEC2MCM
+    135 FORMAT(A,I0,A,'k_SPEC6MCM(',6(Es9.2,','),'TEMP)   ;')     ! SPEC2MCM
+    136 FORMAT(A,I0,A,'k_SPEC7MCM(',6(Es9.2,','),'TEMP)   ;')     ! SPEC2MCM
+
+  END SUBROUTINE SYS_TO_KPP
+
 
   SUBROUTINE OpenFile_wStream(UnitNr,FileName)
     INTEGER,      INTENT(IN) :: UnitNr

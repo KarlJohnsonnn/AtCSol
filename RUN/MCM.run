@@ -1,7 +1,7 @@
 &SCENARIO
   BSP      = 'MCM32gas'
   WaitBar  = .T.
-  FluxAna  = .F.
+  Simulation = .F.
 /END
 &FILES
   SysFile  = 'CHEM/MCM3-2new4Willi.sys'  
@@ -42,5 +42,4 @@
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock
   MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
-  eps_red     = 0.850
 /END
