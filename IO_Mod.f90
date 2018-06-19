@@ -418,14 +418,19 @@ MODULE IO_Mod
     TYPE(ReactionStruct_T), INTENT(IN) :: RS(:)
 
     CHARACTER(400) :: Reaction, LeftSide, RightSide, renameSpc
+    CHARACTER(400) :: Reactions1, Reactions2
     CHARACTER(10)  :: Type
     REAL(dp), ALLOCATABLE :: Param(:)
     
     INTEGER, PARAMETER :: File_Unit = 112
+    INTEGER, PARAMETER :: File_Unit2 = 113
     INTEGER :: iReac, iSpc, iEnd, nSpc
+    INTEGER :: iBrac1, iBrac2, iCol1, iCol2, iSCol1, iSCol2
+    INTEGER :: io_stat
+    CHARACTER(200) :: io_msg
 
     !OPEN(UNIT=File_Unit, FILE='OUTPUT/'//TRIM(BSP)//'.eqn', ACTION='write')
-    OPEN(UNIT=File_Unit, FILE='OUTPUT/mcm_32.eqn', ACTION='write')
+    OPEN(UNIT=File_Unit, FILE='OUTPUT/mcm_32.eqn_pre', ACTION='write')
     WRITE(File_Unit,'(A)') '#EQUATIONS'
 
 
@@ -478,12 +483,10 @@ MODULE IO_Mod
       END IF
 
       Reaction = TRIM(ADJUSTL(LeftSide))//' = '//TRIM(ADJUSTL(RightSide))
-
-      Type  = ADJUSTL(RS(iReac)%TypeConstant)
-      Param = [RS(iReac)%Constants]
+      Type     = ADJUSTL(RS(iReac)%TypeConstant)
+      Param    = [RS(iReac)%Constants]
 
       SELECT CASE( TRIM(Type) )
-
         CASE('CONST'); WRITE(File_Unit,100) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
         CASE('TEMP0'); WRITE(File_Unit,101) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
         CASE('TEMP1'); WRITE(File_Unit,102) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
@@ -502,11 +505,108 @@ MODULE IO_Mod
       END SELECT
 
       DEALLOCATE(Param)
-      
-      !READ(*,*)
 
     END DO
     CLOSE(File_Unit)
+
+
+    ! check for duplicate reactions
+    OPEN(UNIT=File_Unit, FILE='OUTPUT/mcm_32.eqn_pre', STATUS='OLD', ACTION='READ')
+    REWIND(File_Unit)
+    READ(File_Unit,'(A400)',IOSTAT=io_stat,IOMSG=io_msg) Reaction     ! dummy (#EQUATIONS line)
+
+    ! open new file (final form)
+    OPEN(UNIT=File_Unit2, FILE='OUTPUT/mcm_32.eqn', ACTION='WRITE')
+    WRITE(File_Unit2,'(A)') '#EQUATIONS'
+
+
+
+    iReac = 0
+
+    DO 
+      READ(File_Unit,'(A400)',IOSTAT=io_stat,IOMSG=io_msg) Reactions1
+      READ(File_Unit,'(A400)',IOSTAT=io_stat,IOMSG=io_msg) Reactions2
+
+      iBrac1 = INDEX(Reactions1,'}'); iCol1 = INDEX(Reactions1,':')
+      iBrac2 = INDEX(Reactions2,'}'); iCol2 = INDEX(Reactions2,':')
+
+
+      iEnd = INDEX( ADJUSTL(TRIM(Reactions1(iBrac1+1:iCol1-1))) &
+      &           , ADJUSTL(TRIM(Reactions2(iBrac2+1:iCol2-1))) ) 
+
+      ! same reaction
+      IF ( iEnd > 0 ) THEN
+        iSCol1 = INDEX(Reactions1,';')
+        iSCol2 = INDEX(Reactions2,';')
+
+        Reaction = TRIM(ADJUSTL(Reactions1(iBrac1+1:iCol1-1)))//' :   '// &
+        &          TRIM(ADJUSTL(Reactions1(iCol1+1:iSCol1-1)))//' + '//&
+        &          TRIM(ADJUSTL(Reactions2(iCol2+1:)))
+
+        iReac = iReac + 1
+        WRITE(File_Unit2,'("{",I0,".}  ",A)') iReac, TRIM(ADJUSTL(Reaction))
+
+      ELSE
+        iReac = iReac + 1
+        WRITE(File_Unit2,'("{",I0,".}  ",A)') iReac, TRIM(ADJUSTL(Reactions1(iBrac1+1:)))
+        BACKSPACE(File_Unit)
+      END IF
+
+      IF ( io_stat < 0 ) EXIT
+
+    END DO
+
+    CLOSE(File_Unit)
+    CLOSE(File_Unit2)
+
+    ! check for duplicate reactions
+    OPEN(UNIT=File_Unit, FILE='OUTPUT/mcm_32.eqn', STATUS='OLD', ACTION='READ')
+    REWIND(File_Unit)
+    READ(File_Unit,'(A400)',IOSTAT=io_stat,IOMSG=io_msg) Reaction     ! dummy (#EQUATIONS line)
+
+    ! open new file (final form)
+    OPEN(UNIT=File_Unit2, FILE='OUTPUT/mcm_32_final.eqn', ACTION='WRITE')
+    WRITE(File_Unit2,'(A)') '#EQUATIONS'
+
+    iReac = 0
+
+    DO 
+      READ(File_Unit,'(A400)',IOSTAT=io_stat,IOMSG=io_msg) Reactions1
+      READ(File_Unit,'(A400)',IOSTAT=io_stat,IOMSG=io_msg) Reactions2
+
+      iBrac1 = INDEX(Reactions1,'}'); iCol1 = INDEX(Reactions1,':')
+      iBrac2 = INDEX(Reactions2,'}'); iCol2 = INDEX(Reactions2,':')
+
+
+      iEnd = INDEX( ADJUSTL(TRIM(Reactions1(iBrac1+1:iCol1-1))) &
+      &           , ADJUSTL(TRIM(Reactions2(iBrac2+1:iCol2-1))) ) 
+
+      ! same reaction
+      IF ( iEnd > 0 ) THEN
+        iSCol1 = INDEX(Reactions1,';')
+        iSCol2 = INDEX(Reactions2,';')
+
+        Reaction = TRIM(ADJUSTL(Reactions1(iBrac1+1:iCol1-1)))//' :   '// &
+        &          TRIM(ADJUSTL(Reactions1(iCol1+1:iSCol1-1)))//' + '//&
+        &          TRIM(ADJUSTL(Reactions2(iCol2+1:)))
+
+        iReac = iReac + 1
+        WRITE(File_Unit2,'("{",I0,".}  ",A)') iReac, TRIM(ADJUSTL(Reaction))
+
+      ELSE
+        iReac = iReac + 1
+        WRITE(File_Unit2,'("{",I0,".}  ",A)') iReac, TRIM(ADJUSTL(Reactions1(iBrac1+1:)))
+        BACKSPACE(File_Unit)
+      END IF
+
+
+      IF ( io_stat < 0 ) EXIT
+
+    END DO
+
+    CLOSE(File_Unit)
+    CLOSE(File_Unit2)
+    
     
     WRITE(*,*)
     WRITE(*,'(10X,A)') 'OUTPUT/mcm_32.eqn file written.'
@@ -522,7 +622,7 @@ MODULE IO_Mod
     
     DO iSpc=1,SIZE(y_name)
       WRITE(renameSpc,'(A,I0)') 'SPC',iSpc
-      WRITE(File_Unit,'(A)') TRIM(renameSpc)//' = IGNORE ;    //  '//TRIM(y_name(iSpc))
+      WRITE(File_Unit,'(A)') TRIM(renameSpc)//' = IGNORE ;    {'//TRIM(y_name(iSpc))//'}'
       renameSpc = ''
     END DO
     
@@ -534,15 +634,15 @@ MODULE IO_Mod
 
 
     !---  constant
-    100  FORMAT(A,I0,A,Es9.2,' ;')    ! CONST
+    100 FORMAT(A,I0,A,Es9.2,' ;')    ! CONST
     !--- temperature dependent arrhenius
-    101  FORMAT(A,I0,A,Es8.2,'*TEMP**',Es9.2,'*EXP(-(',F7.1,'/TEMP)   ;')       ! TEMP0
-    102  FORMAT(A,I0,A,Es8.2,'*EXP(-1.0D0*(',F7.1,'/TEMP))   ;')                ! TEMP1
-    103  FORMAT(A,I0,A,Es8.2,'*TEMP*TEMP*EXP(-1.0D0*(',F7.1,'/TEMP))   ;')      ! TEMP2
-    104  FORMAT(A,I0,A,Es8.2,'*EXP(',Es9.2,'*(1.0D0/TEMP-1.0D0/298.15D0))   ;') ! TEMP3
-    105  FORMAT(A,I0,A,Es8.2,'*TEMP*EXP(-1.0D0*(',F7.1,'/TEMP))   ;')           ! TEMP4
+    101 FORMAT(A,I0,A,Es8.2,'*TEMP**',Es9.2,'*EXP(-(',F7.1,'/TEMP)   ;')       ! TEMP0
+    102 FORMAT(A,I0,A,Es8.2,'*EXP(-1.0D0*(',F7.1,'/TEMP))   ;')                ! TEMP1
+    103 FORMAT(A,I0,A,Es8.2,'*TEMP*TEMP*EXP(-1.0D0*(',F7.1,'/TEMP))   ;')      ! TEMP2
+    104 FORMAT(A,I0,A,Es8.2,'*EXP(',Es9.2,'*(1.0D0/TEMP-1.0D0/298.15D0))   ;') ! TEMP3
+    105 FORMAT(A,I0,A,Es8.2,'*TEMP*EXP(-1.0D0*(',F7.1,'/TEMP))   ;')           ! TEMP4
     !--- troe pressure dependent reactions
-    110  FORMAT(A,I0,A,'k_TROEMCM(',10(Es9.2,','),'TEMP,M)   ;')  ! TROEMCM
+    110 FORMAT(A,I0,A,'k_TROEMCM(',10(Es9.2,','),'TEMP,M)   ;')  ! TROEMCM
     !--- mcm version photolysis
     120 FORMAT(A,I0,A,'k_PHOTOMCM(',3(Es9.2,','),'chi)   ;')      ! PHOTMCM
     !--- Special Types  (Gas Phase: Density-Dependent)
