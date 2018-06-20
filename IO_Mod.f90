@@ -412,14 +412,14 @@ MODULE IO_Mod
   SUBROUTINE SYS_TO_KPP(RS)
     USE Kind_Mod
     USE Control_Mod, ONLY: BSP
-    USE Reac_Mod,    ONLY: y_name
+    USE Reac_Mod,    ONLY: y_name, RO2
     USE ChemSys_Mod, ONLY: ReactionStruct_T  
 
     TYPE(ReactionStruct_T), INTENT(IN) :: RS(:)
 
     CHARACTER(400) :: Reaction, LeftSide, RightSide, renameSpc
     CHARACTER(400) :: Reactions1, Reactions2
-    CHARACTER(10)  :: Type
+    CHARACTER(10)  :: Type, Factor
     REAL(dp), ALLOCATABLE :: Param(:)
     
     INTEGER, PARAMETER :: File_Unit = 112
@@ -427,17 +427,19 @@ MODULE IO_Mod
     INTEGER :: iReac, iSpc, iEnd, nSpc
     INTEGER :: iBrac1, iBrac2, iCol1, iCol2, iSCol1, iSCol2
     INTEGER :: io_stat
+    INTEGER :: RO2_4,RO2_rest
     CHARACTER(200) :: io_msg
 
-    !OPEN(UNIT=File_Unit, FILE='OUTPUT/'//TRIM(BSP)//'.eqn', ACTION='write')
+    
+    ! --------------------------------------
+    ! --- Writing the KPP equation file
+    !
     OPEN(UNIT=File_Unit, FILE='OUTPUT/mcm_32.eqn_pre', ACTION='write')
     WRITE(File_Unit,'(A)') '#EQUATIONS'
-
 
     DO iReac=1,SIZE(RS)
       
       ! Renaming all species names to SPC1,...SPCnspc
-      
       LeftSide  = ''
       IF ( RS(iReac)%Educt(1)%Koeff /= 1.0_dp ) THEN
         WRITE(LeftSide,'(F5.3,A,I0)') RS(iReac)%Educt(1)%Koeff,' SPC',RS(iReac)%Educt(1)%iSpecies
@@ -485,23 +487,38 @@ MODULE IO_Mod
       Reaction = TRIM(ADJUSTL(LeftSide))//' = '//TRIM(ADJUSTL(RightSide))
       Type     = ADJUSTL(RS(iReac)%TypeConstant)
       Param    = [RS(iReac)%Constants]
+      Factor   = ADJUSTL(RS(iReac)%Factor)
 
-      SELECT CASE( TRIM(Type) )
-        CASE('CONST'); WRITE(File_Unit,100) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
-        CASE('TEMP0'); WRITE(File_Unit,101) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
-        CASE('TEMP1'); WRITE(File_Unit,102) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
-        CASE('TEMP2'); WRITE(File_Unit,103) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
-        CASE('TEMP3'); WRITE(File_Unit,104) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
-        CASE('TEMP4'); WRITE(File_Unit,105) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
-        CASE('SPEC3'); WRITE(File_Unit,130) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
-        CASE('SPEC2MCM'); WRITE(File_Unit,131) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
-        CASE('SPEC3MCM'); WRITE(File_Unit,132) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
-        CASE('SPEC4MCM'); WRITE(File_Unit,133) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
-        CASE('SPEC5MCM'); WRITE(File_Unit,134) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
-        CASE('SPEC6MCM'); WRITE(File_Unit,135) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
-        CASE('SPEC7MCM'); WRITE(File_Unit,136) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
-        CASE('TROEMCM'); WRITE(File_Unit,110) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
-        CASE('PHOTMCM'); WRITE(File_Unit,120) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param
+      SELECT CASE ( TRIM(Factor) )
+        CASE('$H2');    Factor = '*H2'
+        CASE('$O2N2');  Factor = '*O2*N2'
+        CASE('$M');     Factor = '*M'
+        CASE('$O2');    Factor = '*O2'
+        CASE('$N2');    Factor = '*N2'
+        CASE('$H2O');   Factor = '*H2O'
+        CASE('$O2O2');  Factor = '*O2*O2'  
+        CASE('$RO2');   Factor = '*RO2'
+        CASE('$RO2aq'); Factor = '*RO2aq'
+        CASE('$aH2O');  Factor = '*aH2O'
+        CASE DEFAULT;   Factor = ''
+      END SELECT
+
+      SELECT CASE ( TRIM(Type) )
+        CASE('CONST');    WRITE(File_Unit,100) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param,TRIM(Factor)//'  ;'
+        CASE('TEMP0');    WRITE(File_Unit,101) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param,TRIM(Factor)//'  ;'
+        CASE('TEMP1');    WRITE(File_Unit,102) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param,TRIM(Factor)//'  ;'
+        CASE('TEMP2');    WRITE(File_Unit,103) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param,TRIM(Factor)//'  ;'
+        CASE('TEMP3');    WRITE(File_Unit,104) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param,TRIM(Factor)//'  ;'
+        CASE('TEMP4');    WRITE(File_Unit,105) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param,TRIM(Factor)//'  ;'
+        CASE('SPEC3');    WRITE(File_Unit,130) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param,TRIM(Factor)//'  ;'
+        CASE('SPEC2MCM'); WRITE(File_Unit,131) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param,TRIM(Factor)//'  ;'
+        CASE('SPEC3MCM'); WRITE(File_Unit,132) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param,TRIM(Factor)//'  ;'
+        CASE('SPEC4MCM'); WRITE(File_Unit,133) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param,TRIM(Factor)//'  ;'
+        CASE('SPEC5MCM'); WRITE(File_Unit,134) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param,TRIM(Factor)//'  ;'
+        CASE('SPEC6MCM'); WRITE(File_Unit,135) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param,TRIM(Factor)//'  ;'
+        CASE('SPEC7MCM'); WRITE(File_Unit,136) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param,TRIM(Factor)//'  ;'
+        CASE('TROEMCM');  WRITE(File_Unit,110) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param,TRIM(Factor)//'  ;'
+        CASE('PHOTMCM');  WRITE(File_Unit,120) '{',iReac,'.}  '//TRIM(Reaction)//' :   ',Param,TRIM(Factor)//'  ;'
       END SELECT
 
       DEALLOCATE(Param)
@@ -510,13 +527,16 @@ MODULE IO_Mod
     CLOSE(File_Unit)
 
 
-    ! check for duplicate reactions
+    ! --------------------------------------
+    ! --- Joining duplicate reactions
+    ! 
+    
     OPEN(UNIT=File_Unit, FILE='OUTPUT/mcm_32.eqn_pre', STATUS='OLD', ACTION='READ')
     REWIND(File_Unit)
     READ(File_Unit,'(A400)',IOSTAT=io_stat,IOMSG=io_msg) Reaction     ! dummy (#EQUATIONS line)
 
     ! open new file (final form)
-    OPEN(UNIT=File_Unit2, FILE='OUTPUT/mcm_32.eqn', ACTION='WRITE')
+    OPEN(UNIT=File_Unit2, FILE='OUTPUT/mcm_32.eqn_pre2', ACTION='WRITE')
     WRITE(File_Unit2,'(A)') '#EQUATIONS'
 
 
@@ -559,13 +579,17 @@ MODULE IO_Mod
     CLOSE(File_Unit)
     CLOSE(File_Unit2)
 
-    ! check for duplicate reactions
-    OPEN(UNIT=File_Unit, FILE='OUTPUT/mcm_32.eqn', STATUS='OLD', ACTION='READ')
+
+    ! --------------------------------------
+    ! --- Joining duplicate reactions 2nd time
+    ! 
+    
+    OPEN(UNIT=File_Unit, FILE='OUTPUT/mcm_32.eqn_pre2', STATUS='OLD', ACTION='READ')
     REWIND(File_Unit)
     READ(File_Unit,'(A400)',IOSTAT=io_stat,IOMSG=io_msg) Reaction     ! dummy (#EQUATIONS line)
 
     ! open new file (final form)
-    OPEN(UNIT=File_Unit2, FILE='OUTPUT/mcm_32_final.eqn', ACTION='WRITE')
+    OPEN(UNIT=File_Unit2, FILE='OUTPUT/mcm_32.eqn', ACTION='WRITE')
     WRITE(File_Unit2,'(A)') '#EQUATIONS'
 
     iReac = 0
@@ -614,6 +638,9 @@ MODULE IO_Mod
 
     !OPEN(UNIT=File_Unit, FILE='OUTPUT/'//TRIM(BSP)//'.spc', ACTION='write')
 
+    ! ------------------------------------------------------------
+    ! Writing the KPP species file
+    !
     OPEN(UNIT=File_Unit, FILE='OUTPUT/mcm_32.spc', ACTION='write')
 
     WRITE(File_Unit,'(A)') '#include atoms'
@@ -627,32 +654,70 @@ MODULE IO_Mod
     END DO
     
     CLOSE(File_Unit)
-
     WRITE(*,'(10X,A)') 'OUTPUT/mcm_32.spc file written.'
     WRITE(*,*)
 
 
+    ! ------------------------------------------------
+    ! --- Writing the operation for RO2 factor to file
+    ! 
+    OPEN(UNIT=File_Unit, FILE='OUTPUT/mcm_32_RO2.f90', ACTION='write', IOSTAT=io_stat, IOMSG=io_msg)
+
+    RO2_rest = MODULO(SIZE(RO2),4)
+    RO2_4    = SIZE(RO2) - RO2_rest
+    
+    WRITE(File_Unit,'(2X,A)') 'RO2 = &'
+
+    ! four species next to each other
+    DO iSpc = 1 , RO2_4 , 4
+      WRITE(renameSpc,'(A,I0)') 'SPC',RO2(iSpc)
+      WRITE(File_Unit,140,ADVANCE='NO', IOSTAT=io_stat, IOMSG=io_msg) TRIM(renameSpc),''
+      WRITE(renameSpc,'(A,I0)') 'SPC',RO2(iSpc+1)
+      WRITE(File_Unit,140,ADVANCE='NO', IOSTAT=io_stat, IOMSG=io_msg) TRIM(renameSpc),''
+      WRITE(renameSpc,'(A,I0)') 'SPC',RO2(iSpc+2)
+      WRITE(File_Unit,140,ADVANCE='NO', IOSTAT=io_stat, IOMSG=io_msg) TRIM(renameSpc),''
+      WRITE(renameSpc,'(A,I0)') 'SPC',RO2(iSpc+3)
+      WRITE(File_Unit,140, IOSTAT=io_stat, IOMSG=io_msg) TRIM(renameSpc), '  &'
+    END DO
+    
+    ! one species per line
+    DO iSpc = RO2_4+1 , RO2_4+RO2_rest-1
+      WRITE(renameSpc,'(A,I0)') 'SPC',RO2(iSpc)
+      WRITE(File_Unit,141, IOSTAT=io_stat, IOMSG=io_msg) TRIM(renameSpc)
+    END DO
+
+    ! last species without '&'
+    WRITE(renameSpc,'(A,I0)') 'SPC',RO2(SIZE(RO2))
+    WRITE(File_Unit,142, IOSTAT=io_stat, IOMSG=io_msg) TRIM(renameSpc)
+
+    CLOSE(File_Unit)
+
+
 
     !---  constant
-    100 FORMAT(A,I0,A,Es9.2,' ;')    ! CONST
+    100 FORMAT(A,I0,A,Es9.2,A)    ! CONST
     !--- temperature dependent arrhenius
-    101 FORMAT(A,I0,A,Es8.2,'*TEMP**',Es9.2,'*EXP(-(',F7.1,'/TEMP)   ;')       ! TEMP0
-    102 FORMAT(A,I0,A,Es8.2,'*EXP(-1.0D0*(',F7.1,'/TEMP))   ;')                ! TEMP1
-    103 FORMAT(A,I0,A,Es8.2,'*TEMP*TEMP*EXP(-1.0D0*(',F7.1,'/TEMP))   ;')      ! TEMP2
-    104 FORMAT(A,I0,A,Es8.2,'*EXP(',Es9.2,'*(1.0D0/TEMP-1.0D0/298.15D0))   ;') ! TEMP3
-    105 FORMAT(A,I0,A,Es8.2,'*TEMP*EXP(-1.0D0*(',F7.1,'/TEMP))   ;')           ! TEMP4
+    101 FORMAT(A,I0,A,Es8.2,'*TEMP**',Es9.2,'*EXP(-(',F7.1,'/TEMP)',A)       ! TEMP0
+    102 FORMAT(A,I0,A,Es8.2,'*EXP(-1.0D0*(',F7.1,'/TEMP))',A)                ! TEMP1
+    103 FORMAT(A,I0,A,Es8.2,'*TEMP*TEMP*EXP(-1.0D0*(',F7.1,'/TEMP))',A)      ! TEMP2
+    104 FORMAT(A,I0,A,Es8.2,'*EXP(',Es9.2,'*(1.0D0/TEMP-1.0D0/298.15D0))',A) ! TEMP3
+    105 FORMAT(A,I0,A,Es8.2,'*TEMP*EXP(-1.0D0*(',F7.1,'/TEMP))',A)           ! TEMP4
     !--- troe pressure dependent reactions
-    110 FORMAT(A,I0,A,'k_TROEMCM(',10(Es9.2,','),'TEMP,M)   ;')  ! TROEMCM
+    110 FORMAT(A,I0,A,'k_TROEMCM(',10(Es9.2,','),'TEMP,M)',A)  ! TROEMCM
     !--- mcm version photolysis
-    120 FORMAT(A,I0,A,'k_PHOTOMCM(',3(Es9.2,','),'chi)   ;')      ! PHOTMCM
+    120 FORMAT(A,I0,A,'k_PHOTOMCM(',3(Es9.2,','),'chi)',A)      ! PHOTMCM
     !--- Special Types  (Gas Phase: Density-Dependent)
-    130 FORMAT(A,I0,A,   'k_SPEC3(',6(Es9.2,','),'TEMP,M)   ;')   ! SPEC3
-    131 FORMAT(A,I0,A,'k_SPEC2MCM(',3(Es9.2,','),'TEMP)   ;')     ! SPEC2MCM
-    132 FORMAT(A,I0,A,'k_SPEC3MCM(',2(Es9.2,','),'TEMP,M)   ;')   ! SPEC2MCM
-    133 FORMAT(A,I0,A,'k_SPEC4MCM(',4(Es9.2,','),'H2O,TEMP)   ;') ! SPEC2MCM
-    134 FORMAT(A,I0,A,'k_SPEC5MCM(',6(Es9.2,','),'TEMP,M)   ;')   ! SPEC2MCM
-    135 FORMAT(A,I0,A,'k_SPEC6MCM(',6(Es9.2,','),'TEMP)   ;')     ! SPEC2MCM
-    136 FORMAT(A,I0,A,'k_SPEC7MCM(',6(Es9.2,','),'TEMP)   ;')     ! SPEC2MCM
+    130 FORMAT(A,I0,A,   'k_SPEC3(',6(Es9.2,','),'TEMP,M)',A)   ! SPEC3
+    131 FORMAT(A,I0,A,'k_SPEC2MCM(',3(Es9.2,','),'TEMP)',A)     ! SPEC2MCM
+    132 FORMAT(A,I0,A,'k_SPEC3MCM(',2(Es9.2,','),'TEMP,M)',A)   ! SPEC3MCM
+    133 FORMAT(A,I0,A,'k_SPEC4MCM(',4(Es9.2,','),'H2O,TEMP)',A) ! SPEC4MCM
+    134 FORMAT(A,I0,A,'k_SPEC5MCM(',4(Es9.2,','),'TEMP,M)',A)   ! SPEC5MCM
+    135 FORMAT(A,I0,A,'k_SPEC6MCM(',4(Es9.2,','),'TEMP)',A)     ! SPEC6MCM
+    136 FORMAT(A,I0,A,'k_SPEC7MCM(',6(Es9.2,','),'TEMP)',A)     ! SPEC7MCM
+    !--- RO2 factors
+    140 FORMAT(4X,'C(ind_',A,') + ',A)
+    141 FORMAT(4X,'C(ind_',A,' & ')
+    142 FORMAT(4X,'C(ind_',A,')')
 
   END SUBROUTINE SYS_TO_KPP
 
