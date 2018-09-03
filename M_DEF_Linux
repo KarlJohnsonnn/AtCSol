@@ -1,12 +1,13 @@
 
+LocNCDF = /store/menge/tools/packages/netcdf/4.3.2-gcc-4.9.0/lib
+LocINCL = 
+
 OPTFREE =  -ffree-form -ffixed-line-length-none -ffree-line-length-none
 OPTFIX =  -ffixed-line-length-none -ffree-line-length-none 
 
 LINK = mpif90
 F90  = mpif90 $(OPTFREE) $(CPPFLAGS) $(LDFLAGS)
 F90_F  = mpif90 $(OPTFIX) $(CPPFLAGS) $(LDFLAGS) 
-
-CC   = mpicc
 
 OPT_O =  -O3 
 OPT_D =  -g -O0 -Warray-bounds -Wextra -fbacktrace -ffpe-trap=zero -fimplicit-none  -fcheck=all -Wall
@@ -19,6 +20,6 @@ KINCL_D = -I./LIB_D
 LIB_O = ./LIB
 LIB_D = ./LIB_D
 
-NETCDF =-L/store/menge/tools/packages/netcdf/4.3.2-gcc-4.9.0/lib -lnetcdf -lnetcdff
+NETCDF =-L$(LocNCDF) -lnetcdf -lnetcdff
 
 LAPACK=-llapack

@@ -239,6 +239,7 @@
       IF ( PHOTO ) THEN
         ! tropos syntax calculation of zenith
         chi(1) = Zenith(Time)
+        !WRITE(*,*) ' chi = ', chi
         chi(2) = ONE/COS(chi(1))
         ! kkp syntax calculation of sun for photo reactions
         chi(3) = UpdateSun(Time)
@@ -255,9 +256,11 @@
 
       ! ====== Computing effective molecularity 
       !   mAir = (N2+O2) [molec/cm3] * 298.15 [K] / Temperature [1/K] * 850 [hPa] / 1013.25 [hPa]
-      mAir = M * RefTemp * T(6) * Pres / p0
+      mAir = N2O2 * RefTemp * T(6) * Pres / p0
       Meff = ONE
       IF ( nr_FACTOR > 0 ) Meff = EffectiveMolecularity( Conc , mAir )
+      !WRITE(*,*) ' M(RO2) = ', Time, Meff(iR%iFAC_RO2(1)) 
+      Meff(iR%iFAC_RO2) = ZERO
       
       ! ====== Compute the rate constant for specific reaction type
       k = ComputeRateConstant( T, Time, chi, mAir, Conc )
@@ -407,16 +410,32 @@
       !
       M = ONE
 
-      IF(nr_FAC_H2>0)    M(iR%iFAC_H2)   = ((mH2*mAir)**fac_exp)*fac_A
-      IF(nr_FAC_O2N2>0)  M(iR%iFAC_O2N2) = (((mO2*mAir)*(mN2*mAir))**fac_exp)*fac_A
       IF(nr_FAC_M>0)     M(iR%iFAC_M)    = (mAir**fac_exp)*fac_A
-      IF(nr_FAC_O2>0)    M(iR%iFAC_O2)   = ((mO2*mAir)**fac_exp)*fac_A
-      IF(nr_FAC_N2>0)    M(iR%iFAC_N2)   = ((mN2*mAir)**fac_exp)*fac_A
-      IF(nr_FAC_H2O>0)   M(iR%iFAC_H2O)  = (mH2O**fac_exp)*fac_A
+      IF(nr_FAC_H2>0)    M(iR%iFAC_H2)   = ((mH2*mAir)**fac_exp)*fac_A
       IF(nr_FAC_RO2>0)   M(iR%iFAC_RO2)  = SUM(Conc(RO2))
-      IF(nr_FAC_O2O2>0)  M(iR%iFAC_O2O2) = (((mO2*mAir)*(mO2*mAir))**fac_exp)*fac_A
-      !IF(nr_FAC_aH2O>0) M(iR%iFAC_aH2O) = aH2OmolperL*LWC*mol2part
       IF(nr_FAC_RO2aq>0) M(iR%iFAC_RO2aq) = SUM(Conc(RO2aq))
+
+      IF(nr_FAC_O2>0)    M(iR%iFAC_O2)   = ((O2)**fac_exp)*fac_A
+      IF(nr_FAC_O2O2>0)  M(iR%iFAC_O2O2) = ((O2*O2)**fac_exp)*fac_A
+      IF(nr_FAC_N2>0)    M(iR%iFAC_N2)   = ((N2)**fac_exp)*fac_A
+      IF(nr_FAC_O2N2>0)  M(iR%iFAC_O2N2) = ((O2*N2)**fac_exp)*fac_A
+      IF(nr_FAC_H2O>0)   M(iR%iFAC_H2O)  = (H2O**fac_exp)*fac_A
+
+      !IF(nr_FAC_O2>0)    M(iR%iFAC_O2)   = ((mO2*mAir)**fac_exp)*fac_A
+      !IF(nr_FAC_O2O2>0)  M(iR%iFAC_O2O2) = (((mO2*mAir)*(mO2*mAir))**fac_exp)*fac_A
+      !IF(nr_FAC_N2>0)    M(iR%iFAC_N2)   = ((mN2*mAir)**fac_exp)*fac_A
+      !IF(nr_FAC_O2N2>0)  M(iR%iFAC_O2N2) = (((mO2*mAir)*(mN2*mAir))**fac_exp)*fac_A
+      !IF(nr_FAC_H2O>0)   M(iR%iFAC_H2O)  = ((mH2O*mAir)**fac_exp)*fac_A
+
+
+      !WRITE(*,*) ' Facorts '
+      !WRITE(*,*) ' mO2,  mN2,  mH2O ',((mO2*mAir)**fac_exp)*fac_A&
+      !&                              ,((mN2*mAir)**fac_exp)*fac_A&
+      !&                              ,((mH2O*mAir)**fac_exp)*fac_A
+      !WRITE(*,*) ' O2,    N2,   H2O ',O2,N2,H2O
+      !WRITE(*,*) ' mAir ', mAir
+      !WRITE(*,*) 
+      !STOP
 
     END FUNCTION EffectiveMolecularity
 

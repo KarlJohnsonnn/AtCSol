@@ -2,17 +2,18 @@
   BSP      = 'MCM32+CAPRAM40'
   WaitBar  = .T.
   Simulation = .T.
-  Reduction  = .F.
+  Reduction  = .T.
 /END
 &FILES
   SysFile  = 'CHEM/MCM32_CAPRAM40_full.sys'  
   DataFile = 'DAT/MCM32_CAPRAM40_full.dat'
-  InitFile = 'INI/Urban2.ini'
+  !InitFile = 'INI/Urban2.ini'
+  InitFile = 'INI/urbMCM+C30m_erik.ini'
 /END
 &TIMES
   tBegin      = 0.0d0
-  tEnd        = 172800.0d0
-  !tEnd        = 84600.0d0
+  !tEnd        = 172800.0d0
+  tEnd        = 84600.0d0
 /END
 &METEO
   pHSet       = .T.          ! Berechne pH Wert zu Beginn
@@ -25,21 +26,21 @@
   Temperature0= 280.0d0
 /END
 &NUMERICS
-  RtolROW  = 1.0d-3
+  RtolROW  = 1.0d-4
   AtolGas  = 1.0d-7
   AtolAqua = 1.0d-7
   Error_Est = 2
   LinAlg  = 'cl'
   minStp  = 1.0d-30
-  maxStp  = 200.d0
+  maxStp  = 300.d0
   ODEsolver = 'METHODS/Rodas3.ros'
 /END
 &OUTPUT
   NetCdfFile  = 'NetCDF/MCM32+C40_full.nc' ! location and name of NetCDF output file
-  StpNetCDF   = 300.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep
+  StpNetCDF   = 600.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep
   StpFlux     = 300.0d0
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock
   MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
-  FluxDataPrint = .F.
+  FluxDataPrint = .T.
 /END

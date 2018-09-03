@@ -61,6 +61,8 @@
 &              , Simulation      & ! calculation of species concentration 
 &              , Reduction         ! reduction of chemical species and reactions
 
+      LOGICAL :: KPP_Conversion
+
       INTEGER :: Error_Est         ! error estimation 1 = inf norm  , 2 = euklid norm
     
 !--- Output of reaction fluxes

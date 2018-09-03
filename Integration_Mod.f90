@@ -522,6 +522,67 @@ MODULE Integration_Mod
 
   END SUBROUTINE FRhs
 
+     
+  SUBROUTINE Jacobian_LSODES (NEQ1, T, Y, J, IA, JA, PDJ)
+    INTEGER  ::  NEQ1, J 
+    REAL(dp) :: T, Y(NEQ1), PDJ(NEQ1)
+    INTEGER  :: IA(:), JA(:)
+
+
+ !1   PDJ(1) = -RK1
+     !PDJ(2) = RK1
+     !RETURN
+ !2   PDJ(2) = -RK3*Y(3) - RK15*Y(12) - RK2
+     !PDJ(3) = RK2 - RK3*Y(3)
+     !PDJ(4) = RK3*Y(3)
+     !PDJ(5) = RK15*Y(12)
+     !PDJ(12) = -RK15*Y(12)
+     !RETURN
+ !3   PDJ(2) = -RK3*Y(2)
+     !PDJ(3) = -RK5 - RK3*Y(2) - RK7*Y(10)
+     !PDJ(4) = RK3*Y(2)
+     !PDJ(6) = RK7*Y(10)
+     !PDJ(10) = RK5 - RK7*Y(10)
+     !RETURN
+ !4   PDJ(2) = RK11*RK14
+     !PDJ(3) = RK11*RK14
+     !PDJ(4) = -RK11*RK14 - RK4
+     !PDJ(9) = RK4
+     !RETURN
+ !5   PDJ(2) = RK19*RK14
+     !PDJ(5) = -RK19*RK14 - RK16
+     !PDJ(9) = RK16
+     !PDJ(12) = RK19*RK14
+     !RETURN
+ !6   PDJ(3) = RK12*RK14
+     !PDJ(6) = -RK12*RK14 - RK8
+     !PDJ(9) = RK8
+     !PDJ(10) = RK12*RK14
+     !RETURN
+ !7   PDJ(7) = -RK20*RK14 - RK18
+     !PDJ(9) = RK18
+     !PDJ(10) = RK20*RK14
+     !PDJ(12) = RK20*RK14
+     !RETURN
+ !8   PDJ(8) = -RK13*RK14 - RK10
+     !PDJ(10) = RK13*RK14
+     !PDJ(11) = RK10
+ !9   RETURN
+ !10  PDJ(3) = -RK7*Y(3)
+     !PDJ(6) = RK7*Y(3)
+     !PDJ(7) = RK17*Y(12)
+     !PDJ(8) = RK9
+     !PDJ(10) = -RK7*Y(3) - RK17*Y(12) - RK6 - RK9
+     !PDJ(12) = RK6 - RK17*Y(12)
+ !11  RETURN
+ !12  PDJ(2) = -RK15*Y(2)
+     !PDJ(5) = RK15*Y(2)
+     !PDJ(7) = RK17*Y(10)
+     !PDJ(10) = -RK17*Y(10)
+     !PDJ(12) = -RK15*Y(2) - RK17*Y(10)
+     !RETURN
+  END SUBROUTINE Jacobian_LSODES
+
   ! dummy routine for ode solver LSODE
   SUBROUTINE dummy()
     IMPLICIT NONE

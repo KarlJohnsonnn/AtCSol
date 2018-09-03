@@ -2140,84 +2140,7 @@ MODULE Chemsys_Mod
         WRITE(*,*) '      Warning: Missing temperature "TEMP" in SPECIAL Formula :: '&
         &           ,TRIM(SpecialForm%Formula)
       END IF
-      !NumNum=0
-      !DO
-      !  PosNum1=SCAN(LocString1,'1234567890.')
-      !  PosNum2=LEN(LocString1(MAX(PosNum1,1):))
-      !  DO i=1,SIZE(Elements)
-      !    PosElem=INDEX(LocString1(MAX(PosNum1,1):),TRIM(Elements(i)%Element))
-      !    IF (PosElem>0) THEN
-      !      PosNum2=MIN(PosNum2,PosElem-1)
-      !    END IF
-      !  END DO
-      !  PosNum2=PosNum2+PosNum1-1
-      !  IF (PosNum2>0) THEN
-      !    IF ( (LocString1(PosNum2:PosNum2)=='e'.OR.      &
-      !    &     LocString1(PosNum2:PosNum2)=='E').AND.    &
-      !    &    (LocString1(PosNum2+1:PosNum2+1)=='-'.OR.  &
-      !    &     LocString1(PosNum2+1:PosNum2+1)=='+')) THEN
-      !      PosNum3=PosNum2+2
-      !      PosNum2=LEN(LocString(MAX(PosNum1,1):))
-      !      DO i=1,SIZE(Elements)
-      !        PosElem=INDEX(LocString1(MAX(PosNum3,1):),TRIM(Elements(i)%Element))
-      !        IF (PosElem>0) PosNum2=MIN(PosNum2,PosElem-1)
-      !      END DO
-      !      PosNum2=PosNum2+PosNum3-1
-      !    ELSE
-      !      PosNum2=PosNum2-PosNum1+1
-      !    END IF
-      !  ELSE
-      !    PosNum2=PosNum2-PosNum1+1
-      !  END IF
-      !  PosNum2=PosNum2+PosNum1-1
-      !  IF (PosNum1>0) THEN
-      !    LocString1=LocString1(PosNum2+1:)
-      !    NumNum=NumNum+1
-      !  ELSE
-      !    EXIT
-      !  END IF
-      !END DO
-      !ALLOCATE(Constants(NumNum))
-      !NumNum=0
-      !DO
-      !  PosNum1=SCAN(LocString,'1234567890.')
-      !  PosNum2=LEN(LocString(MAX(PosNum1,1):))
-      !  DO i=1,SIZE(Elements)
-      !    PosElem=INDEX(LocString(MAX(PosNum1,1):),TRIM(Elements(i)%Element))
-      !    IF (PosElem>0) PosNum2=MIN(PosNum2,PosElem-1)
-      !  END DO
-      !  PosNum2=PosNum2+PosNum1-1
-      !  IF (PosNum2>0) THEN
-      !    IF ( (LocString(PosNum2:PosNum2)=='e'.OR.      &
-      !    &     LocString(PosNum2:PosNum2)=='E').AND.    &
-      !    &    (LocString(PosNum2+1:PosNum2+1)=='-'.OR.  &
-      !    &     LocString(PosNum2+1:PosNum2+1)=='+')) THEN
-      !      PosNum3=PosNum2+2
-      !      PosNum2=LEN(LocString(MAX(PosNum1,1):))
-      !      DO i=1,SIZE(Elements)
-      !        PosElem=INDEX(LocString(MAX(PosNum3,1):),TRIM(Elements(i)%Element))
-      !        IF (PosElem>0) PosNum2=MIN(PosNum2,PosElem-1)
-      !      END DO
-      !      PosNum2=PosNum2+PosNum3-1
-      !    ELSE
-      !      PosNum2=PosNum2-PosNum1+1
-      !    END IF
-      !  ELSE
-      !    PosNum2=PosNum2-PosNum1+1
-      !  END IF
-      !  PosNum2=PosNum2+PosNum1-1
-      !  IF (PosNum1>0) THEN
-      !    NameConstant=LocString(PosNum1:PosNum2)
-      !    NumNum=NumNum+1
-      !    READ(NameConstant,*) Constants(NumNum)
-      !    WRITE(NameNumNum,'(I2)') NumNum
-      !    String=TRIM(String)//LocString(:PosNum1-1)//'$'//TRIM(ADJUSTL(NameNumNum))
-      !    LocString=LocString(PosNum2+1:)
-      !  ELSE
-      !    String=TRIM(String)//TRIM(LocString)
-      !    EXIT
-      !  END IF
-      !END DO
+
     END IF
   END SUBROUTINE ExtractConstants
   !
@@ -2813,7 +2736,7 @@ MODULE Chemsys_Mod
     INTEGER :: nList
 
     INTEGER :: icnt(47), icntFAC(10), iHen
-   
+
     ! #Reactions
     neq  = nr_gas + 2*nr_henry + nr_aqua + 2*nr_diss &
     &    + nr_solid + nr_parti + nr_micphys
@@ -2909,6 +2832,8 @@ MODULE Chemsys_Mod
         ReacStruct(i)%nActPro = SIZE(Current%Product)
         ALLOCATE( ReacStruct(i)%Educt(ReacStruct(i)%nActEd),   &
                 & ReacStruct(i)%Product(ReacStruct(i)%nActPro) )
+            
+        ! aus A + B -> .5 C + .5 D + .5 C + .5 D ===> A + B -> C + D
 
         DO j = 1 , ReacStruct(i)%nActEd
           !write(*,*) 'curr educ = ',i,j,TRIM(Current%Educt(j)%Species)
@@ -2917,14 +2842,28 @@ MODULE Chemsys_Mod
           ReacStruct(i)%Educt(j)%Koeff    = Current%Educt(j)%Koeff
           ReacStruct(i)%Educt(j)%iSpecies = PositionSpeciesAll(Current%Educt(j)%Species)
         END DO
-      
-        DO j = 1 , ReacStruct(i)%nActPro
-          !write(*,*) 'curr prod = ',i,j,TRIM(Current%Product(j)%Species)
-          ReacStruct(i)%Product(j)%Species  = Current%Product(j)%Species
-          ReacStruct(i)%Product(j)%Type     = Current%Product(j)%Type
-          ReacStruct(i)%Product(j)%Koeff    = Current%Product(j)%Koeff
-          ReacStruct(i)%Product(j)%iSpecies = PositionSpeciesAll(Current%Product(j)%Species)
-        END DO
+        !CALL RemoveDuplicateSpecies(iCol, iVal)
+            
+        !DO j = 1 , ReacStruct(i)%nActPro
+        !  !write(*,*) 'curr prod = ',i,j,TRIM(Current%Product(j)%Species)
+        !  ReacStruct(i)%Product(j)%Species  = Current%Product(j)%Species
+        !  ReacStruct(i)%Product(j)%Type     = Current%Product(j)%Type
+        !  ReacStruct(i)%Product(j)%Koeff    = Current%Product(j)%Koeff
+        !  ReacStruct(i)%Product(j)%iSpecies = PositionSpeciesAll(Current%Product(j)%Species)
+        !END DO
+        ReacStruct(i)%Product = CleanUpDucts(Current%Product)
+        ReacStruct(i)%nActPro = SIZE(ReacStruct(i)%Product)
+        !IF (i == 103 .OR. i == 102) THEN
+        !  WRITE(*,*) 
+        !  WRITE(*,*) ' nducts = ', ReacStruct(i)%nActPro
+        !  DO j = 1 , ReacStruct(i)%nActPro
+        !    !write(*,*) 'curr prod = ',i,j,TRIM(Current%Product(j)%Species)
+        !   WRITE(*,*) ReacStruct(i)%Product(j)%Species 
+        !    WRITE(*,*) ReacStruct(i)%Product(j)%Type    
+        !    WRITE(*,*) ReacStruct(i)%Product(j)%Koeff   
+        !    WRITE(*,*) ReacStruct(i)%Product(j)%iSpecies
+        !  END DO
+        !END IF
         
         IF ( ReacStruct(i)%TypeConstant == 'SPECIAL' ) THEN
           j = SIZE(Current%Special%cVariables)
@@ -3103,6 +3042,80 @@ MODULE Chemsys_Mod
     
     !print*, ' nHenry = ',nHenry, nHenryga, nHenryag
     !stop
+
+    CONTAINS 
+
+      FUNCTION CleanUpDucts(DuctsIN) RESULT(Ducts)
+        TYPE(Duct_T), INTENT(IN)  :: DuctsIN(:)
+        TYPE(Duct_T), ALLOCATABLE :: Ducts(:)
+
+        INTEGER :: i, j, n, Len, nDupes
+        INTEGER,        ALLOCATABLE :: tmp_iSpc(:) 
+        CHARACTER(10),  ALLOCATABLE :: tmp_Type(:)
+        CHARACTER(100), ALLOCATABLE :: tmp_cSpc(:)
+        REAL(dp),       ALLOCATABLE :: tmp_Koeff(:)
+        INTEGER,        ALLOCATABLE :: Perm(:)
+
+        
+        n = SIZE(DuctsIN)
+        
+        IF ( n > 1 ) THEN
+        
+          ALLOCATE(tmp_cSpc(n), tmp_Type(n), tmp_Koeff(n), tmp_iSpc(n))
+
+          DO i = 1 , n 
+            tmp_cSpc(i)  = DuctsIN(i)%Species
+            tmp_Type(i)  = DuctsIN(i)%Type
+            tmp_Koeff(i) = DuctsIN(i)%Koeff
+            tmp_iSpc(i)  = PositionSpeciesAll(DuctsIN(i)%Species)
+          END DO 
+
+          CALL SortVecAsc2(Tmp_iSpc,Perm)
+
+          DO i = 1 , n-1
+            IF ( tmp_iSpc(i) == tmp_iSpc(i+1) ) THEN
+              tmp_Koeff(i+1)  = tmp_Koeff(i+1) + tmp_Koeff(i)
+              tmp_iSpc(i) = -1              
+            END IF
+          END DO
+
+          nDupes = COUNT(tmp_iSpc==-1)
+
+          IF ( nDupes == 0 ) THEN
+
+            ALLOCATE(Ducts(n))
+            DO i = 1 , n
+              Ducts(i)%iSpecies = tmp_iSpc(i)
+              Ducts(i)%Species  = tmp_cSpc(i)(:)
+              Ducts(i)%Type     = tmp_Type(i)(:)
+              Ducts(i)%Koeff    = tmp_Koeff(i)
+            END DO 
+
+          ELSE 
+
+            ALLOCATE(Ducts(n-nDupes))
+            Len = 0
+            
+            DO i = 1 , n
+              IF ( tmp_iSpc(i) > 0 ) THEN
+                Len = Len + 1
+                Ducts(Len)%iSpecies = tmp_iSpc(i)
+                Ducts(Len)%Species  = tmp_cSpc(i)(:)
+                Ducts(Len)%Type     = tmp_Type(i)(:)
+                Ducts(Len)%Koeff    = tmp_Koeff(i)
+              END IF
+            END DO
+              
+          END IF
+
+        ELSE
+          ALLOCATE(Ducts(1))
+          Ducts%iSpecies = PositionSpeciesAll(DuctsIN(1)%Species)
+          Ducts%Species  = DuctsIN%Species
+          Ducts%Type     = DuctsIN%Type
+          Ducts%Koeff    = DuctsIN%Koeff
+        END IF
+      END FUNCTION CleanUpDucts
   END SUBROUTINE AllListsToArray
   !
   SUBROUTINE Setup_iFACTOR(iReac,icntFAC,Factor)

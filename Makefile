@@ -18,19 +18,27 @@ AtCSol_dbg:  debug
 				$(OP) $(OBJg) $(LAPACK) $(NETCDF) $(LMPI) $(CL) $(COARRAY) ;
 
 optimized: 
-	@make -f Make_src "IN2=$(IN1)" "LIB2=$(LIB_O)" "OPT2=$(OPT_O)" "CHEM=chemieo" "KINCL=$(KINCL_O)"
+	cd SOLVER/ ; \
+	gfortran -c $(OPT_O) opkda1.f opkda2.f opkdmain.f ; \
+	cd .. ; \
+	make -f Make_src "IN2=$(IN1)" "LIB2=$(LIB_O)" "OPT2=$(OPT_O)" "CHEM=chemieo" "KINCL=$(KINCL_O)"
 
 debug: 
-	@make -f Make_src "IN2=$(IN1)" "LIB2=$(LIB_D)" "OPT2=$(OPT_D)" "CHEM=chemieg" "KINCL=$(KINCL_D)"
+	cd SOLVER/ ; \
+	gfortran -c $(OPT_D) opkda1.f opkda2.f opkdmain.f ; \
+	cd .. ; \
+	make -f Make_src "IN2=$(IN1)" "LIB2=$(LIB_D)" "OPT2=$(OPT_D)" "CHEM=chemieg" "KINCL=$(KINCL_D)"
 
 clean:
-	rm -f *.o *.mod LIB*/*
+	rm -f *.o *.mod LIB*/* *.exe
 
 distclean:
 	rm -f *.exe
 
 test:
+	./AtCSol.exe RUN/SmallStratoKPP.run
 	./AtCSol.exe RUN/RACM+C24.run
 	./AtCSol.exe RUN/MCM+CAPRAM.run
 	./AtCSol.exe RUN/ERC_nheptane.run
+	./AtCSol.exe RUN/LLNL_nHeptane.run
 	./AtCSol.exe RUN/LLNL_MD.run

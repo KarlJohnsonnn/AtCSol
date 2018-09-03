@@ -53,7 +53,7 @@ MODULE NetCDF_Mod
   SUBROUTINE InitNetCDF
 
     ! -- Temporary variables --
-    INTEGER :: j, pos, iFr
+    INTEGER :: j, pos, iFr, i
     !
     !    ============================================================
     !    Variable Attribute Names
@@ -71,7 +71,7 @@ MODULE NetCDF_Mod
   !    Variable Attribute Units
   !    ============================================================
     CHARACTER(60),  ALLOCATABLE    :: DIAG_UNITS(:)
-    CHARACTER(100), ALLOCATABLE    :: Diag_Name(:)
+    !CHARACTER(100), ALLOCATABLE    :: Diag_Name(:)
     CHARACTER(200), ALLOCATABLE    :: Diag_LongName(:)
     CHARACTER (LEN = *), PARAMETER :: NC_UNITS     = "units"
     CHARACTER (LEN = *), PARAMETER :: LON_UNITS    = "degrees_east"
@@ -156,7 +156,8 @@ MODULE NetCDF_Mod
         CALL check_name_bracket(Diag_Name(j))
       END DO
     END DO
-  
+
+
     ! solid species
     ALLOCATE(iNCout_S(0))
     DO iDiagSpc = 1 , nNcdfSolid

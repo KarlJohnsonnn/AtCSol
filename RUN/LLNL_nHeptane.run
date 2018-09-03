@@ -1,0 +1,37 @@
+&SCENARIO
+  BSP      = 'LLNL_nheptane'
+  WaitBar  = .T.
+  ChemKin  = .T.        ! input mechanism in ChemKin notation
+/END
+ &FILES
+  SysFile  = 'ckCHEM/nHeptane/nHeptane.sys'
+  DataFile = 'ckCHEM/nHeptane/LLNL_MD.dat'
+  MWFile   = 'ckCHEM/nHeptane/MolecWeights.mw'
+  InitFile = 'ckCHEM/nHeptane/ERC_nheptane.ini'
+ /END
+&TIMES
+  tBegin  = 0.0d0
+  tEnd    = 1.5d-2
+/END
+&METEO
+  Temperature0= 750.0d0       ! in [K]
+  Pressure0   = 2.0d+5        ! in [Pa]
+/END
+&NUMERICS
+  RtolROW   = 1.0d-5
+  AtolGas   = 1.0d-15
+  AtolTemp  = 1.0d-1
+  Error_Est = 2
+  minStp    = 1.0d-45
+  maxStp    = 0.0001d0
+  LinAlg    = 'cl' 
+  !ODEsolver = 'LSODE'
+  ODEsolver = 'METHODS/TSRosWRA34PW2.ros'
+/END
+&OUTPUT
+  NetCdfFile  = 'NetCDF/LLNL_nheptane_full.nc'
+  StpNetCDF   = 3.75d-5
+  nOutP       = 1000
+  MatrixPrint = .F.
+  DebugPrint  = .F.
+/END

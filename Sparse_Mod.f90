@@ -729,6 +729,27 @@ MODULE Sparse_Mod
     vec = tmpVec
   END SUBROUTINE SortVecDesc2
 
+  SUBROUTINE SortVecAsc2(vec,q)
+    INTEGER, INTENT(INOUT) :: vec(:)
+    INTEGER, ALLOCATABLE, OPTIONAL :: q(:)
+    !
+    INTEGER :: i,n,iMin(1)
+    INTEGER, ALLOCATABLE :: tmpVec(:)
+   
+    n = SIZE(Vec)
+    ALLOCATE(tmpVec(n));  tmpVec = 0
+   
+    IF (PRESENT(q).AND..NOT.ALLOCATED(q)) ALLOCATE(q(n))
+    
+    DO i = 1 , n
+      iMin = MINLOC(vec)
+      tmpVec(i) = vec(iMin(1))
+      vec(iMin(1)) = 99999999
+      IF (PRESENT(q)) q(i) = iMin(1)
+    END DO
+    vec = tmpVec
+  END SUBROUTINE SortVecAsc2
+
 
 
   SUBROUTINE SeperatePosNegValues(p_out,n_out,m_in)
@@ -1360,15 +1381,21 @@ MODULE Sparse_Mod
   END SUBROUTINE Sort2
   !
   !
-  SUBROUTINE CompressList(ColInd,Val)
-    INTEGER, ALLOCATABLE :: ColInd(:)
-    REAL(dp), ALLOCATABLE, OPTIONAL :: Val(:)
+  SUBROUTINE CompressList(ColInd,Val,Type,Name)
+    INTEGER,      ALLOCATABLE :: ColInd(:)
+    REAL(dp),     ALLOCATABLE, OPTIONAL :: Val(:)
+    CHARACTER(*), ALLOCATABLE, OPTIONAL :: Type(:), Name(:)
     !
     INTEGER :: i,j,iList,MemberCol
     INTEGER :: TempListCol(SIZE(ColInd))
     REAL(dp) :: MemberVal
     REAL(dp) :: TempListVal(SIZE(ColInd))
     LOGICAL :: Insert
+
+    CHARACTER(100) :: MemberName
+    CHARACTER(10)  :: MemberType
+    CHARACTER(100) :: TempListName(SIZE(ColInd))
+    CHARACTER(10)  :: TempListType(SIZE(ColInd))
     !
     TempListVal=ZERO
     iList=0
@@ -1376,6 +1403,8 @@ MODULE Sparse_Mod
     S1:DO i=1,SIZE(ColInd)
       MemberCol=ColInd(i)
       IF (PRESENT(Val)) MemberVal=Val(i)
+      IF (PRESENT(Name)) MemberName=Name(i)
+      IF (PRESENT(Type)) MemberType=Type(i)
       Insert=.TRUE.
       S2:DO j=1,iList
         IF (MemberCol==TempListCol(j)) THEN
@@ -1388,14 +1417,22 @@ MODULE Sparse_Mod
         iList=iList+1
         TempListCol(iList)=MemberCol
         IF (PRESENT(Val)) TempListVal(iList)=MemberVal
+        IF (PRESENT(Name)) TempListName(iList)=MemberName
+        IF (PRESENT(Type)) TempListType(iList)=MemberType
       END IF
     END DO S1
     DEALLOCATE(ColInd)
     IF (PRESENT(Val)) DEALLOCATE(Val)
+    IF (PRESENT(Name)) DEALLOCATE(Name)
+    IF (PRESENT(Type)) DEALLOCATE(Type)
     ALLOCATE(ColInd(1:iList))
     IF (PRESENT(Val)) ALLOCATE(Val(1:iList))
+    IF (PRESENT(Name)) ALLOCATE(Name(1:iList))
+    IF (PRESENT(Type)) ALLOCATE(Type(1:iList))
     ColInd=TempListCol(1:iList)
     IF (PRESENT(Val)) Val=TempListVal(1:iList)
+    IF (PRESENT(Name)) Name=TempListName(1:iList)(:)
+    IF (PRESENT(Type)) Type=TempListType(1:iList)(:)
   END SUBROUTINE CompressList
   !
   ! SPARSE JACOBIMATRIX CALC
@@ -1524,6 +1561,8 @@ MODULE Sparse_Mod
           &                    + SUM(U*JacCT)   ) 
     
   END SUBROUTINE Jacobian_TT
+
+  
  
 
   ! SPARSE MITER CALCULATION_CLASSIC
@@ -2337,5 +2376,5 @@ MODULE Sparse_Mod
     Rhs( LU%InvPer ) = b
   END SUBROUTINE SolveSparse
 
-
+  
 END MODULE Sparse_Mod

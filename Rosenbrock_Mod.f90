@@ -667,18 +667,24 @@ MODULE Rosenbrock_Mod
     REAL(dp), DIMENSION(:) :: ynew, yhat, ATol
     REAL(dp) :: RTol, t
     !
-    REAL(dp) :: scalTol(nDIM), e_n(nDIM)
+    REAL(dp) :: scalTol(nDIM), e_n(nDIM), ymax(nDIM)
     INTEGER :: ierr(1,1)
     !
-    scalTol   = ONE / (ATol + MAX( ABS(yhat) , ABS(ynew) ) * RTol )  ! scaling strategie
+    ymax      = MAX(ABS(yhat),ABS(ynew))
+    scalTol   = ONE / ( ATol + ymax*RTol )  ! scaling strategie
     e_n       = ABS( ynew - yhat ) * scalTol      ! local error est.
     ierr(1,1) = MAXLOC( e_n , 1 )           ! max error component
     !
     IF ( Error_Est == 2 ) THEN
+      !err = SUM( e_n*e_n ) 
+      !err = SQRT(err) / rNspc
+
       err = SUM( e_n*e_n ) * rNspc   ! euclikd norm
     ELSE
       err = MAXVAL( e_n )     ! maximum norm
     END IF
+
+    !err = MAX(err,1.0e-10_dp)
     !
   END SUBROUTINE ERROR
 

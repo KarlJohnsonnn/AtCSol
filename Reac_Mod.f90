@@ -286,6 +286,7 @@
 !&                                 ,Sol_anz(:)
 !    INTEGER, PARAMETER          :: ndiag_gas = 11  &
 !&                                 ,ndiag_aq = 16  
+   CHARACTER(100), ALLOCATABLE    :: Diag_Name(:)
     CHARACTER(60), ALLOCATABLE  :: Diag_Name_Netcdf(:) &
 &                                , Diag_LongName(:)    &
 &                                , DiagERR_Name_Netcdf(:)

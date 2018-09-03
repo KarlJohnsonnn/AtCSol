@@ -20,17 +20,20 @@ MODULE Meteo_Mod
   &                    , N2         = 1.960D19              &
   &                    , O2         = 5.100D18              &
   &                    , H2O        = 5.100D17              &
-  &                    , M          = N2 + O2               &
+  &                    , N2O2       = N2 + O2               &
+  &                    , N2O2H2O    = N2O2 + H2O            &
   &                    , aH2OmolperL= 5.55D01               &
   &                    , aH2O       = aH2OmolperL*mol2part  &
   &                    , rhum       = 5.0920016900153622d-3 &
   &                    , mH2        = 0.0d0                 &
-  &                    , mN2        = 0.7809d0              &
-  &                    , mO2        = 0.2095d0              &
+  !&                    , mN2        = 0.7809d0              &
+  !&                    , mO2        = 0.2095d0              &
+  &                    , mN2        = N2/N2O2H2O            &
+  &                    , mO2        = O2/N2O2H2O            &
+  &                    , mH2O       = H2O/N2O2H2O           &
   &                    , MM_h2o     = 18.01534d0            &
   &                    , h2o_push   = 6.023d20/MM_h2o       &
   &                    , densi      = 1.0545184035426323d0 
-  REAL(dp) :: mH2O
 
 
   REAL(dp), PARAMETER :: R_const=8.3144621d0 ! [ J / mol / K ] = [ kg * m2 / s2 / mol /K ]
@@ -219,12 +222,12 @@ CONTAINS
     bounds(6) = bounds(5) + 1.00_dp * HOUR
   END FUNCTION Set_pseudoLWCbounds
 
-  SUBROUTINE ThirdPartyKoeff(Time)
-    REAL(dp) :: Time
-
-    mH2O=rhum*densi*h2o_push
-    
-  END SUBROUTINE ThirdPartyKoeff
+  !SUBROUTINE ThirdPartyKoeff(Time)
+  !  REAL(dp) :: Time
+  !
+  !  mH2O=rhum*densi*h2o_push
+  !  
+  !END SUBROUTINE ThirdPartyKoeff
     
   FUNCTION pseudoLWC(RealTime)  RESULT(LWC)
     USE Kind_Mod
