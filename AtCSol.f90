@@ -244,7 +244,7 @@ PROGRAM AtCSol
   CALL Setup_SpeciesOrder(A)
   !-----------------------------------------------------------------------
 
-  CALL SYS_TO_KPP(ReactionSystem)
+  IF (KPP_Conversion) CALL SYS_TO_KPP(ReactionSystem)
 
   !-----------------------------------------------------------------------
   ! --- Dimension initialisation for the unknowns and matrices
