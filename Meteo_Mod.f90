@@ -13,24 +13,25 @@ MODULE Meteo_Mod
   REAL(dp), PARAMETER :: p0   = 1013.25d0 ! hPa Normaldruck
   REAL(dp), PARAMETER :: Rd   = Cp-Cv
 
+  REAL(dp)            :: N2       = 1.960D19              &   ! passive species N2
+  &                    , O2       = 5.100D18              &   ! passive species O2
+  &                    , H2O      = 5.100D17              &   ! passive species H2O
+  &                    , N2O2                             &
+  &                    , N2O2H2O                          &
+  &                    , mN2                              &
+  &                    , mO2                              &
+  &                    , mH2O       
+
   REAL(dp), PARAMETER :: mol2part   = 6.02295d17            &
   &                    , GasConst_R = 0.082056d0            &   ! [in l*atm/mol/K]
   &                    , InvRefTemp = 1.0D0/298.15D0        &
   &                    , RefTemp    = 298.15D0              &
-  &                    , N2         = 1.960D19              &
-  &                    , O2         = 5.100D18              &
-  &                    , H2O        = 5.100D17              &
-  &                    , N2O2       = N2 + O2               &
-  &                    , N2O2H2O    = N2O2 + H2O            &
   &                    , aH2OmolperL= 5.55D01               &
   &                    , aH2O       = aH2OmolperL*mol2part  &
   &                    , rhum       = 5.0920016900153622d-3 &
   &                    , mH2        = 0.0d0                 &
   !&                    , mN2        = 0.7809d0              &
   !&                    , mO2        = 0.2095d0              &
-  &                    , mN2        = N2/N2O2H2O            &
-  &                    , mO2        = O2/N2O2H2O            &
-  &                    , mH2O       = H2O/N2O2H2O           &
   &                    , MM_h2o     = 18.01534d0            &
   &                    , h2o_push   = 6.023d20/MM_h2o       &
   &                    , densi      = 1.0545184035426323d0 

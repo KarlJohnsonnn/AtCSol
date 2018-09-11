@@ -545,7 +545,11 @@ PROGRAM AtCSol
   
     CALL ConvertTime(TimeReduction,unit)
     WRITE(*,'(32X,A,1X,F10.4,A)') 'Time ISSA reduction = ', TimeReduction, unit
-    WRITE(*,*); WRITE(*,*)
+    WRITE(*,*); 
+    
+    
+    
+  
   END IF
 
   ! --- Close MPI 

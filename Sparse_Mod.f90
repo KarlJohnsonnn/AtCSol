@@ -8,7 +8,7 @@
 !                                                                                
 MODULE Sparse_Mod
   ! Contains:
-  !   - SYMBOLIC MATRIX * MATRIC
+  !   - SYMBOLIC MATRIX * MATRIX
   !   - SYMBOLIC MATRIX + MATRIX
   !   - TRANSPOSE MATRIX
   !   - SPARSE MATRIX * MATRIC
@@ -96,9 +96,9 @@ MODULE Sparse_Mod
 
   !
   CONTAINS
-  !
-  !
-  !
+  
+  
+  
   FUNCTION New_CSR(m,n,nnz,ri,ci,val) RESULT(newA)
     INTEGER :: m, n
     INTEGER, OPTIONAL :: nnz

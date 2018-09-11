@@ -1352,6 +1352,14 @@ MODULE Chemsys_Mod
       InitValAct(iGs) = 1.e-20_dp
       CALL Read_INI_file( InitFileName , InitValAct, InitValKat , 'GAS' , 'INITIAL' )
 
+      N2O2    = N2 + O2        ! passive species N2+O2
+      N2O2H2O = N2O2 + H2O     ! passive species N2+O2+H2Oc
+
+      ! fractions of passive species
+      mN2  = N2/N2O2H2O
+      mO2  = O2/N2O2H2O
+      mH2O = H2O/N2O2H2O
+
       !---  Read gase phase emission values
       CALL Read_INI_file( InitFileName , y_emi , InitValKat , 'GAS' , 'EMISS' )
       CALL Read_INI_file( InitFileName , y_depos , InitValKat , 'GAS' , 'DEPOS' )
@@ -1698,6 +1706,9 @@ MODULE Chemsys_Mod
         IF (SpeciesName(1:1)=='['.AND. LEN_TRIM(SpeciesName)<maxLENinActDuct) THEN
           Passiv(iPos-nspc) = c1
           IF (Phase=='GAS') THEN
+            IF (TRIM(SpeciesName)=='[H2O]') H2O = c1
+            IF (TRIM(SpeciesName)=='[N2]')  N2  = c1
+            IF (TRIM(SpeciesName)=='[O2]')  O2  = c1
             ns_G_KAT = ns_G_KAT + 1
           ELSE IF (Phase=='AQUA') THEN
             ns_A_KAT = ns_A_KAT + 1
