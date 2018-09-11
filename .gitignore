@@ -2,6 +2,10 @@
 LIB/*
 LIB_D/*
 
+# LSODE .o files
+SOLVER/*.o
+SOLVER/*.mod
+
 # NetCDF output files
 NetCDF/*.nc
 
