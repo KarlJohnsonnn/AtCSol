@@ -414,7 +414,6 @@ MODULE IO_Mod
     USE Control_Mod, ONLY: BSP
     USE Reac_Mod,    ONLY: y_name, RO2, InitValAct, Diag_Name, iNcdfGas
     USE ChemSys_Mod, ONLY: ReactionStruct_T, Duct_T, PositionSpeciesAll
-    !USE Sparse_Mod,  ONLY: BA
 
     TYPE Dupe_T
       INTEGER :: iReaction, nDuplicates
@@ -452,9 +451,9 @@ MODULE IO_Mod
 
       INNER_LOOP: DO jReac = iReac+1 , nReac
 
-        IF (      RS(iReac)%nActEd        /=      RS(jReac)%nActEd  ) CYCLE INNER_LOOP
-        IF (      RS(iReac)%nActPro       /=      RS(jReac)%nActPro ) CYCLE INNER_LOOP
-        IF ( TRIM(RS(iReac)%Type)         /= TRIM(RS(jReac)%Type)   ) CYCLE INNER_LOOP
+        IF (      RS(iReac)%nActEd   /=      RS(jReac)%nActEd  ) CYCLE INNER_LOOP
+        IF (      RS(iReac)%nActPro  /=      RS(jReac)%nActPro ) CYCLE INNER_LOOP
+        IF ( TRIM(RS(iReac)%Type)    /= TRIM(RS(jReac)%Type)   ) CYCLE INNER_LOOP
 
         DO iSpc = 1 , RS(iReac)%nActEd ! does not matter if iReac or jReac because same nActEd
           IF ( RS(iReac)%Educt(iSpc)%iSpecies /= RS(jReac)%Educt(iSpc)%iSpecies ) CYCLE INNER_LOOP
@@ -487,7 +486,6 @@ MODULE IO_Mod
       END IF
     END DO
     DEALLOCATE(Duplicates)
-    
 
 
     ! --------------------------------------
@@ -514,11 +512,8 @@ MODULE IO_Mod
 
     END DO
     CLOSE(File_Unit)
-
-
     
-    WRITE(*,*)
-    WRITE(*,'(10X,A)') 'OUTPUT/mcm_32.eqn file written.'
+    WRITE(*,*);  WRITE(*,'(10X,A)') 'OUTPUT/mcm_32.eqn file written.'
 
 
 
@@ -549,15 +544,10 @@ MODULE IO_Mod
 
       ! write initialvalues for KPP (copy fort.401 into mcm_32_Initialize.f90)
       IF (InitValAct(iSpc)>1.0e-8_dp) THEN
-        !WRITE(400,*) "        IF ( TRIM(SPC_NAMES(i)) == '"//TRIM(renameSpc)//"' ) "//&
-        !&                  "WRITE(*,*) '"//TRIM(renameSpc)//"',i"
-      
         WRITE(File_Unit2,'(A,Es9.3,A)') "IF ( TRIM(SPC_NAMES(i)) == '"//TRIM(renameSpc)//"' ) "//&
         &            "  VAR(i) = (",InitValAct(iSpc),"_dp)*CFACTOR      ! "//TRIM(y_name(iSpc))
-      
-        !WRITE(402,'(A,Es9.3,A)') ",",InitValAct(iSpc),"&"//"      ! "//TRIM(y_name(iSpc))
-      
-        END IF
+      END IF
+
       renameSpc = ''
     END DO
     
@@ -598,8 +588,8 @@ MODULE IO_Mod
 
 
     !--- RO2 factors
-    140 FORMAT(4X,3('C(ind_',A3,I0,') + '),'C(ind_',A3,I0,') &')
-    141 FORMAT(4X,'C(ind_',A,' & ')
+    140 FORMAT(4X,3('C(ind_',A3,I0,') + '),'C(ind_',A3,I0,') + &')
+    141 FORMAT(4X,'C(ind_',A,') + & ')
     142 FORMAT(4X,'C(ind_',A,')')
 
 
@@ -658,6 +648,7 @@ MODULE IO_Mod
 
           IF ( i > 0 ) iR = iDupes(i)
 
+          ! check if there are facotrs involved, if so, multiply the rate expression with the factor
           SELECT CASE ( TRIM(RS(iR)%Factor) )
             CASE('$H2');    Factor = '*H2'
             CASE('$O2N2');  Factor = '*O2*N2'
@@ -672,6 +663,7 @@ MODULE IO_Mod
             CASE DEFAULT;   Factor = ''
           END SELECT
 
+          ! depending on the type of rate constant, write the rate expression string to tmpRateExpr
           SELECT CASE ( TRIM(RS(iR)%TypeConstant) )
             CASE('CONST');    WRITE(tmpRateExpr,100)  RS(iR)%Constants,TRIM(Factor)
             CASE('TEMP0');    WRITE(tmpRateExpr,101)  RS(iR)%Constants,TRIM(Factor)
@@ -690,6 +682,7 @@ MODULE IO_Mod
             CASE('PHOTMCM');  WRITE(tmpRateExpr,120)  RS(iR)%Constants,TRIM(Factor)
           END SELECT
 
+          ! if there where duplicate reactions, add the rate expressions together
           IF ( LEN_TRIM(RateExpr) > 0 ) THEN
             RateExpr = TRIM(ADJUSTL(RateExpr))//' + '//TRIM(ADJUSTL(tmpRateExpr))
           ELSE
@@ -698,26 +691,28 @@ MODULE IO_Mod
 
         END DO
 
+        !   Definiton of the rate expression format
+        !
         !---  constant
-        100 FORMAT(Es9.2,A)    ! CONST
+        100 FORMAT(D16.8,A)    ! CONST
         !--- temperature dependent arrhenius
-        101 FORMAT(Es8.2,'*TEMP**',Es16.8,'*EXP(-(',F9.2,'/TEMP)',A)       ! TEMP0
-        102 FORMAT(Es8.2,'*EXP(-1.0D0*(',F9.2,'/TEMP))',A)                ! TEMP1
-        103 FORMAT(Es8.2,'*TEMP*TEMP*EXP(-1.0D0*(',F9.2,'/TEMP))',A)      ! TEMP2
-        104 FORMAT(Es8.2,'*EXP(',Es16.8,'*(1.0D0/TEMP-1.0D0/298.15D0))',A) ! TEMP3
-        105 FORMAT(Es8.2,'*TEMP*EXP(-1.0D0*(',F9.2,'/TEMP))',A)           ! TEMP4
+        101 FORMAT(D16.8,'*TEMP**',D16.8,'*EXP(-(',F9.2,'/TEMP)',A)       ! TEMP0
+        102 FORMAT(D16.8,'*EXP(-1.0D0*(',F9.2,'/TEMP))',A)                ! TEMP1
+        103 FORMAT(D16.8,'*TEMP*TEMP*EXP(-1.0D0*(',F9.2,'/TEMP))',A)      ! TEMP2
+        104 FORMAT(D16.8,'*EXP(',D16.8,'*(1.0D0/TEMP-1.0D0/298.15D0))',A) ! TEMP3
+        105 FORMAT(D16.8,'*TEMP*EXP(-1.0D0*(',F9.2,'/TEMP))',A)           ! TEMP4
         !--- troe pressure dependent reactions
-        110 FORMAT('k_TROEMCM(',10(Es16.8,','),'TEMP,M)',A)  ! TROEMCM
+        110 FORMAT('k_TROEMCM(',10(D16.8,','),'TEMP,M)',A)  ! TROEMCM
         !--- mcm version photolysis
-        120 FORMAT('k_PHOTOMCM(',3(Es16.8,','),'chi)',A)      ! PHOTMCM
+        120 FORMAT('k_PHOTOMCM(',3(D16.8,','),'chi)',A)      ! PHOTMCM
         !--- Special Types  (Gas Phase: Density-Dependent)
-        130 FORMAT('k_SPEC3(',6(Es16.8,','),'TEMP,M)',A)   ! SPEC3
-        131 FORMAT('k_SPEC2MCM(',3(Es16.8,','),'TEMP)',A)     ! SPEC2MCM
-        132 FORMAT('k_SPEC3MCM(',2(Es16.8,','),'TEMP,M)',A)   ! SPEC3MCM
-        133 FORMAT('k_SPEC4MCM(',4(Es16.8,','),'H2O,TEMP)',A) ! SPEC4MCM
-        134 FORMAT('k_SPEC5MCM(',4(Es16.8,','),'TEMP,M)',A)   ! SPEC5MCM
-        135 FORMAT('k_SPEC6MCM(',4(Es16.8,','),'TEMP)',A)     ! SPEC6MCM
-        136 FORMAT('k_SPEC7MCM(',6(Es16.8,','),'TEMP)',A)     ! SPEC7MCM
+        130 FORMAT('k_SPEC3(',6(D16.8,','),'TEMP,M)',A)   ! SPEC3
+        131 FORMAT('k_SPEC2MCM(',3(D16.8,','),'TEMP)',A)     ! SPEC2MCM
+        132 FORMAT('k_SPEC3MCM(',2(D16.8,','),'TEMP,M)',A)   ! SPEC3MCM
+        133 FORMAT('k_SPEC4MCM(',4(D16.8,','),'H2O,TEMP)',A) ! SPEC4MCM
+        134 FORMAT('k_SPEC5MCM(',4(D16.8,','),'TEMP,M)',A)   ! SPEC5MCM
+        135 FORMAT('k_SPEC6MCM(',4(D16.8,','),'TEMP)',A)     ! SPEC6MCM
+        136 FORMAT('k_SPEC7MCM(',6(D16.8,','),'TEMP)',A)     ! SPEC7MCM
 
       END FUNCTION BuildRateExpression
 
