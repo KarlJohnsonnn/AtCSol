@@ -1,7 +1,7 @@
 &SCENARIO
   BSP      = 'mcm_32'
   WaitBar  = .T.
-  Simulation = .T.
+  Simulation = .F.
   KPP_Conversion = .T.
 /END
 &FILES
