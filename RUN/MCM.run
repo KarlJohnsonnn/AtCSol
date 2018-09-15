@@ -1,5 +1,5 @@
 &SCENARIO
-  BSP      = 'MCM32gas'
+  BSP      = 'mcm_32'
   WaitBar  = .T.
   Simulation = .T.
   KPP_Conversion = .T.

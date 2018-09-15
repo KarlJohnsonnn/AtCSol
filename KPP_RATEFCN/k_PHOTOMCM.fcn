@@ -1,0 +1,17 @@
+
+  ! rate function: k_PHOTOMCM (see supplement section 3)
+   
+   
+  REAL(kind=dp) FUNCTION k_PHOTOMCM(K1,K2,K3,chi)
+    REAL(dp), INTENT(IN) :: K1,K2,K3,chi
+    REAL(dp) :: ChiZmcm, yChiZmcm
+    REAL(dp), PARAMETER :: dust=1.0
+    REAL(dp), PARAMETER :: PiHalf = 2.0_dp*ATAN(1.0_dp)
+
+    IF ( chi < PiHalf ) THEN
+      ChiZmcm  = EXP(-1.0d0*K3/COS(chi))
+      yChiZmcm = chi ** K2
+      k_PHOTOMCM = Dust*K1*yChiZmcm*ChiZmcm
+    END IF
+
+  END FUNCTION k_PHOTOMCM

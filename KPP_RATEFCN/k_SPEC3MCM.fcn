@@ -1,0 +1,10 @@
+
+   ! rate function: k_SPEC3MCM (see supplement section 3)
+
+
+   REAL(kind=dp) FUNCTION k_SPEC3MCM(K1,K2,temp,M)
+     ! special rate function for S(IV) + H2O2
+     REAL(dp), INTENT(IN) :: K1,K2,temp,M
+    
+     k_SPEC3MCM = K1 * (1.0d0 + M/K2)
+   END FUNCTION k_SPEC3MCM

@@ -1,0 +1,12 @@
+
+   ! rate function: k_SPEC7MCM (see supplement section 3)
+   
+   REAL(kind=dp) FUNCTION k_SPEC7MCM(K1,K2,K3,K4,K5,K6,temp)
+     ! special rate function for S(IV) + H2O2
+     REAL(dp), INTENT(IN) :: K1,K2,K3,K4,K5,K6,temp
+     REAL(dp) :: k1s,k2s
+    
+     k1s = K1*EXP(K2/temp)
+     k2s = K3*EXP(K4/temp)
+     k_SPEC7MCM = k1s*(K5-K6/(1.0d0+k2s))
+   END FUNCTION k_SPEC7MCM

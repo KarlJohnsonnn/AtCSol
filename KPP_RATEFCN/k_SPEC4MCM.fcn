@@ -1,0 +1,11 @@
+
+   ! rate function: k_SPEC4MCM (see supplement section 3)
+
+   REAL(kind=dp) FUNCTION k_SPEC4MCM(K1,K2,K3,K4,H2O,temp)
+     ! special rate function for S(IV) + H2O2
+     REAL(dp), INTENT(IN) :: K1,K2,K3,K4,H2O,temp
+    
+     k_SPEC4MCM = K1*(1.0d0+K2*EXP(K3/temp)*H2O)*EXP(K4/temp)
+   END FUNCTION k_SPEC4MCM
+
+  

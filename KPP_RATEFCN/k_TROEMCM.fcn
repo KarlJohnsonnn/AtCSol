@@ -1,0 +1,17 @@
+
+   ! rate function: k_TROEMCM (see supplement section 3)
+   
+   
+   REAL(kind=dp) FUNCTION k_TROEMCM(K1,K2,K3,K4,K5,K6,K7,K8,K9,K10,temp,M)
+     ! special rate function for S(IV) + H2O2
+     REAL(dp), INTENT(IN) :: K1,K2,K3,K4,K5,K6,K7,K8,K9,K10,temp,M
+     REAL(dp) :: k1s,k2s,k3s,Fc
+    
+     k1s = K1 * (temp*1.0d0/298.15D0)**K2 * EXP(K3/temp) * M
+     k2s = K4 * (temp*1.0d0/298.15D0)**K5 * EXP(K6/temp) 
+     Fc = K7 * EXP(K8/temp) + K9 * EXP(temp/K10)
+     k3s = LOG10(k1s/k2s)/(0.75d0-1.27d0*LOG10(Fc))
+     k_TROEMCM = k1s/(1.0d0+k1s/k2s) * Fc**(1.0d0/(1.0d0+k3s*k3s))
+  END FUNCTION k_TROEMCM
+
+ 

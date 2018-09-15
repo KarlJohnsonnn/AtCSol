@@ -411,9 +411,10 @@ MODULE IO_Mod
 
   SUBROUTINE SYS_TO_KPP(RS)
     USE Kind_Mod
-    USE Control_Mod, ONLY: BSP
-    USE Reac_Mod,    ONLY: y_name, RO2, InitValAct, Diag_Name, iNcdfGas
+    USE Control_Mod, ONLY: BSP, Tspan, Temperature0, StpNetcdf
+    USE Reac_Mod,    ONLY: y_name, RO2, InitValAct, InitValKat, Diag_Name, iNcdfGas
     USE ChemSys_Mod, ONLY: ReactionStruct_T, Duct_T, PositionSpeciesAll
+    USE Meteo_Mod,   ONLY: N2, O2, H2O
 
     TYPE Dupe_T
       INTEGER :: iReaction, nDuplicates
@@ -439,8 +440,9 @@ MODULE IO_Mod
 
     
     nReac = SIZE(RS)
-
-    ALLOCATE(Duplicates(nReac,5)) ! can find up to five duplicate reactions
+    ! saves up to five duplicate reactions per reaction
+    ! if more are found, increas the value 5 in the allocation
+    ALLOCATE(Duplicates(nReac,5))
     Duplicates = -999
 
     ! --------------------------------------
@@ -470,7 +472,7 @@ MODULE IO_Mod
       END DO INNER_LOOP
     END DO
 
-    ! turn into list
+    ! turn into list, save only reactions where duplicates were found
     totDupes = COUNT(Duplicates(:,1)/=-999 )
 
     IF (totDupes == 0) WRITE(*,*)  '         No duplicate reactions found'
@@ -491,18 +493,24 @@ MODULE IO_Mod
     ! --------------------------------------
     ! --- Writing the KPP equation file
     !
-    OPEN(UNIT=File_Unit, FILE='OUTPUT/mcm_32.eqn', ACTION='write')
+    OPEN(UNIT=File_Unit, FILE='OUTPUT/'//TRIM(BSP)//'.eqn', ACTION='write')
     WRITE(File_Unit,'(A)') '#EQUATIONS'
 
     jReac = 0
     DO iReac=1,nReac
       
-      ! Renaming all species names to SPC1,...SPCnspc
+      ! Renaming all species names to SPC1,...SPCnspc and construct:
+      !  LeftSide  = a_iReac1 * SPC1 + a_iReac2 * SPC2 + ...   
+      ! and 
+      !  RightSide = b_iReac1 * SPC1 + b_iReac2 * SPC2 + ....
+
       LeftSide  = BuildReactionString( RS(iReac)%Educt   )
       RightSide = BuildReactionString( RS(iReac)%Product )
 
+      ! concatinate LeftSide and RightSide
       Reaction = TRIM(ADJUSTL(LeftSide))//' = '//TRIM(ADJUSTL(RightSide))
 
+      ! construct reaction rate expression (functions, parameters)
       RateExpression = BuildRateExpression( iReac )
 
       IF ( iReac_is_not_a_duplicate(iReac) ) THEN
@@ -513,56 +521,94 @@ MODULE IO_Mod
     END DO
     CLOSE(File_Unit)
     
-    WRITE(*,*);  WRITE(*,'(10X,A)') 'OUTPUT/mcm_32.eqn file written.'
+    WRITE(*,*);  WRITE(*,'(10X,A)') 'OUTPUT/'//TRIM(BSP)//'.eqn file written.'
 
 
 
     ! ------------------------------------------------------------
     ! Writing the KPP species file
     !
-    !OPEN(UNIT=File_Unit, FILE='OUTPUT/'//TRIM(BSP)//'.spc', ACTION='write')
-    OPEN(UNIT=File_Unit, FILE='OUTPUT/mcm_32.spc', ACTION='write')
-    OPEN(UNIT=File_Unit2, FILE='OUTPUT/mcm_32.ini', ACTION='write')
+    OPEN(UNIT=File_Unit, FILE='OUTPUT/'//TRIM(BSP)//'.spc', ACTION='write')
 
     WRITE(File_Unit,'(A)') '#include atoms'
     WRITE(File_Unit,'(A)')
     WRITE(File_Unit,'(A)') '#DEFVAR'
 
-    WRITE(File_Unit2,'(A)') '#MONITOR            {Screen Output}'
-    DO iSPc=1,SIZE(iNcdfGas)
-      WRITE(renameSpc,'(A,I0)') 'SPC',PositionSpeciesAll(y_name(iNcdfGas(iSpc)))
-      WRITE(File_Unit2,'(A)') TRIM(renameSpc)//';    {'//TRIM(y_name(iNcdfGas(iSpc)))//'}' 
-      renameSpc = ''
-    END DO
-    WRITE(File_Unit2,'(A)')
-    WRITE(File_Unit2,'(A)') '#INITVALUES             {Initial Values}'   
-    WRITE(File_Unit2,'(A)') 'CFACTOR = 1.0    ;              {Conversion Factor} '
-    
-    DO iSpc=1,SIZE(InitValAct)
+    nSpc = SIZE(InitValAct)
+    DO iSpc=1,nSpc
       WRITE(renameSpc,'(A,I0)') 'SPC',iSpc
       WRITE(File_Unit,'(A)') TRIM(renameSpc)//' = IGNORE ;    {'//TRIM(y_name(iSpc))//'}'
-
-      ! write initialvalues for KPP (copy fort.401 into mcm_32_Initialize.f90)
-      IF (InitValAct(iSpc)>1.0e-8_dp) THEN
-        WRITE(File_Unit2,'(A,Es9.3,A)') "IF ( TRIM(SPC_NAMES(i)) == '"//TRIM(renameSpc)//"' ) "//&
-        &            "  VAR(i) = (",InitValAct(iSpc),"_dp)*CFACTOR      ! "//TRIM(y_name(iSpc))
-      END IF
-
+      renameSpc = ''
+    END DO
+    DO iSpc=1,SIZE(InitValKat)
+      WRITE(renameSpc,'(A,I0)') 'SPC',iSpc+nSpc
+      WRITE(File_Unit,'(A)') TRIM(renameSpc)//' = IGNORE ;    {'//TRIM(y_name(iSpc+nSpc))//'}'
       renameSpc = ''
     END DO
     
     CLOSE(File_Unit)
-    CLOSE(File_Unit2)
-    WRITE(*,'(10X,A)') 'OUTPUT/mcm_32.spc file written.'
-    WRITE(*,'(10X,A)') 'OUTPUT/mcm_32.ini file written.'
-    WRITE(*,*)
+    WRITE(*,'(10X,A)') 'OUTPUT/'//TRIM(BSP)//'.spc file written.'
 
+
+    ! ------------------------------------------------------------
+    ! Writing the KPP definiton (.def) file
+    ! containing initial values, monitoring species, rate functions, etc.
+    !
+    OPEN(UNIT=File_Unit, FILE='OUTPUT/'//TRIM(BSP)//'.def', ACTION='write')
+
+    ! define the species you want to analyse
+    ! be sure to alter the MAX_MONITOR varialbe 
+    ! in kpp.2.2.3/src/gen.c if more than 8 species want to be diagnosed
+    !
+    WRITE(File_Unit,'(A)') '#MONITOR            {Screen Output}'
+    WRITE(File_Unit,'(A)') 
+
+    DO iSPc=1,SIZE(iNcdfGas)
+      WRITE(renameSpc,'(A,I0)') 'SPC',PositionSpeciesAll(y_name(iNcdfGas(iSpc)))
+      WRITE(File_Unit,'(A)') TRIM(renameSpc)//';    {'//TRIM(y_name(iNcdfGas(iSpc)))//'}' 
+      renameSpc = ''
+    END DO
+
+    WRITE(File_Unit,'(A)')
+    WRITE(File_Unit,'(A)') '#INITVALUES             {Initial Values}'   
+    WRITE(File_Unit,'(A)') '  CFACTOR = 1.0    ;              {Conversion Factor} '
+    WRITE(File_Unit,'(A)')
+    !DO iSpc=1,SIZE(InitValAct)
+    !  WRITE(renameSpc,'(A,I0)') 'SPC',iSpc
+    !  ! write initialvalues for KPP (copy fort.401 into mcm_32_Initialize.f90)
+    !  IF (InitValAct(iSpc)>1.0e-8_dp) THEN
+    !    WRITE(File_Unit,'(2X,A,D16.8,A)') TRIM(renameSpc)//' = ', InitValAct(iSpc), ';'
+    !  END IF
+    !  renameSpc = ''
+    !END DO
+    !WRITE(File_Unit,'(A)')
+    !WRITE(File_Unit,'(A)')
+
+    CALL Include_RateFunctions()
+
+
+    ! define RCONST calculation (reaction rate constant)
+    !
+    WRITE(File_Unit,'(A)')    '#INLINE F90_RCONST'
+
+    WRITE(File_Unit,'(A)')    '  REAL(dp) :: M, N2, O2, RO2, H2O'
+    WRITE(File_Unit,'(A)')    '  ! variables'
+    WRITE(File_Unit,'(A)')    '  REAL(dp), PARAMETER     :: PiHalf = 2.0_dp*ATAN(1.0_dp)'
+    WRITE(File_Unit,'(A)')    '  REAL(dp)                ::  chi'
+    WRITE(File_Unit,'(A)') 
+    WRITE(File_Unit,'(A)') 
+    WRITE(File_Unit,'(A,D16.8)')    '  N2 = ', N2
+    WRITE(File_Unit,'(A,D16.8)')    '  O2 = ', O2
+    WRITE(File_Unit,'(A)')    '  M  = N2 + O2'
+    WRITE(File_Unit,'(A,D16.8)')    '  H2O = ', H2O
+    WRITE(File_Unit,'(A)') 
+    WRITE(File_Unit,'(A)') 
+    WRITE(File_Unit,'(A)')    '  ! --- Update photo reactions "J(.)" ---'
+    WRITE(File_Unit,'(A)')    '  chi = Zenith(TIME)'
 
     ! ------------------------------------------------
     ! --- Writing the operation for RO2 factor to file
     ! 
-    OPEN(UNIT=File_Unit, FILE='OUTPUT/mcm_32_RO2.f90', ACTION='write', IOSTAT=io_stat, IOMSG=io_msg)
-
     RO2_rest = MODULO(SIZE(RO2),4)
     RO2_4    = SIZE(RO2) - RO2_rest
     
@@ -583,15 +629,63 @@ MODULE IO_Mod
     ! last species without '&'
     WRITE(renameSpc,'(A,I0)') 'SPC',RO2(SIZE(RO2))
     WRITE(File_Unit,142, IOSTAT=io_stat, IOMSG=io_msg) TRIM(renameSpc)
-
-    CLOSE(File_Unit)
-
+    WRITE(File_Unit,'(A)') '#ENDINLINE'
 
     !--- RO2 factors
     140 FORMAT(4X,3('C(ind_',A3,I0,') + '),'C(ind_',A3,I0,') + &')
     141 FORMAT(4X,'C(ind_',A,') + & ')
     142 FORMAT(4X,'C(ind_',A,')')
 
+
+    ! ------------------------------------------------
+    ! --- Define star time, end time and timestep (times at which a timstep is saved)
+    !
+    WRITE(File_Unit,'(A)')
+    WRITE(File_Unit,'(A)')
+    WRITE(File_Unit,'(A)') '#INLINE F90_INIT'
+    WRITE(File_Unit,'(A,D16.8)') '  TSTART = ', Tspan(1)
+    WRITE(File_Unit,'(A,D16.8)') '  TEND   = ', Tspan(2)
+    WRITE(File_Unit,'(A,D16.8)') '  DT     = ', StpNetcdf
+    WRITE(File_Unit,'(A,D16.8)') '  TEMP   = ', Temperature0
+
+    ! --- define initial values here because of better readability
+    DO iSpc=1,SIZE(InitValAct)
+      WRITE(renameSpc,'(A,I0)') 'SPC',iSpc
+      IF (InitValAct(iSpc)>1.0e-8_dp) THEN
+        WRITE(File_Unit,'(A,Es9.3,A)') "  IF ( TRIM(SPC_NAMES(i)) == '"//TRIM(renameSpc)//"' ) "//&
+        &            "  VAR(i) = (",InitValAct(iSpc),"_dp)*CFACTOR      ! "//TRIM(y_name(iSpc))
+      END IF
+      renameSpc = ''
+    END DO
+
+    WRITE(File_Unit,'(A)') '#ENDINLINE'
+
+
+    CLOSE(File_Unit)
+    WRITE(*,'(10X,A)') 'OUTPUT/'//TRIM(BSP)//'.def file written.'
+
+
+    ! ------------------------------------------------------------
+    ! Writing the KPP definiton (.def) file
+    ! containing initial values, monitoring species, rate functions, etc.
+    !
+    OPEN(UNIT=File_Unit, FILE='OUTPUT/'//TRIM(BSP)//'.kpp', ACTION='write')
+
+    WRITE(File_Unit,'(A)')    ' #INTEGRATOR rosenbrock'
+    WRITE(File_Unit,'(A)')    ' #LANGUAGE   Fortran90'
+    WRITE(File_Unit,'(A)')    ' #DOUBLE     on'
+    WRITE(File_Unit,'(A)')    ' #DRIVER     none'
+    WRITE(File_Unit,'(A)')    ' #HESSIAN    off'
+    WRITE(File_Unit,'(A)')    ' #MEX        off'
+    WRITE(File_Unit,'(A)')    ' #STOICMAT   off'
+    WRITE(File_Unit,'(A)')    ' #EQNTAGS    on'
+    WRITE(File_Unit,'(A)')    ' #INCLUDE '//TRIM(BSP)//'.spc'
+    WRITE(File_Unit,'(A)')    ' #INCLUDE '//TRIM(BSP)//'.def'
+    WRITE(File_Unit,'(A)')    ' #INCLUDE '//TRIM(BSP)//'.eqn'
+
+    CLOSE(File_Unit)
+    WRITE(*,'(10X,A)') 'OUTPUT/'//TRIM(BSP)//'.kpp file written.'
+    WRITE(*,*)
 
     contains
 
@@ -729,6 +823,64 @@ MODULE IO_Mod
           END DO
         END DO
       END FUNCTION iReac_is_not_a_duplicate
+
+      SUBROUTINE Include_RateFunctions()
+      
+        INTEGER :: i, nFcn, io_stat, NstationFiles
+        CHARACTER(LEN=400) :: io_msg, Line
+        CHARACTER(LEN=100) :: file
+        CHARACTER(LEN=100), ALLOCATABLE :: stationFileNames(:)
+        CHARACTER(LEN=100), ALLOCATABLE :: RateFcns(:)
+      
+        ! get the files
+        CALL SYSTEM('ls ./KPP_RATEFCN > fileContents.txt')
+        OPEN(UNIT=31, FILE='fileContents.txt',ACTION="read")
+        ! count how many .fcn file are available
+        nFcn = 0
+        DO
+         READ(31,'(A)',IOSTAT=io_stat) file
+         IF (io_stat/=0) EXIT
+         file = ADJUSTR(file)
+         IF ( file(97:100) == '.fcn' ) nFcn = nFcn + 1
+        END DO
+
+        ! save them into a list
+        ALLOCATE(RateFcns(nFcn))
+        REWIND(31)
+        i = 1
+        DO 
+         READ(31,'(A)',IOSTAT=io_stat) file
+         IF (io_stat/=0) EXIT
+         file = ADJUSTR(file)
+         IF ( file(97:100) == '.fcn' ) THEN
+           WRITE(RateFcns(i), '(A)') ADJUSTL(file) 
+           i= i + 1
+         END IF
+        END DO
+
+
+        WRITE(File_Unit,'(A)') '#INLINE F90_RATES'
+        WRITE(File_Unit,'(A)')
+
+        ! copy content of rate functions (KPP_RATEFCN/*.fcn) into .def file
+
+        DO i = 1 , nFcn
+          OPEN(UNIT=32, FILE='KPP_RATEFCN/'//TRIM(RateFcns(i)), IOSTAT=io_stat, IOMSG=io_msg)
+          IF (io_stat/=0) EXIT
+          DO 
+            READ(32,'(A)', IOSTAT=io_stat, IOMSG=io_msg ) Line
+            IF (io_stat/=0) EXIT
+            WRITE(File_Unit,'(A)') TRIM(Line)
+          END DO
+          WRITE(File_Unit,*)
+          CLOSE(32)
+        END DO
+
+        WRITE(File_Unit,'(A)') '#ENDINLINE'
+        WRITE(File_unit,'(A)')
+
+        
+      END SUBROUTINE Include_RateFunctions
 
   END SUBROUTINE SYS_TO_KPP
 

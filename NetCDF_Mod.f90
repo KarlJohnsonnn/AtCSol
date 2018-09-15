@@ -181,7 +181,7 @@ MODULE NetCDF_Mod
     END DO
 
 
-    CALL TikZ_init('OUTPUT/'//TRIM(BSP)//'.dat',Diag_Name)
+    CALL TikZ_init('OUTPUT/'//TRIM(BSP)//'_tikz.dat',Diag_Name)
 
     
     ! ============================================================
