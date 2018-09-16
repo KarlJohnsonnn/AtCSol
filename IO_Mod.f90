@@ -652,7 +652,7 @@ MODULE IO_Mod
     DO iSpc=1,SIZE(InitValAct)
       WRITE(renameSpc,'(A,I0)') 'SPC',iSpc
       IF (InitValAct(iSpc)>1.0e-8_dp) THEN
-        WRITE(File_Unit,'(A,Es9.3,A)') "  IF ( TRIM(SPC_NAMES(i)) == '"//TRIM(renameSpc)//"' ) "//&
+        WRITE(File_Unit,'(A,D16.8,A)') "  IF ( TRIM(SPC_NAMES(i)) == '"//TRIM(renameSpc)//"' ) "//&
         &            "  VAR(i) = (",InitValAct(iSpc),"_dp)*CFACTOR      ! "//TRIM(y_name(iSpc))
       END IF
       renameSpc = ''
