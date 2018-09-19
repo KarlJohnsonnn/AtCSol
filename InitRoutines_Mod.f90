@@ -192,6 +192,7 @@ MODULE InitRoutines_Mod
         WRITE(*,*) '  Check run-file: LinAlg either "cl" or "ex" !'
 				CALL FinishMPI();  STOP
       END IF
+      
 
 			 ! Test that Rosenbrock tolerance > 0
 	    IF ( RtolROW <= ZERO ) THEN

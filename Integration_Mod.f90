@@ -62,7 +62,7 @@ MODULE Integration_Mod
     REAL(dp) :: timepart
     REAL(dp) :: time_int = 0.0d0
 
-    REAL(dp) :: h, hmin, tnew, tmp, hOld
+    REAL(dp) :: h, tnew, tmp, hOld
     REAL(dp) :: error, errorOld
     REAL(dp) :: tmp_tb
     REAL(dp) :: actLWC, zen, Temperature
@@ -163,13 +163,12 @@ MODULE Integration_Mod
               ! and use 0.8 of this value to avoid failures.
               
               Out%nfailed  = Out%nfailed+1
-              IF ( h <= hmin ) THEN
-                WRITE(*,*) ' Stepsize to small: ', h
+              IF ( h <= minStp ) THEN
                 CALL FinishMPI()
                 STOP '....Integration_Mod '
               END IF
               
-              h    = MAX( hmin , h * MAX( rTEN , 0.8_dp * error**(-ROS%pow) ) )
+              h    = MAX( minstp , h * MAX( rTEN , 0.8_dp * error**(-ROS%pow) ) )
               done = .FALSE.
             ELSE                  ! successful step
               EXIT

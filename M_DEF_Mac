@@ -23,5 +23,6 @@ LIB_D   = ./LIB_D
 
 NETCDF = -lcurl -L$(LocNCDF) -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 
 
+#LAPACK = /usr/local/Cellar/lapack/3.8.0_1/lib -llapack -lblas
 LAPACK = -llapack -lblas
 
