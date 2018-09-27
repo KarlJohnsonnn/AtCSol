@@ -551,6 +551,31 @@ MODULE IO_Mod
 
 
     ! ------------------------------------------------------------
+    ! Writing the KPP species file
+    !
+    OPEN(UNIT=646, FILE='OUTPUT/'//TRIM(BSP)//'_AtCSol_to_KPP.spc', ACTION='write')
+
+    WRITE(646,'(A)') '# This file contains the names of Species in KPP format and AtCSol SMILES notation.'
+    WRITE(646,'(A)') '# Serves as input file for the Matlab Program PrintConcentrations.m'
+    WRITE(646,'(A)')
+
+    nSpc = SIZE(InitValAct)
+    DO iSpc=1,nSpc
+      WRITE(renameSpc,'(A,I0)') 'SPC',iSpc
+      WRITE(646,'(A)') TRIM(renameSpc)//' = '//TRIM(y_name(iSpc))
+      renameSpc = ''
+    END DO
+    DO iSpc=1,SIZE(InitValKat)
+      WRITE(renameSpc,'(A,I0)') 'SPC',iSpc+nSpc
+      WRITE(646,'(A)') TRIM(renameSpc)//' = '//TRIM(y_name(iSpc+nSpc))
+      renameSpc = ''
+    END DO
+    
+    CLOSE(646)
+    WRITE(*,'(10X,A)') 'OUTPUT/'//TRIM(BSP)//'_AtCSol_to_KPP.spc file written.'
+
+
+    ! ------------------------------------------------------------
     ! Writing the KPP definiton (.def) file
     ! containing initial values, monitoring species, rate functions, etc.
     !
