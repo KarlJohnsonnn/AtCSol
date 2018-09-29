@@ -1,8 +1,8 @@
 &SCENARIO
   BSP      = 'mcm_32'
   WaitBar  = .T.
-  Simulation = .F.
-  KPP_Conversion = .T.
+  Simulation = .T.
+  KPP_Conversion = .F.
 /END
 &FILES
   SysFile  = 'CHEM/MCM3-2new4Willi.sys'  

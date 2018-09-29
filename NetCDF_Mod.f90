@@ -403,13 +403,13 @@ END SUBROUTINE InitNetCDF
 !
 !
 !SUBROUTINE SetOutputNcdf( y, yout, Time, actLWC)
-SUBROUTINE SetOutputNcdf(NCDF,Time,StpSize,iERR,ERR,Conc,Temp)
+SUBROUTINE SetOutputNcdf(NCDF,Time,StpSize,Conc,Temp)
   ! OUT:
   TYPE(NetCDF_T) :: NCDF
 
   REAL(dp), INTENT(IN) :: Conc(:)
-	REAL(dp), INTENT(IN) :: Time, StpSize, ERR, Temp
-	INTEGER,  INTENT(IN) :: iERR(1,1)
+	REAL(dp), INTENT(IN) :: Time, StpSize, Temp
+	!INTEGER,  INTENT(IN) :: iERR(1,1)
 
   !-- internal variable
 	INTEGER :: j,  idx, iDiagSpc, iFr
@@ -456,8 +456,8 @@ SUBROUTINE SetOutputNcdf(NCDF,Time,StpSize,iERR,ERR,Conc,Temp)
   IF ( MPI_master ) THEN
     NCDF%Time        = Time
     NCDF%StepSize    = StpSize
-    NCDF%MaxErrorSpc = iERR(1,1)
-    NCDF%ROWerror    = ERR
+    !NCDF%MaxErrorSpc = iERR(1,1)
+    !NCDF%ROWerror    = ERR
     
 
     ! NCDF%Spc_Conc = 
@@ -512,6 +512,7 @@ END SUBROUTINE SetOutputNcdf
   !-- internal variable
   INTEGER :: j, iFr
 
+  iStpNetCDF  = iStpNetCDF + 1
 
   IF ( MPI_master ) THEN
     NetCDF%iTime = NetCDF%iTime + 1
@@ -547,8 +548,8 @@ END SUBROUTINE SetOutputNcdf
     
     ! write zenith, error value stepssize control, index of max. error species
     CALL check( NF90_PUT_VAR( ncid, zenith_varid,      NCDF%Zenith,      start = (/NCDF%iTime/) ) )
-    CALL check( NF90_PUT_VAR( ncid, error_varid,       NCDF%ROWerror,    start = (/NCDF%iTime/) ) )
-    CALL check( NF90_PUT_VAR( ncid, MaxErrorSpc_varid, NCDF%MaxErrorSpc, start = (/NCDF%iTime/) ) )
+    !CALL check( NF90_PUT_VAR( ncid, error_varid,       NCDF%ROWerror,    start = (/NCDF%iTime/) ) )
+    !CALL check( NF90_PUT_VAR( ncid, MaxErrorSpc_varid, NCDF%MaxErrorSpc, start = (/NCDF%iTime/) ) )
 
     ! write pH-values, droplet radii, liquid water content
     IF ( ns_AQUA>0 ) THEN
