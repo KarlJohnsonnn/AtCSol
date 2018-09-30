@@ -8,6 +8,7 @@
     REAL(dp), PARAMETER :: dust=1.0
     REAL(dp), PARAMETER :: PiHalf = 2.0_dp*ATAN(1.0_dp)
 
+    k_PHOTOMCM = 0.0_dp
     IF ( chi < PiHalf ) THEN
       ChiZmcm  = EXP(-1.0d0*K3/COS(chi))
       yChiZmcm = chi ** K2
