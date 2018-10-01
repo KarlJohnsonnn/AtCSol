@@ -25,7 +25,8 @@ MODULE Integration_Mod
     REAL(dp) :: ThetaMAX
     REAL(dp) :: rho
   END TYPE PI_Param
-  !
+ 
+  INTEGER :: iBar=-1              ! waitbar increment
   TYPE(PI_Param) :: PI_norm, PI_rej
   !
   CONTAINS
@@ -33,7 +34,7 @@ MODULE Integration_Mod
   !======================================================================= 
   !===================    Time Integration Routine  ======================
   !======================================================================= 
-  SUBROUTINE Integrate(y_iconc, R0, Tspan, Atol, RtolRow, method)
+  SUBROUTINE Integrate(y_iconc, Temperature, h0, Tspan, Atol, RtolRow, method)
     !--------------------------------------------------------------------
     ! Input:
     !   - y0 ............. Initial vector
@@ -43,8 +44,8 @@ MODULE Integration_Mod
     !   - RtolRow ........ rel. tolerance for Rosenbrock-Wanner-Method
     !   - method.......... Rosenbrock-Wanner-Method
     !   - PrintSpc ....... print spc PrintSpc(1:3)
-    REAL(dp) :: y_iconc(nspc)
-    REAL(dp) :: R0(neq)
+    REAL(dp), INTENT(INOUT) :: y_iconc(nspc)
+    REAL(dp), INTENT(INOUT) :: h0, Temperature
     REAL(dp) :: Tspan(2)
     REAL(dp) :: Atol(2)
     REAL(dp) :: RtolROW
@@ -65,12 +66,11 @@ MODULE Integration_Mod
     REAL(dp) :: h, tnew, tmp, hOld
     REAL(dp) :: error, errorOld
     REAL(dp) :: tmp_tb
-    REAL(dp) :: actLWC, zen, Temperature
+    REAL(dp) :: actLWC, zen
     REAL(dp) :: wetRad(nFrac)
     INTEGER  :: ierr(1,1)
     REAL(dp) :: ErrVals(nspc)
     ! 
-    INTEGER :: iBar=-1              ! waitbar increment
     INTEGER :: i, k
 
     INTEGER, PARAMETER :: maxnsteps = 50000
@@ -89,13 +89,13 @@ MODULE Integration_Mod
     REAL(dp) :: RTOL1 , ATOL1(nDIM)
 
     
-    Y0(1:nspc)  = y_iconc(:)
-    Y(1:nspc)   = y_iconc(:)
+    Y0(1:nspc) = y_iconc(:)
+    Y(1:nspc)  = y_iconc(:)
 
     IF ( Teq ) THEN
       !--- initial temperature
-      Y0(nDIM) = Temperature0     ! = 750 [K] aus speedchem debug
-      Y(nDIM)  = Temperature0     ! = 750 [K]
+      Y0(nDIM) = Temperature     ! = 750 [K] aus speedchem debug
+      Y(nDIM)  = Temperature     ! = 750 [K]
 
       Y0 = MAX( ABS(Y0) , eps ) * SIGN( ONE , Y0 )    ! |y| >= eps
       Y  = MAX( ABS(Y)  , eps ) * SIGN( ONE , Y  )    ! |y| >= eps
@@ -103,19 +103,18 @@ MODULE Integration_Mod
 
     t = Tspan(1)
     tnew = Tspan(1)
+    h = h0
 
     ! this is for the waitbar
-    tmp_tb = (Tspan(2)-Tspan(1)) * 0.01_dp
+    tmp_tb = (tEnd-tBegin) * 0.01_dp
     
     
     SELECT CASE (TRIM(method(1:7)))
 
       CASE('METHODS')
     
-        !---- Calculate a first stepsize based on 2nd deriv.
-        h = InitialStepSize( Jac_CC, R0, t, Y0, ROS%pow )
 
-        IF (MPI_master) WRITE(*,'(10X,A)',ADVANCE='NO') 'Start Integration.............      '
+        !IF (MPI_master) WRITE(*,'(10X,A)',ADVANCE='NO') 'Start Integration.............      '
         time_int = MPI_WTIME()
        
             
@@ -175,30 +174,20 @@ MODULE Integration_Mod
             END IF
           END DO
           Out%nsteps = Out%nsteps + 1
-          
-          
-          IF ( NetCdfPrint ) THEN 
-            TimeNetCDFA = MPI_WTIME()
-            ! Time to save a step?
-            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) .OR.  &
-            &     t == Tspan(2) )  THEN
-              iStpNetCDF  = iStpNetCDF + 1
-              ! Update NetCDF struct and save the new set of values
-              IF ( ChemKin ) Temperature = Y(nDIM)
-              CALL SetOutputNCDF( NetCDF, t , h , ierr , error , Y , Temperature )
+         
+          ! --- save to NetCDF file
+          IF ( NetCdfPrint ) THEN
+            IF ( done .OR. StpNetCDF < ZERO ) THEN 
+              TimeNetCDFA = MPI_WTIME()
+              IF (ChemKin) Temperature = Y(nDIM)
+              CALL SetOutputNCDF( NetCDF, tnew , h , Y , Temperature )
               CALL StepNetCDF( NetCDF )
+              TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
             END IF
-            TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
-          END IF
-          
+          END IF 
+
           !-- Call progress bar.
-          IF ( WaitBar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
-            iBar = iBar + 1         ! iBar runs from 0 to 100
-            CALL Progress(iBar)
-          END IF
-          
-          !-- Termination condition for the main loop.
-          IF ( done ) EXIT
+          IF ( WaitBar .AND. t-tBegin > iBar*tmp_tb ) CALL Progress(iBar)
           
           !-- If there were no failures compute a new h.
           tmp = 1.25_dp * error**ROS%pow
@@ -215,6 +204,9 @@ MODULE Integration_Mod
           !-- for PI stepsize control
           errorOld  = error
           hOld      = h
+
+          !-- Termination condition for the main loop.
+          IF ( done ) EXIT  MAIN_LOOP_ROSENBROCK_METHOD
 
         END DO MAIN_LOOP_ROSENBROCK_METHOD  ! MAIN LOOP
     
@@ -265,12 +257,9 @@ MODULE Integration_Mod
           IF ( NetCdfPrint ) THEN 
             TimeNetCDFA = MPI_WTIME()
             ! Time to save a step?
-            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) .OR.  &
-            &     t == Tspan(2) )  THEN
-              iStpNetCDF  = iStpNetCDF + 1
-              ! Update NetCDF struct and save a new step
+            IF ( done .OR. StpNetCDF < ZERO ) THEN 
               IF ( ChemKin ) Temperature = Y(nDIM)
-              CALL SetOutputNCDF( NetCDF, t , h , ierr , error , Y , Temperature )
+              CALL SetOutputNCDF( NetCDF, t , h , Y , Temperature )
               CALL StepNetCDF( NetCDF )
             END IF
             TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
@@ -342,13 +331,9 @@ MODULE Integration_Mod
           ! save data
           IF ( NetCdfPrint ) THEN 
             TimeNetCDFA = MPI_WTIME()
-            ! Time to save a step?
-            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) .OR.  &
-            &     t == Tspan(2) )  THEN
-              iStpNetCDF  = iStpNetCDF + 1
-              ! Update NetCDF struct and save a new step
+            IF ( done .OR. StpNetCDF < ZERO ) THEN 
               IF ( ChemKin ) Temperature = Y(nDIM)
-              CALL SetOutputNCDF( NetCDF, t , h , ierr , error , Y , Temperature )
+              CALL SetOutputNCDF( NetCDF, t , h , Y , Temperature )
               CALL StepNetCDF( NetCDF )
             END IF
             TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
@@ -400,13 +385,9 @@ MODULE Integration_Mod
 
           IF ( NetCdfPrint ) THEN 
             TimeNetCDFA = MPI_WTIME()
-            ! Time to save a step?
-            IF ( (t - Tspan(1) >= StpNetCDF*iStpNetCDF) .OR.  &
-            &     t == Tspan(2) )  THEN
-              iStpNetCDF  = iStpNetCDF + 1
-              ! Update NetCDF struct and save a new step
+            IF ( done .OR. StpNetCDF < ZERO ) THEN 
               IF ( ChemKin ) Temperature = Y(nDIM)
-              CALL SetOutputNCDF( NetCDF, t , h , ierr , error , Y , Temperature )
+              CALL SetOutputNCDF( NetCDF, t , h , Y , Temperature )
               CALL StepNetCDF( NetCDF )
             END IF
             TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
@@ -433,7 +414,12 @@ MODULE Integration_Mod
         CALL DropOut()
 
     END SELECT
-    TimeIntegration = MPI_WTIME() - time_int
+    ! save values for next initial vector
+    IF ( ChemKin ) Temperature = Y(nDIM)
+    y_iconc = Y
+    h0 = h
+
+    TimeIntegration = TimeIntegration + MPI_WTIME() - time_int
 
   END SUBROUTINE Integrate
   
@@ -443,6 +429,8 @@ MODULE Integration_Mod
     !
     INTEGER(4)    :: j,k
     CHARACTER(69) :: bar="          Start Integration...........    ???% |                    |"
+
+    iBar = iBar + 1         ! iBar runs from 0 to 100
     !
     IF (MPI_ID==0) THEN
       WRITE(bar(43:45),'(I3)') j

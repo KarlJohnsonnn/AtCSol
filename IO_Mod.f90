@@ -616,15 +616,20 @@ MODULE IO_Mod
     !
     WRITE(File_Unit,'(A)')    '#INLINE F90_RCONST'
 
-    WRITE(File_Unit,'(A)')    '  REAL(dp) :: M, N2, O2, RO2, H2O'
+    WRITE(File_Unit,'(A)')    '  REAL(dp) :: M0, M, N2, O2, RO2, H2O'
     WRITE(File_Unit,'(A)')    '  ! variables'
     WRITE(File_Unit,'(A)')    '  REAL(dp), PARAMETER     :: PiHalf = 2.0_dp*ATAN(1.0_dp)'
+    WRITE(File_Unit,'(A)')    '  REAL(dp), PARAMETER :: Pres = 850.d0 ! hPa'
+    WRITE(File_Unit,'(A)')    '  REAL(dp), PARAMETER :: p0   = 1013.25d0 ! hPa Normaldruck'
+    WRITE(File_Unit,'(A)')    '  REAL(dp), PARAMETER :: RefTemp = 298.15D0'
+  
     WRITE(File_Unit,'(A)')    '  REAL(dp)                ::  chi'
     WRITE(File_Unit,'(A)') 
     WRITE(File_Unit,'(A)') 
     WRITE(File_Unit,'(A,D16.8)')    '  N2 = ', N2
     WRITE(File_Unit,'(A,D16.8)')    '  O2 = ', O2
-    WRITE(File_Unit,'(A)')    '  M  = N2 + O2'
+    WRITE(File_Unit,'(A,D16.8)')    '  M0 = ', N2 + O2
+    WRITE(File_Unit,'(A)')    '  M   = M0 * RefTemp / TEMP * Pres / p0'
     WRITE(File_Unit,'(A,D16.8)')    '  H2O = ', H2O
     WRITE(File_Unit,'(A)') 
     WRITE(File_Unit,'(A)') 

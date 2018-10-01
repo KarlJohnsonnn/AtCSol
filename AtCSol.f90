@@ -66,10 +66,10 @@ PROGRAM AtCSol
   CHARACTER(1) :: inpt=''
   TYPE(List), ALLOCATABLE :: ReacCyc(:)
   INTEGER,    ALLOCATABLE :: Target_Spc(:) 
-  LOGICAL :: ExistFile
+  LOGICAL :: done=.FALSE.
   
   ! timer
-  REAL(dp) :: t_1,t_2
+  REAL(dp) :: t_1,t_2,h0
 
   LOGICAL :: more_than_one=.FALSE.
 
@@ -346,7 +346,7 @@ PROGRAM AtCSol
     StartTimer = MPI_WTIME()
     errind = 0
     CALL InitNetcdf
-    CALL SetOutputNCDF( NetCDF, Tspan(1) , ZERO , errind , ZERO , InitValAct , Temperature0 )
+    CALL SetOutputNCDF( NetCDF, Tspan(1) , ZERO , InitValAct , Temperature0 )
     CALL StepNetCDF( NetCDF )
     TimeNetCDF = MPI_WTIME() - StartTimer
   END IF
@@ -507,12 +507,34 @@ PROGRAM AtCSol
     !-----------------------------------------------------------------------
     ! --- Start the integration routine 
     !-----------------------------------------------------------------------
-    CALL Integrate ( InitValAct &  ! initial concentrations activ species
-    &              , Rate       &  ! reaction rates at time=t0
-    &              , Tspan      &  ! integration invervall
-    &              , Atol       &  ! abs. tolerance of species
-    &              , RtolROW    &  ! rel. tolerance Rosenbrock method
-    &              , ODEsolver  )  ! methode for solving the ode system
+    IF ( StpNetCDF < ZERO ) THEN
+      Tspan = [tBegin, tEnd]
+    ELSE 
+      Tspan = [tBegin, StpNetCDF]
+    END IF
+
+    !---- Calculate a first stepsize based on 2nd deriv.
+    h0 = InitialStepSize( Jac_CC, Rate, Tspan(1), InitValAct, ROS%pow )
+
+    DO
+      CALL Integrate ( InitValAct   &  ! initial concentrations activ species
+      &              , Temperature0 &  ! initial temperature
+      &              , h0           &  ! reaction rates at time=t0
+      &              , Tspan        &  ! integration invervall
+      &              , Atol         &  ! abs. tolerance of species
+      &              , RtolROW      &  ! rel. tolerance Rosenbrock method
+      &              , ODEsolver    )  ! methode for solving the ode system
+      
+      IF (Tspan(2) == tEnd .OR. done) EXIT
+      Tspan = [Tspan(2), Tspan(2)+StpNetCDF]
+      
+      ! --- Hit end point exactly.
+      IF ( Tspan(2) >= tEnd ) THEN
+        TSpan(2) = tEnd
+        done = .TRUE.
+      END IF
+
+    END DO
     
     ! --- stop timer and print output statistics
     Timer_Finish = MPI_WTIME() - Timer_Start + Time_Read
