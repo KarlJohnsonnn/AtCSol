@@ -516,7 +516,14 @@ PROGRAM AtCSol
     !---- Calculate a first stepsize based on 2nd deriv.
     h0 = InitialStepSize( Jac_CC, Rate, Tspan(1), InitValAct, ROS%pow )
 
+    ! --- same output as KPP
+    OPEN( unit=999,       file='SpcConc.AtCSol',      status='replace', &
+      &     action='write', access='sequential')
+      WRITE(999,*) ' T             ',( TRIM(Diag_Name(i))//'            ', i=1,SIZE(Diag_Name) )
+      WRITE(999,*) ' T(idx)  ',( i,' ', i=1,SIZE(Diag_Name) )
+
     DO
+      WRITE(999,'(*(Es14.6))') Tspan(1), ( InitValAct(Diag_Index(i)), i=1,SIZE(Diag_Index) )         
       CALL Integrate ( InitValAct   &  ! initial concentrations activ species
       &              , Temperature0 &  ! initial temperature
       &              , h0           &  ! reaction rates at time=t0
@@ -535,6 +542,9 @@ PROGRAM AtCSol
       END IF
 
     END DO
+
+    WRITE(999,'(*(Es14.6))')  Tspan(1), ( InitValAct(Diag_Index(i)), i=1,SIZE(Diag_Index) )         
+    CLOSE(999)
     
     ! --- stop timer and print output statistics
     Timer_Finish = MPI_WTIME() - Timer_Start + Time_Read
@@ -569,9 +579,6 @@ PROGRAM AtCSol
     WRITE(*,'(32X,A,1X,F10.4,A)') 'Time ISSA reduction = ', TimeReduction, unit
     WRITE(*,*); 
     
-    
-    
-  
   END IF
 
   ! --- Close MPI 

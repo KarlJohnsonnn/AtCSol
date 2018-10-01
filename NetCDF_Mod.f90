@@ -5,6 +5,7 @@ MODULE NetCDF_Mod
   USE netcdf
   USE Reac_Mod
   USE Control_Mod
+  USE ChemSys_Mod, ONLY: PositionSpeciesAll
   USE MPI_Mod
   !
   IMPLICIT NONE
@@ -104,7 +105,7 @@ MODULE NetCDF_Mod
 
     ! -- Allocate Netcdf Names etc.
     !
-    ALLOCATE( Diag_LongName(NetCDF%n_Out) , Diag_Name(NetCDF%n_Out)    &
+    ALLOCATE( Diag_LongName(NetCDF%n_Out) , Diag_Name(NetCDF%n_Out)   , Diag_Index(NetCDF%n_Out) &
     &       , Diag_UNITS(NetCDF%n_Out)    , Diag_varid(NetCDF%n_Out)   &
     &       , WetRadius_varid(nFrac) , pH_varid(nFrac) , pH_ind(nFrac) )
     
@@ -117,7 +118,7 @@ MODULE NetCDF_Mod
     DO iDiagSpc = 1 , nNcdfGas
       j = j + 1
       tmpName = ADJUSTL(y_name(iNcdfGas(iDiagSpc)))
-  
+      Diag_Index(j)    = PositionSpeciesAll(tmpName)
       Diag_Name(j)     = TRIM(tmpName)
       Diag_LongName(j) = TRIM(tmpName)
       IF ( UnitGas == 1 ) THEN
