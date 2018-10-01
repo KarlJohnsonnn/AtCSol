@@ -2378,16 +2378,7 @@ MODULE Chemsys_Mod
       PositionSpecies=GetHash(ListGas,TRIM(ADJUSTL(Species)))
     END IF
   END FUNCTION PositionSpecies
-  !
-  FUNCTION PositionAtom(Atom) RESULT(Pos)
-    CHARACTER(*) :: Atom
-    !
-    INTEGER :: Pos
-    ! 
-    Pos = 0
-    Pos = GetHash(ListAtoms,TRIM(ADJUSTL(Atom)))
-  END FUNCTION PositionAtom
-  !
+
   !
   FUNCTION PositionSpeciesAll(Species) RESULT(Pos)
     CHARACTER(*) :: Species
@@ -2433,6 +2424,16 @@ MODULE Chemsys_Mod
       END IF
     END IF
   END FUNCTION PositionSpeciesAll
+  !
+  FUNCTION PositionAtom(Atom) RESULT(Pos)
+    CHARACTER(*) :: Atom
+    !
+    INTEGER :: Pos
+    ! 
+    Pos = 0
+    Pos = GetHash(ListAtoms,TRIM(ADJUSTL(Atom)))
+  END FUNCTION PositionAtom
+  !
   !
   !
   SUBROUTINE OpenFile(FileName,Type)

@@ -5,7 +5,6 @@ MODULE NetCDF_Mod
   USE netcdf
   USE Reac_Mod
   USE Control_Mod
-  USE ChemSys_Mod, ONLY: PositionSpeciesAll
   USE MPI_Mod
   !
   IMPLICIT NONE
@@ -118,7 +117,7 @@ MODULE NetCDF_Mod
     DO iDiagSpc = 1 , nNcdfGas
       j = j + 1
       tmpName = ADJUSTL(y_name(iNcdfGas(iDiagSpc)))
-      Diag_Index(j)    = PositionSpeciesAll(tmpName)
+      Diag_Index(j)    = iNcdfGas(iDiagSpc)
       Diag_Name(j)     = TRIM(tmpName)
       Diag_LongName(j) = TRIM(tmpName)
       IF ( UnitGas == 1 ) THEN
