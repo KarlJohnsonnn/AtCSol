@@ -543,7 +543,7 @@ PROGRAM AtCSol
 
     END DO
 
-    WRITE(999,'(*(Es14.6))')  Tspan(1), ( InitValAct(Diag_Index(i)), i=1,SIZE(Diag_Index) )         
+    WRITE(999,'(*(Es14.6))')  tEnd, ( InitValAct(Diag_Index(i)), i=1,SIZE(Diag_Index) )         
     CLOSE(999)
     
     ! --- stop timer and print output statistics

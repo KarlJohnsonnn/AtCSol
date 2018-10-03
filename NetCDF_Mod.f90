@@ -513,6 +513,7 @@ END SUBROUTINE SetOutputNcdf
   INTEGER :: j, iFr
 
   iStpNetCDF  = iStpNetCDF + 1
+  
 
   IF ( MPI_master ) THEN
     NetCDF%iTime = NetCDF%iTime + 1
