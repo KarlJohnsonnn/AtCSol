@@ -182,6 +182,7 @@ MODULE Integration_Mod
               IF (ChemKin) Temperature = Y(nDIM)
               CALL SetOutputNCDF( NetCDF, tnew , h , Y , Temperature )
               CALL StepNetCDF( NetCDF )
+              WRITE(999,'(*(Es14.6))') tnew, ( Y(Diag_Index(i)), i=1,SIZE(Diag_Index) ) 
               TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
             END IF
           END IF 

@@ -39,7 +39,7 @@
 /END
 &OUTPUT
   NetCdfFile  = 'NetCDF/MCM32_full.nc' ! location and name of NetCDF output file
-  StpNetCDF   = 600.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep
+  StpNetCDF   = -1.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep
   StpFlux     = -1.0d0
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock
