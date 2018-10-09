@@ -261,8 +261,6 @@
       mAir = N2O2 * RefTemp * T(6) * Pres / p0
       Meff = ONE
       IF ( nr_FACTOR > 0 ) Meff = EffectiveMolecularity( Conc , mAir )
-      !WRITE(*,*) ' M(RO2) = ', Time, Meff(iR%iFAC_RO2(1)) 
-      Meff(iR%iFAC_RO2) = ZERO
       
       ! ====== Compute the rate constant for specific reaction type
       k = ComputeRateConstant( T, Time, chi, mAir, Conc )
@@ -295,27 +293,35 @@
 
       ! ==== Law of mass action productories
       Prod = MassActionProducts( Conc )
+      Prod=One
+      DO i=1,nFirst_order
+        Prod(iFO(i,1)) = Prod(iFO(i,1)) * Conc(iFO(i,2))
+      END DO
+      !
+      ! stoechometric coefficients equal 2
+      DO i=1,nSecond_order
+        Prod(iSO(i,1)) = Prod(iSO(i,1)) * Conc(iSO(i,2)) * ABS(Conc(iSO(i,2)))
+      END DO
+      !
+      ! stoechometric coefficients not equal 1 or 2
 
-!#####################################
-!Test
-!     Rate = Meff * k 
-!     WRITE(*,*) 'SUM rates',SUM(Rate)
+      Rate = Meff * k * Prod
+      RateCnt = RateCnt + 1
+
 !     CALL Sort(Rate,Ord)
 !     DO i=1,UBOUND(Ord,1)
 !       WRITE(700,*) i,Ord(i),Rate(i)
 !     END DO
 !     WRITE(700,*) 'SUMME ',SUM(Rate)
 !     STOP
-!#####################################
-      Rate = Meff * k * Prod
-      RateCnt = RateCnt + 1
 
 
       !CALL Debug_Rates(ReactionSystem,Time,Meff,k,Prod,Rate)
       
       TimeRates = TimeRates + MPI_WTIME() - TimeRateA
 
-      CONTAINS
+
+CONTAINS  
 SUBROUTINE sort(vec,ord)
   REAL(8) :: vec(:)
   INTEGER :: ord(:)
@@ -439,7 +445,8 @@ END SUBROUTINE sort
 
     END FUNCTION MassTransfer
     
-    PURE FUNCTION EffectiveMolecularity(Conc,mAir) RESULT(M)
+     FUNCTION EffectiveMolecularity(Conc,mAir) RESULT(M)
+    !PURE FUNCTION EffectiveMolecularity(Conc,mAir) RESULT(M)
       !OUT
       REAL(dp) :: M(neq)
       !IN
@@ -454,9 +461,9 @@ END SUBROUTINE sort
       IF(nr_FAC_RO2aq>0) M(iR%iFAC_RO2aq) = SUM(Conc(RO2aq))
 
       IF(nr_FAC_O2>0)    M(iR%iFAC_O2)   = ((O2)**fac_exp)*fac_A
-      IF(nr_FAC_O2O2>0)  M(iR%iFAC_O2O2) = ((O2*O2)**fac_exp)*fac_A
+      IF(nr_FAC_O2O2>0)  M(iR%iFAC_O2O2) = (((O2)*(O2))**fac_exp)*fac_A
       IF(nr_FAC_N2>0)    M(iR%iFAC_N2)   = ((N2)**fac_exp)*fac_A
-      IF(nr_FAC_O2N2>0)  M(iR%iFAC_O2N2) = ((O2*N2)**fac_exp)*fac_A
+      IF(nr_FAC_O2N2>0)  M(iR%iFAC_O2N2) = (((O2)*(N2))**fac_exp)*fac_A
       IF(nr_FAC_H2O>0)   M(iR%iFAC_H2O)  = (H2O**fac_exp)*fac_A
 
       !IF(nr_FAC_O2>0)    M(iR%iFAC_O2)   = ((mO2*mAir)**fac_exp)*fac_A
@@ -477,7 +484,8 @@ END SUBROUTINE sort
 
     END FUNCTION EffectiveMolecularity
 
-    PURE FUNCTION ComputeRateConstant(T,Time,chi,mAir,Conc) RESULT(k)
+    FUNCTION ComputeRateConstant(T,Time,chi,mAir,Conc) RESULT(k)
+    !PURE FUNCTION ComputeRateConstant(T,Time,chi,mAir,Conc) RESULT(k)
 
       REAL(dp)                :: k(neq)
       REAL(dp), INTENT(IN)    :: Time, mAir, chi(:)
@@ -716,6 +724,22 @@ END SUBROUTINE sort
         Fc    = iR%TROEmcm(:,7)*EXP(iR%TROEmcm(:,8)*T(6))+iR%TROEmcm(:,9)*EXP(T(1)/iR%TROEmcm(:,10))
         tmpTROE = LOG10(k1mcm/k2mcm)/(n-d*LOG10(Fc))
         k(iR%iTROEmcm) = k1mcm/(One+k1mcm/k2mcm)*Fc**(One/(One+tmpTROE*tmpTROE))
+      END IF
+      IF (nr_TROEMCM>0) THEN 
+        DO i=1,UBOUND(iR%iTROEmcm,1)
+        k1mcm(i) = iR%TROEmcm(i,1)*(T(1)*InvRefTemp)**iR%TROEmcm(i,2)*EXP(iR%TROEmcm(i,3)*T(6))*mAir
+        k2mcm(i) = iR%TROEmcm(i,4)*(T(1)*InvRefTemp)**iR%TROEmcm(i,5)*EXP(iR%TROEmcm(i,6)*T(6))
+        Fc(i)    = iR%TROEmcm(i,7)*EXP(iR%TROEmcm(i,8)*T(6))+iR%TROEmcm(i,9)*EXP(T(1)/iR%TROEmcm(i,10))
+        tmpTROE(i) = LOG10(k1mcm(i)/k2mcm(i))/(n-d*LOG10(Fc(i)))
+        k(iR%iTROEmcm(i)) = k1mcm(i)/(One+k1mcm(i)/k2mcm(i))*Fc(i)**(One/(One+tmpTROE(i)*tmpTROE(i)))
+        WRITE(800,*) 
+        WRITE(800,*) 'TROEMCM',i,k(iR%iTROEmcm(i))
+        WRITE(800,*) iR%TROEmcm(i,1:5)
+        WRITE(800,*) iR%TROEmcm(i,6:10)
+        WRITE(800,*) mAir,InvRefTemp,T(1)
+        WRITE(800,*) k1mcm(i),k2mcm(i),Fc(i),tmpTROE(i)
+        WRITE(800,*) 
+        END DO
       END IF
 
       !--------------------------------------------------------------------------!

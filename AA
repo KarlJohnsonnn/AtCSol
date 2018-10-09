@@ -1,0 +1,31 @@
+      TimeRates = TimeRates + MPI_WTIME() - TimeRateA
+      WRITE(*,*) 'SUM rates',SUM(Rate)
+      CALL Sort(Rate,Ord)
+      DO i=1,UBOUND(Ord,1)
+        WRITE(700,*) i,Ord(i),Rate(i)
+      END DO
+      WRITE(700,*) 'SUMME ',SUM(Rate)
+      STOP
+      STOP
+
+      CONTAINS
+SUBROUTINE sort(vec,ord)
+  REAL(8) :: vec(:)
+  INTEGER :: ord(:)
+
+  INTEGER :: i,itemp,j,n
+  REAL(8) :: temp
+  n=SIZE(Vec)
+  DO i=1,n
+    ord(i)=i
+  END DO  
+  DO i=1,n
+    DO j=1,n-i
+      IF (vec(j).gt.vec(j+1)) THEN
+        temp=vec(j)
+        vec(j)=vec(j+1)
+        vec(j+1)=temp
+        itemp=ord(j)
+        ord(j)=ord(j+1)
+        ord(j+1)=itemp
+      END IF
