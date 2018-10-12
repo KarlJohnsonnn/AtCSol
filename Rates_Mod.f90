@@ -262,7 +262,7 @@
       Meff = ONE
       IF ( nr_FACTOR > 0 ) Meff = EffectiveMolecularity( Conc , mAir )
       !WRITE(*,*) ' M(RO2) = ', Time, Meff(iR%iFAC_RO2(1)) 
-      Meff(iR%iFAC_RO2) = ZERO
+      !Meff(iR%iFAC_RO2) = ZERO
       
       ! ====== Compute the rate constant for specific reaction type
       k = ComputeRateConstant( T, Time, chi, mAir, Conc )
@@ -316,29 +316,29 @@
       TimeRates = TimeRates + MPI_WTIME() - TimeRateA
 
       CONTAINS
-SUBROUTINE sort(vec,ord)
-  REAL(8) :: vec(:)
-  INTEGER :: ord(:)
+        SUBROUTINE sort(vec,ord)
+          REAL(8) :: vec(:)
+          INTEGER :: ord(:)
 
-  INTEGER :: i,itemp,j,n
-  REAL(8) :: temp
-  n=SIZE(Vec)
-  DO i=1,n
-    ord(i)=i
-  END DO  
-  DO i=1,n
-    DO j=1,n-i
-      IF (vec(j).gt.vec(j+1)) THEN
-        temp=vec(j)
-        vec(j)=vec(j+1)
-        vec(j+1)=temp
-        itemp=ord(j)
-        ord(j)=ord(j+1)
-        ord(j+1)=itemp
-      END IF
-    END DO
-  END DO
-END SUBROUTINE sort
+          INTEGER :: i,itemp,j,n
+          REAL(8) :: temp
+          n=SIZE(Vec)
+          DO i=1,n
+            ord(i)=i
+          END DO  
+          DO i=1,n
+            DO j=1,n-i
+              IF (vec(j).gt.vec(j+1)) THEN
+                temp=vec(j)
+                vec(j)=vec(j+1)
+                vec(j+1)=temp
+                itemp=ord(j)
+                ord(j)=ord(j+1)
+                ord(j+1)=itemp
+              END IF
+            END DO
+          END DO
+        END SUBROUTINE sort
       
 
         SUBROUTINE Debug_Rates(RS,Time,Meff,k,Prod,Rate)

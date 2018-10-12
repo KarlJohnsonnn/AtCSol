@@ -305,8 +305,6 @@ MODULE Rosenbrock_Mod
     LOGICAL :: dprint=.false.
 
 
-    REAL(dp) :: CM(nDIM)
-
     dprint = DebugPrint   !init run
     
 
@@ -511,16 +509,6 @@ MODULE Rosenbrock_Mod
 
         CALL UpdateEmission(Emiss,tt)
 
-        IF (dprint) THEN
-          !DO i=1,nspc; WRITE(*,'(A,I0,A,Es18.10)') ' Conc(',i,') = ', Y(i); END DO
-          !DO i=1,nr; WRITE(*,'(A,I0,A,Es18.10)')   ' Rate(',i,') = ', Rate(i); END DO
-          !DO i=1,nspc; WRITE(*,'(A,I0,A,Es18.10)') ' Emis(',i,') = ', Emiss(i); END DO
-          !DO i=1,nspc; WRITE(*,'(A,I0,A,4Es18.10)') '    k(',i,',:) = ', k(i,:); END DO
-          !print*, '        STAGE :: ',iStg
-          print*, ''
-          print*, 'debug::         SUM(concentration) at (Y + a*k)  = ',SUM(Y)
-          print*, 'debug::  SUM(Rates) at (t + SumA*h),  (Y + a*k)  = ',SUM(Rate)
-        END IF
       END IF
 
       

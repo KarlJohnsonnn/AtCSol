@@ -141,6 +141,11 @@ MODULE Integration_Mod
             &               , t             & ! current time
             &               , h             & ! stepsize
             &               , Euler=.FALSE. ) ! new concentration 
+
+            ! test Willi
+            !WHERE (Y<1.0e-4_dp)
+            !  Y = 1.0e-20_dp
+            !END WHERE
             
             tnew  = t + h
             

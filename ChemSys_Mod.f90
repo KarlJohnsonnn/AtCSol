@@ -3084,6 +3084,10 @@ MODULE Chemsys_Mod
 
           CALL SortVecAsc2(Tmp_iSpc,Perm)
 
+          Tmp_Koeff = Tmp_Koeff(Perm)  ! willi
+          Tmp_cSpc = Tmp_cSpc(Perm)  ! willi
+          Tmp_Type = Tmp_Type(Perm)  ! willi
+
           DO i = 1 , n-1
             IF ( tmp_iSpc(i) == tmp_iSpc(i+1) ) THEN
               tmp_Koeff(i+1)  = tmp_Koeff(i+1) + tmp_Koeff(i)
@@ -3093,32 +3097,18 @@ MODULE Chemsys_Mod
 
           nDupes = COUNT(tmp_iSpc==-1)
 
-          IF ( nDupes == 0 ) THEN
-
-            ALLOCATE(Ducts(n))
-            DO i = 1 , n
-              Ducts(i)%iSpecies = tmp_iSpc(i)
-              Ducts(i)%Species  = tmp_cSpc(i)(:)
-              Ducts(i)%Type     = tmp_Type(i)(:)
-              Ducts(i)%Koeff    = tmp_Koeff(i)
-            END DO 
-
-          ELSE 
-
-            ALLOCATE(Ducts(n-nDupes))
-            Len = 0
-            
-            DO i = 1 , n
-              IF ( tmp_iSpc(i) > 0 ) THEN
-                Len = Len + 1
-                Ducts(Len)%iSpecies = tmp_iSpc(i)
-                Ducts(Len)%Species  = tmp_cSpc(i)(:)
-                Ducts(Len)%Type     = tmp_Type(i)(:)
-                Ducts(Len)%Koeff    = tmp_Koeff(i)
-              END IF
-            END DO
-              
-          END IF
+          ALLOCATE(Ducts(n-nDupes))
+          Len = 0
+          
+          DO i = 1 , n
+            IF ( tmp_iSpc(i) > 0 ) THEN
+              Len = Len + 1
+              Ducts(Len)%iSpecies = tmp_iSpc(i)
+              Ducts(Len)%Species  = tmp_cSpc(i)(:)
+              Ducts(Len)%Type     = tmp_Type(i)(:)
+              Ducts(Len)%Koeff    = tmp_Koeff(i)
+            END IF
+          END DO
 
         ELSE
           ALLOCATE(Ducts(1))

@@ -595,7 +595,7 @@ PROGRAM AtCSol
   !================================================================
   !
   777  FORMAT(10X,A)
-  798  FORMAT(10X,'    Sum Initval (',A7,')      =  ', Es8.2, A)
+  798  FORMAT(10X,'    Sum Initval (',A7,')      =  ', Es16.8, A)
   800  FORMAT(10X,'    Sum Emissions (gaseous)    =  ', Es8.2, A)
   801  FORMAT(10X,'    Temperature                =  ', Es8.2,'  [K]') 
   802  FORMAT(10X,'    Pressure                   =  ', Es8.2,'  [Pa]')
