@@ -73,6 +73,7 @@ PROGRAM AtCSol
 
   LOGICAL :: more_than_one=.FALSE.
 
+
   !
   !================================================================
   !===                     MAIN Programm
@@ -514,7 +515,8 @@ PROGRAM AtCSol
     END IF
 
     !---- Calculate a first stepsize based on 2nd deriv.
-    h0 = InitialStepSize( Jac_CC, Rate, Tspan(1), InitValAct, ROS%pow )
+    !h0 = InitialStepSize( Jac_CC, Rate, Tspan(1), InitValAct, ROS%pow )
+    h0 = 1.0e-7_dp
 
     ! --- same output as KPP
     OPEN( unit=999,       file='SpcConc.AtCSol',      status='replace', &

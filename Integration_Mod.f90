@@ -200,7 +200,7 @@ MODULE Integration_Mod
           IF ( TWO * tmp > ONE ) THEN
             h = h / tmp
           ELSE
-            h = h * TWO
+            h = h * 4
           END IF
           
           !-- Advance the integration one step.

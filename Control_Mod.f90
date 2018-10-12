@@ -313,6 +313,11 @@
 
     
     INTEGER, ALLOCATABLE :: maxErrorCounter(:)
+
+
+    INTEGER  :: ICNTL(20)
+    REAL(dp) :: RCNTL(20)
+
    
  END MODULE Control_Mod
 
