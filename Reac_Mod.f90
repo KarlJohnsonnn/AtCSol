@@ -371,7 +371,7 @@
     !
     INTEGER, ALLOCATABLE :: first_ReacPtr(:)       ! array =(/ 1,2,3,4....,neq/)
     !
-    LOGICAL :: combustion=.FALSE.                      ! flag for combustion mechanism
+    LOGICAL :: Combustion=.FALSE.                      ! flag for combustion mechanism
     !
     REAL(dp), ALLOCATABLE :: GFE(:), DGFEdT(:)
     REAL(dp), ALLOCATABLE :: DelGFE(:), DDelGFEdT(:)

@@ -8,7 +8,6 @@ OBJ = UniRnk_Mod.f90\
       Reac_Mod.f90\
       Meteo_Mod.f90\
       MPI_Mod.f90\
-      InitRoutines_Mod.f90\
       NetCDF_Mod.f90\
       Sparse_Mod.f90\
       Cycles_Mod.f90\
@@ -17,12 +16,13 @@ OBJ = UniRnk_Mod.f90\
       InputTool_Mod.f90\
       ChemSys_Mod.f90\
       IO_Mod.f90\
-      ChemKinInput_Mod.f90\
+      CombustionInput_Mod.f90\
       fp_parameters.f90\
       fparser.f90\
       Rates_Mod.f90\
       ISSA_Mod.f90\
       Rosenbrock_Mod.f90\
+      InitRoutines_Mod.f90\
       Integration_Mod.f90\
       AtCSol.f90
       

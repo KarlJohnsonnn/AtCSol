@@ -1,7 +1,7 @@
 &SCENARIO
   BSP      = 'LLNL_nheptane'
   WaitBar  = .T.
-  ChemKin  = .T.        ! input mechanism in ChemKin notation
+  Combustion = .T.        ! input mechanism in ChemKin notation
 /END
  &FILES
   SysFile  = 'ckCHEM/nHeptane/nHeptane.sys'
@@ -30,7 +30,7 @@
 /END
 &OUTPUT
   NetCdfFile  = 'NetCDF/LLNL_nheptane_full.nc'
-  StpNetCDF   = 3.75d-5
+  StpNetCDF   = -3.75d-5
   nOutP       = 1000
   MatrixPrint = .F.
   DebugPrint  = .F.

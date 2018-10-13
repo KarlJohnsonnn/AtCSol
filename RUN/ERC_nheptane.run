@@ -1,7 +1,7 @@
 &SCENARIO
   BSP      = 'ERC_nheptane'
   WaitBar  = .T.
-  ChemKin  = .T.
+  Combustion = .T.
   Simulation = .T.
 /END
 &FILES
@@ -31,7 +31,7 @@
 /END
 &OUTPUT
   NetCdfFile  = 'NetCDF/ERC_nheptane_full.nc'
-  StpNetCDF   = 0.0001d0
+  StpNetCDF   = -0.0001d0
   nOutP       = 1000
   MatrixPrint = .F.
   DebugPrint  = .F.

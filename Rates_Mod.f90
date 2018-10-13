@@ -15,7 +15,7 @@
     USE Sparse_Mod
     USE Chemsys_Mod
     USE Meteo_Mod
-    USE ChemKinInput_Mod, ONLY: lowA,lowB,lowC,lowD,lowE,lowF,lowG       &
+    USE CombustionInput_Mod, ONLY: lowA,lowB,lowC,lowD,lowE,lowF,lowG       &
     &                  , highA,highB,highC,highD,highE,highF,highG
     !
     IMPLICIT NONE
@@ -295,23 +295,7 @@
 
       ! ==== Law of mass action productories
       Prod = MassActionProducts( Conc )
-
-!#####################################
-!Test
-!     Rate = Meff * k 
-!     WRITE(*,*) 'SUM rates',SUM(Rate)
-!     CALL Sort(Rate,Ord)
-!     DO i=1,UBOUND(Ord,1)
-!       WRITE(700,*) i,Ord(i),Rate(i)
-!     END DO
-!     WRITE(700,*) 'SUMME ',SUM(Rate)
-!     STOP
-!#####################################
       Rate = Meff * k * Prod
-      RateCnt = RateCnt + 1
-
-
-      !CALL Debug_Rates(ReactionSystem,Time,Meff,k,Prod,Rate)
       
       TimeRates = TimeRates + MPI_WTIME() - TimeRateA
 
@@ -339,35 +323,7 @@
             END DO
           END DO
         END SUBROUTINE sort
-      
 
-        SUBROUTINE Debug_Rates(RS,Time,Meff,k,Prod,Rate)
-          TYPE(ReactionStruct_T)   :: RS(:)
-          REAL(dp)                 :: Time
-          REAL(dp), DIMENSION(:) :: Meff, k, Prod, Rate
-
-          INTEGER :: j
-          
-          WRITE(987,*)
-          WRITE(987,*) REPEAT('*',80)
-
-          !DO j=1,nr
-          DO j=512,514
-          
-            !WRITE(987,101) RateCnt,j,TRIM(RS(j)%Type),TRIM(RS(j)%TypeConstant),TRIM(RS(j)%Line1)
-            !WRITE(987,102) Time,Meff(j),k(j),Prod(j),Rate(j)
-            WRITE(*,101) RateCnt,j,TRIM(RS(j)%Type),TRIM(RS(j)%TypeConstant),TRIM(RS(j)%Line1)
-            WRITE(*,102) Time,Meff(j),k(j),Prod(j),Rate(j)
-            WRITE(*,*)
-          END DO
-          
-          WRITE(987,*); WRITE(987,*)
-          101 FORMAT( ' NR :: ',I0,'    Reaction(',I0,')   ::   TYPE = ', A, '   ReacTYPE = ', A,'   ReactionString = ',A )
-          102 FORMAT( '     t = ',F12.4, '  Meff = ',Es12.4,'  k = ',Es12.4  &
-          &         , '  Prod = ', Es12.4, '  Rate = ', Es12.4 )
-          STOP 'Rates_Mod'
-        END SUBROUTINE Debug_Rates
-      
     END SUBROUTINE ReactionRates_Tropos
 
 
@@ -458,22 +414,6 @@
       IF(nr_FAC_N2>0)    M(iR%iFAC_N2)   = ((N2)**fac_exp)*fac_A
       IF(nr_FAC_O2N2>0)  M(iR%iFAC_O2N2) = ((O2*N2)**fac_exp)*fac_A
       IF(nr_FAC_H2O>0)   M(iR%iFAC_H2O)  = (H2O**fac_exp)*fac_A
-
-      !IF(nr_FAC_O2>0)    M(iR%iFAC_O2)   = ((mO2*mAir)**fac_exp)*fac_A
-      !IF(nr_FAC_O2O2>0)  M(iR%iFAC_O2O2) = (((mO2*mAir)*(mO2*mAir))**fac_exp)*fac_A
-      !IF(nr_FAC_N2>0)    M(iR%iFAC_N2)   = ((mN2*mAir)**fac_exp)*fac_A
-      !IF(nr_FAC_O2N2>0)  M(iR%iFAC_O2N2) = (((mO2*mAir)*(mN2*mAir))**fac_exp)*fac_A
-      !IF(nr_FAC_H2O>0)   M(iR%iFAC_H2O)  = ((mH2O*mAir)**fac_exp)*fac_A
-
-
-      !WRITE(*,*) ' Facorts '
-      !WRITE(*,*) ' mO2,  mN2,  mH2O ',((mO2*mAir)**fac_exp)*fac_A&
-      !&                              ,((mN2*mAir)**fac_exp)*fac_A&
-      !&                              ,((mH2O*mAir)**fac_exp)*fac_A
-      !WRITE(*,*) ' O2,    N2,   H2O ',O2,N2,H2O
-      !WRITE(*,*) ' mAir ', mAir
-      !WRITE(*,*) 
-      !STOP
 
     END FUNCTION EffectiveMolecularity
 
@@ -828,7 +768,7 @@
 
 
     SUBROUTINE UpdateEmission(Emissions,time)
-      REAL(dp), INTENT(OUT) :: Emissions(ns)
+      REAL(dp), INTENT(OUT) :: Emissions(nspc)
       REAL(dp), INTENT(IN)  :: time
 
       Emissions = MAX(y_emi - y_depos, ZERO)

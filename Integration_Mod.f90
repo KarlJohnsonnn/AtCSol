@@ -8,11 +8,10 @@
 MODULE Integration_Mod
   !
   USE Kind_Mod
-  USE MPI_Mod
   USE Control_Mod
   USE IO_Mod
   USE Reac_Mod
-  USE ChemKinInput_Mod, ONLY: Density
+  USE CombustionInput_Mod, ONLY: Density
   USE Sparse_Mod, ONLY: Jac_CC
   USE Rosenbrock_Mod
   USE NetCDF_Mod
@@ -34,22 +33,18 @@ MODULE Integration_Mod
   !======================================================================= 
   !===================    Time Integration Routine  ======================
   !======================================================================= 
-  SUBROUTINE Integrate(y_iconc, Temperature, h0, Tspan, Atol, RtolRow, method)
+  SUBROUTINE Integrate(y_iconc, h0, Tspan, ICNTL, RCNTL)
     !--------------------------------------------------------------------
     ! Input:
     !   - y0 ............. Initial vector
     !   - R0 ............. reaction rates at time=Tspan(1)
     !   - Tspan .......... (/ SimulationTimeStart , SimulationTimeEnd /)
-    !   - Atol ........... abs. tolerance for gas spc
-    !   - RtolRow ........ rel. tolerance for Rosenbrock-Wanner-Method
-    !   - method.......... Rosenbrock-Wanner-Method
-    !   - PrintSpc ....... print spc PrintSpc(1:3)
-    REAL(dp), INTENT(INOUT) :: y_iconc(nspc)
-    REAL(dp), INTENT(INOUT) :: h0, Temperature
+  
+    REAL(dp), INTENT(INOUT) :: y_iconc(nDIM)
+    REAL(dp), INTENT(INOUT) :: h0
     REAL(dp) :: Tspan(2)
-    REAL(dp) :: Atol(2)
-    REAL(dp) :: RtolROW
-    CHARACTER(*) :: method
+    INTEGER  :: ICNTL(:)
+    REAL(dp) :: RCNTL(:)
     !-------------------------------------------------------------------
     ! Output:
     !   - Output.......... struct Out (above) contains output statistics
@@ -62,23 +57,20 @@ MODULE Integration_Mod
     REAL(dp) :: t             ! current time
     REAL(dp) :: timepart
     REAL(dp) :: time_int = 0.0d0
+    REAL(dp) :: Atol(2)
 
     REAL(dp) :: h, tnew, tmp, hOld
     REAL(dp) :: error, errorOld
     REAL(dp) :: tmp_tb
-    REAL(dp) :: actLWC, zen
-    REAL(dp) :: wetRad(nFrac)
+    REAL(dp) :: actLWC, zen, Temperature
     INTEGER  :: ierr(1,1)
-    REAL(dp) :: ErrVals(nspc)
-    ! 
+   ! 
     INTEGER :: i, k
 
     INTEGER, PARAMETER :: maxnsteps = 50000
     
     LOGICAL :: done=.FALSE.
     LOGICAL :: failed
-    !
-    CHARACTER(10) :: swMethod
     !
     !-----------------------------
     ! LSODE Parameter
@@ -89,14 +81,10 @@ MODULE Integration_Mod
     REAL(dp) :: RTOL1 , ATOL1(nDIM)
 
     
-    Y0(1:nspc) = y_iconc(:)
-    Y(1:nspc)  = y_iconc(:)
+    Y0 = y_iconc
+    Y  = y_iconc
 
-    IF ( Teq ) THEN
-      !--- initial temperature
-      Y0(nDIM) = Temperature     ! = 750 [K] aus speedchem debug
-      Y(nDIM)  = Temperature     ! = 750 [K]
-
+    IF ( Combustion ) THEN
       Y0 = MAX( ABS(Y0) , eps ) * SIGN( ONE , Y0 )    ! |y| >= eps
       Y  = MAX( ABS(Y)  , eps ) * SIGN( ONE , Y  )    ! |y| >= eps
     END IF
@@ -107,9 +95,11 @@ MODULE Integration_Mod
 
     ! this is for the waitbar
     tmp_tb = (tEnd-tBegin) * 0.01_dp
+
+    Atol = [RCNTL(1), RCNTL(2)]
     
     
-    SELECT CASE (TRIM(method(1:7)))
+    SELECT CASE (TRIM(ODEsolver(1:7)))
 
       CASE('METHODS')
     
@@ -168,7 +158,6 @@ MODULE Integration_Mod
               
               Out%nfailed  = Out%nfailed+1
               IF ( h <= minStp ) THEN
-                CALL FinishMPI()
                 STOP '....Integration_Mod '
               END IF
               
@@ -184,10 +173,9 @@ MODULE Integration_Mod
           IF ( NetCdfPrint ) THEN
             IF ( done .OR. StpNetCDF < ZERO ) THEN 
               TimeNetCDFA = MPI_WTIME()
-              IF (ChemKin) Temperature = Y(nDIM)
-              CALL SetOutputNCDF( NetCDF, tnew , h , Y , Temperature )
+              CALL SetOutputNCDF( NetCDF, tnew , h , Y )
               CALL StepNetCDF( NetCDF )
-              WRITE(999,'(*(Es14.6))') tnew, ( Y(Diag_Index(i)), i=1,SIZE(Diag_Index) ) 
+              !WRITE(999,'(*(Es14.6))') tnew, ( Y(Diag_Index(i)), i=1,SIZE(Diag_Index) ) 
               TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
             END IF
           END IF 
@@ -264,8 +252,8 @@ MODULE Integration_Mod
             TimeNetCDFA = MPI_WTIME()
             ! Time to save a step?
             IF ( done .OR. StpNetCDF < ZERO ) THEN 
-              IF ( ChemKin ) Temperature = Y(nDIM)
-              CALL SetOutputNCDF( NetCDF, t , h , Y , Temperature )
+              IF ( Combustion ) Temperature = Y(nDIM)
+              CALL SetOutputNCDF( NetCDF, tnew , h , Y )
               CALL StepNetCDF( NetCDF )
             END IF
             TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
@@ -294,7 +282,7 @@ MODULE Integration_Mod
         LRW    = 20 + 21 * nDIM + 4*(BAT%nnz+A%nnz+2*nDIM)
         ITOL   = 2              ! 2 if atol is an array
         RTOL1  = RtolRow        ! relative tolerance parameter
-        IF (Teq) THEN
+        IF (Combustion) THEN
           ATOL1(1:nspc) = Atol(1)  ! atol dimension nspc+1
           ATOL1(nDim)   = Atol(2)  ! temperature tolerance
         ELSE
@@ -338,8 +326,8 @@ MODULE Integration_Mod
           IF ( NetCdfPrint ) THEN 
             TimeNetCDFA = MPI_WTIME()
             IF ( done .OR. StpNetCDF < ZERO ) THEN 
-              IF ( ChemKin ) Temperature = Y(nDIM)
-              CALL SetOutputNCDF( NetCDF, t , h , Y , Temperature )
+              IF ( Combustion ) Temperature = Y(nDIM)
+              CALL SetOutputNCDF( NetCDF, tnew , h , Y )
               CALL StepNetCDF( NetCDF )
             END IF
             TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
@@ -392,8 +380,8 @@ MODULE Integration_Mod
           IF ( NetCdfPrint ) THEN 
             TimeNetCDFA = MPI_WTIME()
             IF ( done .OR. StpNetCDF < ZERO ) THEN 
-              IF ( ChemKin ) Temperature = Y(nDIM)
-              CALL SetOutputNCDF( NetCDF, t , h , Y , Temperature )
+              IF ( Combustion ) Temperature = Y(nDIM)
+              CALL SetOutputNCDF( NetCDF, tnew , h , Y )
               CALL StepNetCDF( NetCDF )
             END IF
             TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
@@ -417,15 +405,17 @@ MODULE Integration_Mod
       CASE DEFAULT
         
         WRITE(*,*) ' No other methods implemented jet. Use Rosenbrock, LSODE[S] or backward Euler'
-        CALL DropOut()
 
     END SELECT
     ! save values for next initial vector
-    IF ( ChemKin ) Temperature = Y(nDIM)
     y_iconc = Y
     h0 = h
 
     TimeIntegration = TimeIntegration + MPI_WTIME() - time_int
+
+
+    ! --- stop timer and print output statistics
+    Timer_Finish = MPI_WTIME() - Timer_Start + Time_Read
 
   END SUBROUTINE Integrate
   
@@ -487,7 +477,7 @@ MODULE Integration_Mod
     REAL(dp) :: U(nspc) , dUdT(nspc)
     REAL(dp) :: c_v
     
-    IF (Teq) THEN         ! OUT:   IN:
+    IF (Combustion) THEN         ! OUT:   IN:
       ! MASS CONSERVATION
       CALL ReactionRates( T , Y , Rate , DRate)
       CALL UpdateEmission(Emiss,T)

@@ -1,4 +1,4 @@
-MODULE ChemKinInput_Mod
+MODULE CombustionInput_Mod
   !
   USE hashtbl
   USE Kind_Mod
@@ -40,7 +40,7 @@ CONTAINS
     INQUIRE(FILE=TRIM(Filename),EXIST=ExistFile)
     IF (ExistFile) THEN
       OPEN(UNIT=nUnit,FILE=TRIM(Filename),STATUS='UNKNOWN',IOSTAT=io_stat,IOMSG=io_msg)
-      CALL ErrorCheck(io_stat,io_msg,'opening '//TRIM(FileName))
+      CALL ErrorCheck2(io_stat,io_msg,'opening '//TRIM(FileName))
     ELSE
       WRITE(*,*)
       WRITE(*,*) ' File: ',TRIM(Filename),'  does not exist.'
@@ -568,11 +568,11 @@ CONTAINS
         END IF
 
         DO i=1,nProducts
-          ReactionSystem(iReac)%Product(i)%Type   = 'GAS'                ! immer gas in chemkin?
+          ReactionSystem(iReac)%Product(i)%Type   = 'GAS'                ! immer gas in Combustion?
           ReactionSystem(iReac)%Product(i)%Species= NamesDuctP(i)
           ReactionSystem(iReac)%Product(i)%Koeff  = KoefDuctP(i)
           IF (bR) THEN
-            ReactionSystem(iReac+1)%Educt(i)%Type   = 'GAS'                ! immer gas in chemkin?
+            ReactionSystem(iReac+1)%Educt(i)%Type   = 'GAS'                ! immer gas in Combustion?
             ReactionSystem(iReac+1)%Educt(i)%Species= NamesDuctP(i)
             ReactionSystem(iReac+1)%Educt(i)%Koeff  = KoefDuctP(i)
           END IF
@@ -797,6 +797,7 @@ CONTAINS
       END IF
       
       !print*, ' LOOP number done => next   ',iReac
+      !print*, TRIM(iLine)
       !read(*,*)
 
     END DO READ_REACTION_MECHANISM                      ! next reaction
@@ -1541,10 +1542,10 @@ CONTAINS
     STOP '  Reading chemical system '
   END SUBROUTINE PrintError
 
-  SUBROUTINE ErrorCheck(io_stat,io_msg,cause)
+  SUBROUTINE ErrorCheck2(io_stat,io_msg,cause)
     INTEGER      :: io_stat
     CHARACTER(*) :: io_msg, cause
     IF ( io_stat>0 ) WRITE(*,*) '   ERROR while '//cause//'  ::  ',io_stat,'  '//TRIM(io_msg)
-  END SUBROUTINE ErrorCheck
+  END SUBROUTINE ErrorCheck2
   !
-END MODULE ChemKinInput_Mod
+END MODULE CombustionInput_Mod

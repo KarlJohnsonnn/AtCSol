@@ -5,8 +5,6 @@ MODULE NetCDF_Mod
   USE netcdf
   USE Reac_Mod
   USE Control_Mod
-  USE MPI_Mod
-  !
   IMPLICIT NONE
 
   TYPE NetCDF_T
@@ -99,7 +97,7 @@ MODULE NetCDF_Mod
     NetCDF%iTime = 0
     NetCDF%n_Out = nNcdfGas + 2*nFrac*nNcdfAqua + nNcdfSolid + nNcdfParti 
     
-    ! output array containing diagnosis species (and temperature if ChemKin mechanism)
+    ! output array containing diagnosis species (and temperature if Combustion mechanism)
     ALLOCATE(NetCDF%Spc_Conc(NetCDF%n_Out), NetCDF%WetRadius(nFrac)) 
 
     ! -- Allocate Netcdf Names etc.
@@ -188,7 +186,6 @@ MODULE NetCDF_Mod
     ! --  create Netcdf file (for each size bin / fraction)
     ! ============================================================
     ! Create new NetCDF File
-    IF (MPI_master) THEN
       
       CALL check(  NF90_CREATE(  TRIM(NetCDFFile) &   ! NetCDF output file name
       &                        , NF90_CLOBBER     &   ! Overwrite existing file with the same name
@@ -336,7 +333,7 @@ MODULE NetCDF_Mod
           CALL check( NF90_PUT_ATT(ncid, pH_varid(iFr), "_CoordinateAxes", "time") )
         END DO
       END IF
-      ! save temperature for Teq simulation
+      ! save temperature for Combustion simulation
       CALL check( NF90_PUT_ATT(ncid, Temperature_varid, NC_UNITS, '[K]' ) )  
       CALL check( NF90_PUT_ATT(ncid, Temperature_varid, "long_name", 'Temperature in Kelvin') ) 
       CALL check( NF90_PUT_ATT(ncid, Temperature_varid, "_CoordinateAxes", "temp") )
@@ -347,14 +344,6 @@ MODULE NetCDF_Mod
       !
       CALL check( NF90_ENDDEF( ncid ) )
       !
-    !  ! ============================================================
-      ! -- Write the record variable into the netCDF file.
-      ! ============================================================
-      !
-      !IF (MPI_ID==0) print *,"  *****************************************************  "
-      !IF (MPI_ID==0) print *,"  *** SUCCESS writing netcdf-file ", TRIM(NetcdfFile),  "!"
-      !IF (MPI_ID==0) print *,"  *****************************************************  "
-      !
       ! ============================================================
       ! --  Close netcdf file
       ! ============================================================
@@ -362,7 +351,6 @@ MODULE NetCDF_Mod
       CALL check( NF90_CLOSE( ncid ) )
 
       WRITE(*,'(10X,A)') 'Init NetCDF................... done'
-    END IF
     !      
     !
     ! ============================================================
@@ -403,12 +391,12 @@ END SUBROUTINE InitNetCDF
 !
 !
 !SUBROUTINE SetOutputNcdf( y, yout, Time, actLWC)
-SUBROUTINE SetOutputNcdf(NCDF,Time,StpSize,Conc,Temp)
+SUBROUTINE SetOutputNcdf(NCDF,Time,StpSize,Y)
   ! OUT:
   TYPE(NetCDF_T) :: NCDF
 
-  REAL(dp), INTENT(IN) :: Conc(:)
-	REAL(dp), INTENT(IN) :: Time, StpSize, Temp
+  REAL(dp), INTENT(IN) :: Y(:)
+	REAL(dp), INTENT(IN) :: Time, StpSize
 	!INTEGER,  INTENT(IN) :: iERR(1,1)
 
   !-- internal variable
@@ -422,23 +410,22 @@ SUBROUTINE SetOutputNcdf(NCDF,Time,StpSize,Conc,Temp)
   !==================================================================
 
   DO j=1,NetCDF%n_Out
-    IF ( ISNAN(Conc(j)) ) THEN
+    IF ( ISNAN(Y(j)) ) THEN
       WRITE(*,*); WRITE(*,*); WRITE(*,*)
       WRITE(*,'(10X,A)')        '  ERROR:  Species concentration is NaN ! '
       WRITE(*,'(10X,A)')        '  -------------------------------------- '
       WRITE(*,'(10X,A,I0)')     '  NCDF idx      =  ', j
-      WRITE(*,'(10X,A,Es12.4)') '  Species val   =  ', Conc(j)
+      WRITE(*,'(10X,A,Es12.4)') '  Species val   =  ', Y(j)
       WRITE(*,*); WRITE(*,*); WRITE(*,*)
-      CALL DropOut()
     END IF
   END DO
 
  
-  tConc = [ MAX(Conc,y_Min) ]             ! minimum for logarithmic plot
-  IF ( ChemKin ) THEN
+  tConc = [ MAX(Y,y_Min) ]             ! minimum for logarithmic plot
+  IF ( Combustion ) THEN
     tConc = MoleConc_to_MoleFr(tConc(1:nspc))
     tG = [ tConc(iNcdfGas) ]     ! in mole fractions [-]
-    NCDF%Temperature = tConc(nDIM)
+    NCDF%Temperature = Y(nDIM)
   ELSE
     IF ( UnitGas == 0 ) THEN
       tG = [ tConc(iNcdfGas)   ] !  molec/cm3
@@ -448,12 +435,11 @@ SUBROUTINE SetOutputNcdf(NCDF,Time,StpSize,Conc,Temp)
     tA = [ tConc(iNcdfAqua)  / mol2part ] 
     tS = [ tConc(iNcdfSolid) / mol2part ] 
     tS = [ tConc(iNcdfParti) / mol2part ] 
-    NCDF%Temperature = Temp
+    NCDF%Temperature = Temperature0
   END IF
 
-  IF ( hasAquaSpc ) tAF = GatherAquaFractions( tA ) 
+  IF ( hasAquaSpc ) tAF = tA 
 
-  IF ( MPI_master ) THEN
     NCDF%Time        = Time
     NCDF%StepSize    = StpSize
     !NCDF%MaxErrorSpc = iERR(1,1)
@@ -478,7 +464,6 @@ SUBROUTINE SetOutputNcdf(NCDF,Time,StpSize,Conc,Temp)
     IF (hasPartiSpc) NCDF%Spc_Conc(iNCout_P) = tP
 
     IF ( hasPhotoReac ) NCDF%Zenith = Zenith(Time)
-  END IF
 
   CONTAINS
   
@@ -515,7 +500,6 @@ END SUBROUTINE SetOutputNcdf
   iStpNetCDF  = iStpNetCDF + 1
   
 
-  IF ( MPI_master ) THEN
     NetCDF%iTime = NetCDF%iTime + 1
     !
     ! ====================================================================================
@@ -527,7 +511,7 @@ END SUBROUTINE SetOutputNcdf
     ! == Write new data to netcdf-file ===================================================
     ! ====================================================================================
     timeLoc = NCDF%Time/HOUR          ! time output in hours
-    IF ( Teq ) timeLoc=NCDF%Time      ! time in seconds for Teq mechanism
+    IF ( Combustion ) timeLoc=NCDF%Time      ! time in seconds for Combustion mechanism
     CALL check( NF90_PUT_VAR( ncid, rec_varid, timeLoc, start=(/NCDF%iTime/) ) )
     CALL check( NF90_PUT_VAR( ncid, x_varid,   rlon,    start=(/NCDF%iTime/) ) )
     CALL check( NF90_PUT_VAR( ncid, y_varid,   rlat,    start=(/NCDF%iTime/) ) )
@@ -570,7 +554,7 @@ END SUBROUTINE SetOutputNcdf
     ! == Close netcdf-file ===============================================================
     ! ====================================================================================
     !
-    IF (Teq) THEN 
+    IF (Combustion) THEN 
       CALL TikZ_write( timeLoc , NCDF%Spc_Conc , temp=NCDF%Temperature )
     ELSE
       CALL TikZ_write( timeLoc , NCDF%Spc_Conc , LWC=NCDF%LWC, zen=NCDF%Zenith )
@@ -578,7 +562,6 @@ END SUBROUTINE SetOutputNcdf
     CALL check( nf90_sync(ncid) )
     CALL check( nf90_close(ncid) )
 
-  END IF
   !
   CONTAINS
     SUBROUTINE check(STATUS)
@@ -602,7 +585,7 @@ END SUBROUTINE SetOutputNcdf
     INTEGER :: j
     OPEN(UNIT=TikZUnit,FILE=Filename,STATUS='UNKNOWN')
     
-    IF (Teq) THEN
+    IF (Combustion) THEN
       WRITE(TikZUnit,'(*(A,2X))') 'time','temp',(TRIM(y_names(j)),j=1,SIZE(y_names))
     ELSE
       WRITE(TikZUnit,'(*(A,2X))') 'time','LWC','solar',(TRIM(y_names(j)),j=1,SIZE(y_names))
@@ -615,7 +598,7 @@ END SUBROUTINE SetOutputNcdf
     REAL(dp), OPTIONAL :: temp, LWC, zen 
     INTEGER :: j
     
-    IF (Teq) THEN
+    IF (Combustion) THEN
       WRITE(TikZUnit,'(*(Es18.12,2X))') time,temp,(conc(j), j=1,NetCDF%n_Out)
     ELSE
       IF ( zen > pi/TWO ) THEN

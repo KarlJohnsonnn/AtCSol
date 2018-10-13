@@ -4,7 +4,6 @@ MODULE IO_Mod
   CONTAINS
   SUBROUTINE Logo()
     USE MPI_Mod
-    IF (MPI_master) THEN
       WRITE(*,777) ! in Georgi16
       WRITE(*,777) '************ ********** ************ ********** ************'
       WRITE(*,777) "*                                                          *"
@@ -27,13 +26,11 @@ MODULE IO_Mod
       WRITE(*,777) "      An experimental Fortran program for the analysis      "
       WRITE(*,777) "         of complex chemical multiphase mechanisms          " 
       WRITE(*,*) ; WRITE(*,*)
-    END IF
     777 FORMAT(10X,A)
   END SUBROUTINE Logo
 
   SUBROUTINE Logo2()
     USE MPI_Mod
-    IF (MPI_master) THEN
       WRITE(*,*)
       WRITE(*,777) '******** ********** ************ ********** ********'
       WRITE(*,777) "*                                                  *"
@@ -50,7 +47,6 @@ MODULE IO_Mod
       WRITE(*,777) "*                                                  *"
       WRITE(*,777) '******** ********** ************ ********** ********'
       WRITE(*,*)
-    END IF
     777 FORMAT(10X,A)
   END SUBROUTINE Logo2
   !
@@ -62,7 +58,7 @@ MODULE IO_Mod
 
     IF ( INDEX(SysFile,'.sys')==0)  SysFile = TRIM(SysFile)//'.sys'
 
-    IF (MPI_master.AND.Simulation) THEN
+    IF (Simulation) THEN
       WRITE(*,*)
       WRITE(*,777)   'Run - Paramter:'
       WRITE(*,*)
@@ -93,7 +89,7 @@ MODULE IO_Mod
       WRITE(*,'(10X,A,2X,Es8.2)')   '    Relative Rosenbrock        = ',RtolROW
       WRITE(*,'(10X,A,2X,Es8.2)')   '    Absolute (gaseous species) = ',AtolGas
       IF (ns_AQUA>0) WRITE(*,'(10X,A,2X,Es8.2)')   '    Absolute (aqueous species) = ',AtolAqua
-      IF ( Teq ) THEN
+      IF ( Combustion ) THEN
         WRITE(*,'(10X,A,2X,Es8.2)')   '    Absolute Temperature       = ',AtolTemp
       END IF
       WRITE(*,*) 
@@ -111,18 +107,18 @@ MODULE IO_Mod
     &               , maxTInte,maxTAll,maxTSend,maxtNcdf,maxTErr,maxTRhs,maxTFlux
     CHARACTER(8) :: unit(12)
     !
-    CALL GetMaxTimes(maxTRead,Time_Read)
-    CALL GetMaxTimes(maxTRates,TimeRates)
-    CALL GetMaxTimes(maxTSymb,TimeSymbolic)
-    CALL GetMaxTimes(maxTInte,TimeIntegration)
-    CALL GetMaxTimes(maxTFac,TimeFac)
-    CALL GetMaxTimes(maxTSolve,TimeSolve)
-    CALL GetMaxTimes(maxTJac,TimeJac)
-    CALL GetMaxTimes(maxTAll,Timer_Finish)
-    CALL GetMaxTimes(maxTNcdf,TimeNetCDF)
-    CALL GetMaxTimes(maxTErr,TimeErrCalc)
-    CALL GetMaxTimes(maxTRhs,TimeRhsCalc)
-    CALL GetMaxTimes(maxTFlux,TimeFluxWrite)
+    maxTRead  = Time_Read
+    maxTRates  = TimeRates
+    maxTSymb  = TimeSymbolic
+    maxTInte  = TimeIntegration
+    maxTFac  = TimeFac
+    maxTSolve  = TimeSolve
+    maxTJac  = TimeJac
+    maxTAll  = Timer_Finish
+    maxTNcdf  = TimeNetCDF
+    maxTErr  = TimeErrCalc
+    maxTRhs  = TimeRhsCalc
+    maxTFlux  = TimeFluxWrite
     maxTInte = maxTInte - maxTNcdf - maxTFlux
 
     CALL ConvertTime(maxTRead,unit(1)(:))
@@ -138,7 +134,6 @@ MODULE IO_Mod
     CALL ConvertTime(maxTInte,unit(11)(:))
     CALL ConvertTime(maxTAll,unit(12)(:))
     !
-    IF (MPI_master) THEN
       ! print the statistics
       299 format(10X,A,3X,F13.6,A)
       298 format(10X,A,3X,I10)
@@ -170,7 +165,6 @@ MODULE IO_Mod
       WRITE(*,299) '    integration             =', maxTInte,unit(11); WRITE(*,*)
       WRITE(*,299) '    total runtime           =', maxTAll,unit(12)
       WRITE(*,*);  WRITE(*,*);  WRITE(*,*)
-    END IF
   END SUBROUTINE
   
  
@@ -187,7 +181,6 @@ MODULE IO_Mod
     CHARACTER(50)        :: mName
     !
     !
-    IF (MPI_master) THEN
       ! only if MatrixPrint=True
       CALL WriteSparseMatrix(aMat,TRIM('matrixOut/alpha'//fName))
       CALL WriteSparseMatrix(bMat,TRIM('matrixOut/beta'//fName))
@@ -200,9 +193,7 @@ MODULE IO_Mod
       CALL WriteSparseMatrix(eMat,TRIM('matrixOut/LUmiterStructure'//fName))
       CALL PrintPerm(eMat%Permu,eMat%InvPer,TRIM('matrixOut/Permu'//fName))
       !
-      CALL FinishMPI()
       STOP 'MatrixPrint=True --> stop nach print in Integration_Mod'
-    END IF
   END SUBROUTINE SaveMatricies
   !
   !
@@ -327,7 +318,7 @@ MODULE IO_Mod
     ! The data column corresponding to reactions contains:
     !   - reaction rate integrated over the time interval of interest [ppb]
     DO i = 1 , neq
-      IF ( ChemKin) THEN
+      IF ( Combustion) THEN
         ieq = INDEX(TRIM(RS(i)%Line1), ' => ')
         WRITE( 99 , '(Es11.4e2,4X,A,I0,A,A)' ) IntRate(i), TRIM(RS(i)%TypeConstant)//'_',i,':  ', &
         &       TRIM(TRIM(RS(i)%Line1(:ieq))//' -> '//TRIM(ADJUSTL(RS(i)%Line1(ieq+4:))))

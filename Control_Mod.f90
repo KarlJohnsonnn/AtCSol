@@ -120,18 +120,27 @@
       REAL(dp) :: TimeFluxWrite=0.0d0
       REAL(dp) :: TimeRhsCalc=0.0d0
       REAL(dp) :: TimeReduction=0.0d0
-  
       REAL(dp) :: TimeIntegration=0.0d0
+
       REAL(dp) :: TimeRateA=0.0d0
       REAL(dp) :: TimeRateE=0.0d0
       REAL(dp) :: TimeJacobianA=0.0d0
       REAL(dp) :: TimeJacobianE=0.0d0
+      REAL(dp) :: TimeFacA=0.0d0
+      REAL(dp) :: TimeFacE=0.0d0
+      REAL(dp) :: TimeRhsA=0.0d0
+      REAL(dp) :: TimeRhsE=0.0d0
+      REAL(dp) :: TimeSolA=0.0d0
+      REAL(dp) :: TimeSolE=0.0d0
+      REAL(dp) :: TimeErrCalcA=0.0d0
+      REAL(dp) :: TimeErrCalcE=0.0d0
+      REAL(dp) :: TimeFlxWrtA=0.0d0
+      REAL(dp) :: TimeFlxWrtE=0.0d0
       REAL(dp) :: TimeNetCDFA=0.0d0
 !
 
 !--- type for some statistics
       TYPE Output_T
-        REAL(dp), ALLOCATABLE :: y(:)    ! y-vector at Tend
         INTEGER :: nsteps     = 0              ! # succ. steps
         INTEGER :: nfailed    = 0              ! # failed steps
         INTEGER :: nRateEvals = 0              ! # Rate evaluation
@@ -286,8 +295,6 @@
     LOGICAL :: useMUMPS = .FALSE.
     LOGICAL :: useSparseLU = .FALSE.
 
-    LOGICAL :: ChemKin = .FALSE.
-
     REAL(dp), ALLOCATABLE :: integrated_rates(:)
     REAL(dp), ALLOCATABLE :: mixing_ratios_spc(:,:)
 
@@ -318,6 +325,6 @@
     INTEGER  :: ICNTL(20)
     REAL(dp) :: RCNTL(20)
 
-   
+
  END MODULE Control_Mod
 

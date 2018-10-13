@@ -14,7 +14,7 @@ MODULE Rosenbrock_Mod
   USE Rates_Mod
   USE Control_Mod
   USE Reac_Mod
-  USE ChemKinInput_Mod
+  USE CombustionInput_Mod
   IMPLICIT NONE
   !
   !
@@ -101,10 +101,8 @@ MODULE Rosenbrock_Mod
         CASE ('TSRosWSandu3')  
           INCLUDE 'METHODS/TSRosWSandu3.ros'
         CASE DEFAULT
-          IF (MPI_master) THEN
-            WRITE(*,*) '    Unknown Method:  ',method
-            WRITE(*,*) '    Use Rodas3 instead.'
-          END IF
+          WRITE(*,*) '    Unknown Method:  ',method
+          WRITE(*,*) '    Use Rodas3 instead.'
           INCLUDE 'METHODS/Rodas3.ros'
       END SELECT
     END IF
@@ -140,7 +138,7 @@ MODULE Rosenbrock_Mod
     &            ROS%nStage,     &        ! leading dimension of RHS
     &            INFO)                    ! INFO (integer) if INFO=0 succsessfull	
     !
-    IF ( INFO/= 0 .AND. MPI_master ) WRITE(*,*) 'Error while calc row-method parameter'
+    IF ( INFO/= 0 ) WRITE(*,*) 'Error while calc row-method parameter'
     !       
     ALLOCATE(ROS%a(ROS%nStage,ROS%nStage))
     ROS%a = ZERO
@@ -208,7 +206,7 @@ MODULE Rosenbrock_Mod
     f0 = BAT * Rate + Emiss
 
     ALLOCATE( thresh(nDIM) )
-    IF ( Teq ) THEN
+    IF (  Combustion ) THEN
       thresh(iGs)  = AtolGas / RTolROW
       thresh(nDIM) = AtolTemp / RTolROW
     ELSE
@@ -225,7 +223,7 @@ MODULE Rosenbrock_Mod
     h = absh
     tdel  = t + MIN( SQRT(eps) * MAX( ABS(t) , ABS(t+h) ) , absh )
 
-    IF (Teq) THEN
+    IF ( Combustion) THEN
       CALL ReactionRates( t+tdel , Y , Rate , dRdT )
     ELSE
       CALL ReactionRates( t+tdel , Y , Rate)
@@ -260,7 +258,7 @@ MODULE Rosenbrock_Mod
     !   - t.............. time
     !   - h.............. step size
     !   - RCo............ Rosenbrock method
-    !   - Temp........... Temperatur at Time = t (optional for Teq)
+    !   - Temp........... Temperatur at Time = t (optional for  Combustion)
     !   - Euler.......... if .true. --> use backward Euler method
     !
     REAL(dp),          INTENT(IN) :: Y0(nDIM)
@@ -271,7 +269,7 @@ MODULE Rosenbrock_Mod
     ! Output:
     !   - Ynew........... new concentratinos 
     !   - err............ error calc with embedded formula.
-    !   - TempNew........ new temperature (optional for Teq)
+    !   - TempNew........ new temperature (optional for  Combustion)
     !
     REAL(dp), INTENT(OUT) :: YNew(nDIM)
     REAL(dp), INTENT(OUT) :: err
@@ -302,11 +300,7 @@ MODULE Rosenbrock_Mod
     ! fuer verlgeich mit speedchem, andere spc reihenfolge
     !
     INTEGER :: iStg, jStg, i, j          ! increments
-    LOGICAL :: dprint=.false.
 
-
-    dprint = DebugPrint   !init run
-    
 
     ! Initial settings
     k       = ZERO
@@ -330,7 +324,7 @@ MODULE Rosenbrock_Mod
     !********************************************************************************
    
     ! HIER UNBEDINGT RATE MIT Y0 ALS INPUT
-    IF ( Teq ) THEN
+    IF (  Combustion ) THEN
       Yrh = Y0(1:nspc) / h
       CALL ReactionRates( t, Y0, Rate, DRatedT )     
     ELSE
@@ -344,7 +338,7 @@ MODULE Rosenbrock_Mod
 
     CALL UpdateEmission(Emiss,t)
 
-    IF ( Teq ) THEN
+    IF (  Combustion ) THEN
       Tarr = UpdateTempArray   ( Y0(nDIM) )       
       CALL InternalEnergy      ( U       , Tarr)             
       CALL DiffInternalEnergy  ( dUdT    , Tarr)              
@@ -359,41 +353,19 @@ MODULE Rosenbrock_Mod
       dRatedT = ROS%ga*dRatedT
       X       = cv/(h*rRho) + ROS%ga/cv*dcvdT*dTdt + ROS%ga*SUM(dUdT*dCdt) 
       !
-      !
-      IF (dprint) THEN
-        WRITE(*,*) '------------------------------------------------------------------------------'
-        WRITE(*,*) '|    Combustion                                                              |'
-        WRITE(*,*) '------------------------------------------------------------------------------'
-        WRITE(*,'(A,E23.16,A)') 'debug     Temperature =  ',Tarr(1)   ,'   [K]'
-        WRITE(*,'(A,E23.16,A)') 'debug     c_v         =  ',cv        ,'   [J/kg/K]'
-        WRITE(*,'(A,E23.16,A,E23.16,A)') 'debug     Density     =  ',rho       ,'   [kg/m3]',rRho       ,'   [kg/m3]'
-        WRITE(*,'(A,E23.16,A)') 'debug     SUM(U)      =  ',SUM(U)    ,'   [J/mol/K]'
-        WRITE(*,'(A,E23.16,A)') 'debug     X in Matrix =  ',X         ,'   [???]'
-        WRITE(*,'(A,E23.16,A)') 'debug     SUM(dCdt)   =  ',SUM(dCdt) ,'   [mol/cm3/sec]'
-        WRITE(*,'(A,E23.16,A)') 'debug     dTdt        =  ',dTdt      ,'   [K/sec]'
-        WRITE(*,*) '------------------------------------------------------------------------------'
-        WRITE(*,*) ''
-        do i=1,nspc
-          WRITE(*,'(A,I5,A,E22.14,A3,A)') 'debug     dCdt(',i,') = ',dCdt(SCperm(i)),'   ',y_name(SCperm(i))
-        end do
-        WRITE(*,'(A,E22.14,A3,A)') 'debug      dTdt(last) = ',dTdt,'   ','Temperature'
-        WRITE(*,*) ''
-        !stop 'debug ros'
-      END IF
-      !stop
-      !
+      
     END IF
    
     ! --- Update matrix procedure
     IF ( CLASSIC ) THEN
     
       ! classic case needs to calculate the Jacobian first
-      TimeJacobianA = MPI_WTIME()
+      CALL CPU_Time(TimeJacobianA)
 
       ! d(dcdt)/dc
       CALL Jacobian_CC(  Jac_CC , BAT  , A , Rate , Y )
 
-      IF ( Teq ) THEN
+      IF (  Combustion ) THEN
         CALL Jacobian_CT( Jac_CT , BAT , Rate , DRatedT )
         CALL Jacobian_TC( Jac_TC , Jac_CC , cv , dUdT , dTdt , U , rRho)
         CALL Jacobian_TT( Jac_TT , Jac_CT , cv , dcvdT , dTdt , dUdT , dCdt , U , rRho)
@@ -405,7 +377,8 @@ MODULE Rosenbrock_Mod
       Out%npds = Out%npds + 1
 
       CALL SetLUvaluesCL( LU_Miter , Miter , LU_Perm )
-      TimeJac = TimeJac + (MPI_WTIME()-TimeJacobianA)
+      CALL CPU_TIME(TimeJacobianE)
+      TimeJac = TimeJac + (TimeJacobianE-TimeJacobianA)
 
     ELSE !IF ( EXTENDED )
       ! 
@@ -440,35 +413,12 @@ MODULE Rosenbrock_Mod
     !     \__,_|\___|\___\___/|_| |_| |_| .__/ \___/|___/_|\__|_|\___/|_| |_|
     !                                   |_|                                   
     ! --- LU - Decomposition ---
-    timerStart = MPI_WTIME()
-    CALL SparseLU( LU_Miter )
+    CALL CPU_TIME(TimeFacA)
+    CALL SparseLU(LU_Miter)
+    CALL CPU_TIME(TimeFacE)
+    TimeFac = TimeFac + (TimeFacE-TimeFacA)
 
-     
-    TimeFac = TimeFac + (MPI_WTIME()-timerStart)
-
-    IF (dprint) THEN
-      print*,
-      print*,
-      print*, '------------------------------------------------------------------------------'
-      print*, '|    Rosenbrock Input                                                        |'
-      print*, '------------------------------------------------------------------------------'
-      !print*, 'debug     i-th step      =  ',Out%nsteps
-      print*, 'debug     Stepsize       =  ',h
-      print*, 'debug     Time           =  ',t
-      print*, 'debug     SUM(Y0)        =  ',SUM(Y0)
-      print*, 'debug     SUM(Rate)      =  ',SUM(Rate)
-      print*, 'debug     SUM(Miter%val) =  ',SUM(Miter%val)
-      IF( useSparseLU ) THEN
-        print*, 'debug    SUM(LU%val) vor = ', SUM(LU_Miter%val)
-      END IF
-      print*, '------------------------------------------------------------------------------'
-      print*, ''
-      print*, ''
-      print*, '------------------------------------------------------------------------------'
-      print*, '| Before solving Ax=b:  iStage                   b                           |'
-      print*, '------------------------------------------------------------------------------'
-      print*, ''
-    END IF
+    
 
     !****************************************************************************************
     !   ____    ___ __        __          _____  _                    ____   _               
@@ -487,8 +437,8 @@ MODULE Rosenbrock_Mod
         IF ( EXTENDED ) THEN
           bb( 1     : neq ) = mONE 
           bb( neq+1 : nsr ) = Emiss 
-          IF ( Teq ) bb(nDIMex)  = ZERO
-          IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:4)
+          IF (  Combustion ) bb(nDIMex)  = ZERO
+          
         END IF
 
       ELSE ! iStage > 1 ==> Update time and concentration
@@ -501,7 +451,7 @@ MODULE Rosenbrock_Mod
         END DO
         
         ! Update Rates at  (t + SumA*h) , and  (Y + A*)k
-        IF (Teq) THEN
+        IF ( Combustion) THEN
           CALL ReactionRates( tt , Y , Rate , DRatedT )
         ELSE
           CALL ReactionRates( tt , Y , Rate )
@@ -511,14 +461,13 @@ MODULE Rosenbrock_Mod
 
       END IF
 
-      
-      TimeRhsCalc0 = MPI_WTIME()
       !--- Calculate the right hand side of the linear System
+      CALL CPU_TIME(TimeRhsA)
       IF ( CLASSIC ) THEN
 
         dCdt = BAT * Rate + Emiss
         fRhs(1:nspc) =  h * dCdt
-        IF (Teq) THEN
+        IF (Combustion) THEN
           Tarr = UpdateTempArray ( Y(nDIM) )       
           CALL InternalEnergy    ( U       , Tarr)  
           CALL DiffInternalEnergy( dUdT    , Tarr)              
@@ -527,8 +476,6 @@ MODULE Rosenbrock_Mod
         END IF
 
         DO jStg=1,iStg-1; fRhs = fRhs + ROS%C(iStg,jStg)*k(:,jStg); END DO
-
-        IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',fRhs( 1:4)
 
       ELSE !IF ( EXTENDED ) THEN
 
@@ -539,7 +486,7 @@ MODULE Rosenbrock_Mod
           DO jStg = 1 , iStg-1
             fRhs(1:nspc) = fRhs(1:nspc) + ROS%C(iStg,jStg)*k(1:nspc,jStg)
             
-            IF (Teq) THEN
+            IF ( Combustion) THEN
               Tarr = UpdateTempArray( Y(nDIM) )       
               CALL InternalEnergy( U , Tarr)    
               CALL DiffInternalEnergy( dUdT , Tarr)              
@@ -549,62 +496,36 @@ MODULE Rosenbrock_Mod
           END DO
 
           ! right hand side of the extended linear system
-
           bb( 1      : neq )  = -rRate * Rate
           bb( neq+1  : nsr )  = Emiss + fRhs(1:nspc)/h
-          IF (Teq) bb(nDIMex) = fRhs(nDIM)/h
-
-          IF (dprint) WRITE(*,'(A25,I4,A3,*(E15.8,2X))') ' ',iStg,'   ',bb(1:4)
+          IF (Combustion) bb(nDIMex) = fRhs(nDIM)/h
         END IF
 
       END IF
-      TimeRhsCalc = TimeRhsCalc + MPI_WTIME() - TimeRhsCalc0
+      CALL CPU_TIME(TimeRhsE)
+      TimeRhsCalc = TimeRhsCalc + TimeRhsE - TimeRhsA
       
-      timerStart  = MPI_WTIME()
-
+      CALL CPU_TIME(TimeSolA)
       IF ( CLASSIC ) THEN
         CALL SolveSparse( LU_Miter , fRhs )
         k( 1:nDIM , iStg ) = fRhs
       ELSE !IF ( EXTENDED ) THEN
         CALL SolveSparse( LU_Miter , bb)
         k( 1:nspc , iStg ) = Y0(1:nspc) * bb(neq+1:nsr)
-        IF ( Teq ) &
+        IF (  Combustion ) &
         k(  nDIM  , iStg ) = bb(nDIMex)
       END IF
-
-      TimeSolve   = TimeSolve + (MPI_WTIME()-timerStart)
+      CALL CPU_TIME(TimeSolE)
+      TimeSolve   = TimeSolve + (TimeSolE-TimeSolA)
 
     END DO  LOOP_n_STAGES
-    IF (dprint) THEN
-      print*, ''
-      print*, '------------------------------------------------------------------------------'
-      print*, '| After solving Ax=b:  Species         k( iSpc , : )                         |'
-      print*, '------------------------------------------------------------------------------'
-      print*, ''
-      do istg=1,nspc
-        WRITE(*,'(A9,I5,A25,A3,*(E15.8,2X))') 'debug::  ',istg, TRIM(y_name(istg)),'   ',k( istg , : )
-      end do
-      IF (Teq) WRITE(*,'(A9,I5,A25,A3,*(E15.8,2X))') 'debug::  ',nDIM,'Temperature','   ',k( nDIM , : )
-      print*, '------------------------------------------------------------------------------'
-    END IF
 
     
     !--- Update Concentrations (+Temperatur)
     YNew = Y0
-    DO jStg=1,ROS%nStage; YNew = YNew + ROS%m(jStg)*k(:,jStg); END DO
-    
-    IF (dprint) THEN
-      print*, ''
-      print*, '------------------------------------------------------------------------------'
-      print*, '| After Ros step:   Y_Old                     Y_New              Species name|'
-      print*, '------------------------------------------------------------------------------'
-      do istg=1,nspc
-        print*,'debug::  ', Y0(istg),Ynew(iStg),'   ', TRIM(y_name(istg))
-      end do
-      IF (Teq) print*,'debug::  ', Y0(nDIM),Ynew(nDIM), '   Temperature'
-      print*, '------------------------------------------------------------------------------'
-      print*, ''
-    END IF
+    DO jStg=1,ROS%nStage 
+      YNew = YNew + ROS%m(jStg)*k(:,jStg)
+    END DO
 
     !***********************************************************************************************
     !   _____                           _____       _    _                    __               
@@ -617,32 +538,16 @@ MODULE Rosenbrock_Mod
 
     IF (.NOT.EULER) THEN
 
-      timerStart = MPI_WTIME()
+      CALL CPU_TIME(TimeErrCalcA)
       ! embedded formula for err calc ord-1
       YHat = Y0
-      DO jStg=1,ROS%nStage; YHat = YHat + ROS%me(jStg)*k(:,jStg); END DO
+      DO jStg=1,ROS%nStage
+        YHat = YHat + ROS%me(jStg)*k(:,jStg) 
+      END DO
 
       CALL ERROR( err , ierr , YNew , YHat , ATolAll , RTolROW , t )
-      TimeErrCalc = TimeErrCalc + MPI_WTIME() - timerStart
-
-      maxErrorCounter(ierr(1,1)) = maxErrorCounter(ierr(1,1)) + 1
-
-      ! for analysis and reduction
-      IF ( FluxDataPrint .AND. MPI_master .AND. err < ONE ) THEN
-        IF ( t - Tspan(1) >= StpFlux*REAL(iStpFlux,dp) ) THEN
-          timerStart = MPI_WTIME()
-          CALL StreamWriteFluxes(Rate_t,t,h)
-          TimeFluxWrite = TimeFluxWrite + MPI_WTIME() - timerStart
-        END IF
-      END IF
-      
-      IF (dprint) THEN
-        print*,'debug::     Error     =  ', err, '  Error index  =  ', ierr, '  Error species  =  ', TRIM(y_name(ierr(1,1)))
-        print*, '------------------------------------------------------------------------------'
-        print*, ''
-        print*, ' Press ENTER to calculate next step '
-        read(*,*) 
-      END IF
+      CALL CPU_TIME(TimeErrCalcE)
+      TimeErrCalc = TimeErrCalc + TimeErrCalcE - TimeErrCalcA
 
     END IF
    

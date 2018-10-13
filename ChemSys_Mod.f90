@@ -2026,6 +2026,7 @@ MODULE Chemsys_Mod
       IF ( ios /= 0 ) THEN
         WRITE(*,*) ' Error Reading Units'
         WRITE(*,*) ' Error Message  ::  ',TRIM(iom)
+        STOP
       ELSE
         comments = (ADJUSTL(LocLine(1:1)) == '#'        .OR. &
         &           ADJUSTL(LocLine(1:7)) == 'COMMENT'  .OR. &
@@ -2265,7 +2266,6 @@ MODULE Chemsys_Mod
         WRITE(*,777) '       Species = '//TRIM(Duct(NumSpec)%Species)
         WRITE(*,777) '       Check syntax in '//TRIM(SysFile)//'.sys!'
         WRITE(*,*); WRITE(*,*)
-        CALL FinishMPI()
         STOP 
       END IF
 
@@ -2392,7 +2392,7 @@ MODULE Chemsys_Mod
     !WRITE(*,*) ' number ob species = ',species, len
   
     ! Combustion system
-    IF ( Teq ) THEN
+    IF ( Combustion ) THEN
       Pos = -1
       Pos = GetHash(ListGas,TRIM(ADJUSTL(Species)))
     ELSE
@@ -3426,7 +3426,7 @@ END SUBROUTINE Setup_ReacParameter_neu
         WRITE(*,*) '----->  desired #consts: ', reac_par(j)%n_par, j
         WRITE(*,*) '----->  actual  #consts: ', SIZE(RS(i)%Constants)
         WRITE(*,*) '       Check sys-file for syntax errors!'
-        CALL FinishMPI();  STOP
+        STOP
       END IF
 
     END DO
