@@ -28,7 +28,7 @@ MODULE NetCDF_Mod
 
   TYPE(NetCDF_T) :: NetCDF
 
-  INTEGER  :: iStpNetCDF 
+  INTEGER  :: idt_output 
   INTEGER  :: ncid
   REAL(dp) :: altit               ! altitude
   !
@@ -93,7 +93,7 @@ MODULE NetCDF_Mod
     INTEGER            :: iDiagSpc
     INTEGER            :: strich
     !
-    iStpNetCDF   = 1
+    idt_output   = 1
     NetCDF%iTime = 0
     NetCDF%n_Out = nNcdfGas + 2*nFrac*nNcdfAqua + nNcdfSolid + nNcdfParti 
     
@@ -497,7 +497,7 @@ END SUBROUTINE SetOutputNcdf
   !-- internal variable
   INTEGER :: j, iFr
 
-  iStpNetCDF  = iStpNetCDF + 1
+  idt_output  = idt_output + 1
   
 
     NetCDF%iTime = NetCDF%iTime + 1

@@ -80,7 +80,7 @@
 !--- Times:  < 0 in seconds, > 0 in hours, = 0  meteorology
       REAL(dp) :: tBegin              & ! Model start time
 &               , tEnd              & ! Model end time
-&               , StpNetcdf           ! Time step for Netcdf output
+&               , dt_output           ! Time step for Netcdf output
       INTEGER  :: nOutP
 
 !--- NetCDF globals      
@@ -175,6 +175,11 @@
       ! 'cl' for classic jacobian calc or
       ! 'ex' for extended matrix without calc of jac
       CHARACTER(2) :: LinAlg = '??'
+
+
+
+      INTEGER  :: ICNTL(30)
+      REAL(dp) :: RCNTL(30)
 
 !
 !-----------------------------------------------------------------
@@ -320,10 +325,6 @@
 
     
     INTEGER, ALLOCATABLE :: maxErrorCounter(:)
-
-
-    INTEGER  :: ICNTL(20)
-    REAL(dp) :: RCNTL(20)
 
 
  END MODULE Control_Mod

@@ -402,7 +402,7 @@ MODULE IO_Mod
 
   SUBROUTINE SYS_TO_KPP(RS)
     USE Kind_Mod
-    USE Control_Mod, ONLY: BSP, Tspan, Temperature0, StpNetcdf
+    USE Control_Mod, ONLY: BSP, Tspan, Temperature0, dt_output
     USE Reac_Mod,    ONLY: y_name, RO2, InitValAct, InitValKat, Diag_Name, iNcdfGas
     USE ChemSys_Mod, ONLY: ReactionStruct_T, Duct_T, PositionSpeciesAll
     USE Meteo_Mod,   ONLY: N2, O2, H2O
@@ -666,7 +666,7 @@ MODULE IO_Mod
     WRITE(File_Unit,'(A)') '#INLINE F90_INIT'
     WRITE(File_Unit,'(A,D16.8)') '  TSTART = ', Tspan(1)
     WRITE(File_Unit,'(A,D16.8)') '  TEND   = ', Tspan(2)
-    WRITE(File_Unit,'(A,D16.8)') '  DT     = ', StpNetcdf
+    WRITE(File_Unit,'(A,D16.8)') '  DT     = ', dt_output
     WRITE(File_Unit,'(A,D16.8)') '  TEMP   = ', Temperature0
 
     ! --- define initial values here because of better readability

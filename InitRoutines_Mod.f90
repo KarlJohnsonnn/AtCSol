@@ -26,10 +26,11 @@ MODULE InitRoutines_Mod
       LOGICAL :: PrintToScreen = .True.
 
 
-      INTEGER  :: i,nSchwefel
+      INTEGER  :: i
 
-      ! NetCDF stuff
       REAL(dp) :: StartTimer
+
+
       REAL(dp), ALLOCATABLE :: Y(:)
       ! reaction rate array + part. derv. rate over temperatur vector
       REAL(dp), ALLOCATABLE :: Rate(:), DRatedT(:)  , wetRad(:)
@@ -64,8 +65,6 @@ MODULE InitRoutines_Mod
       ! timer
       REAL(dp) :: t_1,t_2
 
-      INTEGER  :: ICNTL(30)
-      REAL(dp) :: RCNTL(30)
 
       !----------------------------------------------------------------
       ! --- Read run control parameters (which runfile)
@@ -168,8 +167,6 @@ MODULE InitRoutines_Mod
         rRho = mega/rho       ! in [cm3/g]
         InitValAct = [MoleConc , Temperature0]
 
-        
-
       ELSE
 
         CALL ReadSystem( SysFile )
@@ -206,6 +203,7 @@ MODULE InitRoutines_Mod
         WRITE(*,*)
         WRITE(*,'(10X,A,I6)') '    Number of Reactions = ', neq
         WRITE(*,'(10X,A,I6)') '    Number of Species   = ', nspc
+        WRITE(*,*)
       END IF
       !-----------------------------------------------------------------------
       ! --- Timers
@@ -219,29 +217,43 @@ MODULE InitRoutines_Mod
       !-----------------------------------------------------------------------
 
       !-----------------------------------------------------------------------
+      ! --- creates all the files for simulation with KPP
+      IF (KPP_Conversion) CALL SYS_TO_KPP(ReactionSystem)
+      !-----------------------------------------------------------------------
+
+      !-----------------------------------------------------------------------
+      ! --- creates the stoechiometric matrices ny_educt, ny_product of the 
+      ! --- chemical system and store them as compressed row sparse matrices
+      !CALL BuildStoechiometricMatrices(A, B)
+      !-----------------------------------------------------------------------
+
+      !-----------------------------------------------------------------------
       ! --- this is for the new mass action product routine 
       CALL Setup_SpeciesOrder(A)
       !-----------------------------------------------------------------------
-
-      IF (KPP_Conversion) CALL SYS_TO_KPP(ReactionSystem)
 
 
       !-----------------------------------------------------------------------
       ! --- Dimension initialisation for the unknowns and matrices
       !
-      nsr = nspc + neq
-
+      nsr  = nspc + neq   ! #species + #reactions
+      nDIM = nspc         ! #dependent variables
+      nDIMcl = nspc       ! #dependent variables for classic linear algebra
+      nDIMex = nsr        ! #dependent variables for extended linear algebra
+      
       IF ( Combustion ) THEN
-        nDIM = nspc+1; nDIMcl = nspc+1; nDIMex = nsr+1
-      ELSE
-        nDIM = nspc; 	 nDIMcl = nspc;		nDIMex = nsr
+        nDIM = nspc+1
+        nDIMcl = nspc+1
+        nDIMex = nsr+1
       END IF
 
       rNspc = ONE/REAL(nspc,KIND=dp)  ! rNspc for error calculation
       !-----------------------------------------------------------------------
 
-      ! true if mechanism contains photolytic reactions
+      !-----------------------------------------------------------------------
+      ! --- logical: if mechanism contains photolytic reactions -> True
       PHOTO = (nr_G_photo+nr_A_photo) > 0
+      !-----------------------------------------------------------------------
 
 
       !----------------------------------------------------------------------------
@@ -321,6 +333,8 @@ MODULE InitRoutines_Mod
       WRITE(*,777,ADVANCE='NO') 'Symbolic-phase................'
       StartTimer = MPI_WTIME()              ! start timer for symb phase
       
+
+
       CALL SymbolicAdd( BA , B , A )      	! symbolic addition:    BA = B + A
       CALL SparseAdd  ( BA , B , A, '-' )   ! numeric subtraction:  BA = B - A
       CALL TransposeSparse( BAT , BA )    	! transpose BA:        BAT = Transpose(BA) 
@@ -489,7 +503,7 @@ MODULE InitRoutines_Mod
       &                    ParOrdering
 
       NAMELIST /OUTPUT/  NetCdfFile , &
-      &                  StpNetcdf ,  &
+      &                  dt_output ,  &
       &                  StpFlux ,    &
       &                  nOutP ,      &
       &                  DebugPrint , &
@@ -661,7 +675,7 @@ MODULE InitRoutines_Mod
 !-----------------------------------------------------------------
 !
 !--- Set Default Values for OUTPUT Namelist
-      StpNetcdf     = -1.0_dp      ! Time step for Netcdf output      [in sec]
+      dt_output     = -1.0_dp      ! Time step for Netcdf output      [in sec]
       StpFlux       = -1.0_dp
       nOutP         = 100
       MatrixPrint   = .FALSE.

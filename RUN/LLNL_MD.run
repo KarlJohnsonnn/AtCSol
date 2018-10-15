@@ -32,7 +32,7 @@
 /END
 &OUTPUT
   NetCdfFile  = 'NetCDF/LLNL_MD_full.nc'
-  StpNetCDF   = -0.0001d0
+  dt_output   = -0.0001d0
   nOutP       = 1000
   MatrixPrint = .F.
   DebugPrint  = .F.

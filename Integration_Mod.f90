@@ -171,7 +171,7 @@ MODULE Integration_Mod
          
           ! --- save to NetCDF file
           IF ( NetCdfPrint ) THEN
-            IF ( done .OR. StpNetCDF < ZERO ) THEN 
+            IF ( done .OR. dt_output < ZERO ) THEN 
               TimeNetCDFA = MPI_WTIME()
               CALL SetOutputNCDF( NetCDF, tnew , h , Y )
               CALL StepNetCDF( NetCDF )
@@ -251,7 +251,7 @@ MODULE Integration_Mod
           IF ( NetCdfPrint ) THEN 
             TimeNetCDFA = MPI_WTIME()
             ! Time to save a step?
-            IF ( done .OR. StpNetCDF < ZERO ) THEN 
+            IF ( done .OR. dt_output < ZERO ) THEN 
               IF ( Combustion ) Temperature = Y(nDIM)
               CALL SetOutputNCDF( NetCDF, tnew , h , Y )
               CALL StepNetCDF( NetCDF )
@@ -325,7 +325,7 @@ MODULE Integration_Mod
           ! save data
           IF ( NetCdfPrint ) THEN 
             TimeNetCDFA = MPI_WTIME()
-            IF ( done .OR. StpNetCDF < ZERO ) THEN 
+            IF ( done .OR. dt_output < ZERO ) THEN 
               IF ( Combustion ) Temperature = Y(nDIM)
               CALL SetOutputNCDF( NetCDF, tnew , h , Y )
               CALL StepNetCDF( NetCDF )
@@ -379,7 +379,7 @@ MODULE Integration_Mod
 
           IF ( NetCdfPrint ) THEN 
             TimeNetCDFA = MPI_WTIME()
-            IF ( done .OR. StpNetCDF < ZERO ) THEN 
+            IF ( done .OR. dt_output < ZERO ) THEN 
               IF ( Combustion ) Temperature = Y(nDIM)
               CALL SetOutputNCDF( NetCDF, tnew , h , Y )
               CALL StepNetCDF( NetCDF )

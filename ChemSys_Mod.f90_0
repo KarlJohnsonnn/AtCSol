@@ -970,15 +970,7 @@ MODULE Chemsys_Mod
     INTEGER      :: nEduct,nProd
     TYPE(Duct_T) :: ActiveEduct(30)
     TYPE(Duct_T) :: ActiveProduct(30)
-    !
-    INTEGER      :: nnzA, nnzB
-    !
-    INTEGER,  ALLOCATABLE :: tmpIdx(:)
-    REAL(dp), ALLOCATABLE :: tmpVal(:)
-    INTEGER,  ALLOCATABLE :: permutation(:)
-    INTEGER :: newLen
-
-    
+    !    
      
     !-----------------------------------------------------------------------
     ! --- Build the reaction system
@@ -1009,20 +1001,9 @@ MODULE Chemsys_Mod
 
 
     !-----------------------------------------------------------------------
-    ! --- print reactions and build A, B and (B-A) structure
+    ! --- print reactions 
     !-----------------------------------------------------------------------
-   
-    ! set matrix dimensions
-    A%m  = neq;   A%n  = nspc
-    B%m  = neq;   B%n  = nspc
-    BA%m = neq;   BA%n = nspc
-    
-    ! Standart alloc
-    ALLOCATE(A%RowPtr(A%m+1),B%RowPtr(B%m+1),BA%RowPtr(BA%m+1))
-    A%RowPtr  = 0;    A%RowPtr(1)  = 1
-    B%RowPtr  = 0;    B%RowPtr(1)  = 1
-    BA%RowPtr = 0;    BA%RowPtr(1) = 1
-    
+ 
     DO iR=1,neq
       ! count activ educts in reaction iR
       nEduct = 0
@@ -1055,36 +1036,6 @@ MODULE Chemsys_Mod
      
       WRITE(Unit,*) SIZE(RS(iR)%Educt), SIZE(RS(iR)%Product), nEduct, nProd
       
-      ! Educt Matrix A
-      IF ( nEduct > 1 ) THEN
-        ALLOCATE( tmpIdx(nEduct), tmpVal(nEduct) )
-        tmpIdx = 0;  tmpVal = ZERO
-        DO j=1,nEduct
-          tmpIdx(j) = PositionSpeciesAll(ActiveEduct(j)%Species)
-          tmpVal(j) = ActiveEduct(j)%Koeff
-        END DO
-        CALL CompressList(tmpIdx,tmpVal)
-        A%RowPtr(iR+1) = A%RowPtr(iR) + SIZE(tmpIdx)
-        DEALLOCATE( tmpIdx , tmpVal )
-      ELSE
-        A%RowPtr(iR+1) = A%RowPtr(iR) + nEduct
-      END IF
-
-      ! Product Matrix B
-      IF (nProd>1) THEN
-        ALLOCATE( tmpIdx(nProd), tmpVal(nProd) )
-        tmpIdx = 0;  tmpVal = ZERO
-        DO j=1,nProd
-          tmpIdx(j) = PositionSpeciesAll(ActiveProduct(j)%Species)
-          tmpVal(j) = ActiveProduct(j)%Koeff
-        END DO
-        CALL CompressList(tmpIdx,tmpVal)
-        B%RowPtr(iR+1) = B%RowPtr(iR) + SIZE(tmpIdx)
-        DEALLOCATE( tmpIdx , tmpVal )
-      ELSE
-        B%RowPtr(iR+1) = B%RowPtr(iR) + nProd
-      END IF
-
       ! ----------------------------------------------------
       ! SpeziesIndx Edukt=> 1:#Edukt von Reaktion iR
       ! SpeziesIndx Produkt=> #Edukt+1:#Edukt+#Produkt von Reaktion iR
@@ -1124,114 +1075,18 @@ MODULE Chemsys_Mod
       IF (CK) WRITE(Unit,*) 'EXTRA2:  ',ADJUSTL(TRIM(RS(iR)%Line3))
     END DO
    
-    ! loop again to set ColInd and Val on A and B
-    nnzA = 0
-    nnzB = 0
-  
-    ALLOCATE( A%ColInd(A%RowPtr(A%m+1)-1) , A%Val(A%RowPtr(A%m+1)-1) &
-    &       , B%ColInd(B%RowPtr(B%m+1)-1) , B%Val(B%RowPtr(B%m+1)-1) )
-    A%ColInd = 0; A%Val = ZERO
-    B%ColInd = 0; B%Val = ZERO
-    
-    ALLOCATE(sumBAT(A%m)); sumBAT = ZERO
-    !
-    DO iR = 1,neq
-      nEduct = 0
-      DO i=1,SIZE(RS(iR)%Educt)
-        SELECT CASE(RS(iR)%Educt(i)%Type)
-          CASE ('Gas','Aqua','Solid','Partic','Micro','GAS')
-            nEduct = nEduct + 1
-            ActiveEduct(nEduct) = RS(iR)%Educt(i)
-        END SELECT
-      END DO
-      IF ( nEduct /= RS(iR)%nActEd ) WRITE(*,*) 'ned = ', nEduct, RS(iR)%nActEd
-      nProd = 0
-      DO i=1,SIZE(RS(iR)%Product)
-        SELECT CASE(RS(iR)%Product(i)%Type)
-          CASE ('Gas','Aqua','Solid','Partic','Micro','GAS')
-            nProd = nProd + 1
-            ActiveProduct(nProd) = RS(iR)%Product(i)
-        END SELECT
-      END DO
-      IF ( nProd /= RS(iR)%nActPro ) WRITE(*,*) 'nPr = ', nProd, RS(iR)%nActPro
-      
-      ! set ColInd and Val on A and B
-      IF (nEduct>1) THEN
-        ALLOCATE(tmpIdx(nEduct),tmpVal(nEduct),permutation(nEduct))
-        tmpIdx = 0;  tmpVal = ZERO;   permutation = 0
-        DO j=1,nEduct
-          tmpIdx(j) = PositionSpeciesAll(ActiveEduct(j)%Species)
-          tmpVal(j) = ActiveEduct(j)%Koeff
-        END DO
-        
-        ! sort ColInd and Val for acc column indx
-        CALL unirnk(tmpIdx,permutation,newLen)
-        tmpIdx = tmpIdx(permutation); tmpVal = tmpVal(permutation)
-        CALL CompressList(tmpIdx,tmpVal)
-        !
-
-        DO m=1,newLen
-          nnzA = nnzA + 1
-          A%ColInd(nnzA) = tmpIdx(m)
-          A%Val(nnzA) = tmpVal(m)
-          sumBAT(iR)  = sumBAT(iR) - tmpVal(m)
-        END DO
-        DEALLOCATE(tmpIdx,tmpVal,permutation)
-      ELSE
-        ! reactions with only one educt
-        DO m=1,nEduct
-          nnzA = nnzA + 1
-          A%ColInd(nnzA) = PositionSpeciesAll(ActiveEduct(m)%Species)
-          A%Val(nnzA) = ActiveEduct(m)%Koeff
-          sumBAT(iR)  = sumBAT(iR) - ActiveEduct(m)%Koeff
-        END DO
-      END IF
-      !
-      IF (nProd>1) THEN
-        ALLOCATE(tmpIdx(nProd),tmpVal(nProd),permutation(nProd))
-        tmpIdx = 0;  tmpVal = ZERO;   permutation = 0
-        DO j=1,nProd
-          tmpIdx(j) = PositionSpeciesAll(ActiveProduct(j)%Species)
-          tmpVal(j) = ActiveProduct(j)%Koeff
-        END DO
-        CALL unirnk(tmpIdx,permutation,newLen)
-        tmpIdx = tmpIdx(permutation); tmpVal = tmpVal(permutation)
-        CALL CompressList(tmpIdx,tmpVal)
-        !
-        DO m=1,newLen
-          nnzB = nnzB+1
-          B%ColInd(nnzB) = tmpIdx(m)
-          B%Val(nnzB) = tmpVal(m)
-          sumBAT(iR)  = sumBAT(iR) + tmpVal(m)
-        END DO
-        DEALLOCATE(tmpIdx,tmpVal,permutation)
-      ELSE
-        DO m=1,nProd
-          nnzB = nnzB + 1
-          B%ColInd(nnzB) = PositionSpeciesAll(ActiveProduct(m)%Species)
-          B%Val(nnzB) = ActiveProduct(m)%Koeff
-          sumBAT(iR)  = sumBAT(iR) + ActiveProduct(m)%Koeff
-        END DO
-      END IF
-    END DO
-
-    A%nnz = nnzA
-    B%nnz = nnzB
-
     CALL PrintFinalReactions( Unit )
     CLOSE(ChemUnit)
   END SUBROUTINE Print_ChemFile
 
 
-  SUBROUTINE BuildStoechimetricMatrices(spEduct, spProduct)
+  SUBROUTINE BuildStoechiometricMatrices(spEduct, spProduct)
     TYPE(CSR_Matrix_T), INTENT(OUT) :: spEduct, spProduct
     ! IN:
-    INTEGER      :: i,j,m,iR
+    INTEGER      :: j,iR
     INTEGER      :: cntEd=0, cntPr=0
-    INTEGER      :: nEduct=0, nProd=0
     !
     !
-    
     !-----------------------------------------------------------------------
     ! ---  build A, B and (B-A) structure
     !-----------------------------------------------------------------------
@@ -1239,31 +1094,11 @@ MODULE Chemsys_Mod
     ! set matrix dimensions
     spEduct   = New_CSR(neq,nspc)
     spProduct = New_CSR(neq,nspc)
-
-    
     
     DO iR=1,neq
-      
-      nEduct = 0
-      DO i=1,SIZE(ReactionSystem(iR)%Educt)
-        SELECT CASE(ReactionSystem(iR)%Educt(i)%Type)
-          CASE ('Gas','Aqua','Solid','Partic','Micro','GAS')
-            nEduct = nEduct + 1
-            !ActiveEduct(nEduct) = ReactionSystem(iR)%Educt(i)
-        END SELECT
-      END DO
-      IF ( nEduct /= ReactionSystem(iR)%nActEd ) WRITE(*,*) 'ned = ', nEduct, ReactionSystem(iR)%nActEd
-      nProd = 0
-      DO i=1,SIZE(ReactionSystem(iR)%Product)
-        SELECT CASE(ReactionSystem(iR)%Product(i)%Type)
-          CASE ('Gas','Aqua','Solid','Partic','Micro','GAS')
-            nProd = nProd + 1
-            !ActiveProduct(nProd) = RS(iR)%Product(i)
-        END SELECT
-      END DO
-
-      spEduct%RowPtr(iR+1)   = spEduct%RowPtr(iR)   + nEduct
-      spProduct%RowPtr(iR+1) = spProduct%RowPtr(iR) + nProd
+      write(*,*) 'nacted, nactpro = ', ReactionSystem(iR)%nActEd, ReactionSystem(iR)%nActPro,iR, TRIM(ReactionSystem(iR)%line1)
+      spEduct%RowPtr(iR+1)   = spEduct%RowPtr(iR)   + ReactionSystem(iR)%nActEd
+      spProduct%RowPtr(iR+1) = spProduct%RowPtr(iR) + ReactionSystem(iR)%nActPro
     END DO
    
     ! loop again to set ColInd and Val on A and B
@@ -1273,7 +1108,7 @@ MODULE Chemsys_Mod
     ALLOCATE( spEduct%ColInd(spEduct%nnz) ,  spEduct%Val(spEduct%nnz) &
     &       , spProduct%ColInd(spProduct%nnz) , spProduct%Val(spProduct%nnz) )
    
-    spEduct%ColInd = 0; spEduct%Val = ZERO
+    spEduct%ColInd = 0;   spEduct%Val = ZERO
     spProduct%ColInd = 0; spProduct%Val = ZERO
     
     ALLOCATE(sumBAT(spEduct%m)); sumBAT = ZERO
@@ -1283,17 +1118,17 @@ MODULE Chemsys_Mod
         cntEd = cntEd + 1
         spEduct%ColInd(cntEd) = ReactionSystem(iR)%Educt(j)%iSpecies
         spEduct%Val(cntEd)    = ReactionSystem(iR)%Educt(j)%Koeff
-        sumBAT(iR)  = sumBAT(iR) - ReactionSystem(iR)%Educt(j)%Koeff
+        sumBAT(iR) = sumBAT(iR) - ReactionSystem(iR)%Educt(j)%Koeff
       END DO
       DO j=1,ReactionSystem(iR)%nActPro
         cntPr = cntPr + 1
         spProduct%ColInd(cntPr) = ReactionSystem(iR)%Product(j)%iSpecies
         spProduct%Val(cntPr)    = ReactionSystem(iR)%Product(j)%Koeff
-        sumBAT(iR)  = sumBAT(iR) + ReactionSystem(iR)%Product(j)%Koeff
+        sumBAT(iR) = sumBAT(iR) + ReactionSystem(iR)%Product(j)%Koeff
       END DO
     END DO
 
-  END SUBROUTINE BuildStoechimetricMatrices
+  END SUBROUTINE BuildStoechiometricMatrices
 
   SUBROUTINE Setup_SpeciesOrder(A)
     

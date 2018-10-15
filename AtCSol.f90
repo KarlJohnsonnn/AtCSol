@@ -8,15 +8,15 @@
 !
 PROGRAM AtCSol
   !
-  USE Kind_Mod
+  USE Kind_Mod,         ONLY: dp
   USE IO_Mod,           ONLY: Logo, Print_Run_Param, Output_Statistics
   USE InitRoutines_Mod, ONLY: Initialize
   USE Integration_Mod,  ONLY: Integrate
 
-  USE Reac_Mod,     ONLY: InitValAct, Temperature0, Combustion
+  USE Reac_Mod,     ONLY: InitValAct
   USE Control_Mod,  ONLY: Simulation,               &
-                          tBegin, tEnd, StpNetCDF,  &
-                          Timer_Finish,             &
+                          tBegin, tEnd, dt_output,  &
+                          Timer_Finish,  &
                           ICNTL, RCNTL
   !
 
@@ -51,41 +51,36 @@ PROGRAM AtCSol
 
   IF (Simulation) THEN
     
-    IF (Combustion) THEN
-      Y = [InitValAct, Temperature0]
-    ELSE
-      Y = InitValAct
-    END IF
+    Y = InitValAct
 
     T0 = tBegin
-    DT = StpNetCDF
+    DT = dt_output
     
     IF (DT < 0.0_dp) THEN
       TNEXT = tEnd
     ELSE 
-      TNEXT = StpNetCDF
+      TNEXT = T0 + DT
     END IF
 
     H0 = MIN(H0, TNEXT-T0)
 
 
-    !-----------------------------------------------------------------------
-    ! --- Start the integration routine 
-    !-----------------------------------------------------------------------
-
+    ! --- start integration loop
     INTEGRATION_LOOP: DO
       
-      CALL Integrate ( Y            &  ! initial concentrations activ species
+      CALL Integrate ( Y            &  ! current state vector
       &              , H0           &  ! stepsize
       &              , [T0, TNEXT]  &  ! integration invervall
       &              , ICNTL        &  ! integer controle units
       &              , RCNTL        )  ! real value controle units
       
       IF (TNEXT == tEnd) EXIT INTEGRATION_LOOP
+
+      ! --- advance one delta t
       T0    = TNEXT
       TNEXT = TNEXT + DT
       
-      ! --- Hit end point exactly.
+      ! --- hit end point exactly
       IF ( TNEXT > tEnd ) TNEXT = tEnd
 
     END DO INTEGRATION_LOOP
