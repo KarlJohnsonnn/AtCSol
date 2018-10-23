@@ -51,11 +51,7 @@ PROGRAM AtCSol
 
   IF (Simulation) THEN
     
-    IF (Combustion) THEN
-      Y = [InitValAct, Temperature0]
-    ELSE
-      Y = InitValAct
-    END IF
+    Y = InitValAct
 
     T0 = tBegin
     DT = StpNetCDF

@@ -70,42 +70,39 @@ MODULE Rosenbrock_Mod
     !
     INTEGER :: i
     !
-    IF ( TRIM(method(1:7)) == 'bwEuler') THEN
-      INCLUDE 'METHODS/bwEuler.ros'
-    ELSE
-      tmethod = ADJUSTL(method(INDEX(method,'/')+1:INDEX(method,'.')-1))
-      SELECT CASE (tmethod)
-        CASE ('Ros2AMF')       
-          INCLUDE 'METHODS/Ros2AMF.ros'
-        CASE ('Ros3w')         
-          INCLUDE 'METHODS/Ros3w.ros'
-        CASE ('Ros3Dw')        
-          INCLUDE 'METHODS/Ros3Dw.ros'
-        CASE ('Ros3Pw')        
-          INCLUDE 'METHODS/Ros3Pw.ros'
-        CASE ('Ros34PW1a')     
-          INCLUDE 'METHODS/Ros34PW1a.ros'
-        CASE ('Ros34PW2')      
-          INCLUDE 'METHODS/Ros34PW2.ros'
-        CASE ('Ros34PW3')      
-          INCLUDE 'METHODS/Ros34PW3.ros'
-        CASE ('Rodas3')  
-          !INCLUDE 'METHODS/TSRosWRodas3.ros'
-          INCLUDE 'METHODS/Rodas3.ros'
-        CASE ('TSRosW2P')      
-          INCLUDE 'METHODS/TSRosW2P.ros'
-        CASE ('TSRosW2M')      
-          INCLUDE 'METHODS/TSRosW2M.ros'
-        CASE ('TSRosWRA34PW2') 
-          INCLUDE 'METHODS/TSRosWRA34PW2.ros'
-        CASE ('TSRosWSandu3')  
-          INCLUDE 'METHODS/TSRosWSandu3.ros'
-        CASE DEFAULT
-          WRITE(*,*) '    Unknown Method:  ',method
-          WRITE(*,*) '    Use Rodas3 instead.'
-          INCLUDE 'METHODS/Rodas3.ros'
-      END SELECT
-    END IF
+    tmethod = ADJUSTL(method(INDEX(method,'/')+1:INDEX(method,'.')-1))
+    SELECT CASE (tmethod)
+      CASE ('bwEuler')
+        INCLUDE 'METHODS/bwEuler.ros'
+      CASE ('Ros2AMF')       
+        INCLUDE 'METHODS/Ros2AMF.ros'
+      CASE ('Ros3w')         
+        INCLUDE 'METHODS/Ros3w.ros'
+      CASE ('Ros3Dw')        
+        INCLUDE 'METHODS/Ros3Dw.ros'
+      CASE ('Ros3Pw')        
+        INCLUDE 'METHODS/Ros3Pw.ros'
+      CASE ('Ros34PW1a')     
+        INCLUDE 'METHODS/Ros34PW1a.ros'
+      CASE ('Ros34PW2')      
+        INCLUDE 'METHODS/Ros34PW2.ros'
+      CASE ('Ros34PW3')      
+        INCLUDE 'METHODS/Ros34PW3.ros'
+      CASE ('Rodas3')  
+        INCLUDE 'METHODS/Rodas3.ros'
+      CASE ('TSRosW2P')      
+        INCLUDE 'METHODS/TSRosW2P.ros'
+      CASE ('TSRosW2M')      
+        INCLUDE 'METHODS/TSRosW2M.ros'
+      CASE ('TSRosWRA34PW2') 
+        INCLUDE 'METHODS/TSRosWRA34PW2.ros'
+      CASE ('TSRosWSandu3')  
+        INCLUDE 'METHODS/TSRosWSandu3.ros'
+      CASE DEFAULT
+        WRITE(*,*) '    Unknown Method:  ',method
+        WRITE(*,*) '    Use Rodas3 instead.'
+        INCLUDE 'METHODS/Rodas3.ros'
+    END SELECT
     !INCLUDE RosenbrockMethod
     !
     ! converting the butcher tableau 

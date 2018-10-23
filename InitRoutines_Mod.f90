@@ -329,7 +329,7 @@ MODULE InitRoutines_Mod
 
       !-----------------------------------------------------------------------
       ! if either Rosenbrock method or backward Euler was choosen
-      IF ( MAXVAL(INDEX(TRIM(ODEsolver(1:7)),['METHODS','bwEuler']))>0) THEN
+      IF ( INDEX(TRIM(ODEsolver(1:7)),'METHODS')>0) THEN
         !---- Get Rosenbrock Parameters
         CALL SetRosenbrockMethod( ROS , ODEsolver )  
 

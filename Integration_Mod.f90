@@ -68,6 +68,7 @@ MODULE Integration_Mod
     INTEGER :: i, k
 
     INTEGER, PARAMETER :: maxnsteps = 50000
+    CHARACTER(20) :: tmethod=''
     
     LOGICAL :: done=.FALSE.
     LOGICAL :: failed
@@ -81,6 +82,8 @@ MODULE Integration_Mod
     REAL(dp) :: RTOL1 , ATOL1(nDIM)
 
     
+    time_int = MPI_WTIME()
+
     Y0 = y_iconc
     Y  = y_iconc
 
@@ -98,111 +101,68 @@ MODULE Integration_Mod
 
     Atol = [RCNTL(1), RCNTL(2)]
     
+    IF (INDEX(ODEsolver,'LSODE')>0) THEN
+      tmethod = ADJUSTL(TRIM(ODEsolver))
+    ELSE
+      tmethod = ADJUSTL(ODEsolver( INDEX(ODEsolver,'/')+1 : INDEX(ODEsolver,'.')-1) )
+    END IF
     
-    SELECT CASE (TRIM(ODEsolver(1:7)))
+    SELECT CASE (TRIM(tmethod))
 
-      CASE('METHODS')
-    
+      CASE ('bwEuler')
 
-        !IF (MPI_master) WRITE(*,'(10X,A)',ADVANCE='NO') 'Start Integration.............      '
-        time_int = MPI_WTIME()
-       
-            
-        MAIN_LOOP_ROSENBROCK_METHOD: DO 
+        h = maxStp
+
+        BACKWARD_EULER: DO
           
-          h = MIN( maxStp, MAX( minStp , h ) )
-          
-          !-- Stretch the step if within 5% of tfinal-t.
-          IF ( 1.05_dp * h >= Tspan(2) - t ) THEN
-            h = ABS(Tspan(2) - t)
+          !-- Stretch the step if within 10% of tfinal-t.
+          IF ( 1.05_dp*h >= Tspan(2)-t ) THEN
+            h    = Tspan(2) - t
             done = .TRUE.
           END IF
 
-          DO    ! Evaluate the formula.
-            
-            !-- LOOP FOR ADVANCING ONE STEP.
-            failed = .FALSE.      ! no failed attempts
-            
-            ! Rosenbrock Timestep 
-            CALL Rosenbrock(  Y             & ! new concentration
-            &               , error         & ! error value
-            &               , ierr          & ! max error component
-            &               , Y0            & ! current concentration 
-            &               , t             & ! current time
-            &               , h             & ! stepsize
-            &               , Euler=.FALSE. ) ! new concentration 
+          CALL Rosenbrock(  Y             & ! new concentration
+          &               , error         & ! error value
+          &               , ierr          & ! max error component
+          &               , Y0            & ! current concentration 
+          &               , t             & ! current time
+          &               , h             & ! stepsize
+          &               , Euler=.TRUE. )  ! new concentration 
 
-            ! test Willi
-            !WHERE (Y<1.0e-4_dp)
-            !  Y = 1.0e-20_dp
-            !END WHERE
-            
-            tnew  = t + h
-            
-            IF (done) THEN
-              tnew  = Tspan(2)    ! Hit end point exactly.
-              h     = tnew-t      ! Purify h.
-            END IF
-            Out%ndecomps   = Out%ndecomps   + 1
-            Out%nRateEvals = Out%nRateEvals + ROS%nStage
-            Out%nSolves    = Out%nSolves    + ROS%nStage
-            
-            
-            failed = (error > ONE)
-            
-            IF (failed) THEN      ! failed step
-              ! Accept the solution only if the weighted error is no more than the
-              ! tolerance one.  Estimate an h that will yield an error of rtol on
-              ! the next step or the next try at taking this step, as the case may be,
-              ! and use 0.8 of this value to avoid failures.
-              
-              Out%nfailed  = Out%nfailed+1
-              IF ( h <= minStp ) THEN
-                STOP '....Integration_Mod '
-              END IF
-              
-              h    = MAX( minstp , h * MAX( rTEN , 0.8_dp * error**(-ROS%pow) ) )
-              done = .FALSE.
-            ELSE                  ! successful step
-              EXIT
-            END IF
-          END DO
-          Out%nsteps = Out%nsteps + 1
-         
-          ! --- save to NetCDF file
-          IF ( NetCdfPrint ) THEN
+          tnew = t + h
+          IF (done) THEN
+            tnew = Tspan(2)  ! Hit end point exactly.
+            h    = tnew - t  ! Purify h.
+          END IF
+
+          Out%nRateEvals = Out%nRateEvals + 1
+          Out%nSolves    = Out%nSolves + 1
+          Out%nsteps     = Out%nsteps + 1
+
+          IF ( NetCdfPrint ) THEN 
+            TimeNetCDFA = MPI_WTIME()
             IF ( done .OR. StpNetCDF < ZERO ) THEN 
-              TimeNetCDFA = MPI_WTIME()
+              IF ( Combustion ) Temperature = Y(nDIM)
               CALL SetOutputNCDF( NetCDF, tnew , h , Y )
               CALL StepNetCDF( NetCDF )
-              !WRITE(999,'(*(Es14.6))') tnew, ( Y(Diag_Index(i)), i=1,SIZE(Diag_Index) ) 
-              TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
             END IF
-          END IF 
+            TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
+          END IF
 
           !-- Call progress bar.
-          IF ( WaitBar .AND. t-tBegin > iBar*tmp_tb ) CALL Progress(iBar)
-          
-          !-- If there were no failures compute a new h.
-          tmp = 1.25_dp * error**ROS%pow
-          IF ( TWO * tmp > ONE ) THEN
-            h = h / tmp
-          ELSE
-            h = h * 4
+          IF ( WaitBar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
+            iBar = iBar + 1         ! iBar runs from 0 to 100
+            CALL Progress(iBar)
           END IF
-          
-          !-- Advance the integration one step.
-          t  = tnew
-          Y0 = Y
-          
-          !-- for PI stepsize control
-          errorOld  = error
-          hOld      = h
 
           !-- Termination condition for the main loop.
-          IF ( done ) EXIT  MAIN_LOOP_ROSENBROCK_METHOD
+          IF ( done ) EXIT
+            
+          !-- Advance the integration one step.
+          t   = tnew
+          Y0  = Y
 
-        END DO MAIN_LOOP_ROSENBROCK_METHOD  ! MAIN LOOP
+        END DO BACKWARD_EULER
     
       CASE('LSODE')
 
@@ -347,64 +307,110 @@ MODULE Integration_Mod
 
         CALL Progress(100) ! last * needs an extra call
 
-      CASE ('bwEuler')
+      
 
-        h = maxStp
+      CASE DEFAULT
 
-        BACKWARD_EULER: DO
+        !IF (MPI_master) WRITE(*,'(10X,A)',ADVANCE='NO') 'Start Integration.............      '
+       
+            
+        MAIN_LOOP_ROSENBROCK_METHOD: DO 
           
-          !-- Stretch the step if within 10% of tfinal-t.
-          IF ( 1.05_dp*h >= Tspan(2)-t ) THEN
-            h    = Tspan(2) - t
+          h = MIN( maxStp, MAX( minStp , h ) )
+          
+          !-- Stretch the step if within 5% of tfinal-t.
+          IF ( 1.05_dp * h >= Tspan(2) - t ) THEN
+            h = ABS(Tspan(2) - t)
             done = .TRUE.
           END IF
 
-          CALL Rosenbrock(  Y             & ! new concentration
-          &               , error         & ! error value
-          &               , ierr          & ! max error component
-          &               , Y0            & ! current concentration 
-          &               , t             & ! current time
-          &               , h             & ! stepsize
-          &               , Euler=.TRUE. )  ! new concentration 
+          DO    ! Evaluate the formula.
+            
+            !-- LOOP FOR ADVANCING ONE STEP.
+            failed = .FALSE.      ! no failed attempts
+            
+            ! Rosenbrock Timestep 
+            CALL Rosenbrock(  Y             & ! new concentration
+            &               , error         & ! error value
+            &               , ierr          & ! max error component
+            &               , Y0            & ! current concentration 
+            &               , t             & ! current time
+            &               , h             & ! stepsize
+            &               , Euler=.FALSE. ) ! new concentration 
 
-          tnew = t + h
-          IF (done) THEN
-            tnew = Tspan(2)  ! Hit end point exactly.
-            h    = tnew - t  ! Purify h.
-          END IF
-
-          Out%nRateEvals = Out%nRateEvals + 1
-          Out%nSolves    = Out%nSolves + 1
-          Out%nsteps     = Out%nsteps + 1
-
-          IF ( NetCdfPrint ) THEN 
-            TimeNetCDFA = MPI_WTIME()
+            ! test Willi
+            !WHERE (Y<1.0e-4_dp)
+            !  Y = 1.0e-20_dp
+            !END WHERE
+            
+            tnew  = t + h
+            
+            IF (done) THEN
+              tnew  = Tspan(2)    ! Hit end point exactly.
+              h     = tnew-t      ! Purify h.
+            END IF
+            Out%ndecomps   = Out%ndecomps   + 1
+            Out%nRateEvals = Out%nRateEvals + ROS%nStage
+            Out%nSolves    = Out%nSolves    + ROS%nStage
+            
+            
+            failed = (error > ONE)
+            
+            IF (failed) THEN      ! failed step
+              ! Accept the solution only if the weighted error is no more than the
+              ! tolerance one.  Estimate an h that will yield an error of rtol on
+              ! the next step or the next try at taking this step, as the case may be,
+              ! and use 0.8 of this value to avoid failures.
+              
+              Out%nfailed  = Out%nfailed+1
+              IF ( h <= minStp ) THEN
+                STOP '....Integration_Mod '
+              END IF
+              
+              h    = MAX( minstp , h * MAX( rTEN , 0.8_dp * error**(-ROS%pow) ) )
+              done = .FALSE.
+            ELSE                  ! successful step
+              EXIT
+            END IF
+          END DO
+          Out%nsteps = Out%nsteps + 1
+         
+          ! --- save to NetCDF file
+          IF ( NetCdfPrint ) THEN
             IF ( done .OR. StpNetCDF < ZERO ) THEN 
-              IF ( Combustion ) Temperature = Y(nDIM)
+              TimeNetCDFA = MPI_WTIME()
               CALL SetOutputNCDF( NetCDF, tnew , h , Y )
               CALL StepNetCDF( NetCDF )
+              !WRITE(999,'(*(Es14.6))') tnew, ( Y(Diag_Index(i)), i=1,SIZE(Diag_Index) ) 
+              TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
             END IF
-            TimeNetCDF  = TimeNetCDF + (MPI_WTIME() - TimeNetCDFA)
-          END IF
+          END IF 
 
           !-- Call progress bar.
-          IF ( WaitBar .AND. t-Tspan(1) >= iBar*tmp_tb ) THEN
-            iBar = iBar + 1         ! iBar runs from 0 to 100
-            CALL Progress(iBar)
+          IF ( WaitBar .AND. t-tBegin > iBar*tmp_tb ) CALL Progress(iBar)
+          
+          !-- If there were no failures compute a new h.
+          tmp = 1.25_dp * error**ROS%pow
+          IF ( TWO * tmp > ONE ) THEN
+            h = h / tmp
+          ELSE
+            h = h * 4
           END IF
+          
+          !-- Advance the integration one step.
+          t  = tnew
+          Y0 = Y
+          
+          !-- for PI stepsize control
+          errorOld  = error
+          hOld      = h
 
           !-- Termination condition for the main loop.
-          IF ( done ) EXIT
-            
-          !-- Advance the integration one step.
-          t   = tnew
-          Y0  = Y
+          IF ( done ) EXIT  MAIN_LOOP_ROSENBROCK_METHOD
 
-        END DO BACKWARD_EULER
-
-      CASE DEFAULT
+        END DO MAIN_LOOP_ROSENBROCK_METHOD  ! MAIN LOOP
         
-        WRITE(*,*) ' No other methods implemented jet. Use Rosenbrock, LSODE[S] or backward Euler'
+        !WRITE(*,*) ' No other methods implemented jet. Use Rosenbrock, LSODE[S] or backward Euler'
 
     END SELECT
     ! save values for next initial vector
