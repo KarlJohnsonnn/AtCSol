@@ -1,43 +1,42 @@
  &SCENARIO
-  BSP = 'Robertson'           ! Name der NetCDF Output-Datei
-  pHSet = 1                   ! berechne pH Wert zu Beginn
-  LWCLevelmax = 2.0d-8        ! minimaler LWC Wert [l/cm3]
-  LWCLevelmin = 3.0d-4        ! maximaler LWC Wert [l/cm3]
-  constLWC = .false.          ! 0 = konstanter LWC wert, 0 /= pseudo LWC funktion wird benutzt
-  Ladebalken = 1              ! 0 = kein ladebalken, 0 /= ladebalken aktiv
-  ErrorLog = 0                ! 0 = no error output, 0 /= error output direkt auf bildschirm
-  DebugPrint  = .false.       ! DEBUGGING Rosenbrock 
-  MatrixPrint = .false.       ! .TRUE. == print matricies (no simulation),  .FALSE. == do not print any matrix
-  NetCdfPrint = .true.        ! schreibe Ergebnisse in NetCDF file, gewünschte Spezies in INI datei angeben (diag)
- /END
- &FILES
-  SysFile  = 'CHEM/Rober.sys'
-  DataFile = 'DAT/RACM.dat'
-  InitFile = 'INI/Rober.ini'
-  MetFile  = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)
- /END
- &TIMES
-  tAnf=0.0d0                          ! Startzeit Integration
-  tEnd=1000000.0d0                     ! Endzeit   Integration
-  Dust    = 0.5d0                     ! Zenith Berechnung       (Staub)
-  idate   = 010621                    ! ---------''---------    (Datum: YYMMDD)
-  rlat    = 45.d0                     ! ---------''---------    (Breitengrad)
-  rlon    =  0.d0                     ! ---------''---------    (Längengrad)
-  minStp  = 1.0d-30                   ! minimale Schrittweite für Integration
-  !maxStp  = 1.0d-3                    ! Schrittweite für Integration mit BW_Euler
-  maxStp  = 1000.0d0                    ! maximale Schrittweite für Integration
-  StpNetCDF = -1.0d0                  ! save after StpNetCDF seconds, if < 0.0d0 save every timestep 
+BSP = 'Robertson'           ! Name der NetCDF Output-Datei
+WaitBar    = .T.          ! .F. = kein ladebalken, .T. /= ladebalken aktiv
+Simulation = .T.
 /END
- &NUMERICS
-  RtolROW  = 1.0d-5                            ! rel. Toleranz für Rosenbrock-Wanner Fehlersteuerung
-  AtolGas  = 1.0d-7                             ! abs. Toleranzen für gasförmige Stoffe 
-  AtolAqua = 1.0d-7                             ! abs. Toleranzen für aquatische Stoffe
-  Error_Est= 2
-  PI_StepSize = .false.
-  solveLA = 'cl'                                ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
-  ODEsolver = 'METHODS/TSRosWRodas3.fort'
- /END
- &ORDERING
-  OrderingStrategie  = 8                   ! 8=Markowitz(SparseLU) , 1,..,7=Mumps Orderings  
-  ParOrdering = -1
- /END
+&FILES
+SysFile  = 'CHEM/Rober.sys'
+DataFile = 'DAT/RACM.dat'
+InitFile = 'INI/Rober.ini'
+/END
+&TIMES
+tBegin      = 0.0d0          ! Startzeit Integration   (in [sec])
+tEnd        = 172800.0d0      ! Endzeit   Integration   (in [sec])
+/END
+&METEO
+pHSet       = .T.          ! Berechne pH Wert zu Beginn
+LWCLevelmax = 2.0d-8       ! minimaler LWC Wert [l/cm3]
+LWCLevelmin = 3.0d-4       ! maximaler LWC Wert [l/cm3]
+Dust        = 1.0d0        ! Zenith Berechnung       (Staub)
+idate       = 010621       ! ---------''---------    (Datum: YYMMDD)
+rlat        = 45.0d0       ! ---------''---------    (Breitengrad)
+rlon        = 0.0d0        ! ---------''---------    (Längengrad)
+Temperature0= 280.0d0
+/END 
+&NUMERICS 
+RtolROW     = 1.0d-3       ! rel. Toleranz für Rosenbrock-Wanner Fehlersteuerung
+AtolGas     = 1.0d-4       ! abs. Toleranzen für gasförmige Stoffe
+Error_Est   = 2            ! Error estimation = 2 -> 2-norm, else maxnorm
+minStp      = 1.0d-30      ! minimale Schrittweite für Integration
+maxStp      = 10.0d0       ! maximale Schrittweite für Integration
+LinAlg      = 'cl'         ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
+!ODEsolver   = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
+ODEsolver   = 'METHODS/bwEuler.ros'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
+/END
+&OUTPUT
+NetCdfFile  = 'NetCDF/SmallStrato_full.nc' ! location and name of NetCDF output file
+StpNetCDF   = 100.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep
+StpFlux     = -1.0d0
+nOutP       = 1000                 ! number of output steps for LSODE case
+DebugPrint  = .F.                ! DEBUGGING Rosenbrock
+MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
+/END

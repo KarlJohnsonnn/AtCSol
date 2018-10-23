@@ -6,6 +6,7 @@
  &FILES
   SysFile  = 'CHEM/SmallStratoKPP.sys'
   DataFile = 'DAT/RACM.dat'
+  MWFile = 'ckCHEM/Verbrennung/Verbrennung.mw'       !MW File test für positivity
   InitFile = 'INI/SmallStratoKPP.ini'
  /END
 &TIMES
@@ -27,9 +28,10 @@
   AtolGas     = 1.0d-4       ! abs. Toleranzen für gasförmige Stoffe 
   Error_Est   = 2            ! Error estimation = 2 -> 2-norm, else maxnorm
   minStp      = 1.0d-30      ! minimale Schrittweite für Integration
-  maxStp      = 25.0d0       ! maximale Schrittweite für Integration
+  maxStp      = 10.0d0       ! maximale Schrittweite für Integration
   LinAlg      = 'cl'         ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
-  ODEsolver   = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
+  !ODEsolver   = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
+  ODEsolver   = 'METHODS/bwEuler.ros'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
 /END
 &OUTPUT
   NetCdfFile  = 'NetCDF/SmallStrato_full.nc' ! location and name of NetCDF output file
