@@ -102,9 +102,9 @@ MODULE Integration_Mod
     Atol = [RCNTL(1), RCNTL(2)]
     
     IF (INDEX(ODEsolver,'LSODE')>0) THEN
-      tmethod = ADJUSTL(TRIM(ODEsolver))
+      tmethod = ADJUSTL(ODEsolver)
     ELSE
-      tmethod = ADJUSTL(ODEsolver( INDEX(ODEsolver,'/')+1 : INDEX(ODEsolver,'.')-1) )
+      tmethod = ADJUSTL(ODEsolver(INDEX(ODEsolver,'/')+1 : INDEX(ODEsolver,'.')-1))
     END IF
     
     SELECT CASE (TRIM(tmethod))

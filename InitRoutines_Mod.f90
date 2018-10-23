@@ -296,10 +296,14 @@ MODULE InitRoutines_Mod
       
       IF ( Combustion ) THEN
         Atol = [AtolGas , AtolTemp]		! abs. tolerance for Combustion scenario
+        RCNTL(1:2) = [Atol, AtolTemp]
       ELSE
         Atol = [AtolGas]		! abs. tolerance for Tropos scenario
         IF ( hasAquaSpc ) Atol = [AtolGas , AtolAqua]		! abs. tolerance for Tropos scenario
+        RCNTL(1) = AtolGas
+        RCNTL(2) = AtolAqua
       END IF
+
 
       !-----------------------------------------------------------------------
       ! --- Initialize NetCDF output file
