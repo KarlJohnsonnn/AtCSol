@@ -39,5 +39,5 @@
   StpFlux     = -1.0d0
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock 
-  MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
+  MatrixPrint = .T.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
 /END

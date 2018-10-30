@@ -44,7 +44,7 @@ MODULE InitRoutines_Mod
       REAL(dp)                :: Press_in_dyncm2
 
       ! matricies for symbolic phase
-      TYPE(CSR_Matrix_T)     :: Id , tmpJacCC  ! compressed row
+      TYPE(CSR_Matrix_T)     :: Id , tmpJacCC, BT  ! compressed row
       TYPE(SpRowColD_T)      :: temp_LU_Dec,temp_LU_Dec2    ! sparse-LU matrix format
       ! permutation vector/ pivot order for LU-decomp
       INTEGER, ALLOCATABLE :: InvPermu(:)
@@ -103,9 +103,9 @@ MODULE InitRoutines_Mod
 
         IF (PrintToScreen) WRITE(*,*) 'done   ---->  Solve Gas Energy Equation '
 
-      !-----------------------------------------------------------------------
-      ! --- print reactions and build A, B and (B-A) structure
-      !-----------------------------------------------------------------------
+       !-----------------------------------------------------------------------
+       ! --- print reactions and build A, B and (B-A) structure
+       !-----------------------------------------------------------------------
         CALL Print_ChemFile   ( ReactionSystem , ChemFile , ChemUnit , .TRUE. )
 
         CALL GetSpeciesNames( ChemFile , y_name )
@@ -174,7 +174,7 @@ MODULE InitRoutines_Mod
 
         CALL ReadSystem( SysFile )
         WRITE(*,*) 'done  ---->  Fix Temperature'
-      
+
       !-----------------------------------------------------------------------
       ! --- print reactions and build A, B and (B-A) structure
       !-----------------------------------------------------------------------
@@ -207,6 +207,49 @@ MODULE InitRoutines_Mod
         WRITE(*,'(10X,A,I6)') '    Number of Reactions = ', neq
         WRITE(*,'(10X,A,I6)') '    Number of Species   = ', nspc
       END IF
+
+      !Beginn test molmasse
+      IF ( MWFile /= '' ) THEN
+        CALL Read_MolecularWeights(MW,MWFile,MWUnit,nspc)
+
+        rMW = [ONE / MW]
+        !pos print
+        print*, 'MW ',MW
+       ! print*, 'MW ',MW(7)
+        !print*, 'rMW ',rMW
+        
+
+
+
+        ALLOCATE( MoleFrac(ns_GAS) , MassFrac(ns_GAS) )
+        MoleFrac = ZERO;	MassFrac  = ZERO  
+
+        MoleFrac = 1.0e-20_dp
+        CALL Read_INI_file( InitFile , MoleFrac, InitValKat , 'GAS' , 'INITIAL' )
+
+        !Press = Pressure0               ! initial pressure in [Pa]
+        Press_in_dyncm2 = Pressure0 * Pa_to_dyncm2
+
+        MassFrac = MoleFr_To_MassFr  ( MoleFrac ) 
+        MoleConc = MoleFr_To_MoleConc( MoleFrac                &
+        &                            , Press = Press_in_dyncm2 &
+        &                            , Temp  = Temperature0    )
+      ELSE
+        IF ( PrintToScreen ) THEN
+          WRITE(*,*)
+          WRITE(*,777) '    No molecular weights are given.  '
+          WRITE(*,777) '    Make sure the initial values are given in [mole/cm3] !'
+          WRITE(*,*)
+        END IF
+        ALLOCATE( MoleConc(ns_GAS) )
+        MoleConc = 1.0e-20_dp
+        CALL Read_INI_file( InitFile , MoleConc, InitValKat , 'GAS' , 'INITIAL' )
+      END IF
+
+      ! WRITE(*,*) 'done  ---->  Test Molmasse',InitFile 
+!ende test molmasse
+
+
       !-----------------------------------------------------------------------
       ! --- Timers
       Time_Read   = MPI_WTIME() - Time_Read  ! Stop Input timer
@@ -321,10 +364,35 @@ MODULE InitRoutines_Mod
       WRITE(*,777,ADVANCE='NO') 'Symbolic-phase................'
       StartTimer = MPI_WTIME()              ! start timer for symb phase
       
+      
+      
+      
+      !positivity:
+      print*, '  test22'
+      print*, 'B%Val(:)=',B%Val(:)
+      print*, 'B%nnz=',B%nnz
+      print*, 'B%RowPtr(1)=',B%RowPtr(1)
+      print*, 'B%RowPtr(2)',B%RowPtr(2)
+      print*, 'B%ColInd(1)',B%ColInd(1)
+      print*, 'B%ColInd(2)',B%ColInd(2)
+      print*, 'B%ColInd(3)',B%ColInd(3)
+
+      print*, 'A%Val(:) =',A%Val(:)     
+      print*, 'A%nnz()=',A%nnz
+      print*, 'A%RowPtr(1)=',A%RowPtr(1)
+      print*, 'A%RowPtr(2)',A%RowPtr(2)
+      print*, 'A%ColInd(1)',A%ColInd(1)
+      print*, 'A%ColInd(2)',A%ColInd(2)
+      print*, 'A%ColInd(3)',A%ColInd(3)
+
+      !Transpose B ->BT
+      CALL TransposeSparse(BT,B)
+      !CALL WriteSparseMatrix(BT,'MATRICES/betaTrans_'//TRIM(BSP), neq, nspc)
+
+
       CALL SymbolicAdd( BA , B , A )      	! symbolic addition:    BA = B + A
       CALL SparseAdd  ( BA , B , A, '-' )   ! numeric subtraction:  BA = B - A
       CALL TransposeSparse( BAT , BA )    	! transpose BA:        BAT = Transpose(BA) 
-
 
 
       !-----------------------------------------------------------------------
@@ -388,15 +456,15 @@ MODULE InitRoutines_Mod
         WRITE(*,*) 'done'     ! Symbolic phase
         WRITE(*,*) 
 
-        IF (MatrixPrint) THEN
+      IF (MatrixPrint) THEN
           CALL WriteSparseMatrix(A,'MATRICES/alpha_'//TRIM(BSP), neq, nspc)
           CALL WriteSparseMatrix(B,'MATRICES/beta_'//TRIM(BSP), neq, nspc)
           CALL WriteSparseMatrix(tmpJacCC,'MATRICES/JAC_'//TRIM(BSP), neq, nspc)
           CALL WriteSparseMatrix(BA,'MATRICES/BA_'//TRIM(BSP), neq, nspc)
           CALL WriteSparseMatrix(Miter,'MATRICES/Miter_'//TRIM(BSP), neq, nspc)
           CALL WriteSparseMatrix(LU_Miter,'MATRICES/LU_Miter_'//TRIM(BSP), neq, nspc)
-          WRITE(*,777,ADVANCE='NO') '  Continue? [y/n]';  READ(*,*) inpt
-          IF (inpt/='y') STOP
+          !WRITE(*,777,ADVANCE='NO') '  Continue? [y/n]';  READ(*,*) inpt
+          !IF (inpt/='y') STOP
         END IF
 
         WRITE(*,777) 'Matrix Statistics: '
@@ -416,14 +484,25 @@ MODULE InitRoutines_Mod
         END IF
         Y = MAX( ABS(InitValAct) , eps ) * SIGN( ONE , InitValAct )    ! |y| >= eps
         
+      !Test Positivity
+     WRITE(*,777,ADVANCE='NO') 'TEST positivity-phase...............TEST positivity.'
         IF (CLASSIC) THEN
-          ! ---- Calculate values of Jacobian
+          ! ---- Anstatt Jacobian Calculate values of Jacobian
           StartTimer = MPI_WTIME()
-          CALL Jacobian_CC( Jac_CC , BAT , A , Rate , Y )
+          CALL Jacobian_CC_pos( Jac_CC , BAT , A , BT, Rate , Y ,MW)
           Out%npds = Out%npds + 1
           TimeJac  = TimeJac + MPI_WTIME() - StartTimer
         END IF
       END IF
+    !STOP
+      !IF (CLASSIC) THEN
+          !! ---- Calculate values of Jacobian
+          !StartTimer = MPI_WTIME()
+          !CALL Jacobian_CC( Jac_CC , BAT , A , Rate , Y )
+         ! Out%npds = Out%npds + 1
+        !  TimeJac  = TimeJac + MPI_WTIME() - StartTimer
+       ! END IF
+      !END IF
 
       !================================================================
       !==  FORMAT Statements

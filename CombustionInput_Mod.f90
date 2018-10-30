@@ -87,7 +87,7 @@ CONTAINS
     i = 0
     DO 
       READ( UnitMW , '(A16,5X,En24.14)' , IOSTAT=io_err ) tmpChar0 , tmpMW0
-      !print *, 'molweights = ', TRIM(tmpchar0)//'   ',tmpMW0
+      print *, 'molweights = ', TRIM(tmpchar0)//'   ',tmpMW0
       IF ( io_err == 0 ) THEN
         tmpPos  = PositionSpeciesAll( tmpChar0 )
         IF ( tmpPos > 0 ) THEN 

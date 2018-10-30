@@ -16,7 +16,7 @@ linAlg = 'cl';
 % linAlg = 'ex';
 
 
-j = 3;
+j = 1;
 
 %% spy plots
 fs = 20;
