@@ -44,7 +44,7 @@ MODULE InitRoutines_Mod
       REAL(dp)                :: Press_in_dyncm2
 
       ! matricies for symbolic phase
-      TYPE(CSR_Matrix_T)     :: Id , tmpJacCC, BT  ! compressed row
+      TYPE(CSR_Matrix_T)     :: Id , tmpJacCC, BT, AT  ! compressed row
       TYPE(SpRowColD_T)      :: temp_LU_Dec,temp_LU_Dec2    ! sparse-LU matrix format
       ! permutation vector/ pivot order for LU-decomp
       INTEGER, ALLOCATABLE :: InvPermu(:)
@@ -368,26 +368,10 @@ MODULE InitRoutines_Mod
       
       
       !positivity:
-      print*, '  test22'
-      print*, 'B%Val(:)=',B%Val(:)
-      print*, 'B%nnz=',B%nnz
-      print*, 'B%RowPtr(1)=',B%RowPtr(1)
-      print*, 'B%RowPtr(2)',B%RowPtr(2)
-      print*, 'B%ColInd(1)',B%ColInd(1)
-      print*, 'B%ColInd(2)',B%ColInd(2)
-      print*, 'B%ColInd(3)',B%ColInd(3)
-
-      print*, 'A%Val(:) =',A%Val(:)     
-      print*, 'A%nnz()=',A%nnz
-      print*, 'A%RowPtr(1)=',A%RowPtr(1)
-      print*, 'A%RowPtr(2)',A%RowPtr(2)
-      print*, 'A%ColInd(1)',A%ColInd(1)
-      print*, 'A%ColInd(2)',A%ColInd(2)
-      print*, 'A%ColInd(3)',A%ColInd(3)
-
+      ! print*, '  test22'
       !Transpose B ->BT
       CALL TransposeSparse(BT,B)
-      !CALL WriteSparseMatrix(BT,'MATRICES/betaTrans_'//TRIM(BSP), neq, nspc)
+      CALL TransposeSparse(AT,A)
 
 
       CALL SymbolicAdd( BA , B , A )      	! symbolic addition:    BA = B + A
@@ -489,7 +473,7 @@ MODULE InitRoutines_Mod
         IF (CLASSIC) THEN
           ! ---- Anstatt Jacobian Calculate values of Jacobian
           StartTimer = MPI_WTIME()
-          CALL Jacobian_CC_pos( Jac_CC , BAT , A , BT, Rate , Y ,MW)
+          CALL Jacobian_CC_pos( Jac_CC , BAT , A , AT,  BT , Rate , Y , MW)
           Out%npds = Out%npds + 1
           TimeJac  = TimeJac + MPI_WTIME() - StartTimer
         END IF

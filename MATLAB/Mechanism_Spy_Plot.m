@@ -24,8 +24,11 @@ figure1 = figure('Units', 'normalized', 'Position', [0.0, 0.0, 1.0, 1.0],...
     'InvertHardcopy','off','Color',[1 1 1],...
     'Renderer','painters');
 
-[~,sp_m]     = SparseInput([p_atcsol,'Miter_',mechanism{j},'_',linAlg,'.SparseMat']);
+% [~,sp_m]     = SparseInput([p_atcsol,'Miter_',mechanism{j},'_',linAlg,'.SparseMat']);
+ [~,sp_m]     = SparseInput([p_atcsol,'alpha_',mechanism{j},'_',linAlg,'.SparseMat']);
+% [~,sp_m]     = SparseInput([p_atcsol,'JAC_',mechanism{j},'_',linAlg,'.SparseMat']);
 
+% JAC_SmallStratoKPP_cl.SparseMat
 subplot(1,2,1);
 spy(sp_m);      hold on;
 %     xlabel([]);
@@ -36,7 +39,8 @@ set(gca,'ytick',[]);
 
 set(gca,'color','none','FontSize',fs)
 
-[~,sp_lum]     = SparseInput([p_atcsol,'LU_Miter_',mechanism{j},'_',linAlg,'.SparseMat']);
+% [~,sp_lum]     = SparseInput([p_atcsol,'LU_Miter_',mechanism{j},'_',linAlg,'.SparseMat']);
+[~,sp_lum]     = SparseInput([p_atcsol,'beta_',mechanism{j},'_',linAlg,'.SparseMat']);
 
 subplot(1,2,2);
 spy(sp_lum);    hold on;

@@ -1519,26 +1519,23 @@ MODULE Sparse_Mod
 
 
   ! SPARSE POSITIVITY CALC
-  SUBROUTINE Jacobian_CC_pos(JacCC,gMat,aMat,bMatT,rVec,yVec,MWVec)
+  SUBROUTINE Jacobian_CC_pos(JacCC,gMat,aMat,aMatT,bMatT,rVec,yVec,MWVec)
     !
-    ! jMat = gMat*Dr*aMat*invDy;
     !positivity:
     ! mMat= (( betaT*D(r/M)*alpha*D(m)-D(alpha*r)  ))*1/D(y)
     ! mMat= (( bMatT*D(rVec/M)*aMAT*D(m/y)-D(aMat*rVec*invDy)  ))
-
     !
     TYPE(CSR_Matrix_T), INTENT(INOUT) :: JacCC!neue mMat ggf umbennen
     TYPE(CSR_Matrix_T), INTENT(IN)    :: gMat!BAT unwichtig für pos
     TYPE(CSR_Matrix_T), INTENT(IN)    :: aMat
 
     TYPE(CSR_Matrix_T), INTENT(IN)    :: bMatT !transposed B Matrix
+    TYPE(CSR_Matrix_T), INTENT(IN)    :: aMatT !transposed A Matrix
+
     REAL(dp),           INTENT(IN)    :: rVec(aMat%m)
     REAL(dp),           INTENT(IN)    :: yVec(aMat%n)
-
-
     REAL(dp),           INTENT(IN)    :: MWVec(aMat%n)!Vektor der Molgewichte, added for positivity, ggf noch Umrechnung notwendig.
-    !REAL(dp),           INTENT(IN)    :: MVec(aMat%m)!Vektor der aufaddierten Mölekülmasse pro Reaktion, ggf noch Umrechnung notwendig.
-
+ 
 
     !
     INTEGER :: i,j,jj,k,kk
@@ -1546,43 +1543,26 @@ MODULE Sparse_Mod
     REAL(dp) :: temp(MAX(gMat%m,gMat%n,aMat%n))
     REAL(dp) :: MVec(aMat%m)!Vektor der aufaddierten Mölekülmassen pro Reaktion, ggf noch Umrechnung notwendig.
 
-    !
-    MVec(1)=48!Berechnung fehlt- nur für Beispiel gesetzt
-    !
+     
+    !Erzeugung des Vektors der aufaddierten Mölekülmassen pro Reaktion
     temp=ZERO
-    !
+    DO i=1,aMat%m
+      DO jj=aMat%RowPtr(i),aMat%RowPtr(i+1)-1
+          k = aMat%ColInd(jj)
+          temp(i) = temp(i) + aMat%Val(jj)*MWVec(k)
+           MVec(i)=temp(i)
+      END DO
+      temp(i) = ZERO
+    END DO
+    print*, ' ' 
+    ! print*, 'MVec',MVec
+    ! print*, 'rVec',rVec
+    ! print*, 'yVec',yVec
+
     JacCC%Val=ZERO
-    !
-    print*, 'positivity'
-    print*, 'MWVec',MWVec
-    print*, 'MVec',MVec
-    print*, 'rVec(1)',rVec(1)
-    print*, 'rVec(2)',rVec(2)
-
-    print*, 'rVec/MVec',rVec/MVec
-
-
 
     
-
-    !bis hier hin neu---- rest alt,ist noch zu ändern
-
-    ! !Für Berechnung
-    ! !Mtemp1=bMatT*D(rVec/MVec)*aMAT*D(m)
-    ! CALL SparseMult(Mtemp1,D,C)
-    ! !Mtemp2=D(alpha*r)
-    ! CALL SparseAdd  ( Mtemp , Mtemp1 , Mtemp2, '-' )
-    ! !im Anschluss Mtemp*invDy
-    ! CALL SparseMult(JacCC,Mtemp,invDy)
-
-
-    ! hier wahrscheinlich aMat transponiert verwenden!!!
-   !DO i=1.aMatT%n 
-   ! DO jj=aMat%RowPtr(j),aMat%RowPtr(j+1)-1
-   ! j=alpha(j)*r(j)/y(j)
-
     DO i=1,bMatT%m   
-
       DO jj=bMatT%RowPtr(i),bMatT%RowPtr(i+1)-1
         j   = bMatT%ColInd(jj)
         ajj = bMatT%Val(jj)*rVec(j)/MVec(j)
@@ -1591,20 +1571,44 @@ MODULE Sparse_Mod
           k = aMat%ColInd(kk)
           temp(k) = temp(k) + ajj*aMat%Val(kk)*MWVec(k)/yVec(k)
         END DO
- 
-      END DO
+       END DO
       
       DO jj=JacCC%RowPtr(i),JacCC%RowPtr(i+1)-1
         j = JacCC%ColInd(jj)
         JacCC%Val(jj) = temp(j)
         temp(j) = ZERO
       END DO
-
-    !JacCC%Val(JacCC%DiagPtr(i))=JacCC%Val(JacCC%DiagPtr(i))-(*)
-      !
-
     END DO
-    STOP
+    ALLOCATE(JacCC%DiagPtr(aMat%m)) !Fehlende DiagPtr einrichten
+    DO i=1,JacCC%m
+       DO jj=JacCC%RowPtr(i), JacCC%RowPtr(i+1)-1
+         IF ( i == JacCC%ColInd(jj) ) JacCC%DiagPtr(i)=jj
+       END DO 
+    END DO 
+
+
+    DO i=1,aMatT%m 
+     DO jj=aMatT%RowPtr(i),aMatT%RowPtr(i+1)-1
+       j   = aMatT%ColInd(jj)
+       ajj = aMatT%Val(jj)*rVec(j)/yVec(i)
+       JacCC%Val(JacCC%DiagPtr(i)) = JacCC%Val(JacCC%DiagPtr(i)) - ajj
+        ! print*, '  ajj',  ajj
+        ! print*, '  JacCC%DiagPtr(1)',  JacCC%DiagPtr(1)
+        ! print*, '  JacCC%DiagPtr(2)',  JacCC%DiagPtr(2)
+        ! print*, '  JacCC%DiagPtr(3)',  JacCC%DiagPtr(3)
+        !  print*, ' yVec(i)  ', yVec(i)
+      END DO
+       
+    END DO 
+     
+        print*, '  JacCC%Val(JacCC%DiagPtr(1))',  JacCC%Val(JacCC%DiagPtr(1))
+        print*, '  JacCC%Val(JacCC%DiagPtr(2))',  JacCC%Val(JacCC%DiagPtr(2))
+        print*, '  JacCC%Val(JacCC%DiagPtr(3))',  JacCC%Val(JacCC%DiagPtr(3))
+        print*, '  JacCC%Val(JacCC%DiagPtr(4))',  JacCC%Val(JacCC%DiagPtr(4))
+        print*, '  JacCC%Val(JacCC%DiagPtr(5))',  JacCC%Val(JacCC%DiagPtr(5))
+        print*, '  JacCC%Val(JacCC%DiagPtr(6))',  JacCC%Val(JacCC%DiagPtr(6))
+ 
+        STOP
   END SUBROUTINE Jacobian_CC_pos
 
  

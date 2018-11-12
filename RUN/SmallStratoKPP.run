@@ -10,7 +10,11 @@
   InitFile = 'INI/SmallStratoKPP.ini'
  /END
 &TIMES
-  tBegin      = 0.0d0          ! Startzeit Integration   (in [sec])
+  tBegin      = 0.0d0          ! Startzeit Integration   (in [sec]) !alt ohne photo
+  tBegin      = 43200.0d0          ! Startzeit Integration   (in [sec])
+   ! tBegin      = 46800.0d0          ! Startzeit Integration   (in [sec])
+
+  
   tEnd        = 172800.0d0      ! Endzeit   Integration   (in [sec])
 /END
 &METEO

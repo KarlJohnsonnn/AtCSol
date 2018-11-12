@@ -7,43 +7,46 @@ UNIT AQUA   0   COMMENT     Aqueous phase units (0 = mol/l)
 
 COMMENT   ===========================================================
 
-#CLASS: GAS
-#O2 = 2.0 O
-#PHOTO3: A: 2.643e-10
+CLASS: GAS
+O2 = 2.0 O
+PHOTO3: A: 2.643e-10
 
 CLASS: GAS
 O + O2 = O3
 CONST: A: 8.018e-17
 
-#CLASS: GAS
-#O3 = O + O2
-#PHOTO: A: 6.120E-04
+CLASS: GAS
+O3 = O + O2
+PHOTO: A: 6.120E-04
 
-#CLASS: GAS
-#O + O3 = 2.0 O2
-#CONST: A: 1.576E-15
+CLASS: GAS
+O + O3 = 2.0 O2
+CONST: A: 1.576E-15
 
-#CLASS: GAS
-#O3 = O1D + O2
-#PHOTO2: A: 1.070E-03
+CLASS: GAS
+O3 = O1D + O2
+PHOTO2: A: 1.070E-03
 
-#CLASS: GAS
+CLASS: GAS
+O1D = O
+CONST: A: 7.110E-11
+#CONST: A: 8.1200e+16
 #O1D + M  = O + M
 #CONST: A: 7.110E-11
 
-#CLASS: GAS
-#O1D + O3 = 2.0 O2
-#CONST: A: 1.200E-10
+CLASS: GAS
+O1D + O3 = 2.0 O2
+CONST: A: 1.200E-10
 
-#CLASS: GAS
-#NO + O3 = NO2 + O2
-#CONST: A: 6.062E-15
+CLASS: GAS
+NO + O3 = NO2 + O2
+CONST: A: 6.062E-15
 
-#CLASS: GAS
-#NO2 + O = NO + O2
-#CONST: A: 1.069E-11
+CLASS: GAS
+NO2 + O = NO + O2
+CONST: A: 1.069E-11
 
-#CLASS: GAS
-#NO2 = NO + O
-#PHOTO: A: 1.289E-02
+CLASS: GAS
+NO2 = NO + O
+PHOTO: A: 1.289E-02
  
