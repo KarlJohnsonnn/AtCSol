@@ -375,6 +375,7 @@ Reak(10).con(1)=1.289E-02;
 
 Species(3,1).c=9999;
 
+% %alte Reihenfolge
 % Species(1).Name='O2';
 % Species(1).Pos=1;
 % Species(1).MolMass=32;
@@ -400,7 +401,7 @@ Species(3,1).c=9999;
 % Species(6).MolMass=46;
 % Species(6).c=2.240E+08;
 
-%test
+%AtCSol Reihenfolge:
 Species(1).Name='O2';
 Species(1).Pos=5;
 Species(1).MolMass=32;
