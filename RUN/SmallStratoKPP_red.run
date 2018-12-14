@@ -1,0 +1,49 @@
+ &SCENARIO
+  BSP        = 'SmallStratoKPP_red'   ! Name der NetCDF Output-Datei
+  WaitBar    = .T.          ! .F. = kein ladebalken, .T. /= ladebalken aktiv
+  Simulation = .F.
+  Reduction  = .T.
+/END
+ &FILES
+  SysFile  = 'CHEM/SmallStratoKPP.sys'
+  DataFile = 'DAT/RACM.dat'
+  MWFile = 'ckCHEM/Verbrennung/Verbrennung.mw'       !MW File test für positivity
+  InitFile = 'INI/SmallStratoKPP.ini'
+  !TargetFile = 'TAR/SmallStratoKPP_red.ctrl'     ! .ctrl Datei (Zielspezies,Spezies Familen,gelumpte Species)
+  !TargetFile = 'REDUCTION/SmallStrato.ctrl'     ! .ctrl Datei (Zielspezies,Spezies Familen,gelumpte Species)
+
+ /END
+&TIMES
+  !tBegin      = 0.0d0          ! Startzeit Integration   (in [sec]) !alt ohne photo
+  tBegin      = 43200.0d0          ! Startzeit Integration   (in [sec])
+  tEnd        = 302400.0d0    ! Endzeit   Integration   (in [sec])
+/END
+&METEO
+  pHSet       = .T.          ! Berechne pH Wert zu Beginn
+  LWCLevelmax = 2.0d-8       ! minimaler LWC Wert [l/cm3]
+  LWCLevelmin = 3.0d-4       ! maximaler LWC Wert [l/cm3]
+  Dust        = 1.0d0        ! Zenith Berechnung       (Staub)
+  idate       = 010621       ! ---------''---------    (Datum: YYMMDD)
+  rlat        = 45.0d0       ! ---------''---------    (Breitengrad)
+  rlon        = 0.0d0        ! ---------''---------    (Längengrad)
+  Temperature0= 280.0d0
+/END
+&NUMERICS
+  RtolROW     = 1.0d-3       ! rel. Toleranz für Rosenbrock-Wanner Fehlersteuerung
+  AtolGas     = 1.0d-4       ! abs. Toleranzen für gasförmige Stoffe 
+  Error_Est   = 2            ! Error estimation = 2 -> 2-norm, else maxnorm
+  minStp      = 1.0d-30      ! minimale Schrittweite für Integration
+  maxStp      = 10.0d0       ! maximale Schrittweite für Integration
+  LinAlg      = 'cl'         ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
+ ! ODEsolver   = 'METHODS/TSRosWRodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
+ ODEsolver   = 'METHODS/bwEuler.ros'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
+  !ODEsolver = 'METHODS/Rodas3.ros'
+/END
+&OUTPUT
+  NetCdfFile  = 'NetCDF/SmallStrato_full_red.nc' ! location and name of NetCDF output file
+  StpNetCDF   = 100.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep 
+  StpFlux     = -1.0d0
+  nOutP       = 1000                 ! number of output steps for LSODE case
+  DebugPrint  = .F.                ! DEBUGGING Rosenbrock 
+  MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
+/END

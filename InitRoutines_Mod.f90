@@ -179,6 +179,7 @@ MODULE InitRoutines_Mod
       ! --- print reactions and build A, B and (B-A) structure
       !-----------------------------------------------------------------------
         CALL Print_ChemFile( ReactionSystem , ChemFile , ChemUnit , .FALSE. )
+        !CALL Print_MatlabFile(ReactionSystem ,'AAA.m', ChemUnit , .TRUE. )
 
         !-----------------------------------------------------------------------
         ! --- initialize fpraser for reactions with special rate formula
@@ -197,57 +198,20 @@ MODULE InitRoutines_Mod
 
         !-----------------------------------------------------------------------
         ! --- Input of initial data and thermodynamic properties
+        WRITE(*,*) 'Print_Matlab',nspc
+
+        ALLOCATE(MW(nspc))  
+
         CALL InputChemicalData( InitFile , DataFile , MetFile )
+        WRITE(*,*) 'Print_Matlab'
+        CALL Print_MatlabFile(ReactionSystem ,'AAA.m', ChemUnit , .TRUE. )
 
       END IF
-      IF (PrintToScreen) THEN
-        WRITE(*,777) 'Reading ini-file ............. done'
-        WRITE(*,777) 'Printing chem-file ........... done'
-        WRITE(*,*)
-        WRITE(*,'(10X,A,I6)') '    Number of Reactions = ', neq
-        WRITE(*,'(10X,A,I6)') '    Number of Species   = ', nspc
-      END IF
+      
+        !CALL Read_MolecularWeights(MW,MWFile,MWUnit,nspc)
 
-      !Beginn test molmasse
-      IF ( MWFile /= '' ) THEN
-        CALL Read_MolecularWeights(MW,MWFile,MWUnit,nspc)
-
-        rMW = [ONE / MW]
-        !pos print
-        print*, 'MW ',MW
-       ! print*, 'MW ',MW(7)
-        !print*, 'rMW ',rMW
         
-
-
-
-        ALLOCATE( MoleFrac(ns_GAS) , MassFrac(ns_GAS) )
-        MoleFrac = ZERO;	MassFrac  = ZERO  
-
-        MoleFrac = 1.0e-20_dp
-        CALL Read_INI_file( InitFile , MoleFrac, InitValKat , 'GAS' , 'INITIAL' )
-
-        !Press = Pressure0               ! initial pressure in [Pa]
-        Press_in_dyncm2 = Pressure0 * Pa_to_dyncm2
-
-        MassFrac = MoleFr_To_MassFr  ( MoleFrac ) 
-        MoleConc = MoleFr_To_MoleConc( MoleFrac                &
-        &                            , Press = Press_in_dyncm2 &
-        &                            , Temp  = Temperature0    )
-      ELSE
-        IF ( PrintToScreen ) THEN
-          WRITE(*,*)
-          WRITE(*,777) '    No molecular weights are given.  '
-          WRITE(*,777) '    Make sure the initial values are given in [mole/cm3] !'
-          WRITE(*,*)
-        END IF
-        ALLOCATE( MoleConc(ns_GAS) )
-        MoleConc = 1.0e-20_dp
-        CALL Read_INI_file( InitFile , MoleConc, InitValKat , 'GAS' , 'INITIAL' )
-      END IF
-
-      ! WRITE(*,*) 'done  ---->  Test Molmasse',InitFile 
-!ende test molmasse
+      ! 
 
 
       !-----------------------------------------------------------------------
@@ -797,6 +761,8 @@ MODULE InitRoutines_Mod
        STOP 
     END IF
 
+    WRITE(*,*) '  reduction parameter  eps_red > 1  ---> decrease value'
+  STOP
 
     CLOSE(ReductionUnit)
 

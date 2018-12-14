@@ -1608,7 +1608,7 @@ MODULE Sparse_Mod
         print*, '  JacCC%Val(JacCC%DiagPtr(5))',  JacCC%Val(JacCC%DiagPtr(5))
         print*, '  JacCC%Val(JacCC%DiagPtr(6))',  JacCC%Val(JacCC%DiagPtr(6))
  
-        STOP
+        ! STOP
   END SUBROUTINE Jacobian_CC_pos
 
  

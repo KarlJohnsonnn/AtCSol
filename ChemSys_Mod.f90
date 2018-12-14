@@ -730,6 +730,32 @@ MODULE Chemsys_Mod
     CALL CompressList(Ducts)
   END SUBROUTINE CompressParty
   !
+  
+  SUBROUTINE PrintMatlabSpecies(ListName,Unit,phs)
+    TYPE(Species_T) :: ListName(:)
+    INTEGER :: Unit
+    INTEGER, ALLOCATABLE :: spclist(:)
+    CHARACTER(1), OPTIONAL :: phs
+    !
+    INTEGER :: i
+
+    WRITE(*,*) 'MolMass',SIZE(MolMass)
+    WRITE(Unit,'(A,I5,A)') 'Species(',SIZE(ListName),',1).c=9999;'
+    DO i=1,SIZE(ListName)
+      WRITE(Unit,'(A,I5,A,A,A)') 'Species(',i,').Name=',"'"//TRIM(ListName(i)%Species)//"';"
+      WRITE(Unit,'(A,I5,A,I5,A)') 'Species(',i,').Pos=',i,';'
+      WRITE(Unit,'(A,I5,A,F24.20,A)') 'Species(',i,').MolMass=',MW(i),';'
+      WRITE(Unit,'(A,I5,A,F40.20,A)') 'Species(',i,').c=',InitValAct(i),';'
+    END DO
+!Species(1).Name='O2';
+!Species(1).Pos=1;
+!Species(1).MolMass=32;
+!Species(1).c=1.697E+16;
+!Species(2).Name='O';
+!Species(2).Pos=2;
+!Species(2).MolMass=16;
+!Species(2).c=6.624E+08  ;
+  END SUBROUTINE PrintMatlabSpecies
   !
   SUBROUTINE PrintSpecies(ListName,Unit,phs)
     TYPE(Species_T) :: ListName(:)
@@ -960,6 +986,57 @@ MODULE Chemsys_Mod
 
   END FUNCTION RemoveSpaces
 
+  SUBROUTINE Print_MatlabFile(RS,File,Unit,CK)
+    TYPE(ReactionStruct_T), ALLOCATABLE :: RS(:)
+    CHARACTER(*) :: File
+    INTEGER      :: Unit
+    LOGICAL      :: CK
+
+    INTEGER :: NumReac
+    INTEGER :: i,j
+    INTEGER :: io_stat
+    IF ( .NOT.CK ) THEN
+      CALL AllListsToArray( RS            &
+      &                   , ListRGas    , ListRHenry  &
+      &                   , ListRAqua   , ListRDiss   &
+      &                   , ListRSolid  , ListRPartic &
+      &                   , ListRMicro  )
+    END IF
+    WRITE(*,*) 'Vor 1'
+    OPEN(unit=Unit, file=File, status='replace', action='write', access='sequential', iostat=io_stat)
+    NumReac=SIZE(RS,1)
+    WRITE(Unit,'(A,I5,A)') 'Reak(',NumReac,',1).con(1)=9999;' 
+!   Reak(10,1).con(1)=99999;
+    DO i=1,SIZE(RS,1)
+      WRITE(Unit,'(A,I5,A,I1,A)') 'Reak(',i,').Left=',SIZE(RS(i)%Educt),';'
+      DO j=1,SIZE(RS(i)%Educt)
+        WRITE(Unit,'(A,I5,A,I1,A,A,A)') 'Reak(',i,').NameL(',j,").Name='",TRIM(RS(i)%Educt(j)%Species),"';"
+        WRITE(Unit,'(A,I5,A,F3.1,A)') 'Reak(',i,').KoeffL=',RS(i)%Educt(j)%Koeff,';'
+      END DO
+      WRITE(Unit,'(A,I5,A,I1,A)') 'Reak(',i,').Right=',SIZE(RS(i)%Product),';'
+      DO j=1,SIZE(RS(i)%Product)
+        WRITE(Unit,'(A,I5,A,I1,A,A,A)') 'Reak(',i,').NameR(',j,").Name='",TRIM(RS(i)%Product(j)%Species),"';"
+        WRITE(Unit,'(A,I5,A,F3.1,A)') 'Reak(',i,').KoeffR=',RS(i)%Product(j)%Koeff,';'
+      END DO
+      WRITE(Unit,'(A,I5,A,A,A)') 'Reak(',i,").Type='",TRIM(RS(i)%TypeConstant),"';"
+      DO j=1,SIZE(RS(i)%Constants)
+      WRITE(Unit,'(A,I5,A,I1,A,E33.27,A)') 'Reak(',i,').con(',j,')=',RS(i)%Constants(j),';'
+      END DO
+    END DO  
+    WRITE(*,*) 'Vor 2'
+    CALL PrintMatlabSpecies( ListGas2     , Unit )    
+
+!   Reak(1).Left=1;
+!   Reak(1).NameL(1).Name='O2';
+!   Reak(1).KoeffL(1)=1;
+!   Reak(1).Right=1;
+!   Reak(1).NameR(1).Name='O';
+!   Reak(1).KoeffR(1)=2;
+!   Reak(1).Type='Photo3';
+!   Reak(1).con(1)=2.643e-10;v
+
+    CLOSE(Unit)
+  END SUBROUTINE Print_MatlabFile
   !
   SUBROUTINE Print_ChemFile(RS,File,Unit,CK)
     ! IN:
@@ -1558,6 +1635,7 @@ MODULE Chemsys_Mod
       IF (Back)   EXIT
       !
       iPos = PositionSpeciesAll(SpeciesName)
+      MW(iPos)=mm
       IF ( iPos > 0) THEN
         IF (alpha==ZERO .AND. dg==ZERO) CYCLE GAS 
         !
