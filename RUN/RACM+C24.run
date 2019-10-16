@@ -2,7 +2,7 @@
   BSP        = 'RACM+C24'   ! Name der NetCDF Output-Datei
   WaitBar    = .T.          ! .F. = kein ladebalken, .T. /= ladebalken aktiv
   Simulation = .T.          ! perform the numerical simulation
-  Reduction  = .F.          ! perform the reduction of the chemical system
+  Reduction  = .T.          ! perform the reduction of the chemical system
 /END
 &FILES
   SysFile    = 'CHEM/RACM+C24.sys'      ! .sys Datei (ohne .sys angeben!)
@@ -12,8 +12,8 @@
 /END
 &TIMES
   tBegin      = 0.0d0          ! Startzeit Integration   (in [sec])
-  tEnd        = 86400.0d0      ! Endzeit   Integration   (in [sec])
-  !tEnd        = 172800.0d0      ! Endzeit   Integration   (in [sec])
+  !tEnd        = 86400.0d0      ! Endzeit   Integration   (in [sec])
+  tEnd        = 172800.0d0      ! Endzeit   Integration   (in [sec])
 /END
 &METEO
   pHSet       = .T.          ! Berechne pH Wert zu Beginn
@@ -44,5 +44,5 @@
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock 
   MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
-  FluxDataPrint = .F.          ! Writing rate fluxes to file
+  FluxDataPrint = .T.          ! Writing rate fluxes to file
 /END

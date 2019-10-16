@@ -449,27 +449,27 @@ MODULE Rosenbrock_Mod
     TimeFac = TimeFac + (MPI_WTIME()-timerStart)
 
     IF (dprint) THEN
-      print*,
-      print*,
-      print*, '------------------------------------------------------------------------------'
-      print*, '|    Rosenbrock Input                                                        |'
-      print*, '------------------------------------------------------------------------------'
-      !print*, 'debug     i-th step      =  ',Out%nsteps
-      print*, 'debug     Stepsize       =  ',h
-      print*, 'debug     Time           =  ',t
-      print*, 'debug     SUM(Y0)        =  ',SUM(Y0)
-      print*, 'debug     SUM(Rate)      =  ',SUM(Rate)
-      print*, 'debug     SUM(Miter%val) =  ',SUM(Miter%val)
+      WRITE(*,*)
+      WRITE(*,*)
+      WRITE(*,*) '------------------------------------------------------------------------------'
+      WRITE(*,*) '|    Rosenbrock Input                                                        |'
+      WRITE(*,*) '------------------------------------------------------------------------------'
+      !WRITE(*,*) 'debug     i-th step      =  ',Out%nsteps
+      WRITE(*,*) 'debug     Stepsize       =  ',h
+      WRITE(*,*) 'debug     Time           =  ',t
+      WRITE(*,*) 'debug     SUM(Y0)        =  ',SUM(Y0)
+      WRITE(*,*) 'debug     SUM(Rate)      =  ',SUM(Rate)
+      WRITE(*,*) 'debug     SUM(Miter%val) =  ',SUM(Miter%val)
       IF( useSparseLU ) THEN
-        print*, 'debug    SUM(LU%val) vor = ', SUM(LU_Miter%val)
+        WRITE(*,*) 'debug    SUM(LU%val) vor = ', SUM(LU_Miter%val)
       END IF
-      print*, '------------------------------------------------------------------------------'
-      print*, ''
-      print*, ''
-      print*, '------------------------------------------------------------------------------'
-      print*, '| Before solving Ax=b:  iStage                   b                           |'
-      print*, '------------------------------------------------------------------------------'
-      print*, ''
+      WRITE(*,*) '------------------------------------------------------------------------------'
+      WRITE(*,*) ''
+      WRITE(*,*) ''
+      WRITE(*,*) '------------------------------------------------------------------------------'
+      WRITE(*,*) '| Before solving Ax=b:  iStage                   b                           |'
+      WRITE(*,*) '------------------------------------------------------------------------------'
+      WRITE(*,*) ''
     END IF
 
     !****************************************************************************************
@@ -516,10 +516,10 @@ MODULE Rosenbrock_Mod
           !DO i=1,nr; WRITE(*,'(A,I0,A,Es18.10)')   ' Rate(',i,') = ', Rate(i); END DO
           !DO i=1,nspc; WRITE(*,'(A,I0,A,Es18.10)') ' Emis(',i,') = ', Emiss(i); END DO
           !DO i=1,nspc; WRITE(*,'(A,I0,A,4Es18.10)') '    k(',i,',:) = ', k(i,:); END DO
-          !print*, '        STAGE :: ',iStg
-          print*, ''
-          print*, 'debug::         SUM(concentration) at (Y + a*k)  = ',SUM(Y)
-          print*, 'debug::  SUM(Rates) at (t + SumA*h),  (Y + a*k)  = ',SUM(Rate)
+          !WRITE(*,*) '        STAGE :: ',iStg
+          WRITE(*,*) ''
+          WRITE(*,*) 'debug::         SUM(concentration) at (Y + a*k)  = ',SUM(Y)
+          WRITE(*,*) 'debug::  SUM(Rates) at (t + SumA*h),  (Y + a*k)  = ',SUM(Rate)
         END IF
       END IF
 
@@ -588,16 +588,16 @@ MODULE Rosenbrock_Mod
 
     END DO  LOOP_n_STAGES
     IF (dprint) THEN
-      print*, ''
-      print*, '------------------------------------------------------------------------------'
-      print*, '| After solving Ax=b:  Species         k( iSpc , : )                         |'
-      print*, '------------------------------------------------------------------------------'
-      print*, ''
+      WRITE(*,*) ''
+      WRITE(*,*) '------------------------------------------------------------------------------'
+      WRITE(*,*) '| After solving Ax=b:  Species         k( iSpc , : )                         |'
+      WRITE(*,*) '------------------------------------------------------------------------------'
+      WRITE(*,*) ''
       do istg=1,nspc
         WRITE(*,'(A9,I5,A25,A3,*(E15.8,2X))') 'debug::  ',istg, TRIM(y_name(istg)),'   ',k( istg , : )
       end do
       IF (Teq) WRITE(*,'(A9,I5,A25,A3,*(E15.8,2X))') 'debug::  ',nDIM,'Temperature','   ',k( nDIM , : )
-      print*, '------------------------------------------------------------------------------'
+      WRITE(*,*) '------------------------------------------------------------------------------'
     END IF
 
     
@@ -606,16 +606,16 @@ MODULE Rosenbrock_Mod
     DO jStg=1,ROS%nStage; YNew = YNew + ROS%m(jStg)*k(:,jStg); END DO
     
     IF (dprint) THEN
-      print*, ''
-      print*, '------------------------------------------------------------------------------'
-      print*, '| After Ros step:   Y_Old                     Y_New              Species name|'
-      print*, '------------------------------------------------------------------------------'
+      WRITE(*,*) ''
+      WRITE(*,*) '------------------------------------------------------------------------------'
+      WRITE(*,*) '| After Ros step:   Y_Old                     Y_New              Species name|'
+      WRITE(*,*) '------------------------------------------------------------------------------'
       do istg=1,nspc
-        print*,'debug::  ', Y0(istg),Ynew(iStg),'   ', TRIM(y_name(istg))
+        WRITE(*,*)'debug::  ', Y0(istg),Ynew(iStg),'   ', TRIM(y_name(istg))
       end do
-      IF (Teq) print*,'debug::  ', Y0(nDIM),Ynew(nDIM), '   Temperature'
-      print*, '------------------------------------------------------------------------------'
-      print*, ''
+      IF (Teq) WRITE(*,*)'debug::  ', Y0(nDIM),Ynew(nDIM), '   Temperature'
+      WRITE(*,*) '------------------------------------------------------------------------------'
+      WRITE(*,*) ''
     END IF
 
     !***********************************************************************************************
@@ -649,10 +649,10 @@ MODULE Rosenbrock_Mod
       END IF
       
       IF (dprint) THEN
-        print*,'debug::     Error     =  ', err, '  Error index  =  ', ierr, '  Error species  =  ', TRIM(y_name(ierr(1,1)))
-        print*, '------------------------------------------------------------------------------'
-        print*, ''
-        print*, ' Press ENTER to calculate next step '
+        WRITE(*,*)'debug::     Error     =  ', err, '  Error index  =  ', ierr, '  Error species  =  ', TRIM(y_name(ierr(1,1)))
+        WRITE(*,*) '------------------------------------------------------------------------------'
+        WRITE(*,*) ''
+        WRITE(*,*) ' Press ENTER to calculate next step '
         read(*,*) 
       END IF
 

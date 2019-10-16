@@ -190,14 +190,46 @@ MODULE Chemsys_Mod
   END SUBROUTINE SortReactionList
   !
   !
+!  SUBROUTINE ReadSpecies(Out)
+!    LOGICAL :: Out
+!    !
+!    CHARACTER(LenName) :: Species
+!    CHARACTER(LenType) :: Type
+!    INTEGER :: Pos
+!
+!    READ(InputUnit,'(a100)',END=1) Species
+!
+!    DO
+!      Pos = SCAN( Species , "'" )
+!      IF ( Pos > 0 ) THEN
+!        Species(Pos:) = Species(Pos+1:)
+!      ELSE
+!        EXIT
+!      END IF
+!    END DO
+!    IF ( Species /= '' ) CALL InsertSpecies(Species,Type) 
+!
+!    Out = .FALSE.
+!    GO TO 999
+!
+!  1 CONTINUE
+!   
+!    Out = .TRUE.
+!999 CONTINUE
+!  END SUBROUTINE ReadSpecies
+
   SUBROUTINE ReadSpecies(Out)
     LOGICAL :: Out
     !
     CHARACTER(LenName) :: Species
     CHARACTER(LenType) :: Type
-    INTEGER :: Pos
+    INTEGER :: Pos, io
 
-    READ(InputUnit,'(a100)',END=1) Species
+    READ(InputUnit,'(a100)',IOSTAT=io) Species
+    IF (IS_IOSTAT_END(io))  THEN
+      Out = .TRUE.
+      RETURN
+    END IF
 
     DO
       Pos = SCAN( Species , "'" )
@@ -207,15 +239,13 @@ MODULE Chemsys_Mod
         EXIT
       END IF
     END DO
-    IF ( Species /= '' ) CALL InsertSpecies(Species,Type)
+    WRITE(*,*) ' species == ', Species
+    IF ( Species /= '' ) THEN
+      CALL InsertSpecies(Species,Type)
+    END IF
+    Out = .FALSE. 
 
-    Out = .FALSE.
-    GO TO 999
 
-  1 CONTINUE
-   
-    Out = .TRUE.
-999 CONTINUE
   END SUBROUTINE ReadSpecies
 
 
@@ -2542,6 +2572,7 @@ MODULE Chemsys_Mod
   !
   SUBROUTINE ReadSystem(FileName)
     CHARACTER(*) :: Filename
+    INTEGER :: i_dbg = 0
     !
     LOGICAL :: Out
 
@@ -2554,6 +2585,7 @@ MODULE Chemsys_Mod
     CALL InitHashTable(ListNonReac,100)
     CALL OpenFile(FileName,'spc')
     DO
+      WRITE(*,*) 'debug reaction counter = ', i_dbg
       CALL ReadSpecies(Out);  IF (Out) EXIT
     END DO
     CALL CloseFile(FileName,'spc')

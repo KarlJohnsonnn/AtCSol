@@ -11,7 +11,7 @@ F90   = mpif90 $(OPTFREE)
 F90_F = mpif90 $(OPTFIX)
 
 OPT_O =  -O3
-OPT_D =  -g -O0 -Warray-bounds -Wextra -fbacktrace -ffpe-trap=zero -fimplicit-none  -fcheck=all -Wall
+OPT_D =  -g -C -O0 -Warray-bounds -Wextra -fbacktrace -ffpe-trap=zero -fimplicit-none  -fcheck=all -Wall
 
 OP=
 CL=

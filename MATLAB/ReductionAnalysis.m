@@ -10,7 +10,7 @@ global b1 b2 len_f len_r mech
 %% --------------> DEFINE PATHS <--------------
 
 % declare path to AtCSol folder
-AtCSol_path = '/Users/schimmel/Code/AtCSol/';
+AtCSol_path = '/Users/willi/code/fortran/AtCSol/';
 
 % declare mechanism (.chem, BSP, ini)
 % chem_file_f = 'MCM32_CAPRAM40_full.chem';
