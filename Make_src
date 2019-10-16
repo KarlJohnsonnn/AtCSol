@@ -21,7 +21,7 @@ OBJ = UniRnk_Mod.f90\
       fp_parameters.f90\
       fparser.f90\
       Rates_Mod.f90\
-      ISSA_Mod.f90\
+      issa_mod.f90\
       Rosenbrock_Mod.f90\
       Integration_Mod.f90\
       AtCSol.f90

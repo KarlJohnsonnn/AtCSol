@@ -523,7 +523,7 @@ PROGRAM AtCSol
       WRITE(999,*) ' T(idx)  ',( i,' ', i=1,SIZE(Diag_Name) )
 
     DO
-      WRITE(999,'(*(Es14.6))') Tspan(1), ( InitValAct(Diag_Index(i)), i=1,SIZE(Diag_Index) )         
+      !WRITE(999,'(*(Es14.6))') Tspan(1), ( InitValAct(Diag_Index(i)), i=1,SIZE(Diag_Index) )         
       CALL Integrate ( InitValAct   &  ! initial concentrations activ species
       &              , Temperature0 &  ! initial temperature
       &              , h0           &  ! reaction rates at time=t0

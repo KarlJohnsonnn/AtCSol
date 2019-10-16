@@ -137,12 +137,14 @@ MODULE NetCDF_Mod
       DO iDiagSpc = 1 , nNcdfAqua  
         j = j + 1
         WRITE(tmpName,'(A,I0)') TRIM(y_name(iNcdfAqua(iDiagSpc)))//'_',iFr
+        Diag_Index(j)    = iNcdfAqua(iDiagSpc)
         Diag_Name(j)     = TRIM(tmpName)//'_l'
         Diag_LongName(j) = TRIM(tmpName)//'AQUA'
         DIAG_UNITS(j)    = "mol/l"
         iNCout_A_l  = [iNCout_A_l, j]
   
         j = j + 1
+        Diag_Index(j)    = iNcdfAqua(iDiagSpc)
         Diag_Name(j)     = TRIM(tmpName)//'_m3'
         Diag_LongName(j) = TRIM(tmpName)//'AIR'
         DIAG_UNITS(j)    = "mol/m3"

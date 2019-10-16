@@ -1,5 +1,5 @@
 
-LocNCDF = /store/menge/tools/packages/netcdf/4.3.2-gcc-4.9.0/lib
+LocNCDF = /usr/local/lib
 LocINCL = 
 
 OPTFREE =  -ffree-form -ffixed-line-length-none -ffree-line-length-none
