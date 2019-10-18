@@ -1,14 +1,14 @@
 &SCENARIO
   BSP        = 'RACM+C24_red'   ! Name der NetCDF Output-Datei
   WaitBar    = .T.          ! .F. = kein ladebalken, .T. /= ladebalken aktiv
-  FluxAna    = .F.          ! analyse reaction rates (fluxes)
+  Simulation = .T.          ! perform the numerical simulation
+  Reduction  = .F.          ! perform the reduction of the chemical system
 /END
 &FILES
   SysFile    = 'CHEM/RACM+C24_red.sys'      ! .sys Datei (ohne .sys angeben!)
   DataFile   = 'DAT/Urban.dat'          ! .dat Datei (für RO2, RO2aqua Summen)
   InitFile   = 'INI/Urban.ini'          ! .ini Datei (Anfangswerte gas/flüssig), Diagnose spc
   MetFile    = 'MET/1day_wocloud.met'   ! .met Datei (Meteorologie Datei)
-  !TargetFile = 'TAR/RACM+C24.ctrl'     ! .ctrl Datei (Zielspezies,Spezies Familen,gelumpte Species)
 /END
 &TIMES
   tBegin      = 0.0d0          ! Startzeit Integration   (in [sec])
@@ -32,15 +32,16 @@
   Error_Est   = 2            ! Error estimation = 2 -> 2-norm, else maxnorm
   PI_StepSize = .F.          ! Gustafsson, Söderlind Fehlersteuerung
   minStp      = 1.0d-30      ! minimale Schrittweite für Integration
-  maxStp      = 25.0d0       ! maximale Schrittweite für Integration
+  maxStp      = 50.0d0       ! maximale Schrittweite für Integration
   LinAlg      = 'cl'         ! 'ex'=extended Blockmatrix, 'cl'=klassische Jacobimatrix
   ODEsolver   = 'METHODS/Rodas3.fort'  ! Rosenbrock-Wanner Verfahrenskoeffizienten
 /END
 &OUTPUT
   NetCdfFile  = 'NetCDF/RACM+C24_red.nc' ! location and name of NetCDF output file
-  StpNetCDF   = 300.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep 
-  StpFlux     = -1.0d0
+  StpNetCDF   = 600.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep
+  StpFlux     = 300.0d0
   nOutP       = 1000                 ! number of output steps for LSODE case
-  DebugPrint  = .F.                ! DEBUGGING Rosenbrock 
+  DebugPrint  = .F.                ! DEBUGGING Rosenbrock
   MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
+  FluxDataPrint = .F.          ! Writing rate fluxes to file
 /END

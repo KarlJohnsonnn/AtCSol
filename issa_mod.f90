@@ -269,7 +269,7 @@ MODULE ISSA_Mod
 
     INTEGER, ALLOCATABLE :: ReacSet(:), Perm(:)
     INTEGER, ALLOCATABLE :: ReacSet0(:), nonCyclicRemainder(:)
-    INTEGER :: n
+    INTEGER :: n, n_reacset
     INTEGER :: newLen
     INTEGER :: jj, iC, iS, iSpcE, iSpcP, iR_a, iS_b
 
@@ -321,8 +321,12 @@ MODULE ISSA_Mod
     CALL Sort_And_Remove_Duplicates(ReacSet0,newLen)
 
     n = 1
+    n_reacset = SIZE(ReacSet0)
     ALLOCATE(nonCyclicRemainder(0))
     DO jj = 1 , nr
+      IF (n > n_reacset) THEN
+        EXIT
+      END IF
       IF ( jj == ReacSet0(n) ) THEN
         n = n + 1
       ELSE
@@ -337,8 +341,8 @@ MODULE ISSA_Mod
 
     CALL PrintReactionCycles(R_k,Cycles,ReactionSystem)
     
-    !WRITE(*,*) ' DBG-Output ::  number of reactions within cycles = ', SIZE(ReacSet0), iC
-    !WRITE(*,*) ' DBG-Output ::  number of non-cyclic reactions = ', SIZE(nonCyclicRemainder)
+    WRITE(*,*) ' DBG-Output ::  number of reactions within cycles = ', SIZE(ReacSet0), iC
+    WRITE(*,*) ' DBG-Output ::  number of non-cyclic reactions = ', SIZE(nonCyclicRemainder)
 
    !stop 'issa_MOD'
 

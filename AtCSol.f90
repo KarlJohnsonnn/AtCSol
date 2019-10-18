@@ -569,6 +569,10 @@ PROGRAM AtCSol
     StartTimer = MPI_WTIME()
 
     CALL InitReduction
+    WRITE(*,*)
+    WRITE(*,*) TRIM(TargetFile)
+    WRITE(*,*) TRIM(FluxFile)
+    WRITE(*,*) TRIM(FluxMetaFile)
     
     CALL ISSA_structure( ReacCyc , Target_Spc , TargetFile )
     CALL ISSA_screening( ReactionSystem, ReacCyc, Target_Spc )

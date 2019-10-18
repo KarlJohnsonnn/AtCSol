@@ -108,10 +108,10 @@ MODULE InitRoutines_Mod
       TargetFile = ADJUSTL(TargetFile)
 
       IF ( TRIM(BSP) == '' ) THEN
-			  Bsp = ADJUSTL(SysFile(INDEX(SysFile,'/')+1:INDEX(SysFile,'.sys')-1))
-			ELSE
+        Bsp = ADJUSTL(SysFile(INDEX(SysFile,'/')+1:INDEX(SysFile,'.sys')-1))
+      ELSE
         Bsp = ADJUSTL(Bsp)
-			END IF
+      END IF
 
 !-----------------------------------------------------------------
 !---  Times
@@ -126,12 +126,13 @@ MODULE InitRoutines_Mod
       READ(RunUnit,TIMES,IOSTAT=io_stat,IOMSG=io_msg)
       CALL ErrorCheck(io_stat,io_msg,'reading TIMES list')
 
-			IF ( tBegin >= tEnd ) THEN
-    	  WRITE(*,*) '  tBegin >= tEnd  '
-    	  CALL FinishMPI(); STOP 
-			ELSE
-				Tspan = [tBegin , tEnd]
-    	END IF
+      IF ( tBegin >= tEnd ) THEN
+        WRITE(*,*) '  tBegin >= tEnd  '
+        CALL FinishMPI(); STOP 
+      ELSE
+        Tspan = [tBegin , tEnd]
+        Tspan_tot = [tBegin , tEnd]
+      END IF
 !
 !-----------------------------------------------------------------
 !---  Meteorology

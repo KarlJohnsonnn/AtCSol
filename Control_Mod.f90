@@ -107,6 +107,7 @@
 !-- initialize timers
       REAL(dp) :: Timer_Start=0.0d0, Timer_Finish=0.d0
       REAL(dp) :: Tspan(2)
+      REAL(dp) :: Tspan_tot(2)
   
 
       REAL(dp) :: Time_Read=0.0d0

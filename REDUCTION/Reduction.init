@@ -1,8 +1,11 @@
 &SCENARIO
-  TargetFile   = 'RACM+C24.ctrl'    ! file name for species targets and species families
-  FluxFile     = 'flux_RACM+C24.dat'    ! file name for species targets and species families
-  FluxMetaFile = 'fluxmeta_RACM+C24.dat'    ! file name for species targets and species families
+  !TargetFile   = 'RACM+C24.ctrl'    ! file name for species targets and species families
+  !FluxFile     = 'flux_RACM+C24.dat'    ! file name for species targets and species families
+  !FluxMetaFile = 'fluxmeta_RACM+C24.dat'    ! file name for species targets and species families
+  TargetFile   = 'MCM+CAPRAM_3.ctrl'    ! file name for species targets and species families
+  FluxFile     = 'flux_MCM32+CAPRAM40.dat'    ! file name for species targets and species families
+  FluxMetaFile = 'fluxmeta_MCM32+CAPRAM40.dat'    ! file name for species targets and species families
   Red_TStart   = 10.0d0             ! start reduction procedure
   Red_TEnd     = 37.0d0             ! end reduction procedure 
-  eps_red      = 0.11d0             ! controls reduction intensity 0 <= eps_red <= 1 
+  eps_red      = 0.91             ! controls reduction intensity 0 <= eps_red <= 1 
 /END

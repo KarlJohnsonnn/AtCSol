@@ -641,7 +641,7 @@ MODULE Rosenbrock_Mod
 
       ! for analysis and reduction
       IF ( FluxDataPrint .AND. MPI_master .AND. err < ONE ) THEN
-        IF ( t - Tspan(1) >= StpFlux*REAL(iStpFlux,dp) ) THEN
+        IF ( t - Tspan_tot(1) >= StpFlux*REAL(iStpFlux,dp) ) THEN
           timerStart = MPI_WTIME()
           CALL StreamWriteFluxes(Rate_t,t,h)
           TimeFluxWrite = TimeFluxWrite + MPI_WTIME() - timerStart

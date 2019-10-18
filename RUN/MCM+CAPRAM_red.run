@@ -1,13 +1,14 @@
 &SCENARIO
   BSP      = 'MCM32+CAPRAM40_red'
   WaitBar  = .T.
+  Simulation = .T.
   FluxAna  = .F.
 /END
 &FILES
   SysFile  = 'CHEM/MCM32+CAPRAM40_red.sys'  
   DataFile = 'DAT/MCM32_CAPRAM40_full.dat'
   InitFile = 'INI/Urban2.ini'
-  !TargetFile  = 'TAR/CAPRAM.ctrl'   
+  !InitFile = 'INI/urbMCM+C30m_erik.ini'
 /END
 &TIMES
   tBegin      = 0.0d0
@@ -25,16 +26,14 @@
   Temperature0= 280.0d0
 /END
 &NUMERICS
-  RtolROW  = 1.0d-3
+  RtolROW  = 1.0d-4
   AtolGas  = 1.0d-7
   AtolAqua = 1.0d-7
   Error_Est = 2
-  PI_StepSize = .F.
   LinAlg  = 'cl'
   minStp  = 1.0d-30
-  maxStp  = 200.d0
+  maxStp  = 300.d0
   ODEsolver = 'METHODS/Rodas3.ros'
-  Ordering  = 8
 /END
 &OUTPUT
   NetCdfFile  = 'NetCDF/MCM32+C40_red.nc' ! location and name of NetCDF output file

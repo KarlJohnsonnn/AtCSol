@@ -1,5 +1,5 @@
 &SCENARIO
-  TargetFile   = 'MCM+CAPRAM.ctrl'    ! file name for species targets and species families
+  TargetFile   = 'MCM+CAPRAM_2.ctrl'    ! file name for species targets and species families
   FluxFile     = 'flux_MCM32+CAPRAM40.dat'    ! file name for species targets and species families
   FluxMetaFile = 'fluxmeta_MCM32+CAPRAM40.dat'    ! file name for species targets and species families
   Red_TStart   = 10.0d0             ! start reduction procedure
