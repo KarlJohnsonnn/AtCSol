@@ -22,9 +22,10 @@ MODULE InitRoutines_Mod
       NAMELIST /SCENARIO/  Bsp ,     &
       &                    WaitBar , &
       &                    ChemKin , &
-      &                    Simulation, &
-      &                    Reduction, &
-      &                    KPP_Conversion
+      &                    Simulation , &
+      &                    Reduction , &
+      &                    KPP_Conversion , &
+      &                    Lumping
 
       NAMELIST /FILES/  SysFile ,    &
       &                 DataFile ,   &
@@ -86,6 +87,7 @@ MODULE InitRoutines_Mod
       Simulation = .TRUE.
       Reduction  = .FALSE.
       KPP_Conversion = .FALSE.
+      Lumping = .FALSE.
 
 !--- Read SCENARIO namelist
       READ(RunUnit,SCENARIO,IOSTAT=io_stat,IOMSG=io_msg)
