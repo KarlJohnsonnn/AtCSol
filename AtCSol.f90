@@ -24,6 +24,8 @@ PROGRAM AtCSol
   USE Cycles_Mod
   USE fparser
   USE ISSA_Mod
+  USE Lumping_Mod
+  
   IMPLICIT NONE
   !
   CHARACTER(80)   :: Filename0 = ''        ! *.run file
@@ -67,6 +69,9 @@ PROGRAM AtCSol
   TYPE(List), ALLOCATABLE :: ReacCyc(:)
   INTEGER,    ALLOCATABLE :: Target_Spc(:) 
   LOGICAL :: done=.FALSE.
+
+  ! lifetimes storage for lumping
+  REAL(dp), ALLOCATABLE :: tau(:,:) 
   
   ! timer
   REAL(dp) :: t_1,t_2,h0
@@ -583,6 +588,24 @@ PROGRAM AtCSol
     WRITE(*,'(32X,A,1X,F10.4,A)') 'Time ISSA reduction = ', TimeReduction, unit
     WRITE(*,*); 
     
+  END IF
+
+  IF ( Lumping ) THEN
+
+    StartTimer = MPI_WTIME()
+
+    ALLOCATE(tau(A%n,5))
+    tau = ONE ! default for testing
+    eps_tau = ONE ! default for testing (ABSOLUTE tolerance)
+    eps_k = rTWO ! default for testing (RELATIVE tolerance)
+    CALL lump_System(tau)
+
+    TimeLumping = MPI_WTIME()-StartTimer
+    
+    CALL ConvertTime(TimeReduction,unit)
+    WRITE(*,*)
+    WRITE(*,'(32X,A,1X,F10.4,A)') 'Time lumping = ', TimeLumping, unit
+    WRITE(*,*);
   END IF
 
   ! --- Close MPI 
