@@ -3,6 +3,7 @@ include $(IN2)
 OBJ = UniRnk_Mod.f90\
       csv_file.f90\
       LexicalStringSort.f90\
+      quick_sort.f90\
       Kind_Mod.f90\
       Control_Mod.f90\
       Reac_Mod.f90\
@@ -22,6 +23,7 @@ OBJ = UniRnk_Mod.f90\
       fparser.f90\
       Rates_Mod.f90\
       issa_mod.f90\
+      lumping_mod.f90\
       Rosenbrock_Mod.f90\
       Integration_Mod.f90\
       AtCSol.f90
