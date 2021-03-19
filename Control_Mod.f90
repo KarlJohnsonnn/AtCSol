@@ -29,6 +29,10 @@
 
       REAL(dp) :: Red_TStart, Red_TEnd     ! time interval for redcution procedure
       REAL(dp) :: eps_red                  ! threshold for reduction procedure
+      
+!--- tolerances for lumping
+      REAL(dp) :: eps_tau                  ! similar lifetimes
+      REAL(dp) :: eps_k                    ! similar reaction constants
 !
 !--- Unit Numbers
       INTEGER, PARAMETER :: RunUnit      = 101  & 
@@ -59,7 +63,8 @@
 &              , WaitBar         & ! ladebalken im terminal bei simulation (=1, default=0)
 &              , FluxDataPrint   & ! writing flux data and analyse after simulaiton -> print new reaction file
 &              , Simulation      & ! calculation of species concentration 
-&              , Reduction         ! reduction of chemical species and reactions
+&              , Reduction       & ! reduction of chemical species and reactions
+&              , Lumping           ! species lumping of chemical system
 
       LOGICAL :: KPP_Conversion
 
@@ -121,6 +126,7 @@
       REAL(dp) :: TimeFluxWrite=0.0d0
       REAL(dp) :: TimeRhsCalc=0.0d0
       REAL(dp) :: TimeReduction=0.0d0
+      REAL(dp) :: TimeLumping=0.0d0
   
       REAL(dp) :: TimeIntegration=0.0d0
       REAL(dp) :: TimeRateA=0.0d0
