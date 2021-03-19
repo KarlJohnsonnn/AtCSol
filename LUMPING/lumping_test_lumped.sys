@@ -1,0 +1,50 @@
+# ================= LUMPING/lumping_test_lumped.sys =================
+# = Please copy the data into your sys-file for =
+# =============== chemical input. ===============
+#
+#  ===================   Unit options   ======================
+
+UNIT GAS    0   #    Gas phase units     (0 = molec/cm3, 1 = mol/m3)
+UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)
+
+#
+# This is a lumped system. Several original species were lumped.
+# The reactions below consist of these lumped species.
+#
+# The lumped species have names and ingredients of the original system as follows:
+# 
+# A1                                                                                                  
+# contains 
+# A1, A2, A3, A4
+# 
+# B1                                                                                                  
+# contains 
+# B1, P2
+#
+#
+#
+
+CLASS: GAS
+1.0 A1 + 1.0 A0 = 1.0 P1 + 1.0 B1 + 1.0 P3 + 1.0 P4
+CONST:  A: 1e+0
+
+
+CLASS: GAS
+1.0 B1 + 1.0 P3 = 1.0 P5 + 1.0 P5
+CONST:  A: 1e+0
+
+
+CLASS: GAS
+1.0 B1 + 1.0 P6 = 1.0 P7 + 1.0 P7
+CONST:  A: 1e+0
+
+
+CLASS: GAS
+1.0 B2 + 1.0 P3 = 1.0 P5
+CONST:  A: 1e+0
+
+
+CLASS: GAS
+1.0 B2 + 2.0 P6 = 1.0 P7
+CONST:  A: 1e+0
+
