@@ -179,7 +179,6 @@ CONTAINS
     Chi =  1.745329252e-02_dp * ZR/DR
   END FUNCTION Zenith
 
-
   FUNCTION UpdateSun(Time) RESULT(Sun)
   !--------------------------------------------------------------------
     ! Input:
@@ -210,6 +209,29 @@ CONTAINS
     END IF
   END FUNCTION UpdateSun
 
+  FUNCTION UpdateSunStWe(Time) RESULT(SunStWe)
+  !--------------------------------------------------------------------
+  !    This is the simplified, adapted sunlight calculation from SturmWexler.
+  !    for more information and the code: see SturmWexler.sys
+  !--------------------------------------------------------------------
+    ! Input:
+    !   - Time
+    REAL(dp) :: Time
+    !--------------------------------------------------------------------!
+    ! Output:
+    !   - Sun
+    REAL(dp)  :: SunStWe
+    !--------------------------------------------------------------------!
+    ! Temporary variables:
+    REAL(dp), PARAMETER :: daymax=0.7_dp  ! random in SturmWexler code
+    REAL(dp) :: Thour, Tlocal, Ttmp
+    !
+    Thour  = MODULO(Time / HOUR,24.0_dp)
+    Tlocal = Thour - FLOOR(Thour/hourday)*hourday ! why would you do this? Thour<24 
+    !                                               -> Tlocal always equals Thour
+    !
+    SunStWe = daymax * MAX(SIN(Tlocal/12 * Pi - Pi * rTWO),ZERO)
+  END FUNCTION UpdateSunStWe
     
   FUNCTION Set_pseudoLWCbounds() RESULT(bounds)
     USE Control_Mod, ONLY: tBegin, HOUR
