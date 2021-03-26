@@ -594,11 +594,13 @@ PROGRAM AtCSol
 
     StartTimer = MPI_WTIME()
 
+    CALL InitLumping
+
     ALLOCATE(tau(A%n,5))
     tau = ONE ! default for testing
     eps_tau = ONE ! default for testing (ABSOLUTE tolerance)
     eps_k = rTWO ! default for testing (RELATIVE tolerance)
-    CALL lump_System(tau)
+    CALL lump_System(tau,PreserveFile)
 
     TimeLumping = MPI_WTIME()-StartTimer
     
