@@ -12,16 +12,17 @@
       CHARACTER(80) :: Bsp        = ''      ! Identifier for scenario
 
 !--- Files
-      CHARACTER(80) :: RunFile    = ''    & ! Simulation data file
-&                    , MetFile    = ''    & ! Meteorology file
-&                    , SysFile    = ''    & ! Chemical mechanism
-&                    , ChemFile   = ''    & ! Chemical mechenism (spaccim input)
-&                    , InitFile   = ''    & ! Initial concentrations
-&                    , DataFile   = ''    & ! Gas and Aqueous DATA
-&                    , MWFile     = ''    & ! molecular weights of species 
-&                    , NetcdfFile = ''    & ! NetCDF output file
-&                    , ODEsolver  = ''    & ! Method for Rosenbrock Integration
-&                    , TargetFile = ''      ! file for reductions analysis (target species)
+      CHARACTER(80) :: RunFile      = ''    & ! Simulation data file
+&                    , MetFile      = ''    & ! Meteorology file
+&                    , SysFile      = ''    & ! Chemical mechanism
+&                    , ChemFile     = ''    & ! Chemical mechenism (spaccim input)
+&                    , InitFile     = ''    & ! Initial concentrations
+&                    , DataFile     = ''    & ! Gas and Aqueous DATA
+&                    , MWFile       = ''    & ! molecular weights of species 
+&                    , NetcdfFile   = ''    & ! NetCDF output file
+&                    , ODEsolver    = ''    & ! Method for Rosenbrock Integration
+&                    , TargetFile   = ''    & ! file for reductions analysis (target species)
+&                    , PreserveFile = ''      ! file lumping (species to be preserved)
 
       CHARACTER(7)  :: OutputPath   = 'OUTPUT/'  ! path to output folder
       CHARACTER(80) :: FluxMetaFile = ''         ! meta data for unformatted flux data
