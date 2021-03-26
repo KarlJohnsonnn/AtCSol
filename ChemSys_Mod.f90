@@ -317,13 +317,14 @@ MODULE Chemsys_Mod
           CALL InsertReaction( ListRGas , Line , TypeR )
 
           SELECT CASE (TypeR)
-            CASE ('PHOTO','PHOTO2','PHOTO3','PHOTAB','PHOTABC','PHOTMCM')
+            CASE ('PHOTO','PHOTO2','PHOTO3','PHOTAB','PHOTABC','PHOTMCM','PHOTOSTWE')
               IF ( TypeR == 'PHOTAB'  ) reac_par(iPHOTAB)%n_reac  = reac_par(iPHOTAB)%n_reac + 1
               IF ( TypeR == 'PHOTABC' ) reac_par(iPHOTABC)%n_reac = reac_par(iPHOTABC)%n_reac + 1
               IF ( TypeR == 'PHOTMCM' ) reac_par(iPHOTMCM)%n_reac = reac_par(iPHOTMCM)%n_reac + 1
               IF ( TypeR == 'PHOTO'   ) reac_par(iPHOTO)%n_reac   = reac_par(iPHOTO)%n_reac + 1
               IF ( TypeR == 'PHOTO2'  ) reac_par(iPHOTO2)%n_reac  = reac_par(iPHOTO2)%n_reac + 1
               IF ( TypeR == 'PHOTO3'  ) reac_par(iPHOTO3)%n_reac  = reac_par(iPHOTO3)%n_reac + 1
+              IF ( TypeR == 'PHOTOSTWE'  ) reac_par(iPHOTOStWe)%n_reac  = reac_par(iPHOTOStWe)%n_reac + 1
             CASE ('CONST')
               reac_par(iCONST)%n_reac = reac_par(iCONST)%n_reac + 1
             CASE ('TEMP','TEMP1','TEMP2','TEMP3','TEMP4')
@@ -560,7 +561,7 @@ MODULE Chemsys_Mod
           CALL InsertReaction( ListRGas , Line , TypeR )
 
           SELECT CASE (TypeR)
-            CASE ('PHOTO','PHOTO2','PHOTO3','PHOTAB','PHOTABC','PHOTMCM')
+            CASE ('PHOTO','PHOTO2','PHOTO3','PHOTAB','PHOTABC','PHOTMCM','PHOTOSTWE')
               nr_G_photo = nr_G_photo + 1
               IF ( TypeR == 'PHOTAB'  ) nr_PHOTab  = nr_PHOTab  + 1
               IF ( TypeR == 'PHOTABC' ) nr_PHOTabc = nr_PHOTabc + 1
@@ -568,6 +569,7 @@ MODULE Chemsys_Mod
               IF ( TypeR == 'PHOTO'   ) nr_PHOTOkpp  = nr_PHOTOkpp  + 1
               IF ( TypeR == 'PHOTO2'  ) nr_PHOTO2kpp = nr_PHOTO2kpp + 1
               IF ( TypeR == 'PHOTO3'  ) nr_PHOTO3kpp = nr_PHOTO3kpp + 1
+              IF ( TypeR == 'PHOTOSTWE'  ) nr_PHOTOStWe = nr_PHOTOStWe + 1
             CASE ('CONST')
               nr_G_const = nr_G_const + 1
               nr_CONST   = nr_CONST   + 1
@@ -2778,7 +2780,7 @@ MODULE Chemsys_Mod
     INTEGER :: i, j, iList, iEq
     INTEGER :: nList
 
-    INTEGER :: icnt(47), icntFAC(10), iHen
+    INTEGER :: icnt(48), icntFAC(10), iHen
 
     ! #Reactions
     neq  = nr_gas + 2*nr_henry + nr_aqua + 2*nr_diss &
@@ -3238,6 +3240,7 @@ MODULE Chemsys_Mod
 !    CASE ('PHOTO3');  idx = iPHOTO3
 !    CASE ('SPECIAL'); idx = iSPECIAL
 !    CASE ('HOM1');    idx = iHOM1
+!    CASE ('PHOTOSTWE');  idx = iPHOTOStWe
 !    CASE DEFAULT
 !      WRITE(*,*) ''
 !      WRITE(*,*) ' Reaction Type unknown:  ',TRIM(TypeR),'  --> check input file'
@@ -3273,7 +3276,7 @@ END SUBROUTINE Setup_ReacParameter_neu
     CHARACTER(*),   INTENT(IN) :: TypeR
     CHARACTER(*),   INTENT(IN) :: Line1
     INTEGER,        INTENT(IN) :: iReac
-    INTEGER,        INTENT(INOUT) :: icnt(47)
+    INTEGER,        INTENT(INOUT) :: icnt(48)
     !WRITE(*,*) ' iReac =', iReac, TRIM(ReactionSystem(iReac)%Line1), '    Consts = ', C
 
     SELECT CASE ( TRIM(TypeR) )
@@ -3429,6 +3432,9 @@ END SUBROUTINE Setup_ReacParameter_neu
       CASE ('HOM1')
         IF ( SIZE(C)<3 ) CALL ErrorMSG(iReac,Line1)
         icnt(45)=icnt(45)+1; iR%iHOM1(icnt(45))=iReac; iR%HOM1(icnt(45),:)=C 
+      CASE ('PHOTOSTWE')
+        IF ( SIZE(C)<1 ) CALL ErrorMSG(iReac,Line1)
+        icnt(48)=icnt(48)+1; iR%iPHOTOStWe(icnt(48))=iReac; iR%PHOTOStWe(icnt(48))=C(1)
       CASE DEFAULT
         WRITE(*,*) ''
         WRITE(*,*) ' Reaction Type unknown:  ',TRIM(TypeR),'  --> check input file'
@@ -3538,6 +3544,8 @@ END SUBROUTINE Setup_ReacParameter_neu
 
     ALLOCATE( iR%iHOM1(nr_HOM1) , iR%HOM1(nr_HOM1,3) ) 
 
+    ALLOCATE( iR%iPHOTOStWe(nr_PHOTOStWe), iR%PHOTOStWe(nr_PHOTOStWe) )
+  
   END SUBROUTINE AllocateRTarrays
 
 
