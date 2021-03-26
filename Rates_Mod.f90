@@ -219,7 +219,9 @@
       !--------------------------------------------------------------------!
       ! Temporary variables:
       REAL(dp) :: Conc(nspc)
-      REAL(dp) :: chi(3), LWC
+      !REAL(dp) :: chi(3), LWC
+      ! use chi(4) for StWe
+      REAL(dp) :: chi(4), LWC 
       REAL(dp) :: T(10), Temp
       REAL(dp) :: Meff(neq) , k(neq) , Prod(neq)
       REAL(dp) :: mAir
@@ -243,6 +245,8 @@
         chi(2) = ONE/COS(chi(1))
         ! kkp syntax calculation of sun for photo reactions
         chi(3) = UpdateSun(Time)
+        ! SturmWexler daylight calculation
+        chi(4) = UpdateSunStWe(Time)
       END IF
      
       
@@ -781,9 +785,15 @@
       END IF
       IF (nr_PHOTO3kpp>0) THEN 
         k(iR%iPHOTO3kpp) = iR%PHOTO3kpp(:) * Chi(3)*Chi(3)*Chi(3)
+      END IF 
+      
+      ! ************************************************************************
+      ! *** SturmWexler photolytic reactions 
+      ! ************************************************************************
+      !
+      IF (nr_PHOTOStWe>0) THEN
+        k(iR%iPHOTOStWe)  = iR%PHOTOStWe(:) * Chi(4)
       END IF
-      
-      
 
     END FUNCTION ComputeRateConstant
 
