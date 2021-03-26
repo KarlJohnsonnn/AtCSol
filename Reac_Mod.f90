@@ -75,9 +75,10 @@
     &         ,  iPHOTO2    = 43  &
     &         ,  iPHOTO3    = 44  &
     &         ,  iEQUI      = 45  &
-    &         ,  iSPECIAL   = 46
+    &         ,  iPHOTOSTWE = 46  & 
+    &         ,  iSPECIAL   = 47
   
-    INTEGER, PARAMETER :: nReacTypes = 46
+    INTEGER, PARAMETER :: nReacTypes = 47
 
     TYPE(val_para), DIMENSION(nReacTypes) :: reac_val
 
@@ -127,7 +128,8 @@
                      def_para("PHOTO2",    4,  0, .FALSE.), &
                      def_para("PHOTO3",    4,  0, .FALSE.), &
                      def_para("EQUI",      1,  0, .FALSE.), &
-                     def_para("SPECIAL",   0,  0, .FALSE.)  /)
+                     def_para("PHOTOSTWE", 1,  0, .FALSE.), &
+                     def_para("SPECIAL",   0,  0, .FALSE.)  /) 
 
 
 !---  reaction structures
@@ -234,6 +236,7 @@
     INTEGER :: nr_HOaqua = 0      ! higher order aqueous reactions
     INTEGER :: nr_PHOTOkpp = 0, nr_PHOTO2kpp = 0, nr_PHOTO3kpp = 0
     INTEGER :: nr_HOM1 = 0
+    INTEGER :: nr_PHOTOStWe = 0
 
     LOGICAL :: PHOTO=.FALSE.
 
@@ -416,6 +419,7 @@
       &                     , iFAC_H2O(:), iFAC_RO2(:),  iFAC_O2O2(:), iFAC_aH2O(:), iFAC_RO2aq(:) &
       &                     , iHOaqua(:) &
       &                     , iPHOTOkpp(:), iPHOTO2kpp(:), iPHOTO3kpp(:) &
+      &                     , iPHOTOStWe(:) &
       &                     , iSPECIAL(:)
       REAL(dp), ALLOCATABLE :: PHOTabc(:,:)   &  ! nPHOTabc x 3
       &                     ,  PHOTab(:,:)    &  ! nPHOTab x 2
@@ -447,6 +451,7 @@
       &                     ,  HENRY(:,:)     &    ! nHENRY x 2
       &                     ,  HOaqua(:)      &
       &                     ,  PHOTOkpp(:), PHOTO2kpp(:), PHOTO3kpp(:) &! nPHOTOi x 1
+      &                     ,  PHOTOStWe(:)   &
       &                     ,  HOM1(:,:)
     END TYPE ReacTypeIndex_TR
 
