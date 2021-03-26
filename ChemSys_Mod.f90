@@ -3296,7 +3296,7 @@ END SUBROUTINE Setup_ReacParameter_neu
         icnt(1)=icnt(1)+1; iR%iCONST(icnt(1))=iReac;   iR%CONST(icnt(1))=C(1)
       CASE ('TEMP')
         IF ( SIZE(C)<3 ) CALL ErrorMSG(iReac,Line1)
-        icnt(46)=icnt(46)+1; iR%iTEMP1(icnt(46))=iReac; iR%TEMP1(icnt(46),:)=C 
+        icnt(46)=icnt(46)+1; iR%iTEMP(icnt(46))=iReac; iR%TEMP(icnt(46),:)=C 
       CASE ('TEMP1')
         IF ( SIZE(C)<2 ) CALL ErrorMSG(iReac,Line1)
         icnt(5)=icnt(5)+1; iR%iTEMP1(icnt(5))=iReac; iR%TEMP1(icnt(5),:)=C 
