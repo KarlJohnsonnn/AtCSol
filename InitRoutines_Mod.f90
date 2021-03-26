@@ -315,6 +315,47 @@ MODULE InitRoutines_Mod
 
   END SUBROUTINE InitReduction
 
+  SUBROUTINE InitLumping
+    USE Control_Mod
+
+    INTEGER, PARAMETER :: LumpingUnit = 126
+    INTEGER        :: io_stat
+    CHARACTER(400) :: io_msg = ''
+
+
+    NAMELIST /SCENARIO/  PreserveFile, &
+     &                   eps_k , &
+     &                   eps_tau 
+
+
+    OPEN( FILE='LUMPING/Lumping.init' , UNIT=LumpingUnit &
+    &   , IOSTAT=io_stat , IOMSG=io_msg )
+
+    CALL ErrorCheck(io_stat,io_msg,'opening Lumping.init file')
+
+    ! default values
+    PreserveFile = ''
+    eps_k        = rTWO
+    eps_tau      = ONE
+
+    READ(LumpingUnit,SCENARIO,IOSTAT=io_stat,IOMSG=io_msg)
+    CALL ErrorCheck(io_stat,io_msg,'reading SCENARIO list')
+
+    CALL FileNameCheck('LUMPING/'//TRIM(PreserveFile),'PreserveFile')
+
+    PreserveFile = 'LUMPING/'//TRIM(PreserveFile)
+
+    !IF ( eps_red <= 0.0_dp ) THEN
+    !  WRITE(*,*) '  reduction parameter eps_red <= 0  ---> increase value'
+    !  CALL FinishMPI(); STOP 
+    !ELSE IF ( eps_red > 1.0 ) THEN
+    !  WRITE(*,*) '  reduction parameter  eps_red > 1  ---> decrease value'
+    !  CALL FinishMPI(); STOP 
+    !END IF
+
+    CLOSE(LumpingUnit)
+
+  END SUBROUTINE InitLumping
 
   SUBROUTINE ErrorCheck(io_stat,io_msg,cause)
     INTEGER      :: io_stat
