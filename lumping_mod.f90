@@ -48,11 +48,13 @@ MODULE Lumping_Mod
   END TYPE lumping_group
 
   TYPE NewReac_Data
-     CHARACTER(LenLine)    :: Line3Template = ''
-     CHARACTER(LenLine)    :: Line4 = ''
+     CHARACTER(LenLine)         :: Line3Template = ''
+     CHARACTER(LenLine)         :: Line3 = ''
+     CHARACTER(LenLine)         :: Line4 = ''
      TYPE(Duct_T), ALLOCATABLE  :: Educt(:)
      TYPE(Duct_T), ALLOCATABLE  :: Product(:)
-     CHARACTER(LenType)    :: Type,  TypeConstant
+     CHARACTER(LenType)         :: Type,  TypeConstant
+     REAL(dp),     ALLOCATABLE  :: Constants(:)            
   END TYPE NewReac_Data
 
   CONTAINS
@@ -76,18 +78,22 @@ MODULE Lumping_Mod
   !******************************
   !******************************
   
-  SUBROUTINE lump_System(tau)
+  SUBROUTINE lump_System(tau, PreserveFile)
     ! input:
     !
     !  lifetimes of species at given times (tau(i,j) : lifetime of species i at timepoint j)
     REAL(dp), DIMENSION(:,:), INTENT(IN) :: tau
     !
+    !  file with species to be preserved
+    CHARACTER(*) :: PreserveFile
+    !
     ! end input
+    
 
+    ! file to store lumping data
+    CHARACTER(LenLine) :: LumpingDataFile
 
-    !  lumped system matrices
-    !TYPE(CSR_Matrix_T), INTENT(OUT) :: lumped_A, lumped_B
-    !TYPE(CSR_Matrix_T) :: lumped_A, lumped_B
+    ! lumped ReactionSystem
     TYPE(NewReac_Data), ALLOCATABLE :: l_ReactionSystem(:)
 
     ! lumping groups storage
@@ -98,12 +104,17 @@ MODULE Lumping_Mod
     LOGICAL, ALLOCATABLE :: Spc_lumped(:), reac_lumped(:)
 
     LOGICAL :: iSpc_lumpable, jSpc_lumpable, same_lifetimes, same_reactypes, equivs_present, similar_k
-    INTEGER :: timestep, nSpc, nReac, iSpc, jSpc, n_iSpcReacs, n_jSpcReacs, i, j, nTau
-    INTEGER, ALLOCATABLE :: iSpcReacs(:), jSpcReacs(:), reac_equivs(:), iSpc_reac_types(:), jSpc_reac_types(:), Reacs_Array(:)
-    
+    INTEGER :: timestep, nSpc, nReac, iSpc, jSpc, n_iSpcReacs, n_jSpcReacs, i, j, nLumpSpc, nLumpReacs 
+    INTEGER, ALLOCATABLE :: iSpcReacs(:), jSpcReacs(:), reac_equivs(:), Preserve_Spc(:), &
+                          & iSpc_reac_types(:), jSpc_reac_types(:), Reacs_Array(:)
+   
+    CALL Logo3 
+
+    LumpingDataFile = 'LUMPING/lumping_data_'//TRIM(BSP)//'.dat'
+    PreserveFile    = 'LUMPING/'//TRIM(BSP)//'.ctrl'
+    current_group=>first_group
     nReac = A%m
     nSpc  = A%n
-    nTau  = SIZE(tau,2)
     
     ALLOCATE(reac_lumped(nReac),                &
            & Spc_lumped(nSpc))                   
@@ -111,34 +122,29 @@ MODULE Lumping_Mod
     Spc_lumped  = .FALSE.
     Reac_lumped = .FALSE.
 
-    current_group=>first_group
+    ! preserve species that are to be preserved
+    Preserve_Spc = Read_Preserve_Spc(PreserveFile)
+    DO i=1,SIZE(Preserve_Spc)
+      iSpc = Preserve_Spc(i)
+      Spc_lumped(iSpc) = .TRUE.
+      CALL NextLumpingGroup(current_group,iSpc,iSpcReacs,n_iSpcReacs)
+    END DO
 
+    ! scan system and collect lumpable species in lumping groups
     DO iSpc=1,nSpc
       IF ( .NOT. Spc_lumped(iSpc) ) THEN
         Spc_lumped(iSpc) = .TRUE.
 
-        ! find reactions in which iSpc occurs as educt
-        CALL Spc_involving_reacs(iSpcReacs,n_iSpcReacs,iSpc)
-     
         ! create new lumping group with iSpc as initial species
         ! every species will be in one lumping group (possibly containing only this species)
-        CALL NextLumpingGroup(current_group,iSpc,iSpcReacs)
+        CALL NextLumpingGroup(current_group,iSpc,iSpcReacs,n_iSpcReacs)
 
-        ! check if one or more iSpcReacs are already lumped elsewhere -> species iSpc cannot be lumped!
-        iSpc_lumpable = .TRUE.
-        IF ( n_iSpcReacs == 0 ) THEN
-          iSpc_lumpable = .FALSE. ! don't lump what exists only as product (or do??)
-        ELSE
-          DO i=1,n_iSpcReacs
-            IF ( reac_lumped(iSpcReacs(i)) ) THEN
-              iSpc_lumpable=.FALSE.
-            END IF
-          END DO
-        END IF
+        CALL check_lumpable(iSpc_lumpable,iSpc,iSpcReacs)
 
         IF ( iSpc_lumpable ) THEN
 
           ! declare all reactions involving iSpc as educt as lumped
+          ! this will be reversed if no species is lumped with iSpc
           DO i=1,n_iSpcReacs
             reac_lumped(iSpcReacs(i))=.TRUE.
           END DO
@@ -149,34 +155,16 @@ MODULE Lumping_Mod
           ! check all species with greater indices than iSpc, 
           ! smaller ones have already been checked before
           DO jSpc=iSpc+1,nSpc
-            same_lifetimes=.TRUE.
-            DO timestep=1,nTau
-            !~~~~~~~~~~~~~~~~~~~~~
-            ! maybe vectorize this loop if faster
-            ! 1/(machine_eps+J_i,i) in tau calculation?
-            ! think where eps_tau could come from, pass as argument, create constant?
-            !~~~~~~~~~~~~~~~~~~~~~
-              IF (ABS(tau(iSpc,timestep)-tau(jSpc,timestep))>eps_tau) THEN
-                same_lifetimes=.FALSE.
-              END IF
-            END DO  
 
-            IF (same_lifetimes) THEN
+            CALL compare_lifetimes(same_lifetimes,tau,iSpc,jSpc)
+
+            IF ( same_lifetimes ) THEN
               ! find reactions in which iSpc occurs as educt
               CALL Spc_involving_reacs(jSpcReacs,n_jSpcReacs,jSpc)
-              ! check if one or more jSpcReacs are already lumped elsewhere -> species jSpc cannot be lumped!
-              jSpc_lumpable = .TRUE.
-              IF ( n_jSpcReacs == 0 ) THEN
-                jSpc_lumpable = .FALSE.
-              ELSE
-                DO j=1,n_jSpcReacs
-                  IF ( reac_lumped(jSpcReacs(j)) ) THEN
-                    jSpc_lumpable=.FALSE.
-                  END IF
-                END DO
-              END IF
               
-              IF (jSpc_lumpable) THEN
+              CALL check_lumpable(jSpc_lumpable,jSpc,jSpcReacs)
+              
+              IF ( jSpc_lumpable ) THEN
                 ! find reaction types of species i (occuring numbers of educts of iSpcReacs)
                 CALL find_reaction_types(jSpc_reac_types,jSpcReacs)
 
@@ -190,21 +178,26 @@ MODULE Lumping_Mod
 
                 ! check for same size too (so no reactions are left over)
                 IF (same_reactypes .AND. n_iSpcReacs==n_jSpcReacs) THEN
+
                   ALLOCATE(reac_equivs(n_jSpcReacs))
-                  equivs_present=.TRUE.
                   ! now check for reaction equivalents (reactions with same reactants excluding iSpc and jSpc)
                   CALL check_reac_equivs(equivs_present,reac_equivs,iSpcReacs,jSpcReacs,iSpc,jSpc)
+
                   IF (equivs_present) THEN
-                          !TO BE IMPLEMENTED: check rate constant errors
-                    similar_k=.TRUE.
+                    
                     CALL compare_k(similar_k,reac_equivs,iSpcReacs,jSpcReacs)
+                    
                     IF (similar_k) THEN
+                    
+                      ! LUMP jSpc to iSpc
                       CALL current_group%add(jSpc,reac_equivs,jSpcReacs)
+                      
                       ! declare all jSpcReacs as lumped
                       DO j=1,n_jSpcReacs
                         reac_lumped(jSpcReacs(j))=.TRUE.
                       END DO
                       Spc_lumped(jSpc) = .TRUE.
+                    
                     END IF
                   END IF ! equivs_present
                   DEALLOCATE(reac_equivs)
@@ -225,11 +218,62 @@ MODULE Lumping_Mod
         DEALLOCATE(iSpcReacs)
       END IF ! iSpc not lumped
     END DO ! iSpc loop
+
+    nLumpSpc  = 0
+    nLumpReacs = A%m
+    current_group=>first_group
+    DO WHILE (ASSOCIATED(current_group))
+      nLumpSpc = nLumpSpc + 1
+      ! count how many reacs are lumped (n_Spcs species are lumped to one -> (n_Spcs-1)*n_SpcReacs reactions are omitted
+      nLumpReacs = nLumpReacs - (current_group%nspc - 1)*SIZE(current_group%reactions)
+      current_group=>current_group%next
+    END DO 
+
     CALL WriteLumpingGroups(first_group)
 
     CALL build_LumpedReacSys(l_ReactionSystem, first_group, reac_lumped)
 
     CALL Print_LumpedSysFile(l_ReactionSystem, first_group, 'LUMPING/'//TRIM(BSP)//'_lumped.sys')
+
+    CALL end_lumping
+
+
+   CONTAINS
+
+    SUBROUTINE check_lumpable(Spc_lumpable, Spc, SpcReacs)
+      LOGICAL :: Spc_lumpable
+      INTEGER :: Spc
+      INTEGER, ALLOCATABLE :: SpcReacs(:)
+     
+      INTEGER :: n_SpcReacs, i
+
+      Spc_lumpable = .TRUE.
+
+      n_SpcReacs = SIZE(SpcReacs)
+      IF ( n_SpcReacs == 0 ) THEN
+        Spc_lumpable = .FALSE. ! don't lump what exists only as product (or do??)
+      ELSE
+        DO i=1,n_SpcReacs
+          IF ( reac_lumped(SpcReacs(i)) ) THEN
+            Spc_lumpable=.FALSE.
+          END IF
+        END DO
+      END IF
+    END SUBROUTINE check_lumpable
+  
+    SUBROUTINE end_lumping()
+  
+      WRITE (*,*) ''
+      WRITE (*,*) ''
+      WRITE (*,*) ''
+      WRITE (*,*) ''
+      WRITE (*,*) ' ______________________________________________________________'
+      WRITE (*,*) '|                                                              |'
+      WRITE (*,*) '|  Lumped',A%n,     'species and',A%m,       'reactions        |'
+      WRITE (*,*) '|  to    ',nLumpSpc,'species and',nLumpReacs,'reactions.       |'
+      WRITE (*,*) '|______________________________________________________________|'
+  
+    END SUBROUTINE end_lumping
 
   END SUBROUTINE lump_System
 
@@ -242,6 +286,27 @@ MODULE Lumping_Mod
 !
 ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  SUBROUTINE compare_lifetimes(same_lifetimes,tau,iSpc,jSpc)
+      LOGICAL :: same_lifetimes
+      REAL(dp), DIMENSION(:,:) :: tau
+      INTEGER :: iSpc,jSpc
+
+      INTEGER :: timestep,nTau
+
+      nTau=SIZE(tau,2)
+      
+      same_lifetimes=.TRUE.
+      DO timestep=1,nTau
+      !~~~~~~~~~~~~~~~~~~~~~
+      ! maybe vectorize this loop if faster
+      ! 1/(machine_eps+J_i,i) in tau calculation?
+      !~~~~~~~~~~~~~~~~~~~~~
+        IF (ABS((tau(iSpc,timestep)-tau(jSpc,timestep))/(tau(iSpc,timestep)+100*eps))>eps_tau) THEN
+          same_lifetimes=.FALSE.
+        END IF
+      END DO  
+  END SUBROUTINE compare_lifetimes
 
   SUBROUTINE Print_LumpedSysFile(l_RS, first_group, FileName)
     ! input:
@@ -281,7 +346,7 @@ MODULE Lumping_Mod
     DO WHILE ( ASSOCIATED(group) )
       IF ( group%nspc > 1 ) THEN
         WRITE(989,'(A)') '# '
-        WRITE(989,'(A)') '# '//ADJUSTL(group%spc%id_char)
+        WRITE(989,'(A)') '# '//TRIM(ADJUSTL(group%spc%id_char))
         WRITE(989,'(A)') '# contains '
 
         Spc_list => group%spc
@@ -341,7 +406,7 @@ MODULE Lumping_Mod
       END DO
     
       WRITE (989,*) 
-      WRITE (989,'(A)') TRIM(l_RS(i)%Line3Template)
+      WRITE (989,'(A)') TRIM(l_RS(i)%Line3)
       WRITE (989,'(A)') TRIM(l_RS(i)%Line4)
     END DO
 
@@ -436,32 +501,38 @@ MODULE Lumping_Mod
      SUBROUTINE Reac2NewReac(Reacs_old)
        INTEGER, DIMENSION(:) :: Reacs_old
 
-       INTEGER :: iR_old
+       INTEGER :: iR_old, currentColon, currentSpace
        TYPE(Duct_T) :: current
+       CHARACTER(LenLine) :: Line3, Line3Template, currentConstant
 
        iR_old = Reacs_old(1)
+       ALLOCATE(l_RS(NewReac)%Constants(SIZE(ReactionSystem(iR_old)%Constants)))
        
        ! calculate number of educts and products
+       ! meanwhile collect and use the mean values of the reaction constants for new constants
        nEducts = SIZE(ReactionSystem(iR_old)%Educt)
        nProducts = 0
+       l_RS(NewReac)%Constants = ZERO
        DO k=1,SIZE(Reacs_old)
          kR = Reacs_old(k)
          nProducts = nProducts + SIZE(ReactionSystem(kR)%Product)
+         l_RS(NewReac)%Constants = l_RS(NewReac)%Constants + ReactionSystem(kR)%Constants
        END DO
+       l_RS(NewReac)%Constants = l_RS(NewReac)%Constants / SIZE(Reacs_old)
           
        ALLOCATE( l_RS(NewReac)%Educt(nEducts) ) 
        ALLOCATE( l_RS(NewReac)%Product(nProducts) ) 
 
        ! write new educts and products, 
        ! lumped species gets the name of the first species in lumping group
-       ! educts
+       ! educts:
        DO k=1,nEducts
          current = ReactionSystem(iR_old)%Educt(k)
          l_RS(NewReac)%Educt(k)          = current
          ! correct id to new species id
          l_RS(NewReac)%Educt(k)%iSpecies = iSpc_Old2New(current%iSpecies)
        END DO
-       ! products
+       ! products:
        counter = 1
        DO k=1,SIZE(Reacs_old)
          kR=Reacs_old(k)
@@ -480,15 +551,40 @@ MODULE Lumping_Mod
          END DO
        END DO
 
+
+       ! assemble new line 3
+       Line3Template = ReactionSystem(iR_old)%Line3
+       currentColon = INDEX(Line3Template,':')
+       ! maintain type of constant (before first colon)
+       Line3 = Line3Template(1:currentColon)
+       DO k=1,SIZE(l_RS(NewReac)%Constants)
+         ! isolate next parameter name (between a number and a colon)
+         IF ( k==1 ) THEN
+           currentSpace = currentColon + 1
+         ELSE
+           currentSpace = currentColon + INDEX(ADJUSTL(Line3Template(currentColon+1:)),' ')
+           currentSpace = currentSpace + LEN_TRIM(Line3Template(currentColon+1:)) - LEN_TRIM(ADJUSTL(Line3Template(currentColon+1:)))
+         END IF
+         currentColon = currentColon + INDEX(Line3Template(currentColon+1:),':')
+
+         ! the name of the k-th parameter is between the detected whitespace and colon
+         Line3 = TRIM(ADJUSTL(Line3))//'  '//TRIM(ADJUSTL(Line3Template(currentSpace:currentColon)))
+         ! after name of k-th parameter write k-th parameter value
+         WRITE(currentConstant,*) l_RS(NewReac)%Constants(k)
+         
+         Line3 = TRIM(ADJUSTL(Line3))//' '//TRIM(ADJUSTL(Real2Char(l_RS(NewReac)%Constants(k))))
+       END DO
+
        ! collect remaining properties
        l_RS(NewReac)%Type           = ReactionSystem(iR_old)%Type
        l_RS(NewReac)%TypeConstant   = ReactionSystem(iR_old)%TypeConstant
        l_RS(NewReac)%Line3Template  = ReactionSystem(iR_old)%Line3
        l_RS(NewReac)%Line4          = ReactionSystem(iR_old)%Line4
+       l_RS(NewReac)%Line3          = Line3
 
        NewReac = NewReac + 1
 
-     END SUBROUTINE
+     END SUBROUTINE Reac2NewReac
 
      SUBROUTINE NewNames(group)
        TYPE(lumping_group), POINTER, INTENT(IN) :: group
@@ -523,7 +619,7 @@ MODULE Lumping_Mod
   SUBROUTINE compare_k(similar_k, reac_equivs, iSpcReacs, jSpcReacs)
     ! input:
     !
-    LOGICAL, INTENT(INOUT) :: similar_k
+    LOGICAL, INTENT(OUT) :: similar_k
     !
     INTEGER, DIMENSION(:), INTENT(IN) :: reac_equivs, iSpcReacs, jSpcReacs
     !
@@ -531,6 +627,8 @@ MODULE Lumping_Mod
  
     INTEGER :: i, reac, iR, jR, nReacs
     TYPE(ReactionStruct_T) :: iReac, jReac
+
+    similar_k = .TRUE.
 
     nReacs = SIZE(iSpcReacs)
     DO reac=1,nReacs
@@ -987,9 +1085,9 @@ MODULE Lumping_Mod
 
 
 
-  SUBROUTINE NextLumpingGroup(group, Spc, SpcReacs)
-    INTEGER :: Spc
-    INTEGER, DIMENSION(:) :: SpcReacs
+  SUBROUTINE NextLumpingGroup(group, Spc, SpcReacs, n_SpcReacs)
+    INTEGER :: Spc, n_SpcReacs
+    INTEGER, ALLOCATABLE :: SpcReacs(:)
     TYPE(lumping_group), POINTER :: group
 
     TYPE(lumping_group), POINTER :: temp => NULL()
@@ -997,6 +1095,10 @@ MODULE Lumping_Mod
 
     found_spc = .FALSE.
     reached_end = .FALSE.   
+
+    ! find reactions in which iSpc occurs as educt
+    CALL Spc_involving_reacs(SpcReacs,n_SpcReacs,Spc)  
+
     ! put a new group
     CALL group%put(Spc,SpcReacs)
 
@@ -1190,12 +1292,52 @@ MODULE Lumping_Mod
 ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !
-!                               WRITING
+!                               I/O
 !
 ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
+  FUNCTION Read_Preserve_Spc(FileName) RESULT(Idx)
+    USE ChemSys_Mod,  ONLY: PositionSpeciesAll
+    USE Control_Mod,  ONLY: LenLine
+    USE Reac_Mod,     ONLY: y_name
+    USE ISSA_Mod,     ONLY: FindSection
+    ! This routine will read the species that are not to be lumped.
+    ! OUT:
+    INTEGER, ALLOCATABLE :: Idx(:)
+    ! IN:
+    CHARACTER(*)  :: FileName
+    ! TEMP:
+    INTEGER       :: iPos, j
+    CHARACTER(LenLine) :: Line
+     
+    OPEN(UNIT=99,FILE=TRIM(ADJUSTL(FileName)),STATUS='UNKNOWN')
+    REWIND(99)
+
+    ALLOCATE(Idx(0))
+    iPos = FindSection(99,'PRESERVE')
+    IF (iPos==-1) RETURN ! no target species declared
+    DO
+      READ(99,'(A)') Line;  Line = ADJUSTL(Line)
+      IF (TRIM(Line) == 'END_PRESERVE') EXIT
+      IF (TRIM(Line) == '' ) CYCLE
+      iPos = PositionSpeciesAll(Line)
+      IF ( iPos > 0 ) Idx = [ Idx , iPos ]
+    END DO
+    CLOSE(99)
+    
+    WRITE(*,*)
+    WRITE(*,777) 'Species that are preserved while lumping:'
+    WRITE(*,*)
+    DO j=1,SIZE(Idx)
+      WRITE(*,'(10X,A,I0,A,I6,5X,A)') '    Preserved Spc ',j,' = ',Idx(j),TRIM(y_name(Idx(j)))
+    END DO
+    WRITE(*,*); WRITE(*,*)
+
+    
+    777 FORMAT(10X,A)
+  END FUNCTION Read_Preserve_Spc
 
 
   SUBROUTINE WriteLumpingGroups(first_group)
@@ -1204,33 +1346,23 @@ MODULE Lumping_Mod
     !
     TYPE(lumping_group) :: first_group
 
-    INTEGER :: nLumpSpc, nLumpReacs, group_count
+    INTEGER :: group_count
 
     TYPE(linked_list) :: unlumped_Spc
 
-    nLumpSpc = 0
-    nLumpReacs = A%m
     group_count = 0
 
-    WRITE (*,*) ''
-    WRITE (*,*) ' _________________________ '
-    WRITE (*,*) '|                         |'
-    WRITE (*,*) '|         LUMPING         |'
-    WRITE (*,*) '|_________________________|'
-    WRITE (*,*) ''
-    WRITE (*,*) ''
-
-    CALL WriteLumpingGroups_rec(first_group,nLumpSpc,nLumpReacs,group_count,unlumped_Spc)
+    CALL WriteLumpingGroups_rec(first_group,group_count,unlumped_Spc)
 
   END SUBROUTINE WriteLumpingGroups
 
-  RECURSIVE SUBROUTINE WriteLumpingGroups_rec(group,nLumpSpc,nLumpReacs,group_count,unlumped_Spc)
+  RECURSIVE SUBROUTINE WriteLumpingGroups_rec(group,group_count,unlumped_Spc)
    
     ! input:
     !
     TYPE(lumping_group), TARGET :: group
     !
-    INTEGER :: nLumpSpc, nLumpReacs, group_count
+    INTEGER :: group_count
     !
     TYPE(linked_list), TARGET :: unlumped_Spc
     
@@ -1241,18 +1373,12 @@ MODULE Lumping_Mod
     INTEGER :: i, j, iR, len_Spcs, n_Spcs
     CHARACTER(LEN=6) :: i_str, iR_str, id_str
 
-    ! count this group as it will be one lumped species
-    nLumpSpc = nLumpSpc + 1
-
     CALL LL2Array(group%spc,Spcs_array)
     n_Spcs=SIZE(Spcs_array)
     
     IF ( n_Spcs > 1 ) THEN
       group_count = group_count + 1
       
-      ! count how many reacs are lumped (n_Spcs species are lumped to one -> (n_Spcs-1)*n_SpcReacs reactions are omitted
-      nLumpReacs = nLumpReacs - (n_Spcs - 1)*SIZE(group%reactions)
-
       id_str=''
       WRITE (id_str,'(I6)') group_count
       WRITE (*,*) ''
@@ -1282,7 +1408,6 @@ MODULE Lumping_Mod
           WRITE (*,'(A)',ADVANCE='NO') TRIM(iR_str)
         END DO
         WRITE (*,*) '' ! reset last advance=no
-        !CALL WriteLinkedList(group%reactions(i))
       END DO
     ELSE !n_Spcs=1
      ! add Spc to unlumped species
@@ -1290,7 +1415,7 @@ MODULE Lumping_Mod
     END IF
 
     IF (ASSOCIATED(group%next)) THEN
-      CALL WriteLumpingGroups_rec(group%next, nLumpSpc, nLumpReacs, group_count, unlumped_Spc)
+      CALL WriteLumpingGroups_rec(group%next, group_count, unlumped_Spc)
     ELSE
       ! END
       WRITE (*,*) ''
@@ -1303,15 +1428,6 @@ MODULE Lumping_Mod
         temp_list=>temp_list%next
         WRITE (*,'(A)',ADVANCE='NO') ', '//TRIM(ADJUSTL(temp_list%id_char))
       END DO
-      WRITE (*,*) ''
-      WRITE (*,*) ''
-      WRITE (*,*) ''
-      WRITE (*,*) ''
-      WRITE (*,*) ' ______________________________________________________________'
-      WRITE (*,*) '|                                                              |'
-      WRITE (*,*) '|  Lumped',A%n,     'species and',A%m,       'reactions        |'
-      WRITE (*,*) '|  to    ',nLumpSpc,'species and',nLumpReacs,'reactions.       |'
-      WRITE (*,*) '|______________________________________________________________|'
     END IF
   END SUBROUTINE WriteLumpingGroups_rec
 
@@ -1392,5 +1508,60 @@ MODULE Lumping_Mod
       temp=>temp%next
     END DO
   END SUBROUTINE LL2Array
+
+  SUBROUTINE Logo3()
+
+    WRITE (*,*) ''
+    WRITE (*,*) ' _________________________ '
+    WRITE (*,*) '|                         |'
+    WRITE (*,*) '|         LUMPING         |'
+    WRITE (*,*) '|_________________________|'
+    WRITE (*,*) ''
+    WRITE (*,*) ''
+  
+  END SUBROUTINE Logo3
+
+  FUNCTION Real2Char(x) RESULT(xChar)
+    REAL(dp) :: x
+    CHARACTER(LenLine) :: xChar
+
+    INTEGER :: magofmag, decim, aux
+    CHARACTER(LenLine) :: nChars, relevant_digits, exp_char
+    REAL(dp) :: magnitude, temp
+
+    IF ( x/=0 ) THEN
+      magnitude = LOG(ABS(x))/LOG(TEN)
+      IF ( INT(magnitude) /= 0 ) THEN
+        magofmag = INT(LOG(ABS(magnitude))/LOG(TEN))
+      ELSE
+        magofmag = 0
+      END IF
+    ELSE
+      magnitude = 0
+      magofmag  = 0
+    END IF
+    WRITE (exp_char,*) magofmag + 1
+    temp = x
+    temp = temp*(TEN**(mONE*CEILING(magnitude)))
+    decim = 0
+    ! find number of relevant digits after comma (decim)
+    DO WHILE ( ABS(temp-ANINT(temp))>nano .AND. decim<16 )
+      temp = temp*10
+      decim=decim+1
+    END DO
+    decim = MAX(decim,1)
+
+    IF (x<ZERO) THEN
+      aux=6
+    ELSE
+      aux=5
+    END IF
+    WRITE (nChars,*) decim + magofmag + aux
+    WRITE (relevant_digits,*) decim
+    
+    WRITE (xChar,'(E'//TRIM(ADJUSTL(nChars))//'.'//TRIM(ADJUSTL(relevant_digits))//'E'//TRIM(ADJUSTL(exp_char))//')') x
+
+  END FUNCTION Real2Char
+        
 
 END MODULE Lumping_Mod
