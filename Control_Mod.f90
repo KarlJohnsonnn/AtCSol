@@ -32,8 +32,12 @@
       REAL(dp) :: eps_red                  ! threshold for reduction procedure
       
 !--- tolerances for lumping
-      REAL(dp) :: eps_tau                  ! similar lifetimes
-      REAL(dp) :: eps_k                    ! similar reaction constants
+      REAL(dp) :: eps_tau                    ! similar lifetimes
+      REAL(dp) :: eps_k                      ! similar reaction constants
+      REAL(dp), ALLOCATABLE :: tau(:,:)      ! life time storage 
+      INTEGER  :: last_lifetime_catch = 0  & ! current column of tau
+&               , lifetime_step       = 600  ! step for lifetime saving
+  
 !
 !--- Unit Numbers
       INTEGER, PARAMETER :: RunUnit      = 101  & 
