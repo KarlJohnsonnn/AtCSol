@@ -2,5 +2,5 @@
   !PreserveFile = 'lumping_test.ctrl' 
   PreserveFile = 'mcm_c3.ctrl' 
   eps_k        = 0.5
-  eps_tau      = 1.0  
+  eps_tau      = 0.5  
 /END
