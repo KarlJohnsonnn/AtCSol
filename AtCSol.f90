@@ -70,9 +70,6 @@ PROGRAM AtCSol
   INTEGER,    ALLOCATABLE :: Target_Spc(:) 
   LOGICAL :: done=.FALSE.
 
-  ! lifetimes storage for lumping
-  REAL(dp), ALLOCATABLE :: tau(:,:) 
-  
   ! timer
   REAL(dp) :: t_1,t_2,h0
 
@@ -327,7 +324,7 @@ PROGRAM AtCSol
 	ID_1 = SparseID( nDim )
   ALLOCATE( ErrVals(nspc) , Y(nspc)   &
   &       , Rate(neq) , DRatedT(neq)  &
-  &       , wetRad(nFrac)             )
+  &       , wetRad(nFrac))
 
 	
 	! All species get the same abs tolerance
@@ -498,6 +495,9 @@ PROGRAM AtCSol
     TimeJac  = TimeJac + MPI_WTIME() - StartTimer
   END IF
 
+  ! allocate life time storage for lumping
+  IF ( Lumping ) ALLOCATE(tau( A%n , MAX(INT((tEnd-tBegin)/lifetime_step ),1)))     
+
   !WRITE(*,777,ADVANCE='NO') 'Simulation? [y/n]   ';  READ(*,*) simul
   IF ( Simulation ) THEN
     ! open file to save the fluxes 
@@ -595,16 +595,13 @@ PROGRAM AtCSol
     StartTimer = MPI_WTIME()
 
     CALL InitLumping
-
-    ALLOCATE(tau(A%n,5))
-    tau = ONE ! default for testing
-    eps_tau = ONE ! default for testing (ABSOLUTE tolerance)
-    eps_k = rTWO ! default for testing (RELATIVE tolerance)
+    
+    !tau = ONE ! default for testing
     CALL lump_System(tau,PreserveFile)
 
     TimeLumping = MPI_WTIME()-StartTimer
     
-    CALL ConvertTime(TimeReduction,unit)
+    CALL ConvertTime(TimeLumping,unit)
     WRITE(*,*)
     WRITE(*,'(32X,A,1X,F10.4,A)') 'Time lumping = ', TimeLumping, unit
     WRITE(*,*);
