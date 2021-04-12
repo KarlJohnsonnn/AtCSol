@@ -647,7 +647,7 @@ MODULE Rosenbrock_Mod
           TimeFluxWrite = TimeFluxWrite + MPI_WTIME() - timerStart
         END IF
       END IF
-      
+     
       IF (dprint) THEN
         WRITE(*,*)'debug::     Error     =  ', err, '  Error index  =  ', ierr, '  Error species  =  ', TRIM(y_name(ierr(1,1)))
         WRITE(*,*) '------------------------------------------------------------------------------'
@@ -658,6 +658,18 @@ MODULE Rosenbrock_Mod
 
     END IF
    
+    ! collect lifetimes of species (diag entries of Jac_CC) for lumping
+    IF ( Lumping .AND. MPI_master .AND. err < ONE .AND. t>tBegin+lifetime_step*last_lifetime_catch) THEN
+      last_lifetime_catch = last_lifetime_catch + 1
+      DO i=1,A%n
+       DO j=Jac_CC%RowPtr(i),Jac_CC%RowPtr(i+1)-1
+         IF ( Jac_CC%ColInd(j) == i ) THEN
+           tau(i,last_lifetime_catch) = Jac_CC%val(j)
+         END IF
+       END DO
+      END DO
+    END IF
+
   END SUBROUTINE Rosenbrock
 
 
