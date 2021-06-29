@@ -207,6 +207,7 @@ MODULE Chemsys_Mod
         EXIT
       END IF
     END DO
+    
     IF ( Species /= '' ) CALL InsertSpecies(Species,Type) 
 
     Out = .FALSE.
@@ -2010,7 +2011,7 @@ MODULE Chemsys_Mod
     ELSE
       fNumber = fNumber + 1
     END IF
-    
+   
     ! extract educts
     Left = Reaction%Line1(:PosEqual-1)
     CALL ExtractSpecies( Left, Reaction%Educt,     &
@@ -2022,7 +2023,6 @@ MODULE Chemsys_Mod
     CALL ExtractSpecies( Right, Reaction%Product,  &
     &                    Reaction%InActProduct,    &
     &                    Reaction%nInActPro        )! geändert
-
 
     IF ( INDEX(Line(3),'SPECIAL') > 0 ) THEN
       Ducts = [Reaction%Educt(:)%Species , Reaction%Product(:)%Species]
@@ -2258,7 +2258,7 @@ MODULE Chemsys_Mod
       dummy = SCAN(TRIM(ADJUSTL(Species)) , SetSpecies) == 0 .OR. &
             & INDEX(TRIM(ADJUSTL(Species)) , '(dummy)') /= 0 
 
-      !WRITE(*,*), ' species  ::: ', TRIM(Species)//'   is dummy = ', dummy
+      !WRITE(*,*) ' species  ::: ', TRIM(Species)//'   is dummy = ', dummy
 
       IF (PosSpecies==1) THEN           
         sbL = INDEX(TRIM(Species),'[');  sbR = INDEX(TRIM(Species),']')
@@ -2577,6 +2577,7 @@ MODULE Chemsys_Mod
     INTEGER :: i_dbg = 0
     !
     LOGICAL :: Out
+
 
     FileName = FileName(:INDEX(FileName,'.')-1)
     !
@@ -3095,7 +3096,7 @@ MODULE Chemsys_Mod
         TYPE(Duct_T), ALLOCATABLE :: Ducts(:)
 
         INTEGER :: i, j, n, Len, nDupes
-        INTEGER,        ALLOCATABLE :: tmp_iSpc(:) 
+        INTEGER,        ALLOCATABLE :: tmp_iSpc(:), tmp_iSpc_sort(:) 
         CHARACTER(10),  ALLOCATABLE :: tmp_Type(:)
         CHARACTER(100), ALLOCATABLE :: tmp_cSpc(:)
         REAL(dp),       ALLOCATABLE :: tmp_Koeff(:)
@@ -3106,8 +3107,7 @@ MODULE Chemsys_Mod
         
         IF ( n > 1 ) THEN
         
-          ALLOCATE(tmp_cSpc(n), tmp_Type(n), tmp_Koeff(n), tmp_iSpc(n))
-
+          ALLOCATE(tmp_cSpc(n), tmp_Type(n), tmp_Koeff(n), tmp_iSpc(n), tmp_iSpc_sort(n))
           DO i = 1 , n 
             tmp_cSpc(i)  = DuctsIN(i)%Species
             tmp_Type(i)  = DuctsIN(i)%Type
@@ -3115,12 +3115,20 @@ MODULE Chemsys_Mod
             tmp_iSpc(i)  = PositionSpeciesAll(DuctsIN(i)%Species)
           END DO 
 
-          CALL SortVecAsc2(Tmp_iSpc,Perm)
+          !CALL SortVecAsc2(Tmp_iSpc,Perm)
+          tmp_iSpc_sort = tmp_iSpc
+          CALL SortVecAsc2(tmp_iSpc_sort,Perm)
 
+          !DO i = 1 , n-1
+          !  IF ( tmp_iSpc(i) == tmp_iSpc(i+1) ) THEN
+          !    tmp_Koeff(i+1)  = tmp_Koeff(i+1) + tmp_Koeff(i)
+          !    tmp_iSpc(i) = -1              
+          !  END IF
+          !END DO
           DO i = 1 , n-1
-            IF ( tmp_iSpc(i) == tmp_iSpc(i+1) ) THEN
-              tmp_Koeff(i+1)  = tmp_Koeff(i+1) + tmp_Koeff(i)
-              tmp_iSpc(i) = -1              
+            IF ( tmp_iSpc_sort(i) == tmp_iSpc_sort(i+1) ) THEN
+              tmp_Koeff(Perm(i+1))  = tmp_Koeff(Perm(i+1)) + tmp_Koeff(Perm(i))
+              tmp_iSpc(Perm(i)) = -1              
             END IF
           END DO
 
