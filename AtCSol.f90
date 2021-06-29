@@ -496,7 +496,8 @@ PROGRAM AtCSol
   END IF
 
   ! allocate life time storage for lumping
-  IF ( Lumping ) ALLOCATE(tau( A%n , MAX(INT((tEnd-tBegin)/lifetime_step ),1)))     
+  IF ( Lumping ) ALLOCATE( tau( A%n , MAX(INT((tEnd-tBegin)/tau_step ),1) )  &
+                       & , ConcMatrix ( A%n, MAX(INT((tEnd-tBegin)/Conc_step ),1) ))     
 
   !WRITE(*,777,ADVANCE='NO') 'Simulation? [y/n]   ';  READ(*,*) simul
   IF ( Simulation ) THEN
@@ -596,8 +597,10 @@ PROGRAM AtCSol
 
     CALL InitLumping
     
-    !tau = ONE ! default for testing
-    CALL lump_System(tau,PreserveFile)
+    ! set ConcMatrix minimum value to eps
+    ConcMatrix = MAX(ConcMatrix,eps)
+
+    CALL lump_System(tau, ConcMatrix, PreserveFile)
 
     TimeLumping = MPI_WTIME()-StartTimer
     
