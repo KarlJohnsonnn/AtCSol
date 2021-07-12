@@ -1,7 +1,7 @@
 &SCENARIO
   BSP      = 'MCM32+CAPRAM40'
   WaitBar  = .T.
-  Simulation = .F.
+  Simulation = .T.
   Reduction  = .T.
 /END
 &FILES
