@@ -3129,16 +3129,16 @@ IF (dummy) WRITE(*,*) 'dummy: ', LEN_TRIM(String), LenLine, String
             tmp_iSpc(i)  = PositionSpeciesAll(DuctsIN(i)%Species)
           END DO 
 
-          !CALL SortVecAsc2(Tmp_iSpc,Perm)
+         !CALL SortVecAsc2(Tmp_iSpc,Perm)
           tmp_iSpc_sort = tmp_iSpc
           CALL SortVecAsc2(tmp_iSpc_sort,Perm)
 
-          !DO i = 1 , n-1
-          !  IF ( tmp_iSpc(i) == tmp_iSpc(i+1) ) THEN
-          !    tmp_Koeff(i+1)  = tmp_Koeff(i+1) + tmp_Koeff(i)
-          !    tmp_iSpc(i) = -1              
-          !  END IF
-          !END DO
+         !DO i = 1 , n-1
+         !  IF ( tmp_iSpc(i) == tmp_iSpc(i+1) ) THEN
+         !    tmp_Koeff(i+1)  = tmp_Koeff(i+1) + tmp_Koeff(i)
+         !    tmp_iSpc(i) = -1              
+         !  END IF
+         !END DO
           DO i = 1 , n-1
             IF ( tmp_iSpc_sort(i) == tmp_iSpc_sort(i+1) ) THEN
               tmp_Koeff(Perm(i+1))  = tmp_Koeff(Perm(i+1)) + tmp_Koeff(Perm(i))
