@@ -1005,8 +1005,11 @@ MODULE Chemsys_Mod
     INTEGER      :: io_stat
     INTEGER      :: i,j,m,iR
     INTEGER      :: nEduct,nProd
-    TYPE(Duct_T) :: ActiveEduct(30)
-    TYPE(Duct_T) :: ActiveProduct(30)
+    !TYPE(Duct_T) :: ActiveEduct(30)
+    !TYPE(Duct_T) :: ActiveProduct(30)
+    ! rug: variable length for many ducts
+    TYPE(Duct_T), ALLOCATABLE :: ActiveEduct(:)
+    TYPE(Duct_T), ALLOCATABLE :: ActiveProduct(:)
     !
     INTEGER      :: nnzA, nnzB
     !
@@ -1059,6 +1062,15 @@ MODULE Chemsys_Mod
     A%RowPtr  = 0;    A%RowPtr(1)  = 1
     B%RowPtr  = 0;    B%RowPtr(1)  = 1
     BA%RowPtr = 0;    BA%RowPtr(1) = 1
+
+    ! rug: find maximal duct number and allocate
+    nEduct=0
+    nProd=0
+    DO iR=1,neq
+      IF (SIZE(RS(iR)%Educt)>nEduct)  nEduct = SIZE(RS(iR)%Educt)
+      IF (SIZE(RS(iR)%Product)>nProd) nProd  = SIZE(RS(iR)%Product)
+    END DO
+    ALLOCATE(ActiveEduct(nEduct),ActiveProduct(nProd))
     
     DO iR=1,neq
       ! count activ educts in reaction iR
