@@ -1,9 +1,7 @@
 &SCENARIO
   BSP        = 'Robertson'   ! Name der NetCDF Output-Datei
   WaitBar    = .T.          ! .F. = kein ladebalken, .T. /= ladebalken aktiv
-  FluxAna    = .F.          ! analyse reaction rates (fluxes)
   ChemKin    = .F.          ! input mechanism in ChemKin notation
-  Lehmann    = .F.
 /END
 &FILES
   SysFile    = 'CHEM/Rober.sys'      ! .sys Datei (ohne .sys angeben!)
