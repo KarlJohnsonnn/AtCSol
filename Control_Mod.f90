@@ -137,6 +137,7 @@
       REAL(dp) :: TimeRhsCalc=0.0d0
       REAL(dp) :: TimeReduction=0.0d0
       REAL(dp) :: TimeLumping=0.0d0
+      REAL(dp) :: TimeConcWrite=0.0d0
   
       REAL(dp) :: TimeIntegration=0.0d0
       REAL(dp) :: TimeRateA=0.0d0
