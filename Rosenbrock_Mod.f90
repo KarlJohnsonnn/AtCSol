@@ -658,13 +658,13 @@ MODULE Rosenbrock_Mod
 
     END IF
    
-    ! collect lifetimes of species (diag entries of Jac_CC) for lumping
-    IF ( Lumping .AND. MPI_master .AND. err < ONE .AND. t>tBegin+lifetime_step*last_lifetime_catch) THEN
-      last_lifetime_catch = last_lifetime_catch + 1
+    ! collect lifetimes (tau) of species (diag entries of Jac_CC) for lumping
+    IF ( Lumping .AND. MPI_master .AND. err < ONE .AND. t>tBegin+tau_step*last_tau_catch) THEN
+      last_tau_catch = last_tau_catch + 1
       DO i=1,A%n
        DO j=Jac_CC%RowPtr(i),Jac_CC%RowPtr(i+1)-1
          IF ( Jac_CC%ColInd(j) == i ) THEN
-           tau(i,last_lifetime_catch) = Jac_CC%val(j)
+           tau(i,last_tau_catch) = Jac_CC%val(j)
          END IF
        END DO
       END DO
