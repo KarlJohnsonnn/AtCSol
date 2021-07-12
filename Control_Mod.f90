@@ -32,12 +32,15 @@
       REAL(dp) :: eps_red                  ! threshold for reduction procedure
       
 !--- tolerances for lumping
-      REAL(dp) :: eps_tau                    ! similar lifetimes
-      REAL(dp) :: eps_k                      ! similar reaction constants
-      REAL(dp), ALLOCATABLE :: tau(:,:)      ! life time storage 
-      INTEGER  :: last_lifetime_catch = 0  & ! current column of tau
-&               , lifetime_step       = 600  ! step for lifetime saving
-  
+      REAL(dp) :: eps_tau                      ! similar lifetimes
+      REAL(dp) :: eps_k                        ! similar reaction constants
+      REAL(dp), ALLOCATABLE :: tau(:,:)        ! life time storage 
+      REAL(dp), ALLOCATABLE :: ConcMatrix(:,:) ! concentrations storage 
+      INTEGER  :: last_tau_catch  = 0   & ! current column of tau
+&               , tau_step        = 600 & ! step for lifetime saving
+&               , last_Conc_catch = 0   & ! counter for how often concentrations were saved
+&               , Conc_step       = 600   ! step for concentrations saving
+
 !
 !--- Unit Numbers
       INTEGER, PARAMETER :: RunUnit      = 101  & 
