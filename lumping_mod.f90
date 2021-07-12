@@ -5,6 +5,8 @@ MODULE Lumping_Mod
   USE Control_Mod
   USE qsort_c_module
   USE Chemsys_Mod
+  USE Reac_Mod, ONLY: y_name
+  USE IO_Mod
 
   IMPLICIT NONE
 
@@ -30,10 +32,23 @@ MODULE Lumping_Mod
      TYPE(linked_list), POINTER   :: next => NULL()
      INTEGER                      :: id = -1
      CHARACTER(LenName)           :: id_char = ''
+     REAL(dp)                     :: weight = -1.0_dp
    CONTAINS
      PROCEDURE :: put  => put_ll
      PROCEDURE :: free => free_ll
   END TYPE linked_list
+
+  TYPE linked_tree
+     TYPE(linked_tree)  , ALLOCATABLE :: child(:)
+     INTEGER                          :: id = -1
+     CHARACTER(LenName)               :: id_char = ''
+     INTEGER            , ALLOCATABLE :: weight(:)
+     LOGICAL            , ALLOCATABLE :: relevant(:)
+   CONTAINS
+     PROCEDURE :: put  => put_tree
+     PROCEDURE :: free => free_tree
+     PROCEDURE :: cut  => cut_tree
+  END TYPE linked_tree
 
   TYPE lumping_group
      TYPE (lumping_group), POINTER    :: next => NULL()
@@ -57,6 +72,21 @@ MODULE Lumping_Mod
      REAL(dp),     ALLOCATABLE  :: Constants(:)            
   END TYPE NewReac_Data
 
+  TYPE Emis_Family
+     CHARACTER(LenType)               :: Name = ''
+     REAL(dp)                         :: Emis_val = mONE
+     REAL(dp),           ALLOCATABLE  :: Portions(:)
+     INTEGER,            ALLOCATABLE  :: Members(:)
+     CHARACTER(LenName), ALLOCATABLE  :: Members_char(:)
+  END TYPE Emis_Family
+
+  ! positions of record in flux file
+  INTEGER, ALLOCATABLE :: Positions(:)
+  ! status of flux file
+  LOGICAL :: fluxfile_exists
+  ! dummy counter
+  INTEGER :: counter1 = 0, counter2 = 0
+
   CONTAINS
 
 
@@ -67,31 +97,21 @@ MODULE Lumping_Mod
 !
 ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  
-  !******************************
-  !******************************
-  !
-  !  REMARKS:
-  !
-  ! currently ONLY gas phase, especially no equilibrium reactions (only reactions that occur in A and B)
-  !
-  !******************************
-  !******************************
-  
-  SUBROUTINE lump_System(tau, PreserveFile)
+ 
+
+  SUBROUTINE lump_System(tau, ConcMatrix, LumpingControlFile)
     ! input:
     !
     !  lifetimes of species at given times (tau(i,j) : lifetime of species i at timepoint j)
     REAL(dp), DIMENSION(:,:), INTENT(IN) :: tau
+    !  concentrations of species at given times (ConcMatrix(i,j) : concentration of species i at timepoint j)
+    REAL(dp), DIMENSION(:,:), INTENT(IN) :: ConcMatrix
     !
     !  file with species to be preserved
-    CHARACTER(*) :: PreserveFile
+    CHARACTER(*) :: LumpingControlFile
     !
     ! end input
     
-
-    ! file to store lumping data
-    CHARACTER(LenLine) :: LumpingDataFile
 
     ! lumped ReactionSystem
     TYPE(NewReac_Data), ALLOCATABLE :: l_ReactionSystem(:)
@@ -100,18 +120,71 @@ MODULE Lumping_Mod
     TYPE(lumping_group), TARGET  :: first_group 
     TYPE(lumping_group), POINTER :: current_group
 
+    ! array of emission families (needed for calculating lumped stoichiometric coefficients)
+    TYPE(Emis_Family), ALLOCATABLE :: EmisFams(:)
+    ! tree of sources
+    TYPE(linked_tree)              :: tree
+
     ! vector to test if species/reaction is already lumped
     LOGICAL, ALLOCATABLE :: Spc_lumped(:), reac_lumped(:)
 
-    LOGICAL :: iSpc_lumpable, jSpc_lumpable, same_lifetimes, same_reactypes, equivs_present, similar_k
-    INTEGER :: timestep, nSpc, nReac, iSpc, jSpc, n_iSpcReacs, n_jSpcReacs, i, j, nLumpSpc, nLumpReacs 
+    LOGICAL :: iSpc_lumpable, jSpc_lumpable, same_lifetimes, same_reactypes, equivs_present, similar_k, constant_sigma
+    INTEGER :: timestep, nSpc, nReac, iSpc, jSpc, n_iSpcReacs, n_jSpcReacs, i, j, nLumpSpc, nLumpReacs, dummy
     INTEGER, ALLOCATABLE :: iSpcReacs(:), jSpcReacs(:), reac_equivs(:), Preserve_Spc(:), &
                           & iSpc_reac_types(:), jSpc_reac_types(:), Reacs_Array(:)
-   
+    REAL(dp), ALLOCATABLE :: time_flux(:), dt_flux(:)
+    REAL(dp) :: Conc_ratio = 0.0_dp
+
+   !PERMTEST
+    INTEGER, ALLOCATABLE :: Perm(:), SortVec(:)
+    REAL(dp), ALLOCATABLE :: Rates(:), ratios(:)
+    INTEGER        :: io_stat = 0, somespc = 0
+    CHARACTER(200) :: io_msg  = ''
+    CHARACTER(LenLine) :: TESTEST  = ''
+    REAL(dp) :: sum1 = 0,sum2 = 0,sum3 = 0,sum4 = 0,sum5 = 0  
+    LOGICAL :: testbool 
+
+
     CALL Logo3 
 
-    LumpingDataFile = 'LUMPING/lumping_data_'//TRIM(BSP)//'.dat'
-    PreserveFile    = 'LUMPING/'//TRIM(BSP)//'.ctrl'
+
+
+!    ! Fill Flux variables (only Positions important)
+!
+!    FluxFile     = 'REDUCTION/flux_'//TRIM(BSP)//'.dat'
+!    FluxMetaFile = 'REDUCTION/fluxmeta_'//TRIM(BSP)//'.dat'   
+!    !FluxFile     = 'REDUCTION/flux_mcm_32.dat'
+!    !FluxMetaFile = 'REDUCTION/fluxmeta_mcm_32.dat'   
+!   
+!    ! look for flux file 
+!    INQUIRE(FILE=FluxMetaFile, EXIST=fluxfile_exists)
+!    ! reading meta data (positions of record)
+!    IF (fluxfile_exists) THEN
+!      CALL OpenFile_rSeq(FluxMetaUnit,FluxMetaFile)
+!      dummy = 0
+!      DO 
+!        READ(FluxMetaUnit,*,IOSTAT=io_stat,IOMSG=io_msg) 
+!        IF ( io_stat>0 ) WRITE(*,'(10X,A,I0,A)') '   ERROR first reading fluxmeta.dat:: ',io_stat,'  '//TRIM(io_msg)
+!        IF ( io_stat<0 ) EXIT
+!        dummy = dummy + 1
+!      END DO
+!      iStpFlux = dummy
+!      REWIND(FluxMetaUnit)
+!  
+!      ALLOCATE( Positions(iStpFlux), time_flux(iStpFlux), dt_flux(iStpFlux) )
+!      DO i=1,iStpFlux
+!        READ(FluxMetaUnit,*,IOSTAT=io_stat,IOMSG=io_msg) dummy , Positions(i) , time_flux(i) , dt_flux(i)
+!        IF ( io_stat>0 ) WRITE(*,'(10X,A,I0,A)') '   ERROR reading fluxmeta.dat:: ',io_stat,'  '//TRIM(io_msg)
+!        IF ( io_stat<0 ) EXIT
+!      END DO
+!      CLOSE(FluxMetaUnit)
+!    ELSE
+!      WRITE(*,*) 'CAUTION: No flux meta file ''',TRIM(ADJUSTL(FluxMetaFile)), ''' found.'
+!    END IF
+
+
+
+    LumpingControlFile    = 'LUMPING/'//TRIM(BSP)//'.ctrl'
     current_group=>first_group
     nReac = A%m
     nSpc  = A%n
@@ -123,7 +196,7 @@ MODULE Lumping_Mod
     Reac_lumped = .FALSE.
 
     ! preserve species that are to be preserved
-    Preserve_Spc = Read_Preserve_Spc(PreserveFile)
+    Preserve_Spc = Read_Preserve_Spc(LumpingControlFile)
     DO i=1,SIZE(Preserve_Spc)
       iSpc = Preserve_Spc(i)
       Spc_lumped(iSpc) = .TRUE.
@@ -139,7 +212,7 @@ MODULE Lumping_Mod
         ! every species will be in one lumping group (possibly containing only this species)
         CALL NextLumpingGroup(current_group,iSpc,iSpcReacs,n_iSpcReacs)
 
-        CALL check_lumpable(iSpc_lumpable,iSpc,iSpcReacs)
+        CALL check_lumpable(iSpc_lumpable,iSpc,iSpcReacs,n_iSpcReacs)
 
         IF ( iSpc_lumpable ) THEN
 
@@ -162,7 +235,7 @@ MODULE Lumping_Mod
               ! find reactions in which iSpc occurs as educt
               CALL Spc_involving_reacs(jSpcReacs,n_jSpcReacs,jSpc)
               
-              CALL check_lumpable(jSpc_lumpable,jSpc,jSpcReacs)
+              CALL check_lumpable(jSpc_lumpable,jSpc,jSpcReacs,n_jSpcReacs)
               
               IF ( jSpc_lumpable ) THEN
                 ! find reaction types of species i (occuring numbers of educts of iSpcReacs)
@@ -188,16 +261,22 @@ MODULE Lumping_Mod
                     CALL compare_k(similar_k,reac_equivs,iSpcReacs,jSpcReacs)
                     
                     IF (similar_k) THEN
-                    
-                      ! LUMP jSpc to iSpc
-                      CALL current_group%add(jSpc,reac_equivs,jSpcReacs)
+
+                      CALL find_sigma(constant_sigma, Conc_ratio, ConcMatrix, iSpc, jSpc)
+
+                      IF (constant_sigma) THEN
                       
-                      ! declare all jSpcReacs as lumped
-                      DO j=1,n_jSpcReacs
-                        reac_lumped(jSpcReacs(j))=.TRUE.
-                      END DO
-                      Spc_lumped(jSpc) = .TRUE.
-                    
+                        ! LUMP jSpc to iSpc
+                        CALL current_group%add(jSpc,reac_equivs,jSpcReacs,Conc_ratio)
+                      
+                        ! declare all jSpcReacs as lumped
+                        DO j=1,n_jSpcReacs
+                          reac_lumped(jSpcReacs(j))=.TRUE.
+                        END DO
+
+                        Spc_lumped(jSpc) = .TRUE.
+                      
+                      END IF
                     END IF
                   END IF ! equivs_present
                   DEALLOCATE(reac_equivs)
@@ -208,10 +287,13 @@ MODULE Lumping_Mod
             END IF ! same_lifetimes
           END DO ! jSpc loop
           ! de-lump reactions if no species was lumped with iSpc
+          ! otherwise correct the concentration ratios to sigmas
           IF ( current_group%nspc == 1 ) THEN
             DO i=1,n_iSpcReacs
               reac_lumped(iSpcReacs(i))=.FALSE.
             END DO
+          ELSE
+            CALL Ratios2Sigmas(current_group)
           END IF
           DEALLOCATE(iSpc_reac_types)
         END IF ! iSpc_lumpable
@@ -219,37 +301,48 @@ MODULE Lumping_Mod
       END IF ! iSpc not lumped
     END DO ! iSpc loop
 
+    ! count how many species/reactions remain (n_Spcs species are lumped to one -> (n_Spcs-1)*n_SpcReacs reactions are omitted
     nLumpSpc  = 0
     nLumpReacs = A%m
     current_group=>first_group
     DO WHILE (ASSOCIATED(current_group))
       nLumpSpc = nLumpSpc + 1
-      ! count how many reacs are lumped (n_Spcs species are lumped to one -> (n_Spcs-1)*n_SpcReacs reactions are omitted
       nLumpReacs = nLumpReacs - (current_group%nspc - 1)*SIZE(current_group%reactions)
       current_group=>current_group%next
     END DO 
 
+    EmisFams = Read_Emis_Families(LumpingControlFile)
+
+    !CALL WriteTree(tree)
+!somespc = PositionSpeciesAll('CC(ON(=O)=O)CC=O')
+!CALL BuildEmisTree(somespc,tree, (/ 0 /), (/ 0 /))
+!CALL CleanEmisTree(tree)
+!CALL EmisTreeToMatlab(tree)
+    ! CALL GroupTrees2Matlab(315,first_group)
+
     CALL WriteLumpingGroups(first_group)
-
+    
     CALL build_LumpedReacSys(l_ReactionSystem, first_group, reac_lumped)
-
+         
     CALL Print_LumpedSysFile(l_ReactionSystem, first_group, 'LUMPING/'//TRIM(BSP)//'_lumped.sys')
 
     CALL end_lumping
 
+    !WRITE(*,*) counter1
+    CALL CONTROL_SUBR(l_ReactionSystem)
+    WRITE(*,*) PreserveFile
 
    CONTAINS
 
-    SUBROUTINE check_lumpable(Spc_lumpable, Spc, SpcReacs)
+    SUBROUTINE check_lumpable(Spc_lumpable, Spc, SpcReacs, n_SpcReacs)
       LOGICAL :: Spc_lumpable
-      INTEGER :: Spc
+      INTEGER :: Spc, n_SpcReacs
       INTEGER, ALLOCATABLE :: SpcReacs(:)
      
-      INTEGER :: n_SpcReacs, i
+      INTEGER :: i
 
       Spc_lumpable = .TRUE.
 
-      n_SpcReacs = SIZE(SpcReacs)
       IF ( n_SpcReacs == 0 ) THEN
         Spc_lumpable = .FALSE. ! don't lump what exists only as product (or do??)
       ELSE
@@ -277,141 +370,735 @@ MODULE Lumping_Mod
 
   END SUBROUTINE lump_System
 
+  SUBROUTINE CONTROL_SUBR(l_ReactionSystem)
+    TYPE(NewReac_Data), DIMENSION(:) :: l_ReactionSystem(:)
 
+    INTEGER :: i, j, k
+    CHARACTER(LenName) :: char1, char2
 
-! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-!
-!                       ALGORITHM-SUBROUTINES
-!
-! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-  SUBROUTINE compare_lifetimes(same_lifetimes,tau,iSpc,jSpc)
-      LOGICAL :: same_lifetimes
-      REAL(dp), DIMENSION(:,:) :: tau
-      INTEGER :: iSpc,jSpc
-
-      INTEGER :: timestep,nTau
-
-      nTau=SIZE(tau,2)
-      
-      same_lifetimes=.TRUE.
-      DO timestep=1,nTau
-      !~~~~~~~~~~~~~~~~~~~~~
-      ! maybe vectorize this loop if faster
-      ! 1/(machine_eps+J_i,i) in tau calculation?
-      !~~~~~~~~~~~~~~~~~~~~~
-        IF (ABS((tau(iSpc,timestep)-tau(jSpc,timestep))/(tau(iSpc,timestep)+100*eps))>eps_tau) THEN
-          same_lifetimes=.FALSE.
-        END IF
-      END DO  
-  END SUBROUTINE compare_lifetimes
-
-  SUBROUTINE Print_LumpedSysFile(l_RS, first_group, FileName)
-    ! input:
-    !
-    TYPE(NewReac_Data), DIMENSION(:), INTENT(IN) :: l_RS
-    !
-    TYPE(lumping_group), TARGET, INTENT(IN)      :: first_group
-    !
-    CHARACTER(*), INTENT(IN)                     :: FileName
-    !
-    ! end input
-
-    INTEGER :: i, j, nR, nEducts, nProducts
-    REAL(dp) :: Koeff
-    CHARACTER(lenName) :: Species, Koeff_Str, len_Str
-    TYPE(lumping_group), POINTER :: group
-    TYPE(linked_list), POINTER :: Spc_list
-    
-    group=>first_group
-    
-    OPEN(UNIT=989,FILE=ADJUSTL(TRIM(FileName)),STATUS='UNKNOWN')
-  
-    WRITE(989,'(A)') '# ================= '//TRIM(FileName)//' ================='
-    WRITE(989,'(A)') '# = Please copy the data into your sys-file for ='
-    WRITE(989,'(A)') '# =============== chemical input. ==============='
-    WRITE(989,'(A)') '#'
-    WRITE(989,'(A)') '#  ===================   Unit options   ======================'
-    WRITE(989,'(A)') ''
-    WRITE(989,'(A)') 'UNIT GAS    0   #    Gas phase units     (0 = molec/cm3, 1 = mol/m3)'
-    WRITE(989,'(A)') 'UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)'
-    WRITE(989,'(A)') ''
-    WRITE(989,'(A)') '#'
-    WRITE(989,'(A)') '# This is a lumped system. Several original species were lumped.'
-    WRITE(989,'(A)') '# The reactions below consist of these lumped species.' 
-    WRITE(989,'(A)') '#'
-    WRITE(989,'(A)') '# The lumped species have names and ingredients of the original system as follows:'
-    DO WHILE ( ASSOCIATED(group) )
-      IF ( group%nspc > 1 ) THEN
-        WRITE(989,'(A)') '# '
-        WRITE(989,'(A)') '# '//TRIM(ADJUSTL(group%spc%id_char))
-        WRITE(989,'(A)') '# contains '
-
-        Spc_list => group%spc
-        WRITE(989,'(A)', ADVANCE ='NO') '# '//TRIM(ADJUSTL(Spc_list%id_char))
-        DO WHILE ( ASSOCIATED(Spc_list%next) )
-          Spc_list => Spc_list%next
-          WRITE(989,'(A)', ADVANCE='NO') ', '//TRIM(ADJUSTL(Spc_list%id_char))
-        END DO
-        WRITE(989,'(A)') ''
+    WRITE(*,*) 'CONTROL'
+    DO i=1,SIZE(y_name)
+      IF ( PositionSpeciesAll(y_name(i))/=i ) THEN
+        WRITE(*,*) 'ERRORI',i,y_name(i),PositionSpeciesAll(y_name(i))
       END IF
-      group=>group%next
+      DO j=1,SIZE(ReactionSystem)
+        DO k=LBOUND(ReactionSystem(j)%Educt,1),UBOUND(ReactionSystem(j)%Educt,1)
+          IF ( (ReactionSystem(j)%Educt(k)%iSpecies == i .AND.                                       &
+             & TRIM(ADJUSTL(ReactionSystem(j)%Educt(k)%Species)) /= TRIM(ADJUSTL(y_name(i)))) .OR.   &
+             & (ReactionSystem(j)%Educt(k)%iSpecies /= i .AND.                                       &
+             & TRIM(ADJUSTL(ReactionSystem(j)%Educt(k)%Species)) == TRIM(ADJUSTL(y_name(i))))        ) THEN
+            WRITE(*,*) ''
+            WRITE(*,*) 'Reaction Educt analysis:'
+            WRITE(*,*) 'Reaction ',j 
+            WRITE(*,*) 'Species: i=',i
+            WRITE(*,*) 'y_name=', y_name(i)
+            WRITE(*,*) 'Species=',ReactionSystem(j)%Educt(k)%Species
+            WRITE(*,*) 'iSpecies=', ReactionSystem(j)%Educt(k)%iSpecies
+            WRITE(*,*) 'PosSpecAll(Species)=', PositionSpeciesAll(ReactionSystem(j)%Educt(k)%Species)
+          END IF
+        END DO
+        DO k=LBOUND(ReactionSystem(j)%Product,1),UBOUND(ReactionSystem(j)%Product,1)
+          IF ( (ReactionSystem(j)%Product(k)%iSpecies == i .AND.                                       &
+             & TRIM(ADJUSTL(ReactionSystem(j)%Product(k)%Species)) /= TRIM(ADJUSTL(y_name(i)))) .OR.   &
+             & (ReactionSystem(j)%Product(k)%iSpecies /= i .AND.                                       &
+             & TRIM(ADJUSTL(ReactionSystem(j)%Product(k)%Species)) == TRIM(ADJUSTL(y_name(i))))        ) THEN
+            WRITE(*,*) ''
+            WRITE(*,*) 'Reaction Product analysis:'
+            WRITE(*,*) 'Reaction ',j 
+            WRITE(*,*) 'Species: i=',i
+            WRITE(*,*) 'y_name=', y_name(i)
+            WRITE(*,*) 'Species=',ReactionSystem(j)%Product(k)%Species
+            WRITE(*,*) 'iSpecies=', ReactionSystem(j)%Product(k)%iSpecies
+            WRITE(*,*) 'PosSpecAll(Species)=', PositionSpeciesAll(ReactionSystem(j)%Product(k)%Species)
+          END IF
+        END DO
+      END DO
     END DO
-    WRITE(989,'(A)') '#'
-    WRITE(989,'(A)') '#'
-    WRITE(989,'(A)') '#'
 
 
-
-    nR = SIZE(l_RS)
-    DO i=1,nR
-      WRITE (989,*)
-      
-      WRITE (989,'(A)') 'CLASS: '//TRIM(l_RS(i)%Type)
-
-      nEducts   = SIZE(l_RS(i)%Educt)
-      nProducts = SIZE(l_RS(i)%Product)
-      DO j=1,nEducts
-        Koeff = l_RS(i)%Educt(j)%Koeff
-        Species = l_RS(i)%Educt(j)%Species
-        IF ( ANINT(Koeff)-Koeff < milli ) THEN
-          WRITE (Koeff_Str,'(F4.1)') Koeff
-        ELSE
-          WRITE (Koeff_Str,'(F5.3)') Koeff
-        END IF
-        WRITE (len_Str,'(I3)') LEN_TRIM(ADJUSTL(Koeff_Str))+LEN_TRIM(Species)+1
-        WRITE (989,'(A'//TRIM(len_Str)//')',ADVANCE='NO') TRIM(ADJUSTL(Koeff_Str))//' '//TRIM(Species)
-        IF ( j<nEducts ) THEN
-          WRITE (989,'(A3)',ADVANCE='NO') ' + '
-        ELSE 
-          WRITE (989,'(A3)',ADVANCE='NO') ' = '
+    DO i=1,SIZE(l_ReactionSystem)
+      DO j=LBOUND(l_ReactionSystem(i)%Educt,1),UBOUND(l_ReactionSystem(i)%Educt,1)
+        IF ( l_ReactionSystem(i)%Educt(j)%iSpecies<1 .OR. TRIM(ADJUSTL(l_ReactionSystem(i)%Educt(j)%Species))=='' ) THEN
+          WRITE(*,*) ''
+          WRITE(*,*) 'lumped Reaction ',i,':'
+          WRITE(*,*) 'Educt ',j,':',l_ReactionSystem(i)%Educt(j)%iSpecies,l_ReactionSystem(i)%Educt(j)%Species
         END IF
       END DO
-      
-      DO j=1,nProducts
-        Koeff = l_RS(i)%Product(j)%Koeff
-        Species = l_RS(i)%Product(j)%Species
-        IF ( ANINT(Koeff)-Koeff < milli ) THEN
-          WRITE (Koeff_Str,'(F4.1)') Koeff
-        ELSE
-          WRITE (Koeff_Str,'(F5.3)') Koeff
-        END IF
-        WRITE (len_Str,*) LEN_TRIM(ADJUSTL(Koeff_Str))+LEN_TRIM(Species)+1
-        WRITE (989,'(A'//TRIM(len_Str)//')',ADVANCE='NO') TRIM(ADJUSTL(Koeff_Str))//' '//TRIM(Species)
-        IF ( j<nProducts ) THEN
-          WRITE (989,'(A3)',ADVANCE='NO') ' + '
+      DO j=LBOUND(l_ReactionSystem(i)%Product,1),UBOUND(l_ReactionSystem(i)%Product,1)
+        IF ( l_ReactionSystem(i)%Product(j)%iSpecies<1 .OR. TRIM(ADJUSTL(l_ReactionSystem(i)%Product(j)%Species))=='' ) THEN
+          WRITE(*,*) ''
+          WRITE(*,*) 'lumped Reaction ',i,':'
+          WRITE(*,*) 'Product ',j,':',l_ReactionSystem(i)%Product(j)%iSpecies,l_ReactionSystem(i)%Product(j)%Species
         END IF
       END DO
+    END DO
+
+  END SUBROUTINE
+
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!
+!                       ALGORITHM SUBROUTINES
+!
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  SUBROUTINE Ratios2Sigmas(group)
+    TYPE(lumping_group), TARGET :: group
+
+    REAL(dp) :: sum_ratios
+    TYPE(linked_list), POINTER :: temp
+
+    sum_ratios = 0.0_dp
+    temp=>group%spc
+    DO
+      sum_ratios = sum_ratios + temp%weight
+      IF (.NOT. ASSOCIATED(temp%next)) EXIT
+      temp=>temp%next
+    END DO
+
+    temp=>group%spc
+    DO
+      temp%weight = temp%weight / sum_ratios
+      IF (.NOT. ASSOCIATED(temp%next)) EXIT
+      temp=>temp%next
+    END DO
+  END SUBROUTINE Ratios2Sigmas
+
+  SUBROUTINE find_sigma(constant_sigma, Conc_ratio, ConcMatrix, iSpc, jSpc)
+    LOGICAL :: constant_sigma
+    REAL(dp) :: Conc_ratio
+    REAL(dp), DIMENSION(:,:), INTENT(IN) :: ConcMatrix
+    INTEGER :: iSpc, jSpc
+
+    REAL(dp) :: expected, varcoeff
+
+    ! calculate expected value of the ratio conc(jSpc)/conc(iSpc)
+    ! care with +eps!!!!!!!!!!! 1e-16 could be much in mol!
+    expected = SUM( ConcMatrix(jSpc,2:)/(ConcMatrix(iSpc,2:)+eps) )/(SIZE(ConcMatrix,2)-1)
+
+    ! calculate empirical variation coefficient
+    ! sum of squared differences
+    varcoeff = SUM(( ConcMatrix(jSpc,2:)/(ConcMatrix(iSpc,2:)+eps)-expected )**2)
+    ! unbiased standard dev
+    varcoeff = varcoeff / (SIZE(ConcMatrix,2)-2)
+    ! variation coefficient (~ procentual deviation)
+    varcoeff = SQRT(varcoeff)/expected
+
+    IF ( varcoeff<.5) THEN
+      constant_sigma = .TRUE.
+    ELSE
+      constant_sigma = .FALSE.
+    END IF
+    Conc_ratio = expected
+
+!WRITE(*,*) ''
+!WRITE(*,*) 'sigma control: ',TRIM(ADJUSTL(y_name(iSpc))), ' and ', TRIM(ADJUSTL(y_name(jSpc)))
+!WRITE(*,*) 'sum iSpc = ',SUM(ConcMatrix(iSpc,:))
+!WRITE(*,*) 'sum jSpc = ',SUM(ConcMatrix(jSpc,:))
+!WRITE(*,*) 'expected ratio = ', expected, ', variation coefficient = ', varcoeff
+!WRITE(*,*) 'constant sigma = ', constant_sigma
+!WRITE(*,*) 'ratio examples:', ConcMatrix(jSpc,INT(0.25*SIZE(ConcMatrix,2)))/ConcMatrix(iSpc,INT(0.25*SIZE(ConcMatrix,2)))
+!WRITE(*,*) 'ratio examples:', ConcMatrix(jSpc,INT(0.5*SIZE(ConcMatrix,2)))/ConcMatrix(iSpc,INT(0.5*SIZE(ConcMatrix,2)))
+!WRITE(*,*) 'ratio examples:', ConcMatrix(jSpc,INT(0.75*SIZE(ConcMatrix,2)))/ConcMatrix(iSpc,INT(0.75*SIZE(ConcMatrix,2)))
+!WRITE(*,*) 'Conc ratios:', ConcMatrix(jSpc,:)/ConcMatrix(iSpc,:)
+  END SUBROUTINE find_sigma
+
+  !SUBROUTINE StreamWriteConcentrations(Conc)
+  !  USE Kind_Mod
+  !  USE Control_Mod, ONLY: ConcUnit, ConcFile, ConcMetaUnit, ConcMetaFile, iStpConc
+  !  REAL(dp) :: Rate(:)
+!
+!    INTEGER :: io_stat, io_pos
+!    CHARACTER(100) :: io_msg
+!
+!    OPEN(unit=ConcUnit,      file=ConcFile,  status='old',   action='write', &
+!    &    position='append', access='stream', iostat=io_stat, iomsg=io_msg    )
+!    CALL file_err(FluxFile,io_stat,io_msg)
+!    INQUIRE(ConcUnit, POS=io_pos)
+!    WRITE(ConcUnit) Conc
+!    CLOSE(ConcUnit)
+!
+!    iStpConc   = iStpConc + 1
+!    OPEN(unit=ConcMetaUnit, file=ConcMetaFile, status='old', action='write', position='append')
+!    WRITE(ConcMetaUnit,*) iStpConc, io_pos
+!    CLOSE(ConcMetaUnit)
+!
+!    CONTAINS
+!
+!      SUBROUTINE file_err(filename,io_stat,io_msg)
+!        CHARACTER(Len=*), INTENT(in) :: filename
+!        INTEGER         , INTENT(in) :: io_stat
+!        CHARACTER(Len=*), INTENT(in) :: io_msg
+!        IF (io_stat /= 0) THEN
+!          WRITE(*,"(79('!'))")
+!          WRITE(*,'(A,I0)')    'ERROR operating on file:  '//TRIM(filename)//'  with io status:  ',io_stat 
+!          WRITE(*,'(A)')       'Message:  '//TRIM(io_msg)
+!          WRITE(*,"(79('!'))")
+!          WRITE(*,*)'Exit ...'
+!          STOP
+!        END IF
+!      END SUBROUTINE file_err
+!  END SUBROUTINE StreamWriteConcentrations
+
+  SUBROUTINE GroupTrees2Matlab(group_id, first_group, clean_given)
+    INTEGER :: group_id
+    TYPE(lumping_group), TARGET :: first_group
+    LOGICAL, OPTIONAL :: clean_given
+
+    TYPE(lumping_group), POINTER :: temp
+    TYPE(linked_list), POINTER :: spc
+    INTEGER :: i
+    TYPE(linked_tree) :: tree
+    LOGICAL :: clean
+
+    IF ( PRESENT(clean_given) ) THEN
+      clean = clean_given
+    ELSE
+      clean = .FALSE.
+    END IF
+  
+    temp=>first_group
+    i=0
+    ! find group_id-th lumping group (group = more than one species)
+    DO 
+      IF (temp%nspc>1) i=i+1
+      IF (i==group_id) EXIT
+      temp=>temp%next
+    END DO
+
+    spc=>temp%spc
+    DO i=1,temp%nspc
+WRITE(*,*) '1'
+      CALL tree%free()
+WRITE(*,*) '2'
+      !CALL BuildEmisTree(spc%id,tree,0)
+WRITE(*,*) '3'
+      IF (clean) CALL CleanEmisTree(tree)
+WRITE(*,*) '4'
+      CALL EmisTreeToMatlab(tree)
+
+WRITE(*,*) '5'
+      spc => spc%next
+WRITE(*,*) '6'
+    END DO
+
+  END SUBROUTINE GroupTrees2Matlab
+
+  FUNCTION CheckIfLumped(Spc1,Spc2,first_group) RESULT(LumpedTogether)
+    INTEGER, INTENT(IN) :: Spc1, Spc2
+    TYPE(lumping_group), TARGET, INTENT(IN) :: first_group
+
+    LOGICAL :: LumpedTogether
+
+    TYPE(lumping_group), POINTER :: group
+    INTEGER, ALLOCATABLE :: groupspc(:)
+
+    group=>first_group
+    LumpedTogether = .FALSE.
+    DO
+      CALL LL2Array(group%spc, groupspc)
+      IF ( ANY( groupspc==Spc1 ) .AND. ANY( groupspc==Spc2 ) ) THEN 
+        LumpedTogether = .TRUE.
+        EXIT
+      END IF
+
+      IF (ASSOCIATED(group%next)) THEN
+        group=>group%next
+      ELSE
+        EXIT
+      END IF
+    END DO
+  END FUNCTION CheckIfLumped
+
+  RECURSIVE SUBROUTINE CheckTreeAllocs(tree, level_given)
+    TYPE(linked_tree), TARGET :: tree
+    INTEGER, OPTIONAL :: level_given
     
-      WRITE (989,*) 
-      WRITE (989,'(A)') TRIM(l_RS(i)%Line3)
-      WRITE (989,'(A)') TRIM(l_RS(i)%Line4)
+    INTEGER :: i, level
+
+    IF ( PRESENT(level_given) ) THEN
+      level = level_given
+    ELSE
+      level = 1
+    END IF
+    
+    IF (ALLOCATED(tree%child) .AND. (.NOT. ALLOCATED(tree%weight))) THEN
+      WRITE(*,*) 'Child but not weight allocated at level', level, ' for id ', tree%id
+    ELSE IF (ALLOCATED(tree%weight) .AND. (.NOT. ALLOCATED(tree%child))) THEN
+      WRITE(*,*) 'Weight but not child allocated at level ', level, ' for id ', tree%id
+    END IF
+
+    IF ( ALLOCATED(tree%child) ) THEN
+IF (LBOUND(tree%child,1)/=1) WRITE(*,*) '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ERROR WRONG LBOUND'
+      DO i=1,SIZE(tree%child)
+        CALL CheckTreeAllocs(tree%child(i), level+1)
+      END DO
+    END IF
+  END SUBROUTINE CheckTreeAllocs
+
+  SUBROUTINE cut_tree(tree,pos)
+    CLASS(linked_tree), INTENT(INOUT) :: tree
+    TYPE(linked_tree), ALLOCATABLE :: new_child(:)
+    INTEGER, ALLOCATABLE :: new_weight(:)
+    INTEGER :: pos, nChild, nWeight, i
+
+WRITE(*,*) 'in cut check 1'
+CALL CheckTreeAllocs(tree)
+
+    nChild=SIZE(tree%child)
+    nWeight=SIZE(tree%weight)
+    IF ( nChild/=nWeight ) THEN
+      WRITE(*,*) 'WARNING, cut_tree: size of child does not match size of weight in ',tree%id, '. No cutting done.'
+      RETURN
+    END IF
+    IF (pos>nChild .OR. pos<1) THEN
+      WRITE(*,*) 'WARNING, cut_tree: pos does not match child size of tree of ', tree%id,'. No cutting done.'
+      RETURN
+    END IF
+
+    ALLOCATE( new_child(nChild-1), new_weight(nChild-1) )
+    DO i=1,nChild
+      IF ( i/=pos ) THEN
+        IF (i>pos) THEN
+          new_child(i-1)  = tree%child(i)
+          new_weight(i-1) = tree%weight(i)
+        ELSE
+          new_child(i)  = tree%child(i)
+          new_weight(i) = tree%weight(i)
+        END IF
+      END IF
+    END DO
+    !IF (pos==1) THEN
+    !  new_child  = tree%child(pos+1:nChild)
+    !  new_weight = tree%weight(pos+1:nChild)
+    !ELSE IF (pos==nChild) THEN
+    !  new_child  = tree%child(1:pos-1)
+    !  new_weight = tree%weight(1:pos-1)
+    !ELSE
+    !  new_child(1:pos-1)       = tree%child(1:pos-1)
+    !  new_child(pos:nChild-1)  = tree%child(pos+1:nChild)
+    !  new_weight(1:pos-1)      = tree%weight(1:pos-1)
+    !  new_weight(pos:nChild-1) = tree%weight(pos+1:nChild)
+    !END IF
+
+DO i=1,nChild-1
+WRITE(*,*) 'in cut check news1',i
+CALL CheckTreeAllocs(new_child(i))
+END DO
+WRITE(*,*) 'in cut check 2'
+CALL CheckTreeAllocs(tree)
+
+    DO i=1,nChild
+      CALL tree%child(i)%free()
     END DO
 
-    CLOSE(989)    
-  END SUBROUTINE Print_LumpedSysFile
+DO i=1,nChild-1
+WRITE(*,*) 'in cut check news2',i
+CALL CheckTreeAllocs(new_child(i))
+END DO
+WRITE(*,*) 'in cut check 3'
+CALL CheckTreeAllocs(tree)
+    
+    DEALLOCATE( tree%child, tree%weight )
+    ALLOCATE( tree%child(nChild-1), tree%weight(nChild-1) )
+
+WRITE(*,*) 'in cut check 4'
+CALL CheckTreeAllocs(tree)
+
+    tree%child  = new_child
+    tree%weight = new_weight
+
+DO i=1,nChild-1
+WRITE(*,*) 'in cut check news3',i
+CALL CheckTreeAllocs(new_child(i))
+END DO
+WRITE(*,*) 'in cut check 5'
+CALL CheckTreeAllocs(tree)
+
+WRITE(*,*) 'in cut check 6'
+CALL CheckTreeAllocs(tree)
+WRITE(*,*) '811', SIZE(tree%child), SIZE(tree%weight)
+  END SUBROUTINE cut_tree
+  
+  RECURSIVE SUBROUTINE CleanEmisTree(tree)
+    TYPE(linked_tree), INTENT(INOUT) :: tree
+
+    REAL(dp), ALLOCATABLE :: ratios(:), dummy(:)
+    REAL(dp) :: tol
+    INTEGER, ALLOCATABLE :: Perm(:)
+    INTEGER :: i, j, pos
+
+
+    IF (( tree%id==-1                  ) .OR. &
+       &( .NOT. ALLOCATED(tree%child)  ) .OR. &
+       &( .NOT. ALLOCATED(tree%weight) )      ) RETURN
+
+    IF ( .NOT. fluxfile_exists ) THEN 
+      WRITE(*,*) 'Missing flux file in CleanEmisTree'
+      RETURN
+    END IF
+
+    IF (ALLOCATED(tree%relevant)) DEALLOCATE(tree%relevant)
+    ALLOCATE(tree%relevant(SIZE(tree%child)))
+    tree%relevant = .TRUE.
+
+    ! get ratios of mass moved by reactions producing tree%id
+    ratios = MassMoveRatios(tree%weight)
+    CALL SortVecAscReal(ratios,Perm)
+
+!WRITE(*,*) ''
+!WRITE(*,*) 'weight of ',y_name(tree%id)
+!WRITE(*,*) tree%weight
+!WRITE(*,*) 'ratios of ', y_name(tree%id)
+!WRITE(*,*) ratios
+!WRITE(*,*) ''
+
+    ! tolerance to omit all other branches
+    tol = .9
+
+    ! find number of branches to keep
+    DO i=1,SIZE(ratios)-1
+      IF ( SUM(ratios(i+1:))>tol ) THEN
+        !pos=Perm(i)
+        ! some branches have been cut -> new positions in array, find new position
+        !DO j=1,i-1
+        !  IF ( Perm(j)<Perm(i) ) pos=pos-1
+        !END DO
+        !CALL tree%cut(pos)
+        tree%relevant(Perm(i)) = .FALSE.
+      ELSE
+        EXIT
+      END IF
+    END DO
+
+    DO i=1,SIZE(tree%child)
+      !CALL CleanEmisTree(tree%child(i))
+      IF ( tree%relevant(i) ) THEN
+        CALL CleanEmisTree(tree%child(i))
+      END IF
+    END DO
+  END SUBROUTINE CleanEmisTree
+
+  FUNCTION MassMoveRatios(reacs) RESULT(ratios)
+    INTEGER, DIMENSION(:) :: reacs
+    
+    REAL(dp), ALLOCATABLE :: ratios(:), Rates(:)
+    INTEGER :: i, nReacs, io_stat = 0, dummy
+    REAL(dp) :: total
+    CHARACTER(200) :: io_msg  = ''
+
+    IF ( .NOT. fluxfile_exists ) THEN
+      WRITE(*,*) 'Missing flux file in MassMoveRatios'
+      RETURN
+    END IF
+
+    nReacs = SIZE(reacs)
+
+    IF (ALLOCATED(ratios)) DEALLOCATE(ratios)
+    ALLOCATE(Rates(nr),ratios(nReacs))
+    CALL OpenFile_rStream(FluxUnit,FluxFile)
+    DO i=1,iStpFlux
+      READ( FluxUnit, POS=Positions(i), IOSTAT=io_stat, IOMSG=io_msg) Rates
+      IF ( io_stat>0 ) WRITE(*,'(10X,A,I0,A)') '   ERROR reading fluxes.dat :: ',io_stat,'  '//TRIM(io_msg)
+      IF ( io_stat<0 ) WRITE(*,'(10X,A,I0,A)') '   WARNING (?) reading fluxes.dat :: ',io_stat,'  '//TRIM(io_msg)
+      ratios = ratios + ABS(Rates(reacs))
+    END DO
+    CLOSE(FluxUnit)
+
+    ! check for NaN or large number
+    DO i=1,nReacs
+      IF ( ratios(i)/=ratios(i) ) THEN
+        WRITE(*,*) 'WARNING: NaN read from flux file.'
+      ELSE IF (ratios(i) > giga**11) THEN
+        WRITE(*,*) 'WARNING: Very large number (>1e99) read from flux file.'
+      END IF
+    END DO
+
+    total = SUM(ratios)
+    !WRITE(*,*) 'portions', ratios
+    !WRITE(*,*) 'total', total
+    ratios = ratios/total
+
+  END FUNCTION MassMoveRatios
+
+  RECURSIVE SUBROUTINE CollectNodesEdges(tree,starts,ends,weights,mask)
+    TYPE(linked_tree) :: tree
+    TYPE(linked_list), TARGET :: starts, ends, weights, mask
+
+    INTEGER :: i,j, eductid
+    CHARACTER(LenName) :: eductsname = '', eductname = ''
+    TYPE(linked_list), POINTER :: tmpstarts, tmpends, tmpweights
+    LOGICAL :: edge_exists
+
+    IF ( ALLOCATED(tree%child) ) THEN
+      IF ( .NOT. ALLOCATED(tree%relevant) ) THEN
+        ALLOCATE(tree%relevant(SIZE(tree%child)))
+        tree%relevant = .TRUE.
+      END IF
+      DO i=1,SIZE(tree%child)
+        IF ( tree%relevant(i) ) THEN
+          eductname  = ''
+          eductsname = ''
+          edge_exists = .FALSE.
+          tmpstarts  => starts
+          tmpends    => ends
+          tmpweights => weights
+ 
+          ! find out if edge already exists
+          DO 
+            IF ( tmpstarts%id  == tree%id          .AND. &
+               & tmpends%id    == tree%child(i)%id .AND. &
+               & tmpweights%id == tree%weight(i)         ) THEN
+            
+              edge_exists = .TRUE.
+              EXIT
+            END IF
+            IF ( ASSOCIATED(tmpstarts%next)  .AND. &
+                 ASSOCIATED(tmpends%next)    .AND. &
+                 ASSOCIATED(tmpweights%next)       ) THEN
+                 tmpstarts  => tmpstarts%next
+                 tmpends    => tmpends%next
+                 tmpweights => tmpweights%next
+            ELSE
+              EXIT
+            END IF
+          END DO
+
+          IF ( .NOT. edge_exists ) THEN
+            ! find weight (=other educts)
+            IF ( SIZE(ReactionSystem(tree%weight(i))%Educt)>1 ) THEN
+              DO j=LBOUND(ReactionSystem(tree%weight(i))%Educt,1),UBOUND(ReactionSystem(tree%weight(i))%Educt,1)
+                eductid   = ReactionSystem(tree%weight(i))%Educt(j)%iSpecies
+                eductname = ReactionSystem(tree%weight(i))%Educt(j)%Species
+                IF (eductid/=tree%child(i)%id) eductsname = TRIM(ADJUSTL(eductsname))//TRIM(ADJUSTL(eductname))
+              END DO
+            ELSE
+              eductsname = 'nothing'
+            END IF
+
+            ! collect start, end of edge with reaction and reacting educts as weight
+            CALL starts%put(tree%id)
+            CALL ends%put(tree%child(i)%id)
+            CALL weights%put(tree%weight(i),eductsname)
+          END IF
+        END IF
+      END DO
+
+      DO i=1,SIZE(tree%child)
+        IF ( tree%relevant(i) ) THEN
+          IF ( SearchLinkedList(mask,id=tree%child(i)%id)==0 ) CALL mask%put(tree%child(i)%id)
+          CALL CollectNodesEdges(tree%child(i),starts,ends,weights,mask)
+        END IF
+      END DO
+    END IF
+  END SUBROUTINE CollectNodesEdges
+
+  RECURSIVE SUBROUTINE BuildEmisTree(Spc, tree, parentspc, parentreac)
+    ! input:
+    INTEGER, INTENT(IN) :: Spc
+    !
+    INTEGER, DIMENSION(:) :: parentreac, parentspc
+    !
+    ! output:
+    TYPE(linked_tree) :: tree
+
+    TYPE(linked_list) :: children
+    INTEGER :: current, current_reac, i, j, iEduct
+    CHARACTER(LenName) :: Educt
+
+    LOGICAL :: testest
+
+
+    WRITE(*,*) SIZE(parentspc)
+
+    tree%id = Spc
+    tree%id_char = y_name(Spc)
+
+    ! find reactions that produce Spc
+    current = 0
+    DO WHILE ( current<SIZE(B%ColInd) )
+
+      IF ( FINDLOC(B%ColInd(current+1:),Spc,DIM=1)/=ZERO ) THEN ! another reaction with Spc as product was found
+        ! refresh current index
+        current = current + FINDLOC(B%ColInd(current+1:),Spc,DIM=1)
+        ! find current reaction
+        current_reac = MINLOC(B%RowPtr,MASK=B%RowPtr>current,DIM=1) - 1
+ 
+        ! add educts that are C-species as children of Spc (parent in chemical chronology)
+        DO i=LBOUND(ReactionSystem(current_reac)%Educt,1),UBOUND(ReactionSystem(current_reac)%Educt,1)
+              
+          iEduct = ReactionSystem(current_reac)%Educt(i)%iSpecies
+          Educt  = ReactionSystem(current_reac)%Educt(i)%Species
+
+          ! check if it could be a child
+          IF (      INDEX(Educt,'C')  > 0       .AND. &
+             &  TRIM(ADJUSTL(Educt)) /='CO'     .AND. &
+             &  TRIM(ADJUSTL(Educt)) /='CL'     .AND. &
+             &  FINDLOC(parentspc,iEduct,DIM=1) == 0        ) THEN
+
+            ! current_reac serves as a marker (reaction id) to find the corresponding rate constant
+            CALL tree%put(   ReactionSystem(current_reac)%Educt(i)%iSpecies &
+                         & , current_reac                                   &
+                         & , ReactionSystem(current_reac)%Educt(i)%Species  ) 
+            CALL children%put(iEduct)
+          ELSE IF (FINDLOC(parentspc,iEduct,DIM=1)>0 .AND. FINDLOC(parentspc,iEduct,DIM=1)<SIZE(parentspc)) THEN
+          !ELSE IF (FINDLOC(parentspc,iEduct,DIM=1)>0) THEN
+            testest=.FALSE.
+            WRITE(*,*) 'iEduct=',TRIM(ADJUSTL(y_name(iEduct))),', Spc=',TRIM(ADJUSTL(y_name(Spc)))
+            WRITE(*,*) 'PRE spc:'
+            DO j=1,SIZE(parentspc)
+              WRITE(*,*) TRIM(ADJUSTL(y_name(parentspc(j))))
+            END DO
+            WRITE(*,*) ''
+            DO j=1,SIZE(parentspc)
+              IF (testest) THEN
+                WRITE(*,'(A4,I5,A2,A)',ADVANCE='NO') ' <=(',parentreac(j-1),') ', TRIM(ADJUSTL(y_name(parentspc(j))))
+              END IF
+              IF (parentspc(j) == iEduct) THEN
+                testest = .TRUE.
+                WRITE(*,*) TRIM(ADJUSTL(y_name(iEduct)))
+              END IF
+            END DO
+            WRITE(*,'(A4,I5,A2,A)',ADVANCE='NO') ' <=(',parentreac(SIZE(parentreac)),') ', TRIM(ADJUSTL(y_name(Spc)))     
+            WRITE(*,'(A4,I5,A2,A)',ADVANCE='NO') ' <=(',current_reac,') ', TRIM(ADJUSTL(y_name(iEduct)))     
+            WRITE(*,*) ''
+            WRITE(*,*) ''
+            
+            STOP
+
+          END IF
+        END DO
+      ELSE ! Spc did not appear as product again
+        EXIT
+      END IF
+    END DO
+    CALL children%free()
+
+    ! recursively find source emissions of the added children
+    IF ( ALLOCATED(tree%child) ) THEN 
+      DO i=1,SIZE(tree%child)
+        CALL BuildEmisTree(tree%child(i)%id, tree%child(i), [parentspc, Spc], [parentreac, tree%weight(i)])
+      END DO
+    END IF
+  END SUBROUTINE BuildEmisTree
+
+!  RECURSIVE SUBROUTINE BuildEmisTree(Spc, tree, parent)
+!    ! input:
+!    INTEGER, INTENT(IN) :: Spc
+!    !
+!    INTEGER, INTENT(IN) :: parent
+!    !
+!    ! output:
+!    TYPE(linked_tree) :: tree
+!
+!    TYPE(linked_list) :: children
+!    INTEGER :: current, current_reac, i, iEduct
+!    CHARACTER(LenName) :: Educt
+!
+!    LOGICAL :: testest
+!    
+!
+!    tree%id = Spc
+!    tree%id_char = y_name(Spc)
+!
+!    ! find reactions that produce Spc
+!    current = 0
+!    DO WHILE ( current<SIZE(B%ColInd) )
+!
+!      IF ( FINDLOC(B%ColInd(current+1:),Spc,DIM=1)/=ZERO ) THEN ! another reaction with Spc as product was found
+!        ! refresh current index
+!        current = current + FINDLOC(B%ColInd(current+1:),Spc,DIM=1)
+!        ! find current reaction
+!        current_reac = MINLOC(B%RowPtr,MASK=B%RowPtr>current,DIM=1) - 1
+!
+!        ! TEST IF REAC CONTAINS SPC AS PRODUCT
+!        !testest=.FALSE.
+!        !DO i=LBOUND(ReactionSystem(current_reac)%Product,1),UBOUND(ReactionSystem(current_reac)%Product,1)
+!        !  IF (ReactionSystem(current_reac)%Product(i)%iSpecies==Spc) testest=.TRUE.
+!        !END DO
+!        !IF (.NOT. testest) THEN 
+!        !  WRITE(*,*) 'ERROR WRONG FUNCTION FOUND'
+!        !ELSE 
+!        !  WRITE(*,*) 'RIGHT FUNCTION FOUND'
+!        !END IF
+! 
+!        ! add educts that are C-species as children of Spc (parent in chemical chronology)
+!        DO i=LBOUND(ReactionSystem(current_reac)%Educt,1),UBOUND(ReactionSystem(current_reac)%Educt,1)
+!              
+!          iEduct = ReactionSystem(current_reac)%Educt(i)%iSpecies
+!          Educt  = ReactionSystem(current_reac)%Educt(i)%Species
+!
+!          ! check if it could be a child
+!          IF (      INDEX(Educt,'C')  > 0       .AND. &
+!             &  TRIM(ADJUSTL(Educt)) /='CO'     .AND. &
+!             &  TRIM(ADJUSTL(Educt)) /='CL'     .AND. &
+!             &              iEduct   /= parent        ) THEN
+!
+!!WRITE(*,*) TRIM(ADJUSTL(y_name(Spc))),' SOURCE: ',ReactionSystem(current_reac)%Educt(i)%iSpecies, TRIM(ADJUSTL(ReactionSystem(current_reac)%Educt(i)%Species)), ' IN REACTION ',current_reac       
+!WRITE(*,*) '1'
+!CALL WriteChildren(tree)
+!
+!            ! current_reac serves as a marker (reaction id) to find the corresponding rate constant
+!            CALL tree%put(   ReactionSystem(current_reac)%Educt(i)%iSpecies &
+!                         & , current_reac                                   &
+!                         & , ReactionSystem(current_reac)%Educt(i)%Species  ) 
+!            CALL children%put(iEduct)
+!WRITE(*,*) '2'
+!CALL WriteChildren(tree)
+!          END IF
+!        END DO
+!      ELSE ! Spc did not appear as product again
+!        EXIT
+!      END IF
+!    END DO
+!    CALL children%free()
+!
+!    ! recursively find source emissions of the added children
+!    IF ( ALLOCATED(tree%child) ) THEN 
+!      DO i=1,SIZE(tree%child)
+!        CALL BuildEmisTree(tree%child(i)%id, tree%child(i), Spc)
+!      END DO
+!    END IF
+!  END SUBROUTINE BuildEmisTree
+
+  SUBROUTINE WriteChildren(tree)
+    TYPE(linked_tree) :: tree
+
+    INTEGER, ALLOCATABLE :: children(:)
+    INTEGER :: i
+
+    IF (ALLOCATED(tree%child)) THEN
+      ALLOCATE(children(SIZE(tree%child)))
+      DO i=1,SIZE(tree%child)
+        children(i) = tree%child(i)%id
+      END DO
+
+      WRITE(*,*) 'Children of ',tree%id,': ',children
+    ELSE
+      WRITE(*,*) 'Children of ',tree%id,': none'
+    END IF
+  END SUBROUTINE WriteChildren
+
+  SUBROUTINE compare_lifetimes(same_lifetimes, tau, iSpc, jSpc)
+    LOGICAL :: same_lifetimes
+    REAL(dp), DIMENSION(:,:) :: tau
+    INTEGER :: iSpc,jSpc
+
+    INTEGER :: timestep,nTau
+
+    nTau=SIZE(tau,2)
+      
+    same_lifetimes=.TRUE.
+    DO timestep=1,nTau
+    !~~~~~~~~~~~~~~~~~~~~~
+    ! maybe vectorize this loop if faster
+    !~~~~~~~~~~~~~~~~~~~~~
+      IF (ABS((tau(iSpc,timestep)-tau(jSpc,timestep))/(tau(iSpc,timestep)+100*eps))>eps_tau) THEN
+        same_lifetimes=.FALSE.
+      END IF
+    END DO  
+  END SUBROUTINE compare_lifetimes
 
 
   SUBROUTINE build_LumpedReacSys(l_RS, first_group, reac_lumped)
@@ -427,10 +1114,11 @@ MODULE Lumping_Mod
 
     CHARACTER(LenName), ALLOCATABLE :: Spc_Old2New(:)
     TYPE(lumping_group), POINTER :: group
-    INTEGER :: i, j, k, l, iR, kR, kE, NewReac, nLumpedReacs, nRemainingReacs, nNewReacs,          &
-             & nLumpedSpc, nRemainingSpc, nNewSpc, nEducts, nProducts, counter
+    INTEGER :: i, j, iR, kR, kE, NewReac, nLumpedReacs, nRemainingReacs, nNewReacs,          &
+             & nLumpedSpc, nRemainingSpc, nNewSpc, nEducts, nProducts
     
-    INTEGER, ALLOCATABLE :: iSpc_Old2New(:), Spc_array(:), Reacs_Array(:)
+    INTEGER , ALLOCATABLE :: iSpc_Old2New(:), Spc_array(:), Reacs_Array(:)
+    REAL(dp), ALLOCATABLE :: sigma(:), group_sigma(:)
 
     group=>first_group
 
@@ -457,10 +1145,14 @@ MODULE Lumping_Mod
     nNewSpc = nRemainingSpc + nLumpedSpc
     nNewReacs = nRemainingReacs + nLumpedReacs
 
-    ALLOCATE( Spc_Old2New(A%n+SIZE(ListNonReac2)), iSpc_Old2New(A%n+SIZE(ListNonReac2)), l_RS(nNewReacs) )
+    ALLOCATE( Spc_Old2New(A%n+SIZE(ListNonReac2))   &
+            , iSpc_Old2New(A%n+SIZE(ListNonReac2))  &
+            , l_RS(nNewReacs)                       &
+            , sigma(A%n+SIZE(ListNonReac2))         )
     
     ! create mask: Spc_Old2New(old_species_id) = new_species_id
     Spc_Old2New = ''
+    sigma = ONE
     group=>first_group
     DO i=1,nNewSpc
       CALL LL2Array(group%spc,Spc_array)
@@ -468,13 +1160,18 @@ MODULE Lumping_Mod
         iSpc_Old2New(Spc_array(j))=i
       END DO
       IF ( group%nspc > 1 ) THEN
-        CALL NewNames(group)
+        CALL NewProperties(group, Spc_Old2New, sigma)
       END IF
       group=>group%next
     END DO
+
+WRITE(*,*) ''
+WRITE(*,*) '          MIN/MAX of sigma = ', MINVAL(sigma),'/',MAXVAL(sigma)
+
     ! add passive species
     DO i=1,SIZE(ListNonReac2)
-      iSpc_Old2New(nNewSpc+i) = nNewSpc + i
+      iSpc_Old2New(A%n+i) = nNewSpc + i
+      !Spc_Old2New not changed, passive species wont be lumped
     END DO
     
     ! collect all lumped reactions
@@ -482,9 +1179,10 @@ MODULE Lumping_Mod
     group=>first_group
     DO i=1,nNewSpc
       IF ( group%nspc > 1 ) THEN
+        CALL LL2Array_weight(group%spc,group_sigma)
         DO j=1,SIZE(group%reactions)
           CALL LL2Array(group%reactions(j),Reacs_Array)
-          CALL Reac2NewReac(Reacs_array)
+          CALL LumpReacs(Reacs_array,group_sigma)
         END DO
       END IF
       group=>group%next
@@ -492,36 +1190,46 @@ MODULE Lumping_Mod
     ! collect all remaining reactions
     DO i=1,SIZE(reac_lumped)
       IF ( .NOT. reac_lumped(i) ) THEN
-        CALL Reac2NewReac((/i/))
+        CALL LumpReacs((/i/),(/ONE/))
       END IF
     END DO
 
    CONTAINS
 
-     SUBROUTINE Reac2NewReac(Reacs_old)
+     SUBROUTINE LumpReacs(Reacs_old, group_sigma)
        INTEGER, DIMENSION(:) :: Reacs_old
+       REAL(dp), DIMENSION(:) :: group_sigma
 
-       INTEGER :: iR_old, currentColon, currentSpace
+       INTEGER :: pos, k, l, iR_old, currentColon, currentSpace, counter
        TYPE(Duct_T) :: current
-       CHARACTER(LenLine) :: Line3, Line3Template, currentConstant
+       CHARACTER(LenLine) :: Line3, Line3Template
+       TYPE(linked_list) :: products
 
        iR_old = Reacs_old(1)
        ALLOCATE(l_RS(NewReac)%Constants(SIZE(ReactionSystem(iR_old)%Constants)))
        
        ! calculate number of educts and products
-       ! meanwhile collect and use the mean values of the reaction constants for new constants
+       ! meanwhile collect the reaction constants and use the mean values for new constants
        nEducts = SIZE(ReactionSystem(iR_old)%Educt)
        nProducts = 0
        l_RS(NewReac)%Constants = ZERO
        DO k=1,SIZE(Reacs_old)
          kR = Reacs_old(k)
-         nProducts = nProducts + SIZE(ReactionSystem(kR)%Product)
          l_RS(NewReac)%Constants = l_RS(NewReac)%Constants + ReactionSystem(kR)%Constants
+         
+         DO l=LBOUND(ReactionSystem(kR)%Product,1),UBOUND(ReactionSystem(kR)%Product,1)
+           ! check if product already appeared
+           pos = SearchLinkedList(products,id=iSpc_Old2New(ReactionSystem(kR)%Product(l)%iSpecies))
+           IF (pos == 0) THEN
+             CALL products%put(iSpc_Old2New(ReactionSystem(kR)%Product(l)%iSpecies))
+             nProducts = nProducts + 1
+           END IF
+         END DO
        END DO
        l_RS(NewReac)%Constants = l_RS(NewReac)%Constants / SIZE(Reacs_old)
           
        ALLOCATE( l_RS(NewReac)%Educt(nEducts) ) 
-       ALLOCATE( l_RS(NewReac)%Product(nProducts) ) 
+       ALLOCATE( l_RS(NewReac)%Product(nProducts) )
 
        ! write new educts and products, 
        ! lumped species gets the name of the first species in lumping group
@@ -531,26 +1239,48 @@ MODULE Lumping_Mod
          l_RS(NewReac)%Educt(k)          = current
          ! correct id to new species id
          l_RS(NewReac)%Educt(k)%iSpecies = iSpc_Old2New(current%iSpecies)
+         ! note: no sigma correction needad as the lumped species gets sigma=1 as educt and other educts can't be lumped spc
        END DO
        ! products:
+       CALL products%free()
        counter = 1
        DO k=1,SIZE(Reacs_old)
          kR=Reacs_old(k)
          DO l=LBOUND(ReactionSystem(kR)%Product,1),UBOUND(ReactionSystem(kR)%Product,1)
+
            current = ReactionSystem(kR)%Product(l)
-           l_RS(NewReac)%Product(counter) = current
-           ! concern name of species
-           IF ( Spc_Old2New(current%iSpecies) /= '' ) THEN ! duct has a new name
-             l_RS(NewReac)%Product(counter)%Species  = Spc_Old2New(current%iSpecies)
-           ELSE ! old name is maintained
-             l_RS(NewReac)%Product(counter)%Species = current%Species
+           ! search for earlier appearance of current product species
+           pos = SearchLinkedList(products,id=iSpc_Old2New(current%iSpecies))
+           
+           IF ( pos == 0 ) THEN ! new product species
+        
+             CALL products%put(iSpc_Old2New(current%iSpecies))
+
+             l_RS(NewReac)%Product(counter) = current
+
+             ! apply sigma for all products of one lumped species
+             l_RS(NewReac)%Product(counter)%Koeff = group_sigma(k) * l_RS(NewReac)%Product(counter)%Koeff
+             
+             ! concern lumping status of product
+             IF ( Spc_Old2New(current%iSpecies) /= '' ) THEN ! duct has a new name and so was lumped
+               ! apply new name
+               l_RS(NewReac)%Product(counter)%Species  = Spc_Old2New(current%iSpecies)
+               ! correct Koeff to Koeff*sigma (not by this lumping step, but because current product was lumped itself)
+               l_RS(NewReac)%Product(counter)%Koeff = sigma(current%iSpecies)*l_RS(NewReac)%Product(counter)%Koeff
+             END IF
+             ! correct id to new species id
+             l_RS(NewReac)%Product(counter)%iSpecies = iSpc_Old2New(current%iSpecies)
+             counter=counter+1
+
+           ELSE ! product species already appeared as product, increase stoichometric coeff
+        
+             ! correct Koeff to Koeff*sigma (sigma=1 if spc was not lumped)
+             l_RS(NewReac)%Product(pos)%Koeff = l_RS(NewReac)%Product(pos)%Koeff + group_sigma(k)*sigma(current%iSpecies)*current%Koeff
+
            END IF
-           ! correct id to new species id
-           l_RS(NewReac)%Product(counter)%iSpecies = iSpc_Old2New(current%iSpecies)
-           counter=counter+1
+
          END DO
        END DO
-
 
        ! assemble new line 3
        Line3Template = ReactionSystem(iR_old)%Line3
@@ -558,7 +1288,7 @@ MODULE Lumping_Mod
        ! maintain type of constant (before first colon)
        Line3 = Line3Template(1:currentColon)
        DO k=1,SIZE(l_RS(NewReac)%Constants)
-         ! isolate next parameter name (between a number and a colon)
+         ! isolate next parameter name (between whitespace after a number and a colon)
          IF ( k==1 ) THEN
            currentSpace = currentColon + 1
          ELSE
@@ -567,12 +1297,9 @@ MODULE Lumping_Mod
          END IF
          currentColon = currentColon + INDEX(Line3Template(currentColon+1:),':')
 
-         ! the name of the k-th parameter is between the detected whitespace and colon
+         ! add parameter name and parameter value to Line3
          Line3 = TRIM(ADJUSTL(Line3))//'  '//TRIM(ADJUSTL(Line3Template(currentSpace:currentColon)))
-         ! after name of k-th parameter write k-th parameter value
-         WRITE(currentConstant,*) l_RS(NewReac)%Constants(k)
-         
-         Line3 = TRIM(ADJUSTL(Line3))//' '//TRIM(ADJUSTL(Real2Char(l_RS(NewReac)%Constants(k))))
+         Line3 = TRIM(ADJUSTL(Line3))//' '//TRIM(ADJUSTL(Real2CharExp(l_RS(NewReac)%Constants(k))))
        END DO
 
        ! collect remaining properties
@@ -584,34 +1311,31 @@ MODULE Lumping_Mod
 
        NewReac = NewReac + 1
 
-     END SUBROUTINE Reac2NewReac
+     END SUBROUTINE LumpReacs
 
-     SUBROUTINE NewNames(group)
+     SUBROUTINE NewProperties(group, Spc_Old2New, sigma)
        TYPE(lumping_group), POINTER, INTENT(IN) :: group
+       CHARACTER(LenName) , DIMENSION(:) :: Spc_Old2New
+       REAL(dp)           , DIMENSION(:) :: sigma
        
        INTEGER, ALLOCATABLE :: Spc_array(:)
+       REAL(dp), ALLOCATABLE :: sigma_array(:)
        INTEGER :: i, iR, iSpc
        CHARACTER(lenName) :: NewName
 
        CALL LL2Array(group%spc,Spc_array)
-       
+       CALL LL2Array_weight(group%spc,sigma_array)
+
        ! the new lumped species gets the name of the first species in the lumping group
        iSpc = Spc_array(1)
+       NewName = y_name(iSpc)
 
-       ! set iR to a reaction involving the first spc
-       iR = group%reactions(1)%id
-
-       DO i=1,SIZE(ReactionSystem(iR)%Educt)
-         IF ( ReactionSystem(iR)%Educt(i)%iSpecies == iSpc ) THEN
-           NewName = ReactionSystem(iR)%Educt(i)%Species
-         END IF
-       END DO
-
-       DO i=2,SIZE(Spc_array)
+       DO i=1,SIZE(Spc_array)
          Spc_Old2New(Spc_array(i)) = NewName 
+         sigma(Spc_array(i))       = sigma_array(i) 
        END DO
 
-     END SUBROUTINE NewNames
+     END SUBROUTINE NewProperties
 
   END SUBROUTINE build_LumpedReacSys
 
@@ -653,211 +1377,6 @@ MODULE Lumping_Mod
 
   END SUBROUTINE compare_k
 
-
- ! SUBROUTINE build_LumpedSys(lumped_A, lumped_B, first_group, Spc_lumped, reac_lumped)
- !   ! input:
- !   !
- !   TYPE(CSR_Matrix_T) :: lumped_A, lumped_B
- !   !
- !   TYPE(lumping_group), TARGET, INTENT(IN) :: first_group
- !   !
- !   LOGICAL, ALLOCATABLE, INTENT(IN) :: Spc_lumped(:), reac_lumped(:)
- !   !
- !   ! end input
-!
-!    TYPE(Species_T), ALLOCATABLE, TARGET :: NewListGas2(:)
-!    INTEGER, ALLOCATABLE :: lA_RowPtr(:), lA_ColInd(:), lA_val(:),                      &
-!                          & lB_RowPtr(:), lB_ColInd(:), lB_val(:),                      &
-!                          & Spc_Old2New(:), remainingReacs(:), groupSpcs(:), eqReacs(:)
-!    TYPE(lumping_group), POINTER :: group
-!    INTEGER :: i, j, k, l, iR, counter, nLumpedSpc, nRemainingSpc, nLumpedReacs, nRemainingReacs,  &
-!             & nNewSpc, nNewReacs, nLumpedEducts, nLumpedProducts, newReac, lA_Col, lB_Col,        &
-!             & nEducts_iR, nProducts_iR, educt_iR, product_iR
-!
-!    group => first_group
-!
-!    IF ( COUNT(.NOT. Spc_lumped) > 0 ) THEN
-!      WRITE (*,*) 'ERROR: some species were skipped and not put into a lumping group'
-!      STOP
-!    END IF
-!
-!    ! count lumping species
-!    nNewSpc = 1 ! first group
-!    DO WHILE ( ASSOCIATED(group%next) )
-!      nNewSpc = nNewSpc + 1
-!      group => group%next
-!    END DO
-!    group => first_group
-!
-!    nLumpedReacs = 0
-!    nLumpedEducts = 0
-!    nLumpedProducts = 0
-!    ! count lumped reactions and educts
-!    DO i=1,nNewSpc
-!      nLumpedReacs = nLumpedReacs + SIZE(group%reactions)
-!      DO j=1,SIZE(group%reactions)
-!      ! only count educts if this reaction will be a lumped one or will remain unmodified in the new system
-!      ! (and not if its lumped elsewhere)
-!        IF ( (group%nspc>1) .OR. (.NOT. reac_lumped(group%reactions(j)%id) ) ) THEN
-!          nLumpedEducts = nLumpedEducts + A%RowPtr(group%reactions(j)%id+1) - A%RowPtr(group%reactions(j)%id)
-!        END IF
-!      END DO
-!
- !     IF ( ASSOCIATED(group%next) ) THEN
- !       group=>group%next
- !     END IF
- !   END DO
- !   group => first_group
- !   ! count remaining reactions and educts
- !   nRemainingReacs = COUNT(.NOT. reac_lumped)
- !   ALLOCATE(remainingReacs(nRemainingReacs))
- !   counter = 1
- !   DO i=1,A%m
- !     IF ( .NOT. reac_lumped(i) ) THEN
- !       remainingReacs(counter) = i
- !       counter = counter + 1
- !       nLumpedEducts = nLumpedEducts + A%RowPtr(i+1) - A%RowPtr(i)
- !     END IF
- !   END DO
-!
- !   nNewReacs = nRemainingReacs + nLumpedReacs
- !   ALLOCATE(NewListGas2(nNewSpc),                                                    &
- !          & lA_RowPtr(nNewReacs+1), lA_ColInd(nLumpedEducts), lA_val(nLumpedEducts), &
- !          & lB_RowPtr(nNewReacs+1), lB_ColInd(B%nnz), lB_val(B%nnz))
-!
- !   ALLOCATE(Spc_Old2New(A%n))
-!
- !   ! old_id now participates in new_id  ( Spc_Old2New(old_id) = new_id )
- !   Spc_Old2New = 0
- !   DO i=1,nNewSpc
- !     CALL LL2Array(group%spc, groupSpcs)
- !     DO j=1,SIZE(groupSpcs)
- !       Spc_Old2New(groupSpcs(j)) = i
- !     END DO
- !     IF ( ASSOCIATED(group%next) ) THEN
- !       group=>group%next
- !     END IF
- !   END DO
- !   group => first_group
-!
- !   ! initialize counters for new reactions (newReac) and ColInd/val for A and B
- !   newReac = 1
- !   lA_Col  = 1
- !   lB_Col  = 1
-!
- !   ! build lumped_A vectors
- !   counter = 1
- !   DO i=1,nNewSpc
- !     IF ( group%nspc==1 ) THEN ! add this one as one of the new species
- !       NewListGas2(i) = ListGas2(group%spc%id)
- !       DO j=1,SIZE(group%reactions)
- !         iR = group%reactions(j)%id
- !         ! collect reactions that are not lumped elsewhere to maintain them in the new system
- !         IF (.NOT. reac_lumped(iR)) THEN
- !           
- !           ! fill A vectors
-!
- !           nEducts_iR = A%RowPtr(iR+1)-A%RowPtr(iR)
- !           lA_RowPtr(newReac+1)=lA_RowPtr(newReac)+nEducts_iR
- !           DO k=0,nEducts_iR-1
- !             lA_ColInd(lA_Col) = Spc_Old2New(A%ColInd(A%RowPtr(iR)+k))
- !             lA_val(lA_Col) = A%val(A%RowPtr(iR)+k)
- !             lA_Col = lA_Col + 1
- !           END DO
-!
- !           ! fill B vectors
-!
- !           nProducts_iR = B%RowPtr(iR+1)-B%RowPtr(iR)
- !           lB_RowPtr(newReac+1)=lB_RowPtr(newReac)+nProducts_iR
- !           DO k=0,nProducts_iR-1
- !               !~~~~~~~~~~~~~~~~~~~~~~~~
- !               !
- !               ! some values may occur multiple times (2 species that got lumped together are in the products of two iRs 
- !               ! -> same new id, will occur twice in ColInd, is that a problem or does it just get added?)
- !               !
- !               !~~~~~~~~~~~~~~~~~~~~~~~~
- !             lB_ColInd(lB_Col) = Spc_Old2New(B%ColInd(B%RowPtr(iR)+k))
- !             lB_val(lB_Col) = B%val(B%RowPtr(iR)+k)
- !             lB_Col = lB_Col + 1
- !           END DO
-!
- !           newReac = newReac + 1
- !         END IF
- !       END DO
- !     ELSE ! create new lumped species
- !       NewListGas2(i) = ListGas2(group%spc%id) ! same properties in Species_T assumed for all members of the lumping group
- !       NewListGas2(i)%Species = 'Lu'//NewListGas2(i)%Species  ! rename the new species
- !       counter = counter + 1
-!
- !       DO j=1,SIZE(group%reactions)
- !         iR = group%reactions(j)%id
- !         
- !         ! fill A vectors
- !         
- !         nEducts_iR = A%RowPtr(iR+1)-A%RowPtr(iR)
- !         lA_RowPtr(newReac+1)=lA_RowPtr(newReac)+nEducts_iR
- !         DO k=0,nEducts_iR-1
- !           educt_iR = A%ColInd(A%RowPtr(iR)+k)
- !           
- !           lA_ColInd(lA_Col) = Spc_Old2New(educt_iR)
- !           lA_val(lA_Col) = A%val(A%RowPtr(iR)+k) ! lumped Spc gets same stoichometric coefficient as old species as they are all
- !                                                  ! the same (or 1 ??)
- !           
- !           lA_Col = lA_Col + 1
- !         END DO
-!
- !         ! fill B vectors
-!
- !         CALL LL2Array(group%reactions(j), eqReacs)
- !         lB_RowPtr(newReac+1) = lB_RowPtr(newReac)
- !         DO k=1,SIZE(eqReacs)
- !           iR = eqReacs(k)
- !           nProducts_iR = B%RowPtr(iR+1)-B%RowPtr(iR)
- !           lB_RowPtr(newReac+1)=lB_RowPtr(newReac+1)+nProducts_iR
- !           DO l=0,nProducts_iR-1
- !             ! product_iR is the new id for the old product
- !             product_iR = Spc_Old2New(B%ColInd(B%RowPtr(iR)+l))
- !             !~~~~~~~~~~~~~~~~~~~~~~~~
- !             !
- !             ! if product_iR == i another species of the lumping group occured as product
- !             ! -> problematic???
- !             !
- !             ! EVEN if product_iR /= i product_iR could be a newly lumped species and so
- !             ! for every member of a lumping group the reactions that produce it
- !             ! need to be known (always, so maybe collect them somewhere, could be extracted from B)
- !             !
- !             !~~~~~~~~~~~~~~~~~~~~~~~~
- !             
- !             lB_ColInd(lB_Col) = product_iR
- !             lB_val(lB_Col) = B%val(B%RowPtr(iR)+l) !THIS IS SIGMA 
- !             
- !             lB_Col = lB_Col + 1
- !           END DO
- !         END DO
-!
- !         newReac = newReac + 1
- !       END DO
- !     END IF
- !     IF ( ASSOCIATED(group%next) ) THEN
- !       group=>group%next
- !     END IF
- !   END DO
-!
- !   !build lumped_A matrix
- !   lumped_A = New_CSR(nNewReacs,nNewSpc)
- !   ALLOCATE(lumped_A%ColInd(nLumpedEducts), lumped_A%val(nLumpedEducts))
- !   lumped_A%RowPtr = lA_RowPtr
- !   lumped_A%ColInd = lA_ColInd
- !   lumped_A%val = lA_val
-!
- !   !build lumped_B matrix
- !   lumped_B = New_CSR(nNewReacs,nNewSpc)
- !   ALLOCATE(lumped_B%ColInd(B%nnz), lumped_B%val(B%nnz))
- !   lumped_B%RowPtr = lB_RowPtr
- !   lumped_B%ColInd = lB_ColInd
- !   lumped_B%val = lB_val
-!
- ! END SUBROUTINE build_LumpedSys
 
 
   SUBROUTINE Spc_involving_reacs(SpcReacs,nSpcReacs,Spc)
@@ -986,7 +1505,6 @@ MODULE Lumping_Mod
     INTEGER, ALLOCATABLE :: i_educts(:), i_eductsCoeff(:), j_educts(:), j_eductsCoeff(:)
     LOGICAL :: found_iR_equiv, educts_equal
     LOGICAL, DIMENSION(SIZE(jSpcReacs)) :: reac_available
-        
     nSpcReacs=SIZE(jSpcReacs)
     ALLOCATE(reac_equivs(nSpcReacs))
     reac_equivs=ZERO
@@ -994,7 +1512,6 @@ MODULE Lumping_Mod
     equivs_present=.TRUE.
     DO iR=1,nSpcReacs
       found_iR_equiv=.FALSE.  
-
       iSpcReac=iSpcReacs(iR)
       
       ! allocate number of educts for iSpcReac(iR)
@@ -1084,6 +1601,108 @@ MODULE Lumping_Mod
 ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
+  SUBROUTINE put_tree(tree,id,weight,given_id_char)
+    CLASS(linked_tree) :: tree
+    
+    INTEGER, INTENT(IN) :: id, weight
+    CHARACTER(LenName), OPTIONAL :: given_id_char
+
+    TYPE(linked_tree), ALLOCATABLE :: temp(:)
+    INTEGER :: nChildren, i
+
+    IF ( .NOT. ALLOCATED(tree%child) ) THEN ! first child
+      ALLOCATE(tree%child(1))
+      IF (ALLOCATED(tree%weight)) DEALLOCATE(tree%weight)
+      ALLOCATE(tree%weight(1))
+      tree%child(1)%id = id
+      tree%weight(1) = weight
+      IF ( PRESENT(given_id_char) ) THEN
+        tree%child(1)%id_char = given_id_char
+      END IF
+    ELSE ! add next child
+      ! increase size of child array by one
+      nChildren = SIZE(tree%child)
+      ALLOCATE(temp(nChildren))
+      temp = tree%child
+      DO i=1,nChildren
+        CALL tree%child(i)%free()
+      END DO
+      DEALLOCATE(tree%child)
+      ALLOCATE(tree%child(nChildren+1))
+      tree%child(1:nChildren) = temp(:)
+
+      ! apply desired values to (new) last child
+      tree%child(nChildren+1)%id = id
+      tree%weight = [ tree%weight , weight ]
+      IF ( PRESENT(given_id_char) ) THEN
+        tree%child(nChildren+1)%id_char = given_id_char
+      END IF
+      DO i=1,nChildren
+        CALL temp(i)%free()
+      END DO
+      DEALLOCATE(temp)
+    END IF
+  END SUBROUTINE put_tree 
+
+  RECURSIVE SUBROUTINE free_tree(tree)
+    CLASS(linked_tree) :: tree
+
+    INTEGER :: i
+    
+    IF ( ALLOCATED(tree%child) ) THEN
+      DO i=1,SIZE(tree%child)
+        CALL free_tree(tree%child(i))
+      END DO
+      DEALLOCATE(tree%child)
+    END IF
+    IF ( ALLOCATED(tree%weight) ) DEALLOCATE( tree%weight )
+    IF ( ALLOCATED(tree%relevant) ) DEALLOCATE( tree%relevant )
+  
+  END SUBROUTINE free_tree
+  
+  RECURSIVE SUBROUTINE WriteTree(tree,step_given)
+    TYPE(linked_tree) :: tree
+    INTEGER, OPTIONAL :: step_given
+
+    INTEGER :: i, step
+
+    IF (PRESENT(step_given)) THEN
+      step = step_given
+    ELSE
+      step=1
+    END IF
+    
+    WRITE (*,'(I3)',ADVANCE='NO') tree%id
+    IF ( tree%id_char /= '' ) THEN
+      WRITE (*,'(A)',ADVANCE = 'NO') '/'//TRIM(ADJUSTL(tree%id_char))
+    END IF
+
+    IF ( ALLOCATED(tree%child) ) THEN
+      WRITE (*,'(A1,I1,A)',ADVANCE='NO') '(',step,' '
+      DO i=1,SIZE(tree%child)
+        CALL WriteTree(tree%child(i),step+1)
+      END DO  
+      WRITE (*,'(A,I2,A)',ADVANCE='NO') ' ',step,')'
+    END IF
+    IF ( step/=1 ) WRITE (*,'(A2)',ADVANCE='NO') ', '
+  END SUBROUTINE WriteTree
+
+
+  RECURSIVE SUBROUTINE FindLeafs(tree,leafs)
+    TYPE(linked_tree) :: tree
+    TYPE(linked_list) :: leafs
+
+    INTEGER :: i
+
+    IF (ALLOCATED(tree%child)) THEN
+      DO i=1,SIZE(tree%child)
+        CALL FindLeafs(tree%child(i),leafs)
+      END DO
+    ELSE
+      CALL leafs%put(tree%id)
+    END IF
+  END SUBROUTINE FindLeafs
+
 
   SUBROUTINE NextLumpingGroup(group, Spc, SpcReacs, n_SpcReacs)
     INTEGER :: Spc, n_SpcReacs
@@ -1121,27 +1740,30 @@ MODULE Lumping_Mod
   END SUBROUTINE NextLumpingGroup
 
 
-  RECURSIVE SUBROUTINE put_ll(list,id,given_id_char)
+  RECURSIVE SUBROUTINE put_ll(list, id, id_char, weight)
     CLASS(linked_list) , INTENT(INOUT) :: list
     INTEGER                            :: id
-    CHARACTER(LenName) , OPTIONAL      :: given_id_char
-
-    CHARACTER(LenName) :: id_char
-    
-    IF ( PRESENT(given_id_char) ) THEN
-      id_char = given_id_char
-    ELSE
-      id_char = ''
-    END IF
-
+    CHARACTER(LenName) , OPTIONAL      :: id_char
+    REAL(dp)           , OPTIONAL      :: weight
+   
     IF ( .NOT. ASSOCIATED(list%next) .AND. list%id .EQ. -1 ) THEN
       list%id=id
-      list%id_char=id_char
+      IF (PRESENT(id_char)) list%id_char = id_char
+      IF (PRESENT(weight))  list%weight  = weight
     ELSE
       IF ( .NOT. ASSOCIATED(list%next) ) ALLOCATE(list%next)
-      CALL put_ll(list%next,id,id_char)
+
+      IF (PRESENT(id_char) .AND. PRESENT(weight)) THEN
+        CALL put_ll(list%next,id,id_char,weight)
+      ELSE IF (PRESENT(id_char)) THEN
+        CALL put_ll(list%next,id,id_char=id_char)
+      ELSE IF (PRESENT(weight)) THEN
+        CALL put_ll(list%next,id,weight=weight)
+      ELSE
+        CALL put_ll(list%next,id)
+      END IF
     END IF
-  END SUBROUTINE put_ll 
+  END SUBROUTINE put_ll
 
   RECURSIVE SUBROUTINE free_ll(list)
     CLASS(linked_list), INTENT(inout) :: list
@@ -1150,63 +1772,11 @@ MODULE Lumping_Mod
        DEALLOCATE(list%next)
     END IF
     list%next => NULL()
+    list%id=-1
+    list%id_char=''
+    list%weight=-1.0_dp
   END SUBROUTINE free_ll
 
-  FUNCTION get_Spc_char(Spc, SpcReac) RESULT(Spc_char)
-    INTEGER, INTENT(IN) :: Spc
-    INTEGER, INTENT(IN), OPTIONAL :: SpcReac
-
-    CHARACTER(LenName) :: Spc_char
-
-    INTEGER :: some_reac,i
-
-    Spc_Char=''
-
-    IF ( PRESENT(SpcReac) .AND. SpcReac>0 .AND. ALLOCATED(ReactionSystem(SpcReac)%Educt) ) THEN
-      DO i=LBOUND(ReactionSystem(SpcReac)%Educt,1),UBOUND(ReactionSystem(SpcReac)%Educt,1)
-        IF ( ReactionSystem(SpcReac)%Educt(i)%iSpecies == Spc ) THEN
-          Spc_char = ReactionSystem(SpcReac)%Educt(i)%Species
-        END IF
-      END DO
-    ELSE
-      ! find where Spc appears as product
-      some_reac = FINDLOC(B%ColInd,Spc,DIM=1)
-      ! find which reaction this is
-      IF ( some_reac > 0 ) THEN
-        some_reac = MINLOC(B%RowPtr,MASK=B%RowPtr>some_reac,DIM=1) - 1
-      END IF
-
-      IF ( ALLOCATED(ReactionSystem(some_reac)%Product) .AND. some_reac > 0) THEN
-        DO i=LBOUND(ReactionSystem(some_reac)%Product,1),UBOUND(ReactionSystem(some_reac)%Product,1)
-          IF ( ReactionSystem(some_reac)%Product(i)%iSpecies == Spc ) THEN
-            Spc_char = ReactionSystem(some_reac)%Product(i)%Species
-          END IF
-        END DO
-      ELSE 
-        ! find where Spc appears as educt
-        some_reac = FINDLOC(A%ColInd,Spc,DIM=1)
-        ! find which reaction this is
-        IF ( some_reac > 0 ) THEN
-          some_reac = MINLOC(A%RowPtr,MASK=A%RowPtr>some_reac,DIM=1) - 1
-        END IF  
-
-        IF ( ALLOCATED(ReactionSystem(some_reac)%Educt) .AND. some_reac > 0) THEN
-          DO i=LBOUND(ReactionSystem(some_reac)%Educt,1),UBOUND(ReactionSystem(some_reac)%Educt,1)
-            IF ( ReactionSystem(some_reac)%Educt(i)%iSpecies == Spc ) THEN
-              Spc_char = ReactionSystem(some_reac)%Educt(i)%Species
-            END IF
-          END DO
-        END IF
-      END IF
-    END IF
-
-    IF ( Spc_Char == '' ) THEN
-      WRITE(*,*) 'ERROR: could not find char name of species ',Spc
-      STOP
-    END IF
-
-  END FUNCTION get_Spc_char
-  
   RECURSIVE SUBROUTINE put_lumping_group(group,Spc,SpcReacs,given_id)
     CLASS(lumping_group), INTENT(INOUT) :: group
     INTEGER, DIMENSION(:), INTENT(IN)   :: SpcReacs
@@ -1229,9 +1799,10 @@ MODULE Lumping_Mod
        CALL group%reactions(iReac)%put(id=SpcReacs(iReac))
       END DO
       
-      Spc_char = get_Spc_char(Spc,SpcReacs(1))
-      
-      CALL group%spc%put(Spc,Spc_char)
+      !Spc_char = get_Spc_char(Spc,SpcReacs(1))
+      Spc_char = y_name(Spc)
+
+      CALL group%spc%put(Spc,Spc_char,ONE)
       group%id=id
     ELSE ! else go on searching for an empty group
       IF ( .NOT. ASSOCIATED(group%next) ) ALLOCATE(group%next)
@@ -1257,7 +1828,7 @@ MODULE Lumping_Mod
     CALL group%spc%free()
   END SUBROUTINE free_lumping_group
 
-  SUBROUTINE lumping_group_add(group, Spc, reac_equivs, SpcReacs)
+  SUBROUTINE lumping_group_add(group, Spc, reac_equivs, SpcReacs, Conc_ratio)
     ! input:
     !
     !  lumping group that is to be extended by Spc and its reactions
@@ -1271,14 +1842,17 @@ MODULE Lumping_Mod
     INTEGER :: Spc
     INTEGER, DIMENSION(:) :: SpcReacs
     !
+    !  ratio of concentrations jSpc/iSpc
+    REAL(dp) :: Conc_ratio
+    !
     ! end input
 
     INTEGER :: i
     CHARACTER(LenName) :: Spc_char
 
-    Spc_char = get_Spc_char(Spc,SpcReacs(1))
-
-    CALL group%spc%put(Spc,Spc_char)
+    !Spc_char = get_Spc_char(Spc,SpcReacs(1))
+    Spc_char = y_name(Spc)
+    CALL group%spc%put(Spc,Spc_char,Conc_ratio)
 
     DO i=1,SIZE(reac_equivs)
       CALL group%reactions(i)%put(SpcReacs(reac_equivs(i)))
@@ -1289,6 +1863,7 @@ MODULE Lumping_Mod
   END SUBROUTINE lumping_group_add
 
 
+
 ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !
@@ -1297,12 +1872,303 @@ MODULE Lumping_Mod
 ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+  SUBROUTINE Print_LumpedSysFile(l_RS, first_group, FileName)
+    ! input:
+    !
+    TYPE(NewReac_Data), DIMENSION(:), INTENT(IN) :: l_RS
+    !
+    TYPE(lumping_group), TARGET, INTENT(IN)      :: first_group
+    !
+    CHARACTER(*), INTENT(IN)                     :: FileName
+    !
+    ! end input
+
+    INTEGER :: i, j, nR, nEducts, nProducts
+    REAL(dp) :: Koeff
+    CHARACTER(lenName) :: Species, Koeff_Str, len_Str
+    TYPE(lumping_group), POINTER :: group
+    TYPE(linked_list), POINTER :: Spc_list
+    
+    group=>first_group
+    
+    OPEN(UNIT=989,FILE=ADJUSTL(TRIM(FileName)),STATUS='UNKNOWN')
+  
+    WRITE(989,'(A)') '# ================= '//TRIM(FileName)//' ================='
+    WRITE(989,'(A)') '# = Please copy the data into your sys-file for ='
+    WRITE(989,'(A)') '# =============== chemical input. ==============='
+    WRITE(989,'(A)') '#'
+    WRITE(989,'(A)') '#  ===================   Unit options   ======================'
+    WRITE(989,'(A)') ''
+    WRITE(989,'(A)') 'UNIT GAS    0   #    Gas phase units     (0 = molec/cm3, 1 = mol/m3)'
+    WRITE(989,'(A)') 'UNIT AQUA   0   #    Aqueous phase units (0 = mol/l)'
+    WRITE(989,'(A)') ''
+    WRITE(989,'(A)') '#'
+    WRITE(989,'(A)') '# This is a lumped system. Several original species were lumped.'
+    WRITE(989,'(A)') '# The reactions below consist of these lumped species.' 
+    WRITE(989,'(A)') '#'
+    WRITE(989,'(A)') '# The lumped species have names and ingredients of the original system as follows:'
+    DO WHILE ( ASSOCIATED(group) )
+      IF ( group%nspc > 1 ) THEN
+        WRITE(989,'(A)') '# '
+        WRITE(989,'(A)') '# '//TRIM(ADJUSTL(group%spc%id_char))
+        WRITE(989,'(A)') '# contains '
+
+        Spc_list => group%spc
+        WRITE(989,'(A)', ADVANCE ='NO') '# '//TRIM(ADJUSTL(Spc_list%id_char))
+        DO WHILE ( ASSOCIATED(Spc_list%next) )
+          Spc_list => Spc_list%next
+          WRITE(989,'(A)', ADVANCE='NO') ', '//TRIM(ADJUSTL(Spc_list%id_char))
+        END DO
+        WRITE(989,'(A)') ''
+      END IF
+      group=>group%next
+    END DO
+    WRITE(989,'(A)') '#'
+    WRITE(989,'(A)') '#'
+    WRITE(989,'(A)') '#'
+
+
+
+    nR = SIZE(l_RS)
+    DO i=1,nR
+      WRITE (989,*)
+      
+      WRITE (989,'(A)') 'CLASS: '//TRIM(l_RS(i)%Type)
+
+      nEducts   = SIZE(l_RS(i)%Educt)
+      nProducts = SIZE(l_RS(i)%Product)
+      DO j=1,nEducts
+        Koeff = l_RS(i)%Educt(j)%Koeff
+        Species = l_RS(i)%Educt(j)%Species
+        Koeff_Str = Real2CharDec(Koeff)
+        WRITE (len_Str,'(I3)') LEN_TRIM(ADJUSTL(Koeff_Str))+LEN_TRIM(Species)+1
+        WRITE (989,'(A'//TRIM(len_Str)//')',ADVANCE='NO') TRIM(ADJUSTL(Koeff_Str))//' '//TRIM(Species)
+        IF ( j<nEducts ) THEN
+          WRITE (989,'(A3)',ADVANCE='NO') ' + '
+        ELSE 
+          WRITE (989,'(A3)',ADVANCE='NO') ' = '
+        END IF
+      END DO
+     
+!counter2 = 0 
+      DO j=1,nProducts
+        Koeff = l_RS(i)%Product(j)%Koeff
+        Species = l_RS(i)%Product(j)%Species
+        Koeff_Str = Real2CharDec(Koeff)
+        WRITE (len_Str,*) LEN_TRIM(ADJUSTL(Koeff_Str))+LEN_TRIM(Species)+1
+        WRITE (989,'(A'//TRIM(len_Str)//')',ADVANCE='NO') TRIM(ADJUSTL(Koeff_Str))//' '//TRIM(Species)
+        IF ( j<nProducts ) THEN
+          WRITE (989,'(A3)',ADVANCE='NO') ' + '
+        END IF
+!counter2 = counter2 + LEN_TRIM(ADJUSTL(Koeff_Str))+LEN_TRIM(Species)+1 + 3
+      END DO
+!IF (counter2>403) WRITE(*,*) counter2-3
+!IF (counter2 > 403) counter1 = counter1+1
+    
+      WRITE (989,*) 
+      WRITE (989,'(A)') TRIM(l_RS(i)%Line3)
+      WRITE (989,'(A)') TRIM(l_RS(i)%Line4)
+    END DO
+
+    CLOSE(989)    
+  END SUBROUTINE Print_LumpedSysFile
+
+  SUBROUTINE EmisTreeToMatlab(tree)
+    TYPE(linked_tree), TARGET :: tree
+
+    CHARACTER(LenName) :: Spc_name, num
+    TYPE(linked_list), TARGET  :: starts, ends, weights, mask, leafs
+    TYPE(linked_list), POINTER :: temp
+    INTEGER :: treeID
+
+    CALL mask%put(tree%id)
+    CALL CollectNodesEdges(tree,starts,ends,weights,mask)
+    CALL FindLeafs(tree,leafs)
+
+    OPEN(UNIT=989,FILE='LUMPING/EmisTree_'//TRIM(ADJUSTL(tree%id_char))//'.txt',STATUS='UNKNOWN')
+    
+    ! write start points of edges
+    temp=>starts
+    WRITE (989,'(A)',ADVANCE='NO') 't = ['
+    DO
+      treeID = SearchLinkedList(mask,id=temp%id)
+      WRITE(num,*) treeID 
+      WRITE(989,'(A)',ADVANCE='NO') TRIM(ADJUSTL(num))//' '
+      IF ( ASSOCIATED(temp%next) ) THEN
+        temp=>temp%next
+      ELSE
+        EXIT
+      END IF
+    END DO
+    WRITE(989,'(A)',ADVANCE='NO') '];'
+    WRITE(989,'(A)') ''
+
+    ! write end points of edges
+    temp=>ends
+    WRITE (989,'(A)',ADVANCE='NO') 's = ['
+    DO 
+      treeID = SearchLinkedList(mask,id=temp%id)
+      WRITE(num,*) treeID 
+      WRITE(989,'(A)',ADVANCE='NO') TRIM(ADJUSTL(num))//' '
+      IF ( ASSOCIATED(temp%next) ) THEN
+        temp=>temp%next
+      ELSE
+        EXIT
+      END IF
+    END DO
+    WRITE(989,'(A)',ADVANCE='NO') '];'
+    WRITE(989,'(A)') ''
+
+    ! write matlab commands
+    WRITE(989,'(A)') 'G=digraph(s,t);'
+
+    ! write NodeLabel
+    temp=>mask
+    WRITE (989,'(A)',ADVANCE='NO') 'NodeLabels = {'
+    DO
+      IF (temp%id == tree%id) THEN
+        num = 'Start: '//TRIM(ADJUSTL(y_name(temp%id)))
+      ELSE IF (SearchLinkedList(leafs,id=temp%id) > 0) THEN
+        num = 'End: '//TRIM(ADJUSTL(y_name(temp%id)))
+      ELSE
+        num = y_name(temp%id)
+      END IF
+      WRITE(989,'(A)',ADVANCE='NO') ' '''//TRIM(ADJUSTL(num))//''' '
+      IF ( ASSOCIATED(temp%next) ) THEN
+        temp=>temp%next
+      ELSE
+        EXIT
+      END IF
+    END DO
+    WRITE(989,'(A)',ADVANCE='NO') '};'
+    WRITE(989,'(A)') ''
+    
+    ! write EdgeLabel
+    temp=>weights
+    WRITE (989,'(A)',ADVANCE='NO') 'EdgeLabelsUnsorted = {'
+    DO 
+      WRITE(num,*) temp%id
+      WRITE(989,'(A)',ADVANCE='NO') ' '''//TRIM(ADJUSTL(num))//'/'//TRIM(ADJUSTL(temp%id_char))//''' '
+      IF ( ASSOCIATED(temp%next) ) THEN
+        temp=>temp%next
+      ELSE
+        EXIT
+      END IF
+    END DO
+    WRITE(989,'(A)',ADVANCE='NO') '};'
+    WRITE(989,'(A)') ''
+    WRITE(989,'(A)') '[~,Perm] = sort(s);'
+    WRITE(989,'(A)') 'EdgeLabels=EdgeLabelsUnsorted(Perm);'
+    WRITE(989,'(A)') 'plot(G,''NodeLabel'',NodeLabels,''EdgeLabel'',EdgeLabels);'
+
+
+    CLOSE(989)
+
+  END SUBROUTINE EmisTreeToMatlab
+
+
+  FUNCTION Read_Emis_Families(FileName) RESULT(EmisFams)
+    USE Reac_Mod, ONLY: y_name
+    USE ChemSys_Mod,  ONLY: PositionSpeciesAll
+    ! OUT:
+    TYPE(Emis_Family), ALLOCATABLE :: EmisFams(:)
+    ! IN:
+    CHARACTER(*) :: FileName
+    ! TEMP:
+    INTEGER :: iPos, j, nFams, current, FirstBlank, SecondBlank, temp_n
+    REAL(dp) :: NewPortion
+    CHARACTER(LenLine) :: Line, temp
+    CHARACTER(LenName) :: NewMember
+    CHARACTER(LenName), ALLOCATABLE :: temp_arr(:)
+
+    OPEN(UNIT=99,FILE=TRIM(ADJUSTL(FileName)),STATUS='UNKNOWN')
+    REWIND(99)
+
+    iPos = FindSection(99,'EMIS_FAMILIES')
+    IF ( iPos==-1 ) THEN
+      ALLOCATE(EmisFams(1))
+      RETURN
+    END IF
+    
+    ! count families
+    nFams = 0
+    DO
+      iPos = FindSection(99,'FAMILY')
+      IF ( iPos /= -1 ) THEN
+        nFams = nFams + 1
+      ELSE
+        EXIT
+      END IF
+    END DO   
+    ALLOCATE(EmisFams(nFams))
+
+    ! walk to the first family
+    REWIND(99)
+    iPos = FindSection(99,'EMIS_FAMILIES')
+    current = 0
+    ALLOCATE(temp_arr(0))
+    DO
+      READ(99,'(A)') Line; Line = TRIM(ADJUSTL(Line))
+      IF ( Line == 'END_EMIS_FAMILIES' ) THEN
+        EXIT
+      ELSE IF ( Line(1:6) == 'FAMILY' ) THEN ! go to next family
+        
+        current = current + 1
+     
+        ! FirstBlank is between FAMILY and Name, SecondBlank is between Name and Emission value
+        FirstBlank  = INDEX(Line,' ')
+        SecondBlank = FirstBlank + INDEX(ADJUSTL(Line(FirstBlank:)),' ')
+     
+        ! collect name and emission value of family
+        EmisFams(current)%Name = TRIM(ADJUSTL(Line(FirstBlank:SecondBlank)))
+        temp = TRIM(ADJUSTL(Line(SecondBlank:)))
+        READ(temp,*) EmisFams(current)%Emis_val
+        ALLOCATE(EmisFams(current)%Members(0),EmisFams(current)%Members_char(0),EmisFams(current)%Portions(0))
+      
+      ELSE IF ( Line /= '' ) THEN ! add new family member
+        
+        ! FirstBlank is between family member (species) and emission portion
+        FirstBlank = INDEX(Line,' ')
+        
+        NewMember = TRIM(ADJUSTL(Line(:FirstBlank)))
+        temp = TRIM(ADJUSTL(Line(FirstBlank:)))
+        READ(temp,*) NewPortion
+
+        ! increase size of members_char by one, [ , ]-syntax doesnt work
+        ! optimize maybe
+        temp_n = SIZE(EmisFams(current)%Members_char)
+        DEALLOCATE(temp_arr); ALLOCATE(temp_arr(temp_n+1))
+        temp_arr(1:temp_n) = EmisFams(current)%Members_char
+        temp_arr(temp_n+1) = NewMember
+        DEALLOCATE(EmisFams(current)%Members_char); ALLOCATE(EmisFams(current)%Members_char(temp_n+1))
+
+        EmisFams(current)%Members_char = temp_arr
+        EmisFams(current)%Members      = [ EmisFams(current)%Members     , PositionSpeciesAll(NewMember) ]
+        EmisFams(current)%Portions     = [ EmisFams(current)%Portions    , NewPortion                    ]
+      
+      END IF
+    END DO
+    
+   ! DO j=1,nFams
+   !   WRITE(*,*) 'Family Name ',EmisFams(j)%Name
+   !   WRITE(*,*) 'Emis val: ',Real2CharExp(EmisFams(j)%Emis_val)
+   !   WRITE(*,*) 'Members char: ',EmisFams(j)%Members_char
+   !   WRITE(*,*) 'Members: ',EmisFams(j)%Members
+   !   WRITE(*,*) 'Portions: ',EmisFams(j)%Portions
+   !   WRITE(*,*) ''
+   !   WRITE(*,*) ''
+   !   WRITE(*,*) ''
+   ! END DO
+
+    CLOSE(99)
+
+  END FUNCTION Read_Emis_Families
+
 
   FUNCTION Read_Preserve_Spc(FileName) RESULT(Idx)
     USE ChemSys_Mod,  ONLY: PositionSpeciesAll
     USE Control_Mod,  ONLY: LenLine
     USE Reac_Mod,     ONLY: y_name
-    USE ISSA_Mod,     ONLY: FindSection
     ! This routine will read the species that are not to be lumped.
     ! OUT:
     INTEGER, ALLOCATABLE :: Idx(:)
@@ -1317,22 +2183,27 @@ MODULE Lumping_Mod
 
     ALLOCATE(Idx(0))
     iPos = FindSection(99,'PRESERVE')
-    IF (iPos==-1) RETURN ! no target species declared
-    DO
-      READ(99,'(A)') Line;  Line = ADJUSTL(Line)
-      IF (TRIM(Line) == 'END_PRESERVE') EXIT
-      IF (TRIM(Line) == '' ) CYCLE
-      iPos = PositionSpeciesAll(Line)
-      IF ( iPos > 0 ) Idx = [ Idx , iPos ]
-    END DO
+    IF ( iPos /= -1 ) THEN
+      DO
+        READ(99,'(A)') Line;  Line = ADJUSTL(Line)
+        IF (TRIM(Line) == 'END_PRESERVE') EXIT
+        IF (TRIM(Line) == '' ) CYCLE
+        iPos = PositionSpeciesAll(Line)
+        IF ( iPos > 0 ) Idx = [ Idx , iPos ]
+      END DO
+    END IF
     CLOSE(99)
     
     WRITE(*,*)
     WRITE(*,777) 'Species that are preserved while lumping:'
     WRITE(*,*)
-    DO j=1,SIZE(Idx)
-      WRITE(*,'(10X,A,I0,A,I6,5X,A)') '    Preserved Spc ',j,' = ',Idx(j),TRIM(y_name(Idx(j)))
-    END DO
+    IF ( SIZE(Idx)==0 ) THEN
+      WRITE(*,*) '    none'
+    ELSE
+      DO j=1,SIZE(Idx)
+        WRITE(*,'(10X,A,I0,A,I6,5X,A)') '    Preserved Spc ',j,' = ',Idx(j),TRIM(y_name(Idx(j)))
+      END DO
+    END IF
     WRITE(*,*); WRITE(*,*)
 
     
@@ -1367,16 +2238,16 @@ MODULE Lumping_Mod
     TYPE(linked_list), TARGET :: unlumped_Spc
     
     TYPE(linked_list), POINTER :: temp_list
-    INTEGER, ALLOCATABLE :: Spcs_array(:), Spcs_offset(:), reacs_array(:)
+    INTEGER, ALLOCATABLE :: Spcs_offset(:), reacs_array(:)
     CHARACTER, ALLOCATABLE :: Spcs_unlumped(:)
+    REAL(dp), ALLOCATABLE :: sigmas(:)
     
     INTEGER :: i, j, iR, len_Spcs, n_Spcs
     CHARACTER(LEN=6) :: i_str, iR_str, id_str
 
-    CALL LL2Array(group%spc,Spcs_array)
-    n_Spcs=SIZE(Spcs_array)
+    CALL LL2Array_weight(group%spc,sigmas)
     
-    IF ( n_Spcs > 1 ) THEN
+    IF ( group%nspc > 1 ) THEN
       group_count = group_count + 1
       
       id_str=''
@@ -1386,6 +2257,7 @@ MODULE Lumping_Mod
       WRITE (*,*) id_str//'. lumping group '
       WRITE (*,*) ''
       WRITE (*,*) '      -number of species:',group%nspc
+      WRITE (*,*) '      -sigmas:', sigmas
       WRITE (*,'(A)',ADVANCE='NO') '       -species: '
       temp_list=>group%spc
       WRITE (*,'(A)',ADVANCE='NO') TRIM(ADJUSTL(temp_list%id_char))
@@ -1430,39 +2302,6 @@ MODULE Lumping_Mod
       END DO
     END IF
   END SUBROUTINE WriteLumpingGroups_rec
-
-  !SUBROUTINE GasSpc_LL2String(Spcs, Spc_LL)
-  !  CHARACTER, ALLOCATABLE :: Spcs(:)
-  !  TYPE(linked_list) :: Spc_LL
-  ! 
-  !  INTEGER :: len_Spcs, i, j, n_Spcs
-  !  INTEGER, ALLOCATABLE :: Spcs_array(:), Spcs_offset(:), reacs_array(:)
-  ! 
-  !  len_Spcs = 0
-  !  CALL LL2Array(Spc_LL,Spcs_array)
-  !  n_Spcs=SIZE(Spcs_array)
-  !  ALLOCATE(Spcs_offset(n_Spcs+1))
-  !  DO i=1,n_Spcs
-  !    Spcs_offset(i)=len_Spcs+1
-  !    ! add length of species name plus comma plus space
-  !    len_Spcs=len_Spcs+LEN(TRIM(ListGas2(Spcs_array(i))%Species))+2
-  !  END DO
-  !  ! remove last comma and space
-  !  !len_Spcs=len_Spcs-2
-  !  Spcs_offset(n_Spcs+1)=len_Spcs+1
-  !  ALLOCATE(Spcs(len_Spcs))
- ! 
- !   DO i=1,n_Spcs
- !     DO j=0,Spcs_offset(i+1)-3-Spcs_offset(i)
- !       Spcs(Spcs_offset(i)+j) = ListGas2(Spcs_array(i))%Species(j+1:j+1) ! j+1 to overcome initial blank space
- !     END DO
- !     Spcs(Spcs_offset(i+1)-2:Spcs_offset(i+1)-2) = ','
- !     Spcs(Spcs_offset(i+1)-1:Spcs_offset(i+1)-1) = ' '
- !   END DO
- !   ! delete last comma
- !   Spcs(len_Spcs-1)=' '
-!
-!  END SUBROUTINE GasSpc_LL2String
 
   RECURSIVE SUBROUTINE WriteLinkedList(list)
     TYPE(linked_list) :: list
@@ -1509,6 +2348,61 @@ MODULE Lumping_Mod
     END DO
   END SUBROUTINE LL2Array
 
+  SUBROUTINE LL2Array_weight(list, list_array)
+    TYPE(linked_list), TARGET, INTENT(IN) :: list
+    REAL(dp), ALLOCATABLE, INTENT(OUT) :: list_array(:)
+
+    TYPE(linked_list), POINTER :: temp
+    INTEGER :: i,len
+
+    len=1
+    temp=>list
+    DO WHILE (ASSOCIATED(temp%next))
+      len=len+1
+      temp=>temp%next
+    END DO
+    ALLOCATE(list_array(len))
+    temp=>list
+
+    DO i=1,len
+      list_array(i)=temp%weight
+      temp=>temp%next
+    END DO
+  END SUBROUTINE LL2Array_weight
+
+  FUNCTION SearchLinkedList(list,id,id_char) RESULT(pos)
+    TYPE(linked_list),  INTENT(IN), TARGET    :: list
+    INTEGER,            INTENT(IN), OPTIONAL  :: id
+    CHARACTER(LenName), INTENT(IN), OPTIONAL  :: id_char
+
+    INTEGER :: pos
+
+    TYPE(linked_list), POINTER :: temp
+
+    temp=>list
+    pos=1
+    DO
+     IF ( PRESENT(id) ) THEN
+       IF ( temp%id==id ) THEN
+         EXIT
+       END IF
+     END IF
+     IF ( PRESENT(id_char) ) THEN
+       IF ( temp%id_char == id_char ) THEN
+         EXIT
+       END IF
+     END IF
+     IF ( ASSOCIATED(temp%next) ) THEN
+       temp=>temp%next
+       pos = pos+1
+     ELSE
+       pos=0
+       EXIT
+     END IF
+    END DO
+
+  END FUNCTION SearchLinkedList
+
   SUBROUTINE Logo3()
 
     WRITE (*,*) ''
@@ -1521,7 +2415,7 @@ MODULE Lumping_Mod
   
   END SUBROUTINE Logo3
 
-  FUNCTION Real2Char(x) RESULT(xChar)
+  FUNCTION Real2CharExp(x) RESULT(xChar)
     REAL(dp) :: x
     CHARACTER(LenLine) :: xChar
 
@@ -1561,7 +2455,77 @@ MODULE Lumping_Mod
     
     WRITE (xChar,'(E'//TRIM(ADJUSTL(nChars))//'.'//TRIM(ADJUSTL(relevant_digits))//'E'//TRIM(ADJUSTL(exp_char))//')') x
 
-  END FUNCTION Real2Char
-        
+  END FUNCTION Real2CharExp
+
+  FUNCTION Real2CharDec(x) RESULT(xChar)
+    REAL(dp) :: x
+    CHARACTER(LenLine) :: xChar
+
+    INTEGER :: mag, decim, aux
+    CHARACTER(LenLine) :: nChars, relevant_digits
+    REAL(dp) :: magnitude, temp
+
+    IF ( x/=0 ) THEN
+      magnitude = LOG(ABS(x))/LOG(TEN)
+    ELSE
+      magnitude = 0
+    END IF
+    temp = x
+    decim = 0
+    ! find number of relevant digits after comma (decim)
+    DO WHILE ( ABS(temp-ANINT(temp))>micro .AND. decim<16 )
+      temp = temp*10
+      decim=decim+1
+    END DO
+    decim = MAX(decim,1)
+    mag = INT(magnitude) + 1
+
+    IF (x<ZERO) THEN
+      aux=2
+    ELSE
+      aux=1
+    END IF
+    WRITE (nChars,*) decim + MAX(mag,1) + aux
+    WRITE (relevant_digits,*) decim
+
+    WRITE (xChar,'(F'//TRIM(ADJUSTL(nChars))//'.'//TRIM(ADJUSTL(relevant_digits))//')') x
+
+    !WRITE(*,*) 'x=',x
+    !WRITE(*,*) 'xChar=',xChar
+    !WRITE(*,*) ''
+
+  END FUNCTION Real2CharDec
+
+  FUNCTION FindSection(iUnit,SectionName,iLine_given) RESULT(iLine)
+    USE Control_Mod, ONLY: lenLine
+    ! OUT:
+    INTEGER      :: iLine
+    ! IN: 
+    INTEGER      :: iUnit
+    CHARACTER(*) :: SectionName
+    INTEGER, OPTIONAL :: iLine_given
+    ! TEMP: 
+    CHARACTER(LenLine) :: Line
+    INTEGER      :: io_err
+   
+    iLine = 0
+    IF ( PRESENT(iLine_given) ) THEN ! walk to iLine_given to start searching procedure from there
+      DO WHILE ( iLine < iLine_given )
+        READ(iUnit,'(A)',IOSTAT=io_err) Line
+        iLine = iLine + 1
+      END DO
+    END IF
+    DO
+      READ(iUnit,'(A)',IOSTAT=io_err) Line
+      IF (io_err==0) THEN
+        IF ( INDEX(TRIM(ADJUSTL(Line)),SectionName) /= 0 )  EXIT
+        iLine = iLine + 1
+      ELSEIF (io_err>0.OR.io_err<0) THEN
+        iLine = -1
+        EXIT
+      END IF
+    END DO
+     777 FORMAT(10X,A)
+  END FUNCTION FindSection
 
 END MODULE Lumping_Mod
