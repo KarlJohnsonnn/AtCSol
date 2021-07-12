@@ -750,6 +750,47 @@ MODULE Sparse_Mod
     vec = tmpVec
   END SUBROUTINE SortVecAsc2
 
+  SUBROUTINE SortVecDescReal(vec,q)
+    REAL(dp), INTENT(INOUT) :: vec(:)
+    INTEGER, ALLOCATABLE, OPTIONAL :: q(:)
+    !
+    INTEGER :: i,n,iMax(1)
+    REAL(dp), ALLOCATABLE :: tmpVec(:)
+   
+    n = SIZE(Vec)
+    ALLOCATE(tmpVec(n));  tmpVec = 0
+   
+    IF (PRESENT(q).AND..NOT.ALLOCATED(q)) ALLOCATE(q(n))
+    
+    DO i = 1 , n
+      iMax = MAXLOC(vec)
+      tmpVec(i) = vec(iMax(1))
+      vec(iMax(1)) = -1.0
+      IF (PRESENT(q)) q(i) = iMax(1)
+    END DO
+    vec = tmpVec
+  END SUBROUTINE SortVecDescReal
+
+  SUBROUTINE SortVecAscReal(vec,q)
+    REAL(dp), INTENT(INOUT) :: vec(:)
+    INTEGER, ALLOCATABLE, OPTIONAL :: q(:)
+    !
+    INTEGER :: i,n,iMin(1)
+    REAL(dp), ALLOCATABLE :: tmpVec(:)
+   
+    n = SIZE(Vec)
+    ALLOCATE(tmpVec(n));  tmpVec = 0
+   
+    IF (PRESENT(q).AND..NOT.ALLOCATED(q)) ALLOCATE(q(n))
+    
+    DO i = 1 , n
+      iMin = MINLOC(vec)
+      tmpVec(i) = vec(iMin(1))
+      vec(iMin(1)) = HUGE(vec(iMin(1)))
+      IF (PRESENT(q)) q(i) = iMin(1)
+    END DO
+    vec = tmpVec
+  END SUBROUTINE SortVecAscReal
 
 
   SUBROUTINE SeperatePosNegValues(p_out,n_out,m_in)
