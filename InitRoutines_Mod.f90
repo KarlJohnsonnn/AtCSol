@@ -266,8 +266,8 @@ MODULE InitRoutines_Mod
 
 
     NAMELIST /SCENARIO/  TargetFile , &
-     &                   FluxFile, &
-     &                   FluxMetaFile, &
+     !&                   FluxFile, &
+     !&                   FluxMetaFile, &
      &                   Red_TStart ,  &
      &                   Red_TEnd ,    &
      &                   eps_red 
@@ -284,6 +284,8 @@ MODULE InitRoutines_Mod
     Red_TEnd     = 0.0d0 
     eps_red      = 0.11d0 
 
+    FluxFile     = 'flux_'//TRIM(BSP)//'.dat'
+    FluxMetaFile = 'fluxmeta_'//TRIM(BSP)//'.dat'   
 
     READ(ReductionUnit,SCENARIO,IOSTAT=io_stat,IOMSG=io_msg)
     CALL ErrorCheck(io_stat,io_msg,'reading SCENARIO list')
