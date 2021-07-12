@@ -287,7 +287,10 @@
 
 !
 !-- input chemical reaction mechnism
+    CHARACTER(3), PARAMETER :: LenLineChar = '400'
+   !CHARACTER(5), PARAMETER :: LenLineChar = '10000'
     INTEGER, PARAMETER :: LenLine=400
+   !INTEGER, PARAMETER :: LenLine=10000
     INTEGER, PARAMETER :: LenName=100
     INTEGER, PARAMETER :: LenType=20
 

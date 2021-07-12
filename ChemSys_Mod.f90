@@ -263,7 +263,8 @@ MODULE Chemsys_Mod
     iLine = 0
     DO
 
-      READ( InputUnit , '(A400)' , IOSTAT=is ) LocLine
+      !READ( InputUnit , '(A400)' , IOSTAT=is ) LocLine
+      READ( InputUnit , '(A'//TRIM(ADJUSTL(LenLineChar))//')' , IOSTAT=is ) LocLine
       idxFAC = INDEX(LocLine,'$')
 
       IF ( idxFAC > 0 ) THEN
@@ -507,7 +508,7 @@ MODULE Chemsys_Mod
     iLine = 0
     DO
 
-      READ( InputUnit , '(A400)' , IOSTAT=is ) LocLine
+      READ( InputUnit , '(A'//TRIM(ADJUSTL(LenLineChar))//')' , IOSTAT=is ) LocLine
       idxFAC = INDEX(LocLine,'$')
 
       IF ( idxFAC > 0 ) THEN
@@ -1014,7 +1015,7 @@ MODULE Chemsys_Mod
     INTEGER,  ALLOCATABLE :: permutation(:)
     INTEGER :: newLen
 
-    
+
      
     !-----------------------------------------------------------------------
     ! --- Build the reaction system
@@ -2054,7 +2055,7 @@ MODULE Chemsys_Mod
     !
     REWIND(InputUnit)
     DO 
-      READ(InputUnit,'(A400)',IOSTAT=ios,IOMSG=iom) LocLine
+      READ(InputUnit,'(A'//LenLineChar//')',IOSTAT=ios,IOMSG=iom) LocLine
       IF ( ios /= 0 ) THEN
         WRITE(*,*) ' Error Reading Units'
         WRITE(*,*) ' Error Message  ::  ',TRIM(iom)
@@ -2260,6 +2261,7 @@ MODULE Chemsys_Mod
 
       !WRITE(*,*) ' species  ::: ', TRIM(Species)//'   is dummy = ', dummy
 
+IF (dummy) WRITE(*,*) 'dummy: ', LEN_TRIM(String), LenLine, String
       IF (PosSpecies==1) THEN           
         sbL = INDEX(TRIM(Species),'[');  sbR = INDEX(TRIM(Species),']')
 
