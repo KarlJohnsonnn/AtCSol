@@ -10,8 +10,8 @@ LINK  = mpif90
 F90   = mpif90 $(OPTFREE)
 F90_F = mpif90 $(OPTFIX)
 
-OPT_O =  -O3
-OPT_D =  -g -C -O0 -Warray-bounds -Wextra -fbacktrace -ffpe-trap=zero -fimplicit-none  -fcheck=all -Wall
+OPT_O =  -O3 -fallow-argument-mismatch
+OPT_D =  -g -C -O0 -Warray-bounds -Wextra -fbacktrace -ffpe-trap=zero -fimplicit-none  -fcheck=all -Wall -fallow-argument-mismatch
 
 OP=
 CL=
