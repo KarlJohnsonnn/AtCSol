@@ -3,12 +3,13 @@
   WaitBar  = .T.
   Simulation = .T.
   KPP_Conversion = .F.
+  Reduction = .T.
 /END
 &FILES
-  SysFile  = 'CHEM/MCM3-2new4Willi.sys'  
+  SysFile = 'CHEM/MCM_32.sys'
   DataFile = 'DAT/MCM32_CAPRAM40_full.dat'
   !InitFile = 'INI/Urban.ini'
-  InitFile = 'INI/urbMCM+C30m_erik.ini'
+  InitFile = 'INI/urbMCM+C30m_2.ini'
 /END
 &TIMES
   tBegin      = 0.0d0
@@ -38,12 +39,13 @@
   Ordering  = 8
 /END
 &OUTPUT
-  NetCdfFile  = 'NetCDF/MCM32_full.nc' ! location and name of NetCDF output file
-  StpNetCDF   = -600.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep
-=======
+  NetCdfFile  = 'NetCDF/MCM32_full_NewSysNewIni.nc' ! location and name of NetCDF output file
+!  StpNetCDF   = -600.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep
+!=======
   StpNetCDF   = -1.0d0              ! save after StpNetCDF seconds, if < 0.0 :  save every timestep
   StpFlux     = -1.0d0
   nOutP       = 1000                 ! number of output steps for LSODE case
   DebugPrint  = .F.                ! DEBUGGING Rosenbrock
   MatrixPrint = .F.                ! .TRUE. == print matricies , .FALSE. == do not print any matrix
+  FluxDataPrint = .T.
 /END
