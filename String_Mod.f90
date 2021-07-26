@@ -22,9 +22,16 @@ FUNCTION CompStringNE(S1,S2)
     SLong=>S1
     SShort=>S2
   ELSE   
-    SLong=>S1
-    SShort=>S2
+    SLong=>S2
+    SShort=>S1
   END IF  
+  
+  ! if S1 or S2 is empty, SLong/SShort is apparently not associated 
+  IF ((.NOT. ASSOCIATED(SLong)) .OR. (.NOT. ASSOCIATED(SShort))) THEN
+    CompStringNE=.TRUE.
+    RETURN
+  END IF
+
   CompStringNE=.FALSE.
   DO i=1,SIZE(SLong)
     IF (i<=SIZE(SShort)) THEN
@@ -53,9 +60,16 @@ FUNCTION CompStringEQ(S1,S2)
     SLong=>S1
     SShort=>S2
   ELSE   
-    SLong=>S1
-    SShort=>S2
+    SLong=>S2
+    SShort=>S1
   END IF  
+ 
+  ! if S1 or S2 is empty, SLong/SShort is apparently not associated 
+  IF ((.NOT. ASSOCIATED(SLong)) .OR. (.NOT. ASSOCIATED(SShort))) THEN
+    CompStringEQ=.FALSE.
+    RETURN
+  END IF
+
   CompStringEQ=.TRUE.
   DO i=1,SIZE(SLong)
     IF (i<=SIZE(SShort)) THEN
