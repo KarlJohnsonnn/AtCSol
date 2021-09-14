@@ -27,6 +27,8 @@
       CHARACTER(7)  :: OutputPath   = 'OUTPUT/'  ! path to output folder
       CHARACTER(80) :: FluxMetaFile = ''         ! meta data for unformatted flux data
       CHARACTER(80) :: FluxFile     = ''         ! flux data (unformatted)
+      CHARACTER(80) :: ConcMetaFile = ''         ! meta data for unformatted concentration data
+      CHARACTER(80) :: ConcFile     = ''         ! concentration data (unformatted)
 
       REAL(dp) :: Red_TStart, Red_TEnd     ! time interval for redcution procedure
       REAL(dp) :: eps_red                  ! threshold for reduction procedure
@@ -72,6 +74,7 @@
 &              , pHSet           & ! Initial pH by charge balance (1=on, 0=off)
 &              , WaitBar         & ! ladebalken im terminal bei simulation (=1, default=0)
 &              , FluxDataPrint   & ! writing flux data and analyse after simulaiton -> print new reaction file
+&              , ConcDataPrint   & ! writing concentration data and analyse after simulaiton -> print new reaction file
 &              , Simulation      & ! calculation of species concentration 
 &              , Reduction       & ! reduction of chemical species and reactions
 &              , Lumping           ! species lumping of chemical system
@@ -80,11 +83,11 @@
 
       INTEGER :: Error_Est         ! error estimation 1 = inf norm  , 2 = euklid norm
     
-!--- Output of reaction fluxes
+!--- Output of reaction fluxes/concentrations
       REAL(dp)                    :: StpFlux
-      INTEGER                     :: iStpFlux ! number of written flux steps
-
-
+      INTEGER                     :: iStpFlux &   ! number of written flux steps
+&                                  , iStpConc
+             
       INTEGER,          PARAMETER :: newReac_nr    = 1977
       CHARACTER(LEN=*), PARAMETER :: newReac_name  = 'BigRates.dat'
       INTEGER, ALLOCATABLE        :: newReac_List(:)

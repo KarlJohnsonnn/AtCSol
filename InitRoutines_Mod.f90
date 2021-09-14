@@ -60,14 +60,14 @@ MODULE InitRoutines_Mod
       &                    Ordering ,    &
       &                    ParOrdering
 
-      NAMELIST /OUTPUT/  NetCdfFile , &
-      &                  StpNetcdf ,  &
-      &                  StpFlux ,    &
-      &                  nOutP ,      &
-      &                  DebugPrint , &
-      &                  MatrixPrint, &
-      &                  FluxDataPrint
-
+      NAMELIST /OUTPUT/  NetCdfFile ,   &
+      &                  StpNetcdf ,    &
+      &                  StpFlux ,      &
+      &                  nOutP ,        &
+      &                  DebugPrint ,   &
+      &                  MatrixPrint,   &
+      &                  FluxDataPrint, &
+      &                  ConcDataPrint
 !
 !===================================================================
 !===  Set and Read Simulation Values
@@ -246,6 +246,7 @@ MODULE InitRoutines_Mod
       DebugPrint    = .FALSE.
       NetCdfPrint   = .TRUE.
       FluxDataPrint = .FALSE.
+      ConcDataPrint = .FALSE.
 !
 !--- Read OUTPUT namelist
       READ(RunUnit,OUTPUT,IOSTAT=io_stat,IOMSG=io_msg)
@@ -349,6 +350,8 @@ MODULE InitRoutines_Mod
 
     LumpingControlFile = 'LUMPING/'//TRIM(LumpingControlFile)
 
+    ConcFile = 'LUMPING/conc_'//TRIM(BSP)//'.dat'
+    ConcMetaFile = 'LUMPING/concmeta_'//TRIM(BSP)//'.dat'
 
     !IF ( eps_red <= 0.0_dp ) THEN
     !  WRITE(*,*) '  reduction parameter eps_red <= 0  ---> increase value'

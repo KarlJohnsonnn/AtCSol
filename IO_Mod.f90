@@ -1057,6 +1057,43 @@ MODULE IO_Mod
     CALL file_err(FileName,io_stat)
   END SUBROUTINE OpenFile_rStream
 
+  SUBROUTINE StreamWriteConcentrations(Conc)
+    USE Kind_Mod
+    USE Control_Mod, ONLY: ConcUnit, ConcFile, ConcMetaUnit, ConcMetaFile, iStpConc
+    REAL(dp), DIMENSION(:), INTENT(IN) :: Conc
+
+    INTEGER :: io_stat, io_pos
+    CHARACTER(100) :: io_msg
+
+    OPEN(unit=ConcUnit,      file=ConcFile,  status='old',   action='write', &
+    &    position='append', access='stream', iostat=io_stat, iomsg=io_msg    )
+    CALL file_err(ConcFile,io_stat,io_msg)
+    INQUIRE(ConcUnit, POS=io_pos)
+    WRITE(ConcUnit) Conc
+    CLOSE(ConcUnit)
+
+    iStpConc   = iStpConc + 1
+    OPEN(unit=ConcMetaUnit, file=ConcMetaFile, status='old', action='write', position='append')
+    WRITE(ConcMetaUnit,*) iStpConc, io_pos
+    CLOSE(ConcMetaUnit)
+
+    CONTAINS
+
+      SUBROUTINE file_err(filename,io_stat,io_msg)
+        CHARACTER(Len=*), INTENT(in) :: filename
+        INTEGER         , INTENT(in) :: io_stat
+        CHARACTER(Len=*), INTENT(in) :: io_msg
+        IF (io_stat /= 0) THEN
+          WRITE(*,"(79('!'))")
+          WRITE(*,'(A,I0)')    'ERROR operating on file:  '//TRIM(filename)//'  with io status:  ',io_stat 
+          WRITE(*,'(A)')       'Message:  '//TRIM(io_msg)
+          WRITE(*,"(79('!'))")
+          WRITE(*,*)'Exit ...'
+          STOP
+        END IF
+      END SUBROUTINE file_err
+  END SUBROUTINE StreamWriteConcentrations
+
   SUBROUTINE ConvertTime(t,fmt)
     USE Kind_Mod
     REAL(dp),   INTENT(INOUT) :: t    ! in seconds

@@ -80,10 +80,10 @@ MODULE Lumping_Mod
      CHARACTER(LenName), ALLOCATABLE  :: Members_char(:)
   END TYPE Emis_Family
 
-  ! positions of record in flux file
-  INTEGER, ALLOCATABLE :: Positions(:)
-  ! status of flux file
-  LOGICAL :: fluxfile_exists
+  ! positions of record in files
+  INTEGER, ALLOCATABLE :: FluxPositions(:), ConcPositions(:), Positions(:)
+  ! status of files
+  LOGICAL :: fluxfile_exists, concfile_exists
   ! dummy counter
   INTEGER :: counter1 = 0, counter2 = 0
 
@@ -146,40 +146,14 @@ MODULE Lumping_Mod
 
 
 
-!    ! Fill Flux variables (only Positions important)
-!
-!    FluxFile     = 'REDUCTION/flux_'//TRIM(BSP)//'.dat'
-!    FluxMetaFile = 'REDUCTION/fluxmeta_'//TRIM(BSP)//'.dat'   
-!    !FluxFile     = 'REDUCTION/flux_mcm_32.dat'
-!    !FluxMetaFile = 'REDUCTION/fluxmeta_mcm_32.dat'   
-!   
-!    ! look for flux file 
-!    INQUIRE(FILE=FluxMetaFile, EXIST=fluxfile_exists)
-!    ! reading meta data (positions of record)
-!    IF (fluxfile_exists) THEN
-!      CALL OpenFile_rSeq(FluxMetaUnit,FluxMetaFile)
-!      dummy = 0
-!      DO 
-!        READ(FluxMetaUnit,*,IOSTAT=io_stat,IOMSG=io_msg) 
-!        IF ( io_stat>0 ) WRITE(*,'(10X,A,I0,A)') '   ERROR first reading fluxmeta.dat:: ',io_stat,'  '//TRIM(io_msg)
-!        IF ( io_stat<0 ) EXIT
-!        dummy = dummy + 1
-!      END DO
-!      iStpFlux = dummy
-!      REWIND(FluxMetaUnit)
-!  
-!      ALLOCATE( Positions(iStpFlux), time_flux(iStpFlux), dt_flux(iStpFlux) )
-!      DO i=1,iStpFlux
-!        READ(FluxMetaUnit,*,IOSTAT=io_stat,IOMSG=io_msg) dummy , Positions(i) , time_flux(i) , dt_flux(i)
-!        IF ( io_stat>0 ) WRITE(*,'(10X,A,I0,A)') '   ERROR reading fluxmeta.dat:: ',io_stat,'  '//TRIM(io_msg)
-!        IF ( io_stat<0 ) EXIT
-!      END DO
-!      CLOSE(FluxMetaUnit)
-!    ELSE
-!      WRITE(*,*) 'CAUTION: No flux meta file ''',TRIM(ADJUSTL(FluxMetaFile)), ''' found.'
-!    END IF
+    ! get positions of record out of meta files
+    FluxFile     = 'REDUCTION/flux_'//TRIM(BSP)//'.dat'
+    FluxMetaFile = 'REDUCTION/fluxmeta_'//TRIM(BSP)//'.dat'   
+    ConcFile     = 'LUMPING/conc_'//TRIM(BSP)//'.dat'
+    ConcMetaFile = 'LUMPING/concmeta_'//TRIM(BSP)//'.dat'   
 
-
+    CALL CollectPositions(FluxPositions, fluxfile_exists, iStpFlux, TimeFluxRead, FluxMetaUnit, FluxMetaFile, 2)
+    CALL CollectPositions(ConcPositions, concfile_exists, iStpConc, TimeConcRead, ConcMetaUnit, ConcMetaFile, 0)
 
     !LumpingControlFile    = 'LUMPING/'//TRIM(BSP)//'.ctrl'
     current_group=>first_group

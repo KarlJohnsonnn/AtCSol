@@ -511,6 +511,15 @@ PROGRAM AtCSol
       CALL OpenFile_wSeq(FluxMetaUnit,FluxMetaFile);  CLOSE(FluxMetaUnit)
     END IF
     
+    ! open file to save the fluxes 
+    IF ( MPI_master .AND. ConcDataPrint ) THEN
+      iStpFlux = 0
+      ConcFile = 'LUMPING/conc_'//TRIM(BSP)//'.dat'
+      ConcMetaFile = 'LUMPING/concmeta_'//TRIM(BSP)//'.dat'
+      CALL OpenFile_wStream(ConcUnit,ConcFile);       CLOSE(ConcUnit)
+      CALL OpenFile_wSeq(ConcMetaUnit,ConcMetaFile);  CLOSE(ConcMetaUnit)
+    END IF
+
     !-----------------------------------------------------------------------
     ! --- Start the integration routine 
     !-----------------------------------------------------------------------

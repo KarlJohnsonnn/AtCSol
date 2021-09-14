@@ -671,11 +671,11 @@ MODULE Rosenbrock_Mod
     END IF
 
     ! collect concentrations for lumping
-   !IF ( ConcDataPrint .AND. MPI_master .AND. err < ONE .AND. t>tBegin+conc_step*last_conc_catch ) THEN
-    IF ( Lumping .AND. MPI_master .AND. err < ONE .AND. t>tBegin+conc_step*last_conc_catch ) THEN
+    IF ( ConcDataPrint .AND. MPI_master .AND. err < ONE .AND. t>tBegin+conc_step*last_conc_catch ) THEN
+   !IF ( Lumping .AND. MPI_master .AND. err < ONE .AND. t>tBegin+conc_step*last_conc_catch ) THEN
       timerStart = MPI_WTIME()
       last_Conc_catch = last_Conc_catch + 1
-      !CALL StreamWriteConcentrations(YNew,t,h)
+      CALL StreamWriteConcentrations(YNew)
       ConcMatrix(:,last_Conc_catch) = YNew
       TimeConcWrite = TimeConcWrite + MPI_WTIME() - timerStart
     END IF
