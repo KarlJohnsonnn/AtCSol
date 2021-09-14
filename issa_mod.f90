@@ -75,6 +75,7 @@ MODULE ISSA_Mod
     ! TEMP:
     CHARACTER(LenLine) :: Line, locLine
     INTEGER            :: i, j, locSp, nFam
+    LOGICAL            :: FamExists
      
     OPEN(UNIT=99,FILE=TRIM(ADJUSTL(FileName)),STATUS='UNKNOWN')
     REWIND(99)
@@ -82,7 +83,29 @@ MODULE ISSA_Mod
     ! count number of superspecies
     i = FindSection(99,'SPC_FAMILIES')
     IF (i==-1) RETURN ! no species families declared
-    nFam = FindSection(99,'END_SPC_FAMILIES')
+
+    ! detect if some families don't exist in current system
+    nFam = 0
+    DO 
+      READ(99,'(A)') Line; Line = ADJUSTL(Line)
+      IF (TRIM(Line) == 'END_SPC_FAMILIES') EXIT
+      IF (TRIM(Line) == '' ) CYCLE
+      locLine = Line
+      FamExists = .FALSE.
+      DO 
+        IF ( TRIM(locLine) == '' ) EXIT
+        IF ( PositionSpeciesAll(locLine(:INDEX(locLine,' ')-1))>0 ) FamExists = .TRUE.
+        locLine = ADJUSTL(locLine(INDEX(locLine,' ')+1:))
+      END DO
+
+      IF (FamExists) THEN
+        nFam = nFam+1
+      ELSE
+        WRITE(*,*) 'Family missing in system: ', TRIM(ADJUSTL(Line))
+      END IF
+    END DO
+
+    !nFam = FindSection(99,'END_SPC_FAMILIES')
     REWIND(99)
 
     ALLOCATE(Fam(nFam))
@@ -93,25 +116,36 @@ MODULE ISSA_Mod
       READ(99,'(A)') Line;  Line = ADJUSTL(Line)
       IF (TRIM(Line) == 'END_SPC_FAMILIES') EXIT
       IF (TRIM(Line) == '' ) CYCLE
-      i = i + 1
 
       ! count single species for i-th family
       nFam = 0
       locLine = Line
       DO 
         IF ( TRIM(locLine) == '' ) EXIT
-        nFam = nFam + 1
+        IF ( PositionSpeciesAll(locLine(:INDEX(locLine,' ')-1))>0 ) THEN
+          nFam=nFam+1
+        ELSE
+          WRITE(*,*) 'Species of family missing: ', locLine(:INDEX(locLine,' ')-1)
+        END IF
         locLine = ADJUSTL(locLine(INDEX(locLine,' ')+1:))
       END DO
+      IF (nFam == 0) CYCLE
+      
+      i = i + 1
       ALLOCATE( Fam(i)%Name(nFam), Fam(i)%Index(nFam) )
       Fam(i)%Index = -11
       
       ! save all single species for i-th family
       locLine = ADJUSTL(Line)
-      DO j=1,nFam
+      j=1
+      DO
+        IF ( TRIM(locLine) == '' ) EXIT
         locSp = INDEX(locLine,' ')
-        Fam(i)%Name(j)  = TRIM(locLine(:locSp-1))
-        Fam(i)%Index(j) = PositionSpeciesAll(Fam(i)%Name(j))
+        IF ( PositionSpeciesAll(locLine(:locSp-1))>0 ) THEN
+          Fam(i)%Name(j)  = TRIM(locLine(:locSp-1))
+          Fam(i)%Index(j) = PositionSpeciesAll(Fam(i)%Name(j))
+          j=j+1
+        END IF
         locLine = ADJUSTL(locLine(locSp+1:))
       END DO
     END DO
