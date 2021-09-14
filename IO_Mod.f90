@@ -914,6 +914,116 @@ MODULE IO_Mod
 
   END SUBROUTINE SYS_TO_KPP
 
+  SUBROUTINE SYS_TO_RMS(RS) ! NOT WORKING PROPERLY (for non-integer stoich. coefficients and fancy reaction types)
+    USE Kind_Mod
+    USE Control_Mod, ONLY: BSP, Tspan, Temperature0, StpNetcdf, LenLine
+    USE Reac_Mod,    ONLY: y_name, RO2, InitValAct, InitValKat, Diag_Name, iNcdfGas
+    USE ChemSys_Mod, ONLY: ReactionStruct_T, Duct_T, PositionSpeciesAll
+    USE Meteo_Mod,   ONLY: N2, O2, H2O
+
+    TYPE Dupe_T
+      INTEGER :: iReaction, nDuplicates
+      INTEGER, ALLOCATABLE :: iDuplicates(:)
+    END TYPE Dupe_T
+
+    TYPE(ReactionStruct_T), INTENT(IN) :: RS(:)
+
+    INTEGER, PARAMETER :: File_Unit = 112
+    INTEGER :: i
+
+
+    OPEN(UNIT=File_Unit, FILE='OUTPUT/'//TRIM(BSP)//'.rms', ACTION='write')
+    
+    ! TODO: write species with properties
+    WRITE(File_Unit,'(A)') 'Phases:'
+    WRITE(File_Unit,'(A)') '- Species:'
+    CALL WriteSpecies(y_name)
+
+
+    WRITE(File_Unit,'(A)') ''
+    WRITE(File_Unit,'(A)') '  Reactions: '
+
+    DO i=1,SIZE(RS)
+      CALL WriteKinetics(RS(i)%Line3)
+      CALL WriteDucts(RS(i)%Product, 'products')
+      ! TODO: ?? write radicalchange
+      CALL WriteDucts(RS(i)%Educt, 'reactants')
+      CALL WriteReactionType(RS(i))
+    END DO
+    
+    
+    
+    CLOSE(File_Unit)
+    WRITE(*,'(10X,A)') 'OUTPUT/'//TRIM(BSP)//'.rms file written.'
+    WRITE(*,*)
+   CONTAINS
+
+     SUBROUTINE WriteReactionType(reac)
+       TYPE(ReactionStruct_T) :: reac
+
+       WRITE(File_Unit,'(A)') '    type: ElementaryReaction'
+       
+     END SUBROUTINE
+
+     SUBROUTINE WriteSpecies(names)
+       CHARACTER(60), DIMENSION(:) :: names
+
+       INTEGER :: i
+
+       DO i=1,SIZE(names)
+         WRITE(File_Unit,'(A)') '  - name: '//TRIM(ADJUSTL(y_name(i)))
+         WRITE(File_Unit,'(A)') '    smiles: '''//TRIM(ADJUSTL(y_name(i)))//''''
+       END DO
+
+     END SUBROUTINE WriteSpecies
+
+     SUBROUTINE WriteKinetics(KinLine)
+       CHARACTER(LenLine), INTENT(IN) :: KinLine
+
+       CHARACTER(LenLine) :: Line
+       INTEGER :: pos, param_end
+
+       WRITE(File_Unit,'(A)', ADVANCE='NO') '  - kinetics: {'
+       
+       Line=ADJUSTL(KinLine)
+       pos=INDEX(Line,' ')
+       Line=ADJUSTL(Line(pos+1:))
+       DO
+         WRITE(File_Unit,'(A)', ADVANCE='NO') TRIM(ADJUSTL(Line(:INDEX(Line,' '))))
+         Line = ADJUSTL( Line( INDEX(Line,' ')+1 : ) )
+         WRITE(File_Unit,'(A)', ADVANCE='NO') ' ' 
+         WRITE(File_Unit,'(A)', ADVANCE='NO') TRIM(ADJUSTL(Line(:INDEX(Line,' '))))
+         Line = ADJUSTL( Line( INDEX(Line,' ')+1 : ) )
+         WRITE(File_Unit,'(A)', ADVANCE='NO') ', ' 
+         IF (TRIM(Line)=='') EXIT
+       END DO
+       
+       Line=ADJUSTL(KinLine)
+       WRITE(File_Unit,'(A)', ADVANCE='NO') 'type: ' 
+       WRITE(File_Unit,'(A)', ADVANCE='NO') Line(:INDEX(Line,':')-1)
+       WRITE(File_Unit,'(A)') '}'
+     END SUBROUTINE WriteKinetics
+
+
+     SUBROUTINE WriteDucts(Ducts, type)
+       TYPE(Duct_T), DIMENSION(:) :: Ducts
+       CHARACTER(*) :: type
+
+       INTEGER :: i
+
+       WRITE(File_Unit,'(A)', ADVANCE='NO') '    '//type//': ['
+       DO i=1,SIZE(Ducts)
+         WRITE(File_Unit,'(A)', ADVANCE='NO') ''''//TRIM(ADJUSTL(Ducts(i)%Species))//''''
+         IF (i<SIZE(Ducts)) THEN
+           WRITE(File_Unit,'(A)', ADVANCE='NO') ', ' 
+         ELSE
+           WRITE(File_Unit,'(A)') ']' 
+         END IF
+       END DO
+
+     END SUBROUTINE WriteDucts
+  
+  END SUBROUTINE SYS_TO_RMS
 
   SUBROUTINE OpenFile_wStream(UnitNr,FileName)
     INTEGER,      INTENT(IN) :: UnitNr

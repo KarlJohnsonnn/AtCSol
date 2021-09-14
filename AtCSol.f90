@@ -247,6 +247,7 @@ PROGRAM AtCSol
   !-----------------------------------------------------------------------
 
   IF (KPP_Conversion) CALL SYS_TO_KPP(ReactionSystem)
+  IF (RMS_Conversion) CALL SYS_TO_RMS(ReactionSystem)
 
   !-----------------------------------------------------------------------
   ! --- Dimension initialisation for the unknowns and matrices

@@ -25,6 +25,7 @@ MODULE InitRoutines_Mod
       &                    Simulation , &
       &                    Reduction , &
       &                    KPP_Conversion , &
+      &                    RMS_Conversion , &
       &                    Lumping
 
       NAMELIST /FILES/  SysFile ,    &
@@ -87,6 +88,7 @@ MODULE InitRoutines_Mod
       Simulation = .TRUE.
       Reduction  = .FALSE.
       KPP_Conversion = .FALSE.
+      RMS_Conversion = .FALSE.
       Lumping = .FALSE.
 
 !--- Read SCENARIO namelist

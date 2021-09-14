@@ -76,7 +76,7 @@
 &              , Reduction       & ! reduction of chemical species and reactions
 &              , Lumping           ! species lumping of chemical system
 
-      LOGICAL :: KPP_Conversion
+      LOGICAL :: KPP_Conversion, RMS_Conversion
 
       INTEGER :: Error_Est         ! error estimation 1 = inf norm  , 2 = euklid norm
     
