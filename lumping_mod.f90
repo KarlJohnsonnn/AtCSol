@@ -567,6 +567,50 @@ MODULE Lumping_Mod
     TimeConcRead = TimeConcRead + MPI_WTIME() - timerStart
   END SUBROUTINE ReadConcVector
 
+  FUNCTION MassMoveRatios(reacs) RESULT(ratios)
+    INTEGER, DIMENSION(:) :: reacs
+    
+    REAL(dp), ALLOCATABLE :: ratios(:), Rates(:)
+    INTEGER :: i, nReacs, io_stat = 0, dummy
+    REAL(dp) :: total, timerStart
+    CHARACTER(200) :: io_msg  = ''
+
+    IF ( .NOT. fluxfile_exists ) THEN
+      WRITE(*,*) 'Missing flux file in MassMoveRatios'
+      RETURN
+    END IF
+
+    nReacs = SIZE(reacs)
+
+    IF (ALLOCATED(ratios)) DEALLOCATE(ratios)
+    ALLOCATE(Rates(nr),ratios(nReacs))
+    timerStart = MPI_WTIME()
+    CALL OpenFile_rStream(FluxUnit,FluxFile)
+    DO i=1,iStpFlux
+      READ( FluxUnit, POS=Positions(i), IOSTAT=io_stat, IOMSG=io_msg) Rates
+      IF ( io_stat>0 ) WRITE(*,'(10X,A,I0,A)') '   ERROR reading fluxes.dat :: ',io_stat,'  '//TRIM(io_msg)
+      IF ( io_stat<0 ) WRITE(*,'(10X,A,I0,A)') '   WARNING (?) reading fluxes.dat :: ',io_stat,'  '//TRIM(io_msg)
+      ratios = ratios + ABS(Rates(reacs))
+    END DO
+    CLOSE(FluxUnit)
+    TimeFluxRead = TimeFluxRead + MPI_WTIME() - timerStart
+
+    ! check for NaN or large number
+    DO i=1,nReacs
+      IF ( ratios(i)/=ratios(i) ) THEN
+        WRITE(*,*) 'WARNING: NaN read from flux file.'
+      ELSE IF (ratios(i) > giga**11) THEN
+        WRITE(*,*) 'WARNING: Very large number (>1e99) read from flux file.'
+      END IF
+    END DO
+
+    total = SUM(ratios)
+    !WRITE(*,*) 'portions', ratios
+    !WRITE(*,*) 'total', total
+    ratios = ratios/total
+
+  END FUNCTION MassMoveRatios
+
   SUBROUTINE Ratios2Sigmas(group)
     TYPE(lumping_group), TARGET :: group
 
@@ -860,48 +904,6 @@ WRITE(*,*) '811', SIZE(tree%child), SIZE(tree%weight)
       END IF
     END DO
   END SUBROUTINE CleanEmisTree
-
-  FUNCTION MassMoveRatios(reacs) RESULT(ratios)
-    INTEGER, DIMENSION(:) :: reacs
-    
-    REAL(dp), ALLOCATABLE :: ratios(:), Rates(:)
-    INTEGER :: i, nReacs, io_stat = 0, dummy
-    REAL(dp) :: total
-    CHARACTER(200) :: io_msg  = ''
-
-    IF ( .NOT. fluxfile_exists ) THEN
-      WRITE(*,*) 'Missing flux file in MassMoveRatios'
-      RETURN
-    END IF
-
-    nReacs = SIZE(reacs)
-
-    IF (ALLOCATED(ratios)) DEALLOCATE(ratios)
-    ALLOCATE(Rates(nr),ratios(nReacs))
-    CALL OpenFile_rStream(FluxUnit,FluxFile)
-    DO i=1,iStpFlux
-      READ( FluxUnit, POS=Positions(i), IOSTAT=io_stat, IOMSG=io_msg) Rates
-      IF ( io_stat>0 ) WRITE(*,'(10X,A,I0,A)') '   ERROR reading fluxes.dat :: ',io_stat,'  '//TRIM(io_msg)
-      IF ( io_stat<0 ) WRITE(*,'(10X,A,I0,A)') '   WARNING (?) reading fluxes.dat :: ',io_stat,'  '//TRIM(io_msg)
-      ratios = ratios + ABS(Rates(reacs))
-    END DO
-    CLOSE(FluxUnit)
-
-    ! check for NaN or large number
-    DO i=1,nReacs
-      IF ( ratios(i)/=ratios(i) ) THEN
-        WRITE(*,*) 'WARNING: NaN read from flux file.'
-      ELSE IF (ratios(i) > giga**11) THEN
-        WRITE(*,*) 'WARNING: Very large number (>1e99) read from flux file.'
-      END IF
-    END DO
-
-    total = SUM(ratios)
-    !WRITE(*,*) 'portions', ratios
-    !WRITE(*,*) 'total', total
-    ratios = ratios/total
-
-  END FUNCTION MassMoveRatios
 
   RECURSIVE SUBROUTINE CollectNodesEdges(tree,starts,ends,weights,mask)
     TYPE(linked_tree) :: tree
