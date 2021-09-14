@@ -99,16 +99,13 @@ MODULE Lumping_Mod
 ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  
 
-  SUBROUTINE lump_System(tau, ConcMatrix, LumpingControlFile)
+  SUBROUTINE lump_System(tau, ConcMatrix)
     ! input:
     !
     !  lifetimes of species at given times (tau(i,j) : lifetime of species i at timepoint j)
     REAL(dp), DIMENSION(:,:), INTENT(IN) :: tau
     !  concentrations of species at given times (ConcMatrix(i,j) : concentration of species i at timepoint j)
     REAL(dp), DIMENSION(:,:), INTENT(IN) :: ConcMatrix
-    !
-    !  file with species to be preserved
-    CHARACTER(*) :: LumpingControlFile
     !
     ! end input
     
@@ -184,7 +181,7 @@ MODULE Lumping_Mod
 
 
 
-    LumpingControlFile    = 'LUMPING/'//TRIM(BSP)//'.ctrl'
+    !LumpingControlFile    = 'LUMPING/'//TRIM(BSP)//'.ctrl'
     current_group=>first_group
     nReac = A%m
     nSpc  = A%n

@@ -601,8 +601,8 @@ PROGRAM AtCSol
     ! set ConcMatrix minimum value to eps
     ConcMatrix = MAX(ConcMatrix,eps)
 
-    CALL lump_System(tau, ConcMatrix, PreserveFile)
-
+    CALL lump_System(tau, ConcMatrix)
+    
     TimeLumping = MPI_WTIME()-StartTimer
     
     CALL ConvertTime(TimeLumping,unit)
