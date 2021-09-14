@@ -613,11 +613,8 @@ PROGRAM AtCSol
     CALL lump_System(tau, ConcMatrix)
     
     TimeLumping = MPI_WTIME()-StartTimer
+    CALL WriteLumpingTimes()
     
-    CALL ConvertTime(TimeLumping,unit)
-    WRITE(*,*)
-    WRITE(*,'(32X,A,1X,F10.4,A)') 'Time lumping = ', TimeLumping, unit
-    WRITE(*,*);
   END IF
 
   ! --- Close MPI 

@@ -137,10 +137,12 @@
       REAL(dp) :: TimeNetCDF=0.0d0
       REAL(dp) :: TimeErrCalc=0.0d0
       REAL(dp) :: TimeFluxWrite=0.0d0
+      REAL(dp) :: TimeFluxRead=0.0d0
       REAL(dp) :: TimeRhsCalc=0.0d0
       REAL(dp) :: TimeReduction=0.0d0
       REAL(dp) :: TimeLumping=0.0d0
       REAL(dp) :: TimeConcWrite=0.0d0
+      REAL(dp) :: TimeConcRead=0.0d0
   
       REAL(dp) :: TimeIntegration=0.0d0
       REAL(dp) :: TimeRateA=0.0d0

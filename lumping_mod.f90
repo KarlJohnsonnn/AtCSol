@@ -131,6 +131,23 @@ MODULE Lumping_Mod
                           & iSpc_reac_types(:), jSpc_reac_types(:), Reacs_Array(:)
     REAL(dp), ALLOCATABLE :: time_flux(:), dt_flux(:)
     REAL(dp) :: Conc_ratio = 0.0_dp
+    
+    ! counters (overall and succesful for each lumping step)
+    INTEGER :: cLumpablei  = 0      &
+    &        , csLumpablei = 0      &
+    &        , cTau        = 0      &
+    &        , csTau       = 0      &
+    &        , cLumpablej  = 0      &
+    &        , csLumpablej = 0      &
+    &        , cTypes      = 0      &
+    &        , csTypes     = 0      &
+    &        , cEquivs     = 0      &
+    &        , csEquivs    = 0      &
+    &        , cK          = 0      &
+    &        , csK         = 0      &
+    &        , cSigma      = 0      &
+    &        , csSigma     = 0      &
+    &        , cdummy      = 0
 
    !PERMTEST
     INTEGER, ALLOCATABLE :: Perm(:), SortVec(:)
@@ -140,7 +157,6 @@ MODULE Lumping_Mod
     CHARACTER(LenLine) :: TESTEST  = ''
     REAL(dp) :: sum1 = 0,sum2 = 0,sum3 = 0,sum4 = 0,sum5 = 0  
     LOGICAL :: testbool 
-
 
     CALL Logo3 
 
@@ -159,6 +175,7 @@ MODULE Lumping_Mod
     current_group=>first_group
     nReac = A%m
     nSpc  = A%n
+    cdummy = 0
     
     ALLOCATE(reac_lumped(nReac),                &
            & Spc_lumped(nSpc))                   
@@ -177,15 +194,18 @@ MODULE Lumping_Mod
     ! scan system and collect lumpable species in lumping groups
     DO iSpc=1,nSpc
       IF ( .NOT. Spc_lumped(iSpc) ) THEN
+        CALL CounterNextStep(cdummy,cLumpablei)
+
         Spc_lumped(iSpc) = .TRUE.
 
-        ! create new lumping group with iSpc as initial species
+        ! create new lumping group with iSpc as initial species and find iSpcReacs
         ! every species will be in one lumping group (possibly containing only this species)
         CALL NextLumpingGroup(current_group,iSpc,iSpcReacs,n_iSpcReacs)
 
         CALL check_lumpable(iSpc_lumpable,iSpc,iSpcReacs,n_iSpcReacs)
 
         IF ( iSpc_lumpable ) THEN
+          CALL CounterNextStep(csLumpablei,cdummy)
 
           ! declare all reactions involving iSpc as educt as lumped
           ! this will be reversed if no species is lumped with iSpc
@@ -199,16 +219,21 @@ MODULE Lumping_Mod
           ! check all species with greater indices than iSpc, 
           ! smaller ones have already been checked before
           DO jSpc=iSpc+1,nSpc
+            CALL CounterNextStep(cdummy,cTau)
 
             CALL compare_lifetimes(same_lifetimes,tau,iSpc,jSpc)
 
             IF ( same_lifetimes ) THEN
+              CALL CounterNextStep(csTau,cLumpablej)
+              
               ! find reactions in which iSpc occurs as educt
               CALL Spc_involving_reacs(jSpcReacs,n_jSpcReacs,jSpc)
               
               CALL check_lumpable(jSpc_lumpable,jSpc,jSpcReacs,n_jSpcReacs)
               
               IF ( jSpc_lumpable ) THEN
+                CALL CounterNextStep(csLumpablej,cTypes)
+                
                 ! find reaction types of species i (occuring numbers of educts of iSpcReacs)
                 CALL find_reaction_types(jSpc_reac_types,jSpcReacs)
 
@@ -222,20 +247,24 @@ MODULE Lumping_Mod
 
                 ! check for same size too (so no reactions are left over)
                 IF (same_reactypes .AND. n_iSpcReacs==n_jSpcReacs) THEN
+                  CALL CounterNextStep(csTypes, cEquivs)
 
                   ALLOCATE(reac_equivs(n_jSpcReacs))
                   ! now check for reaction equivalents (reactions with same reactants excluding iSpc and jSpc)
                   CALL check_reac_equivs(equivs_present,reac_equivs,iSpcReacs,jSpcReacs,iSpc,jSpc)
 
                   IF (equivs_present) THEN
+                    CALL CounterNextStep(csEquivs,cK)
                     
                     CALL compare_k(similar_k,reac_equivs,iSpcReacs,jSpcReacs)
                     
                     IF (similar_k) THEN
+                      CALL CounterNextStep(csK, cSigma)
 
                       CALL find_sigma(constant_sigma, Conc_ratio, ConcMatrix, iSpc, jSpc)
 
                       IF (constant_sigma) THEN
+                        CALL CounterNextStep(csSigma,cdummy)
                       
                         ! LUMP jSpc to iSpc
                         CALL current_group%add(jSpc,reac_equivs,jSpcReacs,Conc_ratio)
@@ -284,26 +313,72 @@ MODULE Lumping_Mod
 
     EmisFams = Read_Emis_Families(LumpingControlFile)
 
-    !CALL WriteTree(tree)
-!somespc = PositionSpeciesAll('CC(ON(=O)=O)CC=O')
-!CALL BuildEmisTree(somespc,tree, (/ 0 /), (/ 0 /))
-!CALL CleanEmisTree(tree)
-!CALL EmisTreeToMatlab(tree)
-    ! CALL GroupTrees2Matlab(315,first_group)
-
-    CALL WriteLumpingGroups(first_group)
-    
     CALL build_LumpedReacSys(l_ReactionSystem, first_group, reac_lumped)
          
     CALL Print_LumpedSysFile(l_ReactionSystem, first_group, 'LUMPING/'//TRIM(BSP)//'_lumped.sys')
 
+    !CALL WriteLumpingGroups(first_group)
+    CALL WriteCounters()
+    WRITE(*,*) '          Number of ducts with coefficient < nano  = ', counter2
+
+!    CALL WriteTree(tree)
+!!somespc = PositionSpeciesAll('OCC(C)OO')
+!somespc = PositionSpeciesAll('OCCC(O)(C)C(=O)OON(=O)=O')
+!IF (somespc == 0) THEN 
+!  WRITE(*,*) 'lumping spc not existing'
+!ELSE
+!WRITE(*,*) 'BUILD CALL INI'
+!CALL BuildEmisTree(somespc,tree, (/ 0 /), (/ 0 /))
+!!CALL WriteTree(tree)
+!!CALL CleanEmisTree(tree)
+!WRITE(*,*) '2MATLAB CALL INI'
+!CALL EmisTreeToMatlab(tree)
+!somespc = PositionSpeciesAll('OCCC(O)C(=O)OON(=O)=O')
+!IF (somespc == 0) THEN 
+!  WRITE(*,*) 'lumping spc not existent'
+!  STOP
+!END IF
+!CALL tree%free()
+!WRITE(*,*) 'BUILD CALL INI 2'
+!CALL BuildEmisTree(somespc,tree, (/ 0 /), (/ 0 /))
+!!CALL WriteTree(tree)
+!!CALL CleanEmisTree(tree)
+!WRITE(*,*) '2MATLAB CALL INI 2'
+!CALL EmisTreeToMatlab(tree)
+!    ! CALL GroupTrees2Matlab(315,first_group)
+!END IF
     CALL end_lumping
 
-    !WRITE(*,*) counter1
+    
     CALL CONTROL_SUBR(l_ReactionSystem)
-    WRITE(*,*) PreserveFile
 
    CONTAINS
+
+    SUBROUTINE WriteCounters()
+
+      WRITE(*,*) ''
+      WRITE(*,*) '          Trials Analysis for each step of lumping:'
+      WRITE(*,*) ''
+      WRITE(*,*) ''
+      WRITE(*,626) '              Step 1: new lumping species           - accepted: ', csLumpablei, ' of ', cLumpablei, '   (',100.0*REAL(csLumpablei)/REAL(cLumpablei), '%)'
+      WRITE(*,626) '              Step 2: life time comparison          - accepted: ', csTau,       ' of ', cTau, '   (',100*REAL(csTau)/REAL(cTau), '%)'
+      WRITE(*,626) '              Step 3: possible member of new group  - accepted: ', csLumpablej, ' of ', cLumpablej, '   (',100*REAL(csLumpablej)/REAL(cLumpablej), '%)'
+      WRITE(*,626) '              Step 4: reaction type comparison      - accepted: ', csTypes,     ' of ', cTypes, '   (',100*REAL(csTypes)/REAL(cTypes), '%)'
+      WRITE(*,626) '              Step 5: equivalent reaction pairs     - accepted: ', csEquivs,    ' of ', cEquivs, '   (',100*REAL(csEquivs)/REAL(cEquivs), '%)'
+      WRITE(*,626) '              Step 6: similar rate constants        - accepted: ', csK,         ' of ', cK, '   (',100*REAL(csK)/REAL(cK), '%)'
+      WRITE(*,626) '              Step 7: constant sigmas               - accepted: ', csSigma,     ' of ', cSigma, '   (',100*REAL(csSigma)/REAL(cSigma), '%)'
+      WRITE(*,*) ''
+      WRITE(*,*) ''
+
+      626 FORMAT(A64,I8,A4,I8,A4,F5.1,A2)
+    END SUBROUTINE WriteCounters
+
+    SUBROUTINE CounterNextStep(succesful,new)
+      INTEGER :: succesful, new
+
+      succesful = succesful + 1
+      new       = new + 1
+    END SUBROUTINE CounterNextStep
 
     SUBROUTINE check_lumpable(Spc_lumpable, Spc, SpcReacs, n_SpcReacs)
       LOGICAL :: Spc_lumpable
@@ -329,13 +404,12 @@ MODULE Lumping_Mod
   
       WRITE (*,*) ''
       WRITE (*,*) ''
+      WRITE (*,*) '           ______________________________________________________________'
+      WRITE (*,*) '          |                                                              |'
+      WRITE (*,*) '          |  Lumped',A%n,     'species and',A%m,       'reactions        |'
+      WRITE (*,*) '          |  to    ',nLumpSpc,'species and',nLumpReacs,'reactions.       |'
+      WRITE (*,*) '          |______________________________________________________________|'
       WRITE (*,*) ''
-      WRITE (*,*) ''
-      WRITE (*,*) ' ______________________________________________________________'
-      WRITE (*,*) '|                                                              |'
-      WRITE (*,*) '|  Lumped',A%n,     'species and',A%m,       'reactions        |'
-      WRITE (*,*) '|  to    ',nLumpSpc,'species and',nLumpReacs,'reactions.       |'
-      WRITE (*,*) '|______________________________________________________________|'
   
     END SUBROUTINE end_lumping
 
@@ -347,7 +421,6 @@ MODULE Lumping_Mod
     INTEGER :: i, j, k
     CHARACTER(LenName) :: char1, char2
 
-    WRITE(*,*) 'CONTROL'
     DO i=1,SIZE(y_name)
       IF ( PositionSpeciesAll(y_name(i))/=i ) THEN
         WRITE(*,*) 'ERRORI',i,y_name(i),PositionSpeciesAll(y_name(i))
@@ -463,54 +536,7 @@ MODULE Lumping_Mod
     END IF
     Conc_ratio = expected
 
-!WRITE(*,*) ''
-!WRITE(*,*) 'sigma control: ',TRIM(ADJUSTL(y_name(iSpc))), ' and ', TRIM(ADJUSTL(y_name(jSpc)))
-!WRITE(*,*) 'sum iSpc = ',SUM(ConcMatrix(iSpc,:))
-!WRITE(*,*) 'sum jSpc = ',SUM(ConcMatrix(jSpc,:))
-!WRITE(*,*) 'expected ratio = ', expected, ', variation coefficient = ', varcoeff
-!WRITE(*,*) 'constant sigma = ', constant_sigma
-!WRITE(*,*) 'ratio examples:', ConcMatrix(jSpc,INT(0.25*SIZE(ConcMatrix,2)))/ConcMatrix(iSpc,INT(0.25*SIZE(ConcMatrix,2)))
-!WRITE(*,*) 'ratio examples:', ConcMatrix(jSpc,INT(0.5*SIZE(ConcMatrix,2)))/ConcMatrix(iSpc,INT(0.5*SIZE(ConcMatrix,2)))
-!WRITE(*,*) 'ratio examples:', ConcMatrix(jSpc,INT(0.75*SIZE(ConcMatrix,2)))/ConcMatrix(iSpc,INT(0.75*SIZE(ConcMatrix,2)))
-!WRITE(*,*) 'Conc ratios:', ConcMatrix(jSpc,:)/ConcMatrix(iSpc,:)
   END SUBROUTINE find_sigma
-
-  !SUBROUTINE StreamWriteConcentrations(Conc)
-  !  USE Kind_Mod
-  !  USE Control_Mod, ONLY: ConcUnit, ConcFile, ConcMetaUnit, ConcMetaFile, iStpConc
-  !  REAL(dp) :: Rate(:)
-!
-!    INTEGER :: io_stat, io_pos
-!    CHARACTER(100) :: io_msg
-!
-!    OPEN(unit=ConcUnit,      file=ConcFile,  status='old',   action='write', &
-!    &    position='append', access='stream', iostat=io_stat, iomsg=io_msg    )
-!    CALL file_err(FluxFile,io_stat,io_msg)
-!    INQUIRE(ConcUnit, POS=io_pos)
-!    WRITE(ConcUnit) Conc
-!    CLOSE(ConcUnit)
-!
-!    iStpConc   = iStpConc + 1
-!    OPEN(unit=ConcMetaUnit, file=ConcMetaFile, status='old', action='write', position='append')
-!    WRITE(ConcMetaUnit,*) iStpConc, io_pos
-!    CLOSE(ConcMetaUnit)
-!
-!    CONTAINS
-!
-!      SUBROUTINE file_err(filename,io_stat,io_msg)
-!        CHARACTER(Len=*), INTENT(in) :: filename
-!        INTEGER         , INTENT(in) :: io_stat
-!        CHARACTER(Len=*), INTENT(in) :: io_msg
-!        IF (io_stat /= 0) THEN
-!          WRITE(*,"(79('!'))")
-!          WRITE(*,'(A,I0)')    'ERROR operating on file:  '//TRIM(filename)//'  with io status:  ',io_stat 
-!          WRITE(*,'(A)')       'Message:  '//TRIM(io_msg)
-!          WRITE(*,"(79('!'))")
-!          WRITE(*,*)'Exit ...'
-!          STOP
-!        END IF
-!      END SUBROUTINE file_err
-!  END SUBROUTINE StreamWriteConcentrations
 
   SUBROUTINE GroupTrees2Matlab(group_id, first_group, clean_given)
     INTEGER :: group_id
@@ -908,7 +934,7 @@ WRITE(*,*) '811', SIZE(tree%child), SIZE(tree%weight)
              &  TRIM(ADJUSTL(Educt)) /='CL'     .AND. &
              &  FINDLOC(parentspc,iEduct,DIM=1) == 0        ) THEN
 
-            ! current_reac serves as a marker (reaction id) to find the corresponding rate constant
+            ! current_reac serves as a marker (reaction id) to find the corresponding rate constant later
             CALL tree%put(   ReactionSystem(current_reac)%Educt(i)%iSpecies &
                          & , current_reac                                   &
                          & , ReactionSystem(current_reac)%Educt(i)%Species  ) 
@@ -1136,8 +1162,10 @@ WRITE(*,*) '811', SIZE(tree%child), SIZE(tree%weight)
       group=>group%next
     END DO
 
-WRITE(*,*) ''
-WRITE(*,*) '          MIN/MAX of sigma = ', MINVAL(sigma),'/',MAXVAL(sigma)
+    IF (MINVAL(sigma)<0 .OR. MAXVAL(sigma)>1) THEN 
+      WRITE(*,*) 'Sigma contains values out of [0,1]. Abort!'
+      STOP
+    END IF
 
     ! add passive species
     DO i=1,SIZE(ListNonReac2)
@@ -1628,7 +1656,9 @@ WRITE(*,*) '          MIN/MAX of sigma = ', MINVAL(sigma),'/',MAXVAL(sigma)
     END IF
     IF ( ALLOCATED(tree%weight) ) DEALLOCATE( tree%weight )
     IF ( ALLOCATED(tree%relevant) ) DEALLOCATE( tree%relevant )
-  
+    !tree%id=-1
+    !tree%id_char=''
+
   END SUBROUTINE free_tree
   
   RECURSIVE SUBROUTINE WriteTree(tree,step_given)
@@ -1643,7 +1673,7 @@ WRITE(*,*) '          MIN/MAX of sigma = ', MINVAL(sigma),'/',MAXVAL(sigma)
       step=1
     END IF
     
-    WRITE (*,'(I3)',ADVANCE='NO') tree%id
+    WRITE (*,'(I5)',ADVANCE='NO') tree%id
     IF ( tree%id_char /= '' ) THEN
       WRITE (*,'(A)',ADVANCE = 'NO') '/'//TRIM(ADJUSTL(tree%id_char))
     END IF
@@ -1655,7 +1685,11 @@ WRITE(*,*) '          MIN/MAX of sigma = ', MINVAL(sigma),'/',MAXVAL(sigma)
       END DO  
       WRITE (*,'(A,I2,A)',ADVANCE='NO') ' ',step,')'
     END IF
-    IF ( step/=1 ) WRITE (*,'(A2)',ADVANCE='NO') ', '
+    IF ( step/=1 ) THEN
+      WRITE (*,'(A2)',ADVANCE='NO') ', '
+    ELSE
+      WRITE(*,*) ''
+    END IF
   END SUBROUTINE WriteTree
 
 
@@ -1931,10 +1965,7 @@ WRITE(*,*) '          MIN/MAX of sigma = ', MINVAL(sigma),'/',MAXVAL(sigma)
         IF ( j<nProducts ) THEN
           WRITE (989,'(A3)',ADVANCE='NO') ' + '
         END IF
-!counter2 = counter2 + LEN_TRIM(ADJUSTL(Koeff_Str))+LEN_TRIM(Species)+1 + 3
       END DO
-!IF (counter2>403) WRITE(*,*) counter2-3
-!IF (counter2 > 403) counter1 = counter1+1
     
       WRITE (989,*) 
       WRITE (989,'(A)') TRIM(l_RS(i)%Line3)
@@ -2181,6 +2212,20 @@ WRITE(*,*) '          MIN/MAX of sigma = ', MINVAL(sigma),'/',MAXVAL(sigma)
     777 FORMAT(10X,A)
   END FUNCTION Read_Preserve_Spc
 
+  SUBROUTINE WriteLumpingTimes()
+    CHARACTER(8) ::  unit1  = '',   &
+    &                unit2  = '',   &
+    &                unit3  = ''
+   
+    CALL ConvertTime(TimeFluxRead,unit1)
+    CALL ConvertTime(TimeConcRead,unit2)
+    CALL ConvertTime(TimeLumping,unit3)
+    WRITE(*,*)
+    WRITE(*,'(11X,A,1X,F10.4,A)') 'Time reading flux-dataset = ', TimeFluxRead, unit1
+    WRITE(*,'(11X,A,1X,F10.4,A)') 'Time reading conc-dataset = ', TimeConcRead, unit2
+    WRITE(*,'(11X,A,1X,F10.4,A)') 'Time lumping procedure    = ', TimeLumping, unit3
+    WRITE(*,*);
+  END SUBROUTINE WriteLumpingTimes
 
   SUBROUTINE WriteLumpingGroups(first_group)
 
@@ -2377,10 +2422,10 @@ WRITE(*,*) '          MIN/MAX of sigma = ', MINVAL(sigma),'/',MAXVAL(sigma)
   SUBROUTINE Logo3()
 
     WRITE (*,*) ''
-    WRITE (*,*) ' _________________________ '
-    WRITE (*,*) '|                         |'
-    WRITE (*,*) '|         LUMPING         |'
-    WRITE (*,*) '|_________________________|'
+    WRITE (*,*) '                  _________________________ '
+    WRITE (*,*) '                 |                         |'
+    WRITE (*,*) '                 |         LUMPING         |'
+    WRITE (*,*) '                 |_________________________|'
     WRITE (*,*) ''
     WRITE (*,*) ''
   

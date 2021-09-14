@@ -108,8 +108,8 @@ MODULE IO_Mod
     USE Control_Mod
     !
     REAL(dp) :: maxTRead,maxTSymb,maxTFac,maxTSolve,maxTRates,maxTJac &
-    &               , maxTInte,maxTAll,maxTSend,maxtNcdf,maxTErr,maxTRhs,maxTFlux
-    CHARACTER(8) :: unit(12)
+    &               , maxTInte,maxTAll,maxTSend,maxtNcdf,maxTErr,maxTRhs,maxTFlux,maxTConc
+    CHARACTER(8) :: unit(13)
     !
     CALL GetMaxTimes(maxTRead,Time_Read)
     CALL GetMaxTimes(maxTRates,TimeRates)
@@ -123,20 +123,22 @@ MODULE IO_Mod
     CALL GetMaxTimes(maxTErr,TimeErrCalc)
     CALL GetMaxTimes(maxTRhs,TimeRhsCalc)
     CALL GetMaxTimes(maxTFlux,TimeFluxWrite)
+    CALL GetMaxTimes(maxTConc,TimeConcWrite)
     maxTInte = maxTInte - maxTNcdf - maxTFlux
 
     CALL ConvertTime(maxTRead,unit(1)(:))
     CALL ConvertTime(maxTSymb,unit(2)(:))
     CALL ConvertTime(maxTNcdf,unit(3)(:))
     CALL ConvertTime(maxTFlux,unit(4)(:))
-    CALL ConvertTime(maxTFac,unit(5)(:))
-    CALL ConvertTime(maxTRhs,unit(6)(:))
-    CALL ConvertTime(maxTSolve,unit(7)(:))
-    CALL ConvertTime(maxTRates,unit(8)(:))
-    CALL ConvertTime(maxTJac,unit(9)(:))
-    CALL ConvertTime(maxTErr,unit(10)(:))
-    CALL ConvertTime(maxTInte,unit(11)(:))
-    CALL ConvertTime(maxTAll,unit(12)(:))
+    CALL ConvertTime(maxTConc,unit(5)(:))
+    CALL ConvertTime(maxTFac,unit(6)(:))
+    CALL ConvertTime(maxTRhs,unit(7)(:))
+    CALL ConvertTime(maxTSolve,unit(8)(:))
+    CALL ConvertTime(maxTRates,unit(9)(:))
+    CALL ConvertTime(maxTJac,unit(10)(:))
+    CALL ConvertTime(maxTErr,unit(11)(:))
+    CALL ConvertTime(maxTInte,unit(12)(:))
+    CALL ConvertTime(maxTAll,unit(13)(:))
     !
     IF (MPI_master) THEN
       ! print the statistics
@@ -158,17 +160,18 @@ MODULE IO_Mod
       WRITE(*,299) '    reading mechanism       =', maxTRead,unit(1)
       WRITE(*,299) '    symbolic phase          =', maxTSymb,unit(2)
       WRITE(*,299) '    writing NetCDF-File     =', maxTNcdf,unit(3)
-      WRITE(*,299) '    writing flux-dataset    =', maxTFlux,unit(4) ; WRITE(*,*)
+      WRITE(*,299) '    writing flux-dataset    =', maxTFlux,unit(4)
+      WRITE(*,299) '    writing conc-dataset    =', maxTConc,unit(5) ; WRITE(*,*)
       !WRITE(*,777) '    ------------------------+----------------------------'
-      WRITE(*,299) '            factorisation   =', maxTFac  ,unit(5)
-      WRITE(*,299) '          + right-hand side =', maxTRhs  ,unit(6)
-      WRITE(*,299) '          + linear systems  =', maxTSolve,unit(7)
-      WRITE(*,299) '          + reaction rates  =', maxTRates,unit(8)
-      WRITE(*,299) '          + Jacobian        =', maxTJac  ,unit(9)
-      WRITE(*,299) '          + error calc      =', maxTErr  ,unit(10)
+      WRITE(*,299) '            factorisation   =', maxTFac  ,unit(6)
+      WRITE(*,299) '          + right-hand side =', maxTRhs  ,unit(7)
+      WRITE(*,299) '          + linear systems  =', maxTSolve,unit(8)
+      WRITE(*,299) '          + reaction rates  =', maxTRates,unit(9)
+      WRITE(*,299) '          + Jacobian        =', maxTJac  ,unit(10)
+      WRITE(*,299) '          + error calc      =', maxTErr  ,unit(11)
       WRITE(*,777) '    ------------------------=----------------------'
-      WRITE(*,299) '    integration             =', maxTInte,unit(11); WRITE(*,*)
-      WRITE(*,299) '    total runtime           =', maxTAll,unit(12)
+      WRITE(*,299) '    integration             =', maxTInte,unit(12); WRITE(*,*)
+      WRITE(*,299) '    total runtime           =', maxTAll,unit(13)
       WRITE(*,*);  WRITE(*,*);  WRITE(*,*)
     END IF
   END SUBROUTINE
