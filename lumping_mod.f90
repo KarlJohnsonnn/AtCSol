@@ -1171,14 +1171,9 @@ WRITE(*,*) '811', SIZE(tree%child), SIZE(tree%weight)
     nTau=SIZE(tau,2)
       
     same_lifetimes=.TRUE.
-    DO timestep=1,nTau
-    !~~~~~~~~~~~~~~~~~~~~~
-    ! maybe vectorize this loop if faster
-    !~~~~~~~~~~~~~~~~~~~~~
-      IF (ABS((tau(iSpc,timestep)-tau(jSpc,timestep))/(tau(iSpc,timestep)+100*eps))>eps_tau) THEN
-        same_lifetimes=.FALSE.
-      END IF
-    END DO  
+    IF ( MAXVAL(  ABS(tau(iSpc,:)-tau(jSpc,:)) /                                      &
+       &       (ABS(tau(iSpc,:))+100*eps)     ) > eps_tau ) same_lifetimes = .FALSE.
+  
   END SUBROUTINE compare_lifetimes
 
 
