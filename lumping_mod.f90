@@ -487,6 +487,86 @@ MODULE Lumping_Mod
 ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+  SUBROUTINE CollectPositions(Positions, file_exists, iStp,  timer, MetaUnit, MetaFile, nRealValues)
+    INTEGER, ALLOCATABLE, INTENT(OUT) :: Positions(:)
+    LOGICAL :: file_exists
+    INTEGER :: iStp, MetaUnit
+    REAL(dp) :: timer
+    CHARACTER(80) :: MetaFile
+    ! number of values stored in MetaFile other than dummy and Position
+    INTEGER :: nRealValues
+    
+    INTEGER        :: io_stat = 0, dummy, i
+    CHARACTER(200) :: io_msg  = ''
+    REAL(dp) :: RealValues(nRealValues), timerStart
+
+
+    ! look for flux file 
+    INQUIRE(FILE=MetaFile, EXIST=file_exists)
+    ! reading meta data (positions of record)
+    IF (file_exists) THEN
+      timerStart = MPI_WTIME()
+      CALL OpenFile_rSeq(MetaUnit,MetaFile)
+      dummy = 0
+      DO 
+        READ(MetaUnit,*,IOSTAT=io_stat,IOMSG=io_msg) 
+        IF ( io_stat>0 ) WRITE(*,'(10X,A,I0,A)') '   ERROR first reading meta.dat:: ',io_stat,'  '//TRIM(io_msg)
+        IF ( io_stat<0 ) EXIT
+        dummy = dummy + 1
+      END DO
+      iStp = dummy
+      REWIND(MetaUnit)
+  
+      ALLOCATE( Positions(iStp) )
+      DO i=1,iStp
+        IF (nRealValues==0) THEN
+          READ(MetaUnit,*,IOSTAT=io_stat,IOMSG=io_msg) dummy , Positions(i)
+        ELSE IF ( nRealValues == 2 ) THEN
+          READ(MetaUnit,*,IOSTAT=io_stat,IOMSG=io_msg) dummy , Positions(i), RealValues(1), RealValues(2)
+        ELSE
+          WRITE(*,*) 'Cannot read given number of real values. If needed, extend CollectPositions routine. Given: ',nRealValues
+          STOP
+        END IF
+        IF ( io_stat>0 ) WRITE(*,'(10X,A,I0,A)') '   ERROR reading meta.dat:: ',io_stat,'  '//TRIM(io_msg)
+        IF ( io_stat<0 ) EXIT
+      END DO
+      CLOSE(MetaUnit)
+      timer = timer + MPI_WTIME() - timerStart
+    ELSE
+      WRITE(*,*) 'CAUTION: No meta file ''',TRIM(ADJUSTL(MetaFile)), ''' found.'
+    END IF
+  END SUBROUTINE CollectPositions 
+
+  SUBROUTINE ReadConcVector(Vec, Spc)
+    REAL(dp), ALLOCATABLE, INTENT(OUT) :: Vec(:)
+    INTEGER :: Spc
+   
+    REAL(dp) :: Conc(nDim), timerStart
+    INTEGER        :: io_stat = 0, i
+    CHARACTER(200) :: io_msg  = ''
+
+    IF ( .NOT.  concfile_exists ) THEN
+      WRITE(*,*) 'Missing concentrations file in ReadConcVector'
+      RETURN
+    END IF
+
+    timerStart = MPI_WTIME()
+
+    ALLOCATE(Vec(SIZE(ConcPositions)))
+
+    CALL OpenFile_rStream(ConcUnit,ConcFile)
+    DO i=1,iStpConc
+      READ( ConcUnit, POS=ConcPositions(i), IOSTAT=io_stat, IOMSG=io_msg) Conc
+      IF ( io_stat>0 ) WRITE(*,'(10X,A,I0,A)') '   ERROR reading concentrations :: ',io_stat,'  '//TRIM(io_msg)
+      IF ( io_stat<0 ) WRITE(*,'(10X,A,I0,A)') '   WARNING (?) reading concentrations :: ',io_stat,'  '//TRIM(io_msg)
+      Vec(i) = Conc(Spc)
+    END DO
+    CLOSE(ConcUnit)
+    ! clean numerical errors
+    Vec = MAX(Vec,eps)
+    TimeConcRead = TimeConcRead + MPI_WTIME() - timerStart
+  END SUBROUTINE ReadConcVector
+
   SUBROUTINE Ratios2Sigmas(group)
     TYPE(lumping_group), TARGET :: group
 
@@ -516,19 +596,23 @@ MODULE Lumping_Mod
     INTEGER :: iSpc, jSpc
 
     REAL(dp) :: expected, varcoeff
+    REAL(dp), ALLOCATABLE :: iConc(:), jConc(:)
+
+    CALL ReadConcVector(iConc, iSpc)
+    CALL ReadConcVector(jConc, jSpc)
 
     ! calculate expected value of the ratio conc(jSpc)/conc(iSpc)
     ! care with +eps!!!!!!!!!!! 1e-16 could be much in mol!
-    expected = SUM( ConcMatrix(jSpc,2:)/(ConcMatrix(iSpc,2:)+eps) )/(SIZE(ConcMatrix,2)-1)
+    expected = SUM( jConc(2:)/(iConc(2:)+eps) )/(SIZE(iConc)-1)
 
     ! calculate empirical variation coefficient
     ! sum of squared differences
-    varcoeff = SUM(( ConcMatrix(jSpc,2:)/(ConcMatrix(iSpc,2:)+eps)-expected )**2)
+    varcoeff = SUM(( jConc(2:)/(iConc(2:)+eps)-expected )**2)
     ! unbiased standard dev
-    varcoeff = varcoeff / (SIZE(ConcMatrix,2)-2)
+    varcoeff = varcoeff / (SIZE(iConc)-2)
     ! variation coefficient (~ procentual deviation)
     varcoeff = SQRT(varcoeff)/expected
-
+ 
     IF ( varcoeff<.5) THEN
       constant_sigma = .TRUE.
     ELSE
